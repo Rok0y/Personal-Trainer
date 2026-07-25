@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrackMeBuddy</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+
+        :root {
+            --bg: #0a0d13;
+            --glass: rgba(15, 19, 28, 0.6);
+            --glass-strong: rgba(15, 19, 28, 0.82);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.14);
+            --text: #f4f2ec;
+            --muted: #8d97ab;
+            --orange: #ff5a36;
+            --orange-glow: rgba(255, 90, 54, 0.45);
+            --teal: #1be8c4;
+            --teal-glow: rgba(27, 232, 196, 0.45);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Space Grotesk', Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        /* ---------- STAGE (full-bleed camera) ---------- */
+
+        .stage {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: saturate(1.05) contrast(1.03);
+            animation: fadeIn 0.9s ease both;
+        }
+
+        /* subtle vignette + scanline for a "broadcast HUD" feel */
+        .vignette {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%),
+                linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 78%, rgba(0,0,0,0.6) 100%);
+        }
+
+        .scanlines {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.05;
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(255,255,255,0.6) 0px,
+                rgba(255,255,255,0.6) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            mix-blend-mode: overlay;
+        }
+
+        /* ---------- TOP BAR ---------- */
+
+        .topbar {
+            position: absolute;
+            top: 28px;
+            left: 28px;
+            right: 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 5;
+            animation: dropIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 10px 18px 10px 14px;
+            border-radius: 999px;
+        }
+
+        .brand-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--orange);
+            box-shadow: 0 0 10px var(--orange-glow);
+            animation: pulseDot 2s ease-in-out infinite;
+        }
+
+        .brand-name {
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-name span {
+            color: var(--teal);
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 9px 16px;
+            border-radius: 999px;
+            font-size: 13px;
+            color: var(--muted);
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--teal);
+            box-shadow: 0 0 8px var(--teal-glow);
+            animation: pulseDot 1.6s ease-in-out infinite;
+        }
+
+        .status-dot.offline {
+            background: #ff5a5a;
+            box-shadow: 0 0 8px rgba(255, 90, 90, 0.5);
+        }
+
+        /* ---------- HUD (bottom overlay) ---------- */
+
+        .hud {
+            position: absolute;
+            left: 28px;
+            right: 28px;
+            bottom: 28px;
+            z-index: 5;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 18px;
+            align-items: end;
+            animation: riseIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+            animation-delay: 0.15s;
+        }
+
+        .card {
+            background: var(--glass-strong);
+            border: 1px solid var(--border-strong);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-radius: 22px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+        }
+
+        /* Position card */
+        .position-card {
+            padding: 22px 26px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 220px;
+        }
+
+        .label {
+            font-size: 12px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .position-value {
+            font-size: 30px;
+            font-weight: 700;
+            color: var(--orange);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .position-value.changing {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+
+        /* Reps card — the signature scoreboard */
+        .reps-card {
+            padding: 18px 34px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            position: relative;
+            overflow: visible;
+        }
+
+        .reps-value-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 150px;
+            height: 110px;
+        }
+
+        .impact-ring {
+            position: absolute;
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: 3px solid var(--teal);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .impact-ring.hit {
+            animation: ringPulse 0.55s ease-out;
+        }
+
+        .reps-value {
+            font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+            font-size: 92px;
+            line-height: 1;
+            color: var(--teal);
+            text-shadow: 0 0 24px var(--teal-glow);
+            letter-spacing: 0.02em;
+        }
+
+        .reps-value.hit {
+            animation: punch 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* ---------- Animations ---------- */
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes dropIn {
+            from { opacity: 0; transform: translateY(-14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes riseIn {
+            from { opacity: 0; transform: translateY(18px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.35); opacity: 0.6; }
+        }
+
+        @keyframes punch {
+            0%   { transform: scale(1); }
+            35%  { transform: scale(1.28); }
+            60%  { transform: scale(0.94); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes ringPulse {
+            0%   { opacity: 0.9; transform: scale(0.6); }
+            100% { opacity: 0; transform: scale(1.9); }
+        }
+
+        /* ---------- Responsive ---------- */
+
+        @media (max-width: 760px) {
+            .hud {
+                grid-template-columns: 1fr;
+                justify-items: stretch;
+            }
+            .reps-card {
+                order: -1;
+            }
+            .brand-name {
+                font-size: 14px;
+            }
+            .reps-value {
+                font-size: 76px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="stage">
+
+    <img class="video" id="video" src="/video" alt="Flux webcam">
+    <div class="vignette"></div>
+    <div class="scanlines"></div>
+
+    <div class="topbar">
+        <div class="brand">
+            <span class="brand-dot"></span>
+            <span class="brand-name">Track<span>Me</span>Buddy</span>
+        </div>
+        <div class="status">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">En direct</span>
+        </div>
+    </div>
+
+    <div class="hud">
+
+        <div class="card position-card">
+            <span class="label">Position</span>
+            <span class="position-value" id="position">Aucune</span>
+        </div>
+
+        <div class="card reps-card">
+            <span class="label">Répétitions</span>
+            <div class="reps-value-wrap">
+                <span class="impact-ring" id="ring"></span>
+                <span class="reps-value" id="reps">0</span>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    let dernierReps = null;
+
+    function declencherImpact() {
+        const repsEl = document.getElementById("reps");
+        const ringEl = document.getElementById("ring");
+
+        repsEl.classList.remove("hit");
+        ringEl.classList.remove("hit");
+        // force reflow so the animation can restart
+        void repsEl.offsetWidth;
+        repsEl.classList.add("hit");
+        ringEl.classList.add("hit");
+    }
+
+    function mettreAJourPosition(nouvellePosition) {
+        const positionEl = document.getElementById("position");
+        if (positionEl.textContent.trim() === String(nouvellePosition)) return;
+
+        positionEl.classList.add("changing");
+        setTimeout(() => {
+            positionEl.textContent = nouvellePosition;
+            positionEl.classList.remove("changing");
+        }, 150);
+    }
+
+    function definirStatut(enLigne) {
+        const dot = document.getElementById("statusDot");
+        const text = document.getElementById("statusText");
+        if (enLigne) {
+            dot.classList.remove("offline");
+            text.textContent = "En direct";
+        } else {
+            dot.classList.add("offline");
+            text.textContent = "Connexion perdue";
+        }
+    }
+
+    function mettreAJourEtat() {
+        fetch("/etat")
+            .then(response => response.json())
+            .then(data => {
+                definirStatut(true);
+                mettreAJourPosition(data.position);
+
+                const repsEl = document.getElementById("reps");
+                if (dernierReps !== null && data.repetitions !== dernierReps) {
+                    declencherImpact();
+                }
+                repsEl.textContent = data.repetitions;
+                dernierReps = data.repetitions;
+            })
+            .catch(error => {
+                definirStatut(false);
+                console.error("Erreur :", error);
+            });
+    }
+
+    setInterval(mettreAJourEtat, 100);
+    mettreAJourEtat();
+
+</script>
+
+</body>
+
+</html>

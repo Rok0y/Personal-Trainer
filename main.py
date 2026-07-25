@@ -1,14 +1,41 @@
 import cv2
+import threading
+
+import state
+
+from web.app import lancer_site
 
 from vision.detector import PoseDetector
-from mouvements.positions import bras_droit_leve,bras_gauche_leve,bras_en_x
 
+from mouvements.positions import (
+    bras_droit_leve,
+    bras_gauche_leve,
+    bras_en_x
+)
+
+
+# -----------------------------
+# Lancer le serveur web
+# -----------------------------
+
+threading.Thread(
+    target=lancer_site,
+    daemon=True
+).start()
+
+
+# -----------------------------
+# Initialisation
+# -----------------------------
 
 detector = PoseDetector()
 
-
 cap = cv2.VideoCapture(0)
 
+
+# -----------------------------
+# Boucle principale
+# -----------------------------
 
 while True:
 
@@ -18,29 +45,59 @@ while True:
         break
 
 
+    # -------------------------
+    # Détection du corps
+    # -------------------------
+
     corps = detector.detect(frame)
 
-    if bras_droit_leve(corps):
-        print("Bras droit leve")
-    if bras_gauche_leve(corps):
-        print("Bras gauche leve")
-    if bras_en_x(corps):
-        print("Bras en X")
 
-    cv2.namedWindow('Test Body', cv2.WINDOW_NORMAL)
+    if corps:
 
-    cv2.imshow(
-        "Test Body",
+        if bras_droit_leve(corps):
+
+            state.position_actuelle = "Bras droit levé"
+
+
+        elif bras_gauche_leve(corps):
+
+            state.position_actuelle = "Bras gauche levé"
+
+
+        elif bras_en_x(corps):
+
+            state.position_actuelle = "Bras en X"
+
+
+        else:
+
+            state.position_actuelle = "Aucune"
+
+
+    else:
+
+        state.position_actuelle = "Aucun corps détecté"
+
+
+    # -------------------------
+    # Transformer l'image en JPEG
+    # -------------------------
+
+    succes, buffer = cv2.imencode(
+        ".jpg",
         frame
     )
 
 
-    if cv2.waitKey(10) & 0xFF == ord("q"):
-        break
+    if succes:
+
+        state.frame_actuelle = buffer.tobytes()
 
 
+# -----------------------------
+# Fermeture
+# -----------------------------
 
 cap.release()
-cv2.destroyAllWindows()
 
 detector.close()
