@@ -1,0 +1,57 @@
+
+# =========================
+# Python
+# =========================
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Fichiers de configuration Python
+*.pyo
+*.pyd
+
+# Environnements virtuels
+.venv/
+venv/
+env/
+
+# Variables d'environnement
+.env
+.env.*
+
+# =========================
+# IDE / éditeurs
+# =========================
+
+# Visual Studio Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# =========================
+# Système
+# =========================
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+
+# =========================
+# Tests / couverture
+# =========================
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# Logs
+# =========================
+
+*.log
