@@ -30,21 +30,55 @@ def calculer_angle(a, b, c):
 class HoldPosition:
 
     def __init__(self, position, duree):
+
         self.position = position
         self.duree = duree
         self.debut = None
+        self.termine = False
+
 
     def update(self, corps):
 
-        if self.position(corps):
+        # La position n'est pas tenue
+        if not self.position(corps):
 
-            if self.debut is None:
-                self.debut = time.time()
-
-            if time.time() - self.debut >= self.duree:
-                return True
-
-        else:
             self.debut = None
+            self.termine = False
 
-        return False
+            return 0, False
+
+
+        # Début du maintien
+        if self.debut is None:
+
+            self.debut = time.time()
+
+
+        # Temps écoulé
+        temps_ecoule = time.time() - self.debut
+
+
+        # Progression entre 0 et 100
+        progression = (
+            temps_ecoule / self.duree
+        ) * 100
+
+        progression = min(
+            progression,
+            100
+        )
+
+
+        # Maintien terminé
+        if progression >= 100:
+
+            if not self.termine:
+
+                self.termine = True
+
+                return 100, True
+
+            return 100, False
+
+
+        return progression, False

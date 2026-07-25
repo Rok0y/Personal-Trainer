@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrackMeBuddy</title>
+    <title>Personal Trainer</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -193,6 +193,126 @@
             letter-spacing: 0.01em;
         }
 
+        /* ---------- HOLD BUBBLE (progression du maintien) ---------- */
+
+        .hold-container {
+            position: absolute;
+            top: 34%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+
+        .hold-container.visible {
+            opacity: 1;
+        }
+
+        .hold-ring-wrap {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hold-ring {
+            position: absolute;
+            inset: 0;
+            transform: rotate(-90deg);
+        }
+
+        .hold-ring-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.14);
+            stroke-width: 6;
+        }
+
+        .hold-ring-progress {
+            fill: none;
+            stroke: var(--teal);
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-dasharray: 439.8;
+            stroke-dashoffset: 439.8;
+            filter: drop-shadow(0 0 6px var(--teal-glow));
+            transition: stroke-dashoffset 0.12s linear;
+        }
+
+        .hold-container.flash .hold-ring-progress {
+            animation: ringFlash 0.5s ease-out;
+        }
+
+        .hold-bubble {
+            width: 118px;
+            height: 118px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 32% 28%,
+                rgba(255, 255, 255, 0.85),
+                rgba(27, 232, 196, 0.45) 42%,
+                rgba(27, 232, 196, 0.16) 72%,
+                transparent 100%);
+            box-shadow: 0 0 26px var(--teal-glow) inset, 0 0 18px var(--teal-glow);
+            transform: scale(0.22);
+            transition: transform 0.15s ease-out;
+            animation: bubbleGlow 2.4s ease-in-out infinite;
+        }
+
+        .hold-bubble.pop {
+            animation: bubblePop 0.55s cubic-bezier(0.32, 0, 0.67, 0) forwards;
+        }
+
+        .hold-percent {
+            position: absolute;
+            font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+            font-size: 26px;
+            letter-spacing: 0.02em;
+            color: var(--text);
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+            pointer-events: none;
+        }
+
+        .hold-caption {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 7px 18px;
+            border-radius: 999px;
+            font-size: 12px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .burst {
+            position: absolute;
+            inset: 0;
+            overflow: visible;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--teal);
+            box-shadow: 0 0 8px var(--teal-glow);
+            transform: translate(-50%, -50%);
+            animation: particleBurst 0.6s ease-out forwards;
+        }
+
         /* ---------- HUD (bottom overlay) ---------- */
 
         .hud {
@@ -350,6 +470,30 @@
             100% { opacity: 0; transform: scale(1.9); }
         }
 
+        @keyframes bubbleGlow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.18); }
+        }
+
+        @keyframes bubblePop {
+            0%   { transform: scale(1);   opacity: 1; }
+            35%  { transform: scale(1.32); opacity: 1; }
+            100% { transform: scale(1.9); opacity: 0; }
+        }
+
+        @keyframes ringFlash {
+            0%   { stroke: var(--teal); filter: drop-shadow(0 0 6px var(--teal-glow)); }
+            40%  { stroke: #ffffff; filter: drop-shadow(0 0 22px var(--teal-glow)); }
+            100% { stroke: var(--teal); filter: drop-shadow(0 0 6px var(--teal-glow)); }
+        }
+
+        @keyframes particleBurst {
+            to {
+                transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty)));
+                opacity: 0;
+            }
+        }
+
         /* ---------- Responsive ---------- */
 
         @media (max-width: 760px) {
@@ -369,6 +513,14 @@
             }
             .exercise-value {
                 font-size: 14px;
+            }
+            .hold-ring-wrap {
+                width: 130px;
+                height: 130px;
+            }
+            .hold-bubble {
+                width: 96px;
+                height: 96px;
             }
         }
 
@@ -406,7 +558,7 @@
     <div class="topbar">
         <div class="brand">
             <span class="brand-dot"></span>
-            <span class="brand-name">Track<span>Me</span>Buddy</span>
+            <span class="brand-name">Personal <span>Trainer</span>
         </div>
 
         <div class="exercise-badge" id="exerciseBadge">
@@ -418,6 +570,19 @@
             <span class="status-dot" id="statusDot"></span>
             <span id="statusText">En direct</span>
         </div>
+    </div>
+
+    <div class="hold-container" id="holdContainer">
+        <div class="hold-ring-wrap">
+            <svg class="hold-ring" viewBox="0 0 160 160">
+                <circle class="hold-ring-bg" cx="80" cy="80" r="70"></circle>
+                <circle class="hold-ring-progress" id="holdRingProgress" cx="80" cy="80" r="70"></circle>
+            </svg>
+            <div class="hold-bubble" id="holdBubble"></div>
+            <span class="hold-percent" id="holdPercent">0%</span>
+            <div class="burst" id="burst"></div>
+        </div>
+        <span class="hold-caption">Maintien</span>
     </div>
 
     <div class="hud">
@@ -498,6 +663,79 @@
         }
     }
 
+    // ---------- Bulle de progression du maintien ----------
+
+    const CIRCONFERENCE = 2 * Math.PI * 70;
+    let dernierMaintienTermine = false;
+
+    function creerParticules() {
+        const burst = document.getElementById("burst");
+        burst.innerHTML = "";
+        const nombre = 14;
+
+        for (let i = 0; i < nombre; i++) {
+            const particule = document.createElement("span");
+            particule.className = "particle";
+
+            const angle = (360 / nombre) * i + (Math.random() * 16 - 8);
+            const distance = 55 + Math.random() * 35;
+            const rad = (angle * Math.PI) / 180;
+
+            particule.style.setProperty("--tx", `${Math.cos(rad) * distance}px`);
+            particule.style.setProperty("--ty", `${Math.sin(rad) * distance}px`);
+
+            burst.appendChild(particule);
+        }
+    }
+
+    function declencherEclatement() {
+        const container = document.getElementById("holdContainer");
+        const bulle = document.getElementById("holdBubble");
+
+        bulle.classList.add("pop");
+        container.classList.add("flash");
+        creerParticules();
+
+        setTimeout(() => {
+            bulle.classList.remove("pop");
+            container.classList.remove("flash", "visible");
+            bulle.style.transform = "scale(0.22)";
+            document.getElementById("holdRingProgress").style.strokeDashoffset = CIRCONFERENCE;
+            document.getElementById("holdPercent").textContent = "0%";
+            document.getElementById("burst").innerHTML = "";
+        }, 600);
+    }
+
+    function mettreAJourMaintien(progression, termine) {
+        const container = document.getElementById("holdContainer");
+        const bulle = document.getElementById("holdBubble");
+        const anneau = document.getElementById("holdRingProgress");
+        const pourcentEl = document.getElementById("holdPercent");
+
+        const pct = Math.max(0, Math.min(100, Number(progression) || 0));
+
+        // Déclenche l'éclatement une seule fois, au moment où le maintien se termine
+        if (termine && !dernierMaintienTermine) {
+            dernierMaintienTermine = termine;
+            declencherEclatement();
+            return;
+        }
+        dernierMaintienTermine = termine;
+
+        // Pendant l'éclatement, on laisse l'animation faire son travail
+        if (bulle.classList.contains("pop")) return;
+
+        if (pct > 0) {
+            container.classList.add("visible");
+        } else {
+            container.classList.remove("visible");
+        }
+
+        anneau.style.strokeDashoffset = CIRCONFERENCE * (1 - pct / 100);
+        bulle.style.transform = `scale(${0.22 + (pct / 100) * 0.78})`;
+        pourcentEl.textContent = `${Math.round(pct)}%`;
+    }
+
     function mettreAJourEtat() {
         fetch("/etat")
             .then(response => response.json())
@@ -507,6 +745,7 @@
                 mettreAJourExercice(data.exercice_actuel);
                 mettreAJourChamp("position", data.position_actuelle);
                 mettreAJourChamp("stage", data.stage);
+                mettreAJourMaintien(data.progression_maintien, data.maintien_termine);
 
                 const repsEl = document.getElementById("reps");
                 if (dernierReps !== null && data.repetitions !== dernierReps) {

@@ -12,3 +12,15 @@ def curl_biceps_droit(corps):
         return "debut"
 
     return "milieu"
+
+def curl_biceps_gauche(corps):
+
+    angle = calculer_angle(corps.epaule_gauche,corps.coude_gauche,corps.poignet_gauche)
+
+    if angle < 30:
+        return "fin"
+
+    elif angle > 160:
+        return "debut"
+
+    return "milieu"

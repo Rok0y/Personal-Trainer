@@ -22,6 +22,8 @@ from mouvements.compteur import (
     CompteurMouvement
 )
 
+from mouvements.outils import HoldPosition
+
 
 # ==========================================================
 # SERVEUR WEB
@@ -44,6 +46,12 @@ cap = cv2.VideoCapture(0)
 # Compteur du curl biceps droit
 compteur_curl = CompteurMouvement()
 
+# Maintien des bras en X pendant 1,5 seconde
+hold_bras_x = HoldPosition(
+    bras_en_x,
+    1.5
+)
+
 
 # ==========================================================
 # BOUCLE PRINCIPALE
@@ -57,9 +65,9 @@ while True:
         break
 
 
-    # ------------------------------------------------------
+    # ======================================================
     # DÉTECTION DU CORPS
-    # ------------------------------------------------------
+    # ======================================================
 
     corps = detector.detect(frame)
 
@@ -69,6 +77,9 @@ while True:
         # ==================================================
         # POSITIONS
         # ==================================================
+
+        bras_x = bras_en_x(corps)
+
 
         if bras_droit_leve(corps):
 
@@ -80,7 +91,7 @@ while True:
             state.position_actuelle = "Bras gauche levé"
 
 
-        elif bras_en_x(corps):
+        elif bras_x:
 
             state.position_actuelle = "Bras en X"
 
@@ -96,20 +107,39 @@ while True:
 
         state.exercice_actuel = "Curl biceps droit"
 
-
-        # Détection de la phase du mouvement
         stage_detecte = curl_biceps_droit(corps)
 
 
-        # Mise à jour de la machine d'état
+        # Mise à jour du compteur
         stage, repetitions = compteur_curl.mettre_a_jour(
             stage_detecte
         )
 
-
-        # Envoi des informations vers state.py
         state.stage = stage
         state.repetitions = repetitions
+
+
+        # ==================================================
+        # MAINTIEN DES BRAS EN X
+        # ==================================================
+
+        progression, maintien_termine = hold_bras_x.update(
+            corps
+        )
+
+        state.progression_maintien = progression
+        state.maintien_termine = maintien_termine
+
+
+        # ==================================================
+        # RESET DES RÉPÉTITIONS
+        # ==================================================
+
+        if maintien_termine:
+
+            compteur_curl.reset()
+
+            state.repetitions = 0
 
 
         # ==================================================
@@ -134,9 +164,13 @@ while True:
 
         state.stage = "Aucune"
 
+        state.progression_maintien = 0
+
+        state.maintien_termine = False
+
 
     # ======================================================
-    # ENCODAGE DE LA VIDÉO
+    # ENCODAGE DE LA VIDÉO POUR LE SITE
     # ======================================================
 
     succes, buffer = cv2.imencode(

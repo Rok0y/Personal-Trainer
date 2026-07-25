@@ -21,7 +21,9 @@ def etat():
         "position_actuelle": state.position_actuelle,
         "exercice_actuel": state.exercice_actuel,
         "stage": state.stage,
-        "repetitions": state.repetitions
+        "repetitions": state.repetitions,
+        "maintien_termine": state.maintien_termine,
+        "progression_maintien": state.progression_maintien
     })
 
 
