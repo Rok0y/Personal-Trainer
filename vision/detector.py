@@ -5,7 +5,8 @@ import urllib.request
 import os
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-
+from vision.body import Body, LandmarkPoint
+from vision.landmarks import LANDMARKS
 
 MODEL_PATH = "pose_landmarker_lite.task"
 MODEL_URL = (
@@ -51,16 +52,15 @@ class PoseDetector:
             return None
         
         landmarks = result.pose_landmarks[0]
-        pose = {}
-        for index, landmark in enumerate(landmarks):
-            pose[index] = {
-                "x": landmark.x,
-                "y": landmark.y,
-                "z": landmark.z,
-                "visibility": landmark.visibility
-            }
-        return pose
-
+        points = {}
+        for nom, index in LANDMARKS.items():
+            point = landmarks[index]
+            points[nom] = LandmarkPoint(
+                point.x,
+                point.y,
+                point.z,
+                point.visibility)
+        return Body(points)
 
 
     def close(self):

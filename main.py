@@ -17,26 +17,22 @@ while True:
         break
 
 
-    pose = detector.detect(frame)
+    corps = detector.detect(frame)
 
 
-    if pose:
+    print("Y du poignet gauche :")
+    print(corps.poignet_gauche.x)
 
-        print("--------------------")
+    print("Y de l'épaule gauche :")
+    print(corps.epaule_gauche.x)
 
-        print(
-            "Poignet gauche :",
-            pose[15]
-        )
+    if corps.poignet_gauche.y < corps.epaule_gauche.y:
+        print("MAIN GAUCHE EN HAUT")
 
-        print(
-            "Épaule gauche :",
-            pose[11]
-        )
-
+    cv2.namedWindow('Test Body', cv2.WINDOW_NORMAL)
 
     cv2.imshow(
-        "Pose detector",
+        "Test Body",
         frame
     )
 
