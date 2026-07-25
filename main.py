@@ -1,6 +1,7 @@
 import cv2
 
 from vision.detector import PoseDetector
+from mouvements.positions import bras_droit_leve,bras_gauche_leve,bras_en_x
 
 
 detector = PoseDetector()
@@ -19,15 +20,12 @@ while True:
 
     corps = detector.detect(frame)
 
-
-    print("Y du poignet gauche :")
-    print(corps.poignet_gauche.x)
-
-    print("Y de l'épaule gauche :")
-    print(corps.epaule_gauche.x)
-
-    if corps.poignet_gauche.y < corps.epaule_gauche.y:
-        print("MAIN GAUCHE EN HAUT")
+    if bras_droit_leve(corps):
+        print("Bras droit leve")
+    if bras_gauche_leve(corps):
+        print("Bras gauche leve")
+    if bras_en_x(corps):
+        print("Bras en X")
 
     cv2.namedWindow('Test Body', cv2.WINDOW_NORMAL)
 
