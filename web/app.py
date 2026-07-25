@@ -9,14 +9,18 @@ app = Flask(__name__)
 @app.route("/")
 def index():
 
-    return render_template("index.html")
+    return render_template(
+        "index.html"
+    )
 
 
 @app.route("/etat")
 def etat():
 
     return jsonify({
-        "position": state.position_actuelle,
+        "position_actuelle": state.position_actuelle,
+        "exercice_actuel": state.exercice_actuel,
+        "stage": state.stage,
         "repetitions": state.repetitions
     })
 

@@ -6,6 +6,7 @@ import state
 from web.app import lancer_site
 
 from vision.detector import PoseDetector
+from vision.dessin import dessiner_squelette
 
 from mouvements.positions import (
     bras_droit_leve,
@@ -13,10 +14,18 @@ from mouvements.positions import (
     bras_en_x
 )
 
+from mouvements.exercices import (
+    curl_biceps_droit
+)
 
-# -----------------------------
-# Lancer le serveur web
-# -----------------------------
+from mouvements.compteur import (
+    CompteurMouvement
+)
+
+
+# ==========================================================
+# SERVEUR WEB
+# ==========================================================
 
 threading.Thread(
     target=lancer_site,
@@ -24,18 +33,21 @@ threading.Thread(
 ).start()
 
 
-# -----------------------------
-# Initialisation
-# -----------------------------
+# ==========================================================
+# INITIALISATION
+# ==========================================================
 
 detector = PoseDetector()
 
 cap = cv2.VideoCapture(0)
 
+# Compteur du curl biceps droit
+compteur_curl = CompteurMouvement()
 
-# -----------------------------
-# Boucle principale
-# -----------------------------
+
+# ==========================================================
+# BOUCLE PRINCIPALE
+# ==========================================================
 
 while True:
 
@@ -45,14 +57,18 @@ while True:
         break
 
 
-    # -------------------------
-    # Détection du corps
-    # -------------------------
+    # ------------------------------------------------------
+    # DÉTECTION DU CORPS
+    # ------------------------------------------------------
 
     corps = detector.detect(frame)
 
 
     if corps:
+
+        # ==================================================
+        # POSITIONS
+        # ==================================================
 
         if bras_droit_leve(corps):
 
@@ -74,14 +90,54 @@ while True:
             state.position_actuelle = "Aucune"
 
 
+        # ==================================================
+        # EXERCICE : CURL BICEPS DROIT
+        # ==================================================
+
+        state.exercice_actuel = "Curl biceps droit"
+
+
+        # Détection de la phase du mouvement
+        stage_detecte = curl_biceps_droit(corps)
+
+
+        # Mise à jour de la machine d'état
+        stage, repetitions = compteur_curl.mettre_a_jour(
+            stage_detecte
+        )
+
+
+        # Envoi des informations vers state.py
+        state.stage = stage
+        state.repetitions = repetitions
+
+
+        # ==================================================
+        # DESSIN DU SQUELETTE
+        # ==================================================
+
+        frame = dessiner_squelette(
+            frame,
+            corps
+        )
+
+
     else:
+
+        # ==================================================
+        # AUCUN CORPS DÉTECTÉ
+        # ==================================================
 
         state.position_actuelle = "Aucun corps détecté"
 
+        state.exercice_actuel = "Aucun"
 
-    # -------------------------
-    # Transformer l'image en JPEG
-    # -------------------------
+        state.stage = "Aucune"
+
+
+    # ======================================================
+    # ENCODAGE DE LA VIDÉO
+    # ======================================================
 
     succes, buffer = cv2.imencode(
         ".jpg",
@@ -94,10 +150,12 @@ while True:
         state.frame_actuelle = buffer.tobytes()
 
 
-# -----------------------------
-# Fermeture
-# -----------------------------
+# ==========================================================
+# FERMETURE
+# ==========================================================
 
 cap.release()
 
 detector.close()
+
+cv2.destroyAllWindows()

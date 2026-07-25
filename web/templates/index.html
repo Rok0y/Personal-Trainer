@@ -160,6 +160,39 @@
             box-shadow: 0 0 8px rgba(255, 90, 90, 0.5);
         }
 
+        .exercise-badge {
+            display: flex;
+            align-items: baseline;
+            gap: 9px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 9px 20px;
+            border-radius: 999px;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .exercise-badge.changing {
+            opacity: 0;
+            transform: translateY(-4px);
+        }
+
+        .exercise-label {
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .exercise-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: 0.01em;
+        }
+
         /* ---------- HUD (bottom overlay) ---------- */
 
         .hud {
@@ -169,7 +202,7 @@
             bottom: 28px;
             z-index: 5;
             display: grid;
-            grid-template-columns: 1fr auto;
+            grid-template-columns: 1fr 1fr auto;
             gap: 18px;
             align-items: end;
             animation: riseIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -210,6 +243,28 @@
         }
 
         .position-value.changing {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+
+        /* Stage card */
+        .stage-card {
+            padding: 22px 26px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 180px;
+        }
+
+        .stage-value {
+            font-size: 30px;
+            font-weight: 700;
+            color: var(--teal);
+            text-transform: capitalize;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .stage-value.changing {
             opacity: 0;
             transform: translateY(6px);
         }
@@ -299,10 +354,11 @@
 
         @media (max-width: 760px) {
             .hud {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr 1fr;
                 justify-items: stretch;
             }
             .reps-card {
+                grid-column: 1 / -1;
                 order: -1;
             }
             .brand-name {
@@ -310,6 +366,21 @@
             }
             .reps-value {
                 font-size: 76px;
+            }
+            .exercise-value {
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .topbar {
+                flex-wrap: wrap;
+                row-gap: 10px;
+            }
+            .exercise-badge {
+                order: 3;
+                width: 100%;
+                justify-content: center;
             }
         }
 
@@ -337,6 +408,12 @@
             <span class="brand-dot"></span>
             <span class="brand-name">Track<span>Me</span>Buddy</span>
         </div>
+
+        <div class="exercise-badge" id="exerciseBadge">
+            <span class="exercise-label">Exercice</span>
+            <span class="exercise-value" id="exercice">Aucun</span>
+        </div>
+
         <div class="status">
             <span class="status-dot" id="statusDot"></span>
             <span id="statusText">En direct</span>
@@ -348,6 +425,11 @@
         <div class="card position-card">
             <span class="label">Position</span>
             <span class="position-value" id="position">Aucune</span>
+        </div>
+
+        <div class="card stage-card">
+            <span class="label">Étape</span>
+            <span class="stage-value" id="stage">Aucune</span>
         </div>
 
         <div class="card reps-card">
@@ -378,14 +460,29 @@
         ringEl.classList.add("hit");
     }
 
-    function mettreAJourPosition(nouvellePosition) {
-        const positionEl = document.getElementById("position");
-        if (positionEl.textContent.trim() === String(nouvellePosition)) return;
+    // Met à jour un champ texte avec un petit fondu si la valeur a changé
+    function mettreAJourChamp(id, nouvelleValeur, classeChangement = "changing") {
+        const el = document.getElementById(id);
+        const valeur = String(nouvelleValeur);
+        if (el.textContent.trim() === valeur) return;
 
-        positionEl.classList.add("changing");
+        el.classList.add(classeChangement);
         setTimeout(() => {
-            positionEl.textContent = nouvellePosition;
-            positionEl.classList.remove("changing");
+            el.textContent = valeur;
+            el.classList.remove(classeChangement);
+        }, 150);
+    }
+
+    function mettreAJourExercice(nouvelExercice) {
+        const badge = document.getElementById("exerciseBadge");
+        const valeurEl = document.getElementById("exercice");
+        const valeur = String(nouvelExercice);
+        if (valeurEl.textContent.trim() === valeur) return;
+
+        badge.classList.add("changing");
+        setTimeout(() => {
+            valeurEl.textContent = valeur;
+            badge.classList.remove("changing");
         }, 150);
     }
 
@@ -406,7 +503,10 @@
             .then(response => response.json())
             .then(data => {
                 definirStatut(true);
-                mettreAJourPosition(data.position);
+
+                mettreAJourExercice(data.exercice_actuel);
+                mettreAJourChamp("position", data.position_actuelle);
+                mettreAJourChamp("stage", data.stage);
 
                 const repsEl = document.getElementById("reps");
                 if (dernierReps !== null && data.repetitions !== dernierReps) {
