@@ -14,6 +14,5 @@ while cap.isOpened():
     
     if cv2.waitKey(10) & 0xFF == ord('q'):
         break
-      cv2.putText(image, "REPS", (15, 12), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
 cap.release()
 cv2.destroyAllWindows()
