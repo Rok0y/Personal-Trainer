@@ -1,23 +1,42 @@
-# État partagé entre le programme principal et le site web
+# ==========================================
+# ÉTAT DU PROGRAMME
+# ==========================================
 
-# Position générale du corps
 position_actuelle = "Aucune"
 
-# Exercice actuellement effectué
 exercice_actuel = "Aucun"
 
-# Étape actuelle de l'exercice
-# Exemple : "haut", "bas", "milieu"
 stage = "Aucune"
 
-# Nombre de répétitions
 repetitions = 0
 
-# Dernière image de la webcam encodée en JPEG
-frame_actuelle = None
+repetitions_cibles = 10
 
-# Progression du maintien des positions
+
+# ==========================================
+# CIRCUIT
+# ==========================================
+
+serie_actuelle = 1
+
+nombre_series = 1
+
+phase = "exercice"
+
+temps_restant = 0
+
+
+# ==========================================
+# MAINTIEN
+# ==========================================
+
+maintien_termine = False
+
 progression_maintien = 0
 
-# Indique si le maintien a atteint 100 %
-maintien_termine = False
+
+# ==========================================
+# VIDEO
+# ==========================================
+
+latest_frame = None

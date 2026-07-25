@@ -14,7 +14,7 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.vision import drawing_utils,drawing_styles
-import fonctions
+import références.fonctions as fonctions
 
 # ---------------------------------------------------------------------------
 # 0. Télécharger le modèle si besoin

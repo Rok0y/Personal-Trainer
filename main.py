@@ -3,10 +3,18 @@ import threading
 
 import state
 
-from web.app import lancer_site
+
+# ==========================================
+# VISION
+# ==========================================
 
 from vision.detector import PoseDetector
 from vision.dessin import dessiner_squelette
+
+
+# ==========================================
+# POSITIONS
+# ==========================================
 
 from mouvements.positions import (
     bras_droit_leve,
@@ -14,20 +22,38 @@ from mouvements.positions import (
     bras_en_x
 )
 
-from mouvements.exercices import (
-    curl_biceps_droit
-)
 
-from mouvements.compteur import (
-    CompteurMouvement
-)
+# ==========================================
+# COMPTEUR
+# ==========================================
+
+from mouvements.compteur import CompteurMouvement
+
+
+# ==========================================
+# MAINTIEN
+# ==========================================
 
 from mouvements.outils import HoldPosition
 
 
-# ==========================================================
-# SERVEUR WEB
-# ==========================================================
+# ==========================================
+# SITE WEB
+# ==========================================
+
+from web.app import lancer_site
+
+
+# ==========================================
+# CIRCUIT
+# ==========================================
+
+from seance.seance_test import seance
+
+
+# ==========================================
+# LANCEMENT DU SITE
+# ==========================================
 
 threading.Thread(
     target=lancer_site,
@@ -35,161 +61,299 @@ threading.Thread(
 ).start()
 
 
-# ==========================================================
-# INITIALISATION
-# ==========================================================
+# ==========================================
+# DETECTEUR
+# ==========================================
 
 detector = PoseDetector()
 
+
+# ==========================================
+# CAMERA
+# ==========================================
+
 cap = cv2.VideoCapture(0)
 
-# Compteur du curl biceps droit
-compteur_curl = CompteurMouvement()
+if not cap.isOpened():
+    print("Impossible d'ouvrir la caméra.")
+    detector.close()
+    raise SystemExit
 
-# Maintien des bras en X pendant 1,5 seconde
+
+# ==========================================
+# COMPTEUR DE MOUVEMENT
+# ==========================================
+
+compteur = CompteurMouvement()
+
+
+# ==========================================
+# MAINTIEN BRAS EN X
+# ==========================================
+
 hold_bras_x = HoldPosition(
     bras_en_x,
     1.5
 )
 
 
-# ==========================================================
+# ==========================================
 # BOUCLE PRINCIPALE
-# ==========================================================
+# ==========================================
 
-while True:
+try:
 
-    ret, frame = cap.read()
+    while True:
 
-    if not ret:
-        break
+        # ======================================
+        # LECTURE DE LA CAMERA
+        # ======================================
 
+        ret, frame = cap.read()
 
-    # ======================================================
-    # DÉTECTION DU CORPS
-    # ======================================================
-
-    corps = detector.detect(frame)
-
-
-    if corps:
-
-        # ==================================================
-        # POSITIONS
-        # ==================================================
-
-        bras_x = bras_en_x(corps)
+        if not ret:
+            print("Impossible de lire la caméra.")
+            break
 
 
-        if bras_droit_leve(corps):
+        # ======================================
+        # DETECTION DU CORPS
+        # ======================================
 
-            state.position_actuelle = "Bras droit levé"
-
-
-        elif bras_gauche_leve(corps):
-
-            state.position_actuelle = "Bras gauche levé"
+        corps = detector.detect(frame)
 
 
-        elif bras_x:
+        if corps is not None:
 
-            state.position_actuelle = "Bras en X"
+            # ==================================
+            # POSITIONS
+            # ==================================
 
+            if bras_droit_leve(corps):
 
-        else:
+                state.position_actuelle = (
+                    "Bras droit levé"
+                )
 
-            state.position_actuelle = "Aucune"
+            elif bras_gauche_leve(corps):
 
+                state.position_actuelle = (
+                    "Bras gauche levé"
+                )
 
-        # ==================================================
-        # EXERCICE : CURL BICEPS DROIT
-        # ==================================================
+            elif bras_en_x(corps):
 
-        state.exercice_actuel = "Curl biceps droit"
+                state.position_actuelle = (
+                    "Bras en X"
+                )
 
-        stage_detecte = curl_biceps_droit(corps)
+            else:
 
-
-        # Mise à jour du compteur
-        stage, repetitions = compteur_curl.mettre_a_jour(
-            stage_detecte
-        )
-
-        state.stage = stage
-        state.repetitions = repetitions
-
-
-        # ==================================================
-        # MAINTIEN DES BRAS EN X
-        # ==================================================
-
-        progression, maintien_termine = hold_bras_x.update(
-            corps
-        )
-
-        state.progression_maintien = progression
-        state.maintien_termine = maintien_termine
+                state.position_actuelle = (
+                    "Aucune"
+                )
 
 
-        # ==================================================
-        # RESET DES RÉPÉTITIONS
-        # ==================================================
+            # ==================================
+            # MAINTIEN BRAS EN X
+            # ==================================
 
-        if maintien_termine:
+            progression, termine = (
+                hold_bras_x.update(corps)
+            )
 
-            compteur_curl.reset()
-
-            state.repetitions = 0
-
-
-        # ==================================================
-        # DESSIN DU SQUELETTE
-        # ==================================================
-
-        frame = dessiner_squelette(
-            frame,
-            corps
-        )
+            state.progression_maintien = progression
+            state.maintien_termine = termine
 
 
-    else:
+            # ==================================
+            # RESET DES REPETITIONS
+            # ==================================
 
-        # ==================================================
-        # AUCUN CORPS DÉTECTÉ
-        # ==================================================
+            if termine:
 
-        state.position_actuelle = "Aucun corps détecté"
+                compteur.reset()
 
-        state.exercice_actuel = "Aucun"
-
-        state.stage = "Aucune"
-
-        state.progression_maintien = 0
-
-        state.maintien_termine = False
+                state.repetitions = 0
 
 
-    # ======================================================
-    # ENCODAGE DE LA VIDÉO POUR LE SITE
-    # ======================================================
+            # ==================================
+            # MACHINE DU CIRCUIT
+            # ==================================
 
-    succes, buffer = cv2.imencode(
+            seance.update()
+
+
+            # ==================================
+            # INFORMATIONS DU CIRCUIT
+            # ==================================
+
+            state.phase = seance.phase
+
+            state.serie_actuelle = (
+                seance.serie_actuelle
+            )
+
+            state.nombre_series = (
+                seance.nombre_series
+            )
+
+            state.repetitions_cibles = (
+                seance.repetitions_cibles
+            )
+
+            state.temps_restant = (
+                seance.temps_restant
+            )
+
+
+            # ==================================
+            # EXERCICE EN COURS
+            # ==================================
+
+            if seance.phase == "exercice":
+
+                exercice = seance.exercice_actuel
+
+
+                # ----------------------------------
+                # NOM DE L'EXERCICE
+                # ----------------------------------
+
+                if exercice.__name__ == "curl_biceps_droit":
+
+                    state.exercice_actuel = (
+                        "Curl biceps droit"
+                    )
+
+                elif exercice.__name__ == "curl_biceps_gauche":
+
+                    state.exercice_actuel = (
+                        "Curl biceps gauche"
+                    )
+
+                else:
+
+                    state.exercice_actuel = (
+                        exercice.__name__
+                    )
+
+
+                # ----------------------------------
+                # DETECTION DU MOUVEMENT
+                # ----------------------------------
+
+                stage_detecte = exercice(corps)
+
+
+                # ----------------------------------
+                # COMPTEUR
+                # ----------------------------------
+
+                stage, repetitions = (
+                    compteur.mettre_a_jour(
+                        stage_detecte
+                    )
+                )
+
+                state.stage = stage
+                state.repetitions = repetitions
+
+
+                # ----------------------------------
+                # SERIE TERMINEE
+                # ----------------------------------
+
+                if (
+                    repetitions
+                    >= seance.repetitions_cibles
+                ):
+
+                    seance.terminer_serie()
+
+                    compteur.reset()
+
+                    state.repetitions = 0
+
+
+            # ==================================
+            # RECUPERATION ENTRE SERIES
+            # ==================================
+
+            elif (
+                seance.phase
+                == "recuperation_serie"
+            ):
+
+                state.stage = "Récupération"
+
+
+            # ==================================
+            # REPOS ENTRE EXERCICES
+            # ==================================
+
+            elif (
+                seance.phase
+                == "repos_exercice"
+            ):
+
+                state.stage = "Repos"
+
+
+            # ==================================
+            # FIN DE SEANCE
+            # ==================================
+
+            elif (
+                seance.phase
+                == "termine"
+            ):
+
+                state.exercice_actuel = (
+                    "Séance terminée"
+                )
+
+                state.stage = "Terminé"
+
+
+            # ==================================
+            # DESSIN DU SQUELETTE
+            # ==================================
+
+            frame = dessiner_squelette(
+                frame,
+                corps
+            )
+
+        # ==========================================
+        # ENCODAGE POUR LE FEED WEB
+        # ==========================================
+
+        succes, buffer = cv2.imencode(
         ".jpg",
-        frame
-    )
+         frame
+        )
+
+        if succes:
+            state.latest_frame = buffer.tobytes()
 
 
-    if succes:
-
-        state.frame_actuelle = buffer.tobytes()
+        
 
 
-# ==========================================================
-# FERMETURE
-# ==========================================================
+# ==========================================
+# ARRET PROPRE
+# ==========================================
 
-cap.release()
+except KeyboardInterrupt:
 
-detector.close()
+    print("Arrêt du programme...")
 
-cv2.destroyAllWindows()
+
+finally:
+
+    cap.release()
+
+    detector.close()
+
+    print("Caméra arrêtée.")

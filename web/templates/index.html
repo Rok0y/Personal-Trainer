@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal Trainer</title>
+    <title>TrackMeBuddy</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,6 +24,8 @@
             --orange-glow: rgba(255, 90, 54, 0.45);
             --teal: #1be8c4;
             --teal-glow: rgba(27, 232, 196, 0.45);
+            --blue: #4da3ff;
+            --blue-glow: rgba(77, 163, 255, 0.45);
         }
 
         * {
@@ -193,6 +195,45 @@
             letter-spacing: 0.01em;
         }
 
+        .topbar-center {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .series-badge {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 9px 18px;
+            border-radius: 999px;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .series-badge.changing {
+            opacity: 0;
+            transform: translateY(-4px);
+        }
+
+        .series-label {
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .series-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--orange);
+            letter-spacing: 0.01em;
+        }
+
         /* ---------- HOLD BUBBLE (progression du maintien) ---------- */
 
         .hold-container {
@@ -311,6 +352,73 @@
             box-shadow: 0 0 8px var(--teal-glow);
             transform: translate(-50%, -50%);
             animation: particleBurst 0.6s ease-out forwards;
+        }
+
+        /* ---------- REST OVERLAY (phase de récupération) ---------- */
+
+        .rest-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            background: rgba(9, 12, 18, 0.74);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .rest-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .rest-title {
+            font-size: 13px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .breathe-circle {
+            width: 190px;
+            height: 190px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 34% 30%,
+                rgba(255, 255, 255, 0.55),
+                rgba(77, 163, 255, 0.45) 45%,
+                rgba(77, 163, 255, 0.14) 75%,
+                transparent 100%);
+            box-shadow: 0 0 46px var(--blue-glow);
+            animation: breathe 4s ease-in-out infinite;
+        }
+
+        .rest-time {
+            font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+            font-size: 56px;
+            letter-spacing: 0.02em;
+            color: #ffffff;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .rest-next {
+            font-size: 14px;
+            color: var(--muted);
+            letter-spacing: 0.02em;
+        }
+
+        .rest-next strong {
+            color: var(--text);
+            font-weight: 700;
         }
 
         /* ---------- HUD (bottom overlay) ---------- */
@@ -436,6 +544,35 @@
             animation: punch 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
+        .reps-target {
+            font-size: 13px;
+            color: var(--muted);
+            letter-spacing: 0.04em;
+            margin-top: -4px;
+        }
+
+        .reps-target strong {
+            color: var(--text);
+            font-weight: 700;
+        }
+
+        .reps-progress-track {
+            width: 132px;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .reps-progress-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--teal), #7cf5da);
+            transition: width 0.3s ease;
+        }
+
         /* ---------- Animations ---------- */
 
         @keyframes fadeIn {
@@ -494,6 +631,11 @@
             }
         }
 
+        @keyframes breathe {
+            0%, 100% { transform: scale(0.86); }
+            50% { transform: scale(1.14); }
+        }
+
         /* ---------- Responsive ---------- */
 
         @media (max-width: 760px) {
@@ -522,6 +664,13 @@
                 width: 96px;
                 height: 96px;
             }
+            .breathe-circle {
+                width: 150px;
+                height: 150px;
+            }
+            .rest-time {
+                font-size: 42px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -529,10 +678,11 @@
                 flex-wrap: wrap;
                 row-gap: 10px;
             }
-            .exercise-badge {
+            .topbar-center {
                 order: 3;
                 width: 100%;
                 justify-content: center;
+                flex-wrap: wrap;
             }
         }
 
@@ -558,18 +708,33 @@
     <div class="topbar">
         <div class="brand">
             <span class="brand-dot"></span>
-            <span class="brand-name">Personal <span>Trainer</span>
+            <span class="brand-name">Track<span>Me</span>Buddy</span>
         </div>
 
-        <div class="exercise-badge" id="exerciseBadge">
-            <span class="exercise-label">Exercice</span>
-            <span class="exercise-value" id="exercice">Aucun</span>
+        <div class="topbar-center">
+            <div class="exercise-badge" id="exerciseBadge">
+                <span class="exercise-label">Exercice</span>
+                <span class="exercise-value" id="exercice">Aucun</span>
+            </div>
+
+            <div class="series-badge" id="seriesBadge">
+                <span class="series-label">Série</span>
+                <span class="series-value" id="series">1 / 1</span>
+            </div>
         </div>
 
         <div class="status">
             <span class="status-dot" id="statusDot"></span>
             <span id="statusText">En direct</span>
         </div>
+    </div>
+
+    <div class="rest-overlay" id="restOverlay">
+        <span class="rest-title" id="restTitle">Récupération</span>
+        <div class="breathe-circle">
+            <span class="rest-time" id="restTime">0:00</span>
+        </div>
+        <span class="rest-next" id="restNext">Prochain : —</span>
     </div>
 
     <div class="hold-container" id="holdContainer">
@@ -602,6 +767,10 @@
             <div class="reps-value-wrap">
                 <span class="impact-ring" id="ring"></span>
                 <span class="reps-value" id="reps">0</span>
+            </div>
+            <span class="reps-target">objectif : <strong id="repsCible">10</strong></span>
+            <div class="reps-progress-track">
+                <div class="reps-progress-fill" id="repsProgressFill"></div>
             </div>
         </div>
 
@@ -649,6 +818,69 @@
             valeurEl.textContent = valeur;
             badge.classList.remove("changing");
         }, 150);
+    }
+
+    function mettreAJourSeries(actuelle, total) {
+        const badge = document.getElementById("seriesBadge");
+        const valeurEl = document.getElementById("series");
+        const valeur = `${actuelle} / ${total}`;
+        if (valeurEl.textContent.trim() === valeur) return;
+
+        badge.classList.add("changing");
+        setTimeout(() => {
+            valeurEl.textContent = valeur;
+            badge.classList.remove("changing");
+        }, 150);
+    }
+
+    // ---------- Objectif de répétitions ----------
+
+    function mettreAJourObjectifReps(cible) {
+        const cibleEl = document.getElementById("repsCible");
+        const valeur = String(cible);
+        if (cibleEl.textContent.trim() !== valeur) {
+            cibleEl.textContent = valeur;
+        }
+    }
+
+    function mettreAJourProgressionReps(actuel, cible) {
+        const fill = document.getElementById("repsProgressFill");
+        const total = Number(cible) || 0;
+        const pct = total > 0 ? Math.max(0, Math.min(100, (Number(actuel) / total) * 100)) : 0;
+        fill.style.width = `${pct}%`;
+    }
+
+    // ---------- Phase (exercice / repos) ----------
+
+    let dernierePhase = null;
+
+    function formaterTemps(secondes) {
+        const t = Math.max(0, Math.round(Number(secondes) || 0));
+        const min = Math.floor(t / 60);
+        const sec = String(t % 60).padStart(2, "0");
+        return `${min}:${sec}`;
+    }
+
+    function mettreAJourPhase(phase, tempsRestant, exercice, serieActuelle, nombreSeries) {
+        const overlay = document.getElementById("restOverlay");
+        const titre = document.getElementById("restTitle");
+        const temps = document.getElementById("restTime");
+        const suivant = document.getElementById("restNext");
+
+        const enRepos = phase !== "exercice";
+
+        if (enRepos) {
+            overlay.classList.add("visible");
+            titre.textContent = phase === "repos"
+                ? "Récupération"
+                : String(phase).charAt(0).toUpperCase() + String(phase).slice(1);
+            temps.textContent = formaterTemps(tempsRestant);
+            suivant.innerHTML = `Série <strong>${serieActuelle} / ${nombreSeries}</strong> — ${exercice}`;
+        } else {
+            overlay.classList.remove("visible");
+        }
+
+        dernierePhase = phase;
     }
 
     function definirStatut(enLigne) {
@@ -743,9 +975,14 @@
                 definirStatut(true);
 
                 mettreAJourExercice(data.exercice_actuel);
+                mettreAJourSeries(data.serie_actuelle, data.nombre_series);
                 mettreAJourChamp("position", data.position_actuelle);
                 mettreAJourChamp("stage", data.stage);
                 mettreAJourMaintien(data.progression_maintien, data.maintien_termine);
+                mettreAJourPhase(data.phase, data.temps_restant, data.exercice_actuel, data.serie_actuelle, data.nombre_series);
+
+                mettreAJourObjectifReps(data.repetitions_cibles);
+                mettreAJourProgressionReps(data.repetitions, data.repetitions_cibles);
 
                 const repsEl = document.getElementById("reps");
                 if (dernierReps !== null && data.repetitions !== dernierReps) {
