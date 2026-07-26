@@ -234,6 +234,39 @@
             letter-spacing: 0.01em;
         }
 
+        .weight-badge {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 9px 18px;
+            border-radius: 999px;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .weight-badge.changing {
+            opacity: 0;
+            transform: translateY(-4px);
+        }
+
+        .weight-label {
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .weight-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--teal);
+            letter-spacing: 0.01em;
+        }
+
         /* ---------- HOLD BUBBLE (progression du maintien) ---------- */
 
         .hold-container {
@@ -419,6 +452,54 @@
         .rest-next strong {
             color: var(--text);
             font-weight: 700;
+        }
+
+        .prep-ring-wrap {
+            position: relative;
+            width: 170px;
+            height: 170px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .prep-ring-wrap.active {
+            display: flex;
+        }
+
+        .prep-ring {
+            position: absolute;
+            inset: 0;
+            transform: rotate(-90deg);
+        }
+
+        .prep-ring-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.14);
+            stroke-width: 6;
+        }
+
+        .prep-ring-progress {
+            fill: none;
+            stroke: var(--orange);
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-dasharray: 439.8;
+            stroke-dashoffset: 439.8;
+            filter: drop-shadow(0 0 8px var(--orange-glow));
+            transition: stroke-dashoffset 0.12s linear;
+        }
+
+        .prep-percent {
+            position: absolute;
+            font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+            font-size: 46px;
+            color: #ffffff;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .breathe-circle.hidden-mode {
+            display: none;
         }
 
         /* ---------- HUD (bottom overlay) ---------- */
@@ -671,6 +752,13 @@
             .rest-time {
                 font-size: 42px;
             }
+            .prep-ring-wrap {
+                width: 140px;
+                height: 140px;
+            }
+            .prep-percent {
+                font-size: 36px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -708,7 +796,7 @@
     <div class="topbar">
         <div class="brand">
             <span class="brand-dot"></span>
-            <span class="brand-name">Personal <span>Trainer</span>
+            <span class="brand-name">Personal<span>Trainer</span></span>
         </div>
 
         <div class="topbar-center">
@@ -717,11 +805,14 @@
                 <span class="exercise-value" id="exercice">Aucun</span>
             </div>
 
-        <a href="/historique">Historique</a>
-
             <div class="series-badge" id="seriesBadge">
                 <span class="series-label">Série</span>
                 <span class="series-value" id="series">1 / 1</span>
+            </div>
+
+            <div class="weight-badge" id="weightBadge">
+                <span class="weight-label">Poids</span>
+                <span class="weight-value" id="weight">—</span>
             </div>
         </div>
 
@@ -733,9 +824,19 @@
 
     <div class="rest-overlay" id="restOverlay">
         <span class="rest-title" id="restTitle">Récupération</span>
-        <div class="breathe-circle">
+
+        <div class="breathe-circle" id="breatheCircle">
             <span class="rest-time" id="restTime">0:00</span>
         </div>
+
+        <div class="prep-ring-wrap" id="prepRingWrap">
+            <svg class="prep-ring" viewBox="0 0 160 160">
+                <circle class="prep-ring-bg" cx="80" cy="80" r="70"></circle>
+                <circle class="prep-ring-progress" id="prepRingProgress" cx="80" cy="80" r="70"></circle>
+            </svg>
+            <span class="prep-percent" id="prepPercent">0%</span>
+        </div>
+
         <span class="rest-next" id="restNext">Prochain : —</span>
     </div>
 
@@ -835,6 +936,19 @@
         }, 150);
     }
 
+    function mettreAJourPoids(poids) {
+        const badge = document.getElementById("weightBadge");
+        const valeurEl = document.getElementById("weight");
+        const valeur = (poids === null || poids === undefined || poids === 0) ? "—" : `${poids} kg`;
+        if (valeurEl.textContent.trim() === valeur) return;
+
+        badge.classList.add("changing");
+        setTimeout(() => {
+            valeurEl.textContent = valeur;
+            badge.classList.remove("changing");
+        }, 150);
+    }
+
     // ---------- Objectif de répétitions ----------
 
     function mettreAJourObjectifReps(cible) {
@@ -852,9 +966,10 @@
         fill.style.width = `${pct}%`;
     }
 
-    // ---------- Phase (exercice / repos) ----------
+    // ---------- Phase (exercice / préparation / repos) ----------
 
     let dernierePhase = null;
+    const CIRCONFERENCE_PREP = 2 * Math.PI * 70;
 
     function formaterTemps(secondes) {
         const t = Math.max(0, Math.round(Number(secondes) || 0));
@@ -863,23 +978,43 @@
         return `${min}:${sec}`;
     }
 
-    function mettreAJourPhase(phase, tempsRestant, exercice, serieActuelle, nombreSeries) {
+    function mettreAJourPhase(phase, tempsRestant, progressionPreparation, exercice, serieActuelle, nombreSeries) {
         const overlay = document.getElementById("restOverlay");
         const titre = document.getElementById("restTitle");
+        const breathe = document.getElementById("breatheCircle");
+        const prepWrap = document.getElementById("prepRingWrap");
+        const prepRing = document.getElementById("prepRingProgress");
+        const prepPercent = document.getElementById("prepPercent");
         const temps = document.getElementById("restTime");
         const suivant = document.getElementById("restNext");
 
-        const enRepos = phase !== "exercice";
+        const enPause = phase !== "exercice";
 
-        if (enRepos) {
-            overlay.classList.add("visible");
+        if (!enPause) {
+            overlay.classList.remove("visible");
+            dernierePhase = phase;
+            return;
+        }
+
+        overlay.classList.add("visible");
+        suivant.innerHTML = `Série <strong>${serieActuelle} / ${nombreSeries}</strong> — ${exercice}`;
+
+        if (phase === "preparation") {
+            titre.textContent = "Préparation";
+            breathe.classList.add("hidden-mode");
+            prepWrap.classList.add("active");
+
+            const pct = Math.max(0, Math.min(100, Number(progressionPreparation) || 0));
+            prepRing.style.strokeDashoffset = CIRCONFERENCE_PREP * (1 - pct / 100);
+            prepPercent.textContent = `${Math.round(pct)}%`;
+        } else {
+            // Repos ou toute autre phase de pause : respiration + compte à rebours
             titre.textContent = phase === "repos"
                 ? "Récupération"
                 : String(phase).charAt(0).toUpperCase() + String(phase).slice(1);
+            breathe.classList.remove("hidden-mode");
+            prepWrap.classList.remove("active");
             temps.textContent = formaterTemps(tempsRestant);
-            suivant.innerHTML = `Série <strong>${serieActuelle} / ${nombreSeries}</strong> — ${exercice}`;
-        } else {
-            overlay.classList.remove("visible");
         }
 
         dernierePhase = phase;
@@ -978,10 +1113,18 @@
 
                 mettreAJourExercice(data.exercice_actuel);
                 mettreAJourSeries(data.serie_actuelle, data.nombre_series);
+                mettreAJourPoids(data.poids);
                 mettreAJourChamp("position", data.position_actuelle);
                 mettreAJourChamp("stage", data.stage);
                 mettreAJourMaintien(data.progression_maintien, data.maintien_termine);
-                mettreAJourPhase(data.phase, data.temps_restant, data.exercice_actuel, data.serie_actuelle, data.nombre_series);
+                mettreAJourPhase(
+                    data.phase,
+                    data.temps_restant,
+                    data.progression_preparation,
+                    data.exercice_actuel,
+                    data.serie_actuelle,
+                    data.nombre_series
+                );
 
                 mettreAJourObjectifReps(data.repetitions_cibles);
                 mettreAJourProgressionReps(data.repetitions, data.repetitions_cibles);

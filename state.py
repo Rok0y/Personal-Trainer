@@ -17,7 +17,7 @@ serie_actuelle = 1
 nombre_series = 1
 phase = "exercice"
 temps_restant = 0
-
+poids = 0
 
 # ==========================================
 # MAINTIEN
@@ -25,6 +25,7 @@ temps_restant = 0
 
 maintien_termine = False
 progression_maintien = 0
+progression_preparation = 0
 
 
 # ==========================================

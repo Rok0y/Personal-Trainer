@@ -51,3 +51,12 @@ def extension_triceps_au_dessus_de_la_tete(corps):
     elif angle_coude_droit and angle_coude_gauche > 150:
         return "debut"
     return "milieu"
+
+def developpe_epaule(corps):
+    angle_coude_droit = calculer_angle(corps.epaule_gauche,corps.coude_gauche,corps.poignet_gauche)
+    angle_coude_gauche = calculer_angle(corps.epaule_droite,corps.coude_droit,corps.poignet_droit)
+    if angle_coude_droit and angle_coude_gauche < 40:
+        return "fin"
+    elif angle_coude_droit and angle_coude_gauche > 150:
+        return "debut"
+    return "milieu"

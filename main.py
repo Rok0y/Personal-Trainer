@@ -3,7 +3,7 @@ import time
 import state
 import cv2
 from historique.database import initialiser, enregistrer_seance
-
+from audio.lecteur import jouer
 from vision.detector import PoseDetector
 from vision.dessin import dessiner_squelette
 from mouvements.compteur import CompteurMouvement
@@ -21,7 +21,14 @@ from mouvements.positions import (
 cap = cv2.VideoCapture(0)
 compteur = CompteurMouvement()
 hold_bras_x = HoldPosition(bras_en_x, 1.5)
+preparation = HoldPosition(bras_en_x, 1.5)
 detection = PoseDetector()
+ancienne_phase = None
+derniere_rep = 0
+fin_preparation = None 
+DELAI_AVANT_EXERCICE = 3
+seance = session.seances.seance_Upper_Push
+"""sers à choisir la séance, depuis les séances dispo dans session.seances"""
 
 # Initialisation de la base de données
 initialiser()
@@ -39,6 +46,9 @@ if not cap.isOpened():
 # ==========================================
 # BOUCLE PRINCIPALE
 # ==========================================
+from audio.coach import coach
+
+coach("debut")
 
 try:
 
@@ -81,11 +91,29 @@ try:
             # ==================================
             # MACHINE DU CIRCUIT
             # ==================================
-
-            seance = session.seances.seance_test
-            """sers à choisir la séance, depuis les séances dispo dans session.seances"""
-
             seance.update()
+
+            # ==================================
+            # Le coach (une seule fois par changement de phase)
+            # ==================================
+            if seance.phase != ancienne_phase:
+
+                if seance.phase == "preparation":
+                    coach("preparation")
+
+                elif seance.phase == "exercice":
+                    coach("debut_serie")
+
+                elif seance.phase == "recuperation_serie":
+                    coach("repos")
+
+                elif seance.phase == "repos_exercice":
+                    coach("changement_exercice")
+
+                elif seance.phase == "termine":
+                    coach("fin_seance")
+
+            ancienne_phase = seance.phase
 
             # ==================================
             # SEANCE TERMINEE
@@ -98,6 +126,7 @@ try:
                 state.nombre_series = 0
                 state.repetitions_cibles = 0
                 state.temps_restant = 0
+                state.poids = 0
                 state.exercice_actuel = "Séance terminée"
                 state.stage = "Terminé"
 
@@ -122,11 +151,37 @@ try:
                 state.nombre_series = seance.nombre_series
                 state.repetitions_cibles = seance.repetitions_cibles
                 state.temps_restant = seance.temps_restant
+                state.poids = seance.poids
+
+                # ----------------------------------
+                # PREPARATION (doit tourner à CHAQUE frame
+                # tant qu'on est en phase "preparation", pour
+                # accumuler le temps de maintien du bras en X)
+                # ----------------------------------
+                if seance.phase == "preparation":
+
+                    if fin_preparation is None:
+                        # Étape 1 : on attend que le maintien bras en X soit validé
+                        progression, termine = preparation.update(corps)
+                        state.progression_preparation = progression
+                        state.stage = "Préparation"
+
+                        if termine:
+                            fin_preparation = time.time()
+
+                    else:
+                        # Étape 2 : compte à rebours avant de vraiment démarrer
+                        temps_ecoule = time.time() - fin_preparation
+                        state.progression_preparation = 1.0
+                        state.stage = "Prêt ! Redescendez les bras..."
+
+                        if temps_ecoule >= DELAI_AVANT_EXERCICE:
+                            seance.commencer_exercice()
+                            fin_preparation = None
 
                 # ----------------------------------
                 # EXERCICE EN COURS
                 # ----------------------------------
-
                 if seance.phase == "exercice":
                     exercice = seance.exercice_actuel
 
@@ -140,6 +195,20 @@ try:
 
                         # COMPTEUR
                         stage, repetitions = compteur.mettre_a_jour(stage_detecte)
+                        if repetitions > derniere_rep:
+
+                            coach(
+                                "compteur",
+                                repetitions
+                            )
+
+                            if repetitions == seance.repetitions_cibles:
+                                coach("derniere_rep")
+
+                            elif repetitions == seance.repetitions_cibles - 1:
+                                coach("avant_derniere")
+
+                            derniere_rep = repetitions
 
                         state.stage = stage
                         state.repetitions = repetitions
@@ -149,6 +218,8 @@ try:
                             seance.terminer_serie()
                             compteur.reset()
                             state.repetitions = 0
+                            derniere_rep = 0
+                            continue
 
                 # ----------------------------------
                 # RECUPERATION ENTRE SERIES

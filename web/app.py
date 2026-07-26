@@ -35,8 +35,9 @@ def etat():
         "exercice_actuel":
             state.exercice_actuel,
 
-        "stage":
-            state.stage,
+        "poids": state.poids,
+
+        "stage": state.stage,
 
         "repetitions":
             state.repetitions,
@@ -60,7 +61,9 @@ def etat():
             state.maintien_termine,
 
         "progression_maintien":
-            state.progression_maintien
+            state.progression_maintien,
+
+        "progression_preparation": state.progression_preparation
     })
 
 

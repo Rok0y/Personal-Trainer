@@ -3,8 +3,9 @@ import time
 
 class BlocExercice:
 
-    def __init__(self,exercice,nombre_series,repetitions_par_serie,repos_entre_series,repos_apres):
+    def __init__(self,exercice,poids,nombre_series,repetitions_par_serie,repos_entre_series,repos_apres):
         self.exercice = exercice
+        self.poids = poids
         self.nombre_series = nombre_series
         self.repetitions_par_serie = repetitions_par_serie
         self.repos_entre_series = repos_entre_series
@@ -18,7 +19,7 @@ class Circuit:
         self.exercices = exercices
         self.index_exercice = 0
         self.serie_actuelle = 1
-        self.phase = "exercice"
+        self.phase = "preparation"
         self.debut_repos = None
         self.historique_enregistre = False
         self.debut = time.time()
@@ -29,6 +30,10 @@ class Circuit:
         if self.index_exercice >= len(self.exercices):
             return None
         return self.exercices[self.index_exercice]
+
+    @property
+    def poids(self):
+        return self.bloc_actuel.poids
 
     @property
     def exercice_actuel(self):
@@ -92,7 +97,7 @@ class Circuit:
             self.serie_actuelle += 1
             self.phase = "recuperation_serie"
             self.debut_repos = time.time()
-            returnAV
+            return
 
 
         # -----------------------------------------
@@ -106,6 +111,8 @@ class Circuit:
         else:
             self.passer_exercice_suivant()
 
+    def commencer_exercice(self):
+        self.phase = "exercice"
 
     def passer_exercice_suivant(self):
         self.index_exercice += 1
