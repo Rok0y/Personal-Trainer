@@ -1,92 +1,36 @@
+# Tous les imports
 import time
 import state
-
-# VISION
 import cv2
 from vision.detector import PoseDetector
 from vision.dessin import dessiner_squelette
-
-# POSITIONS
-
+from mouvements.compteur import CompteurMouvement
+from mouvements.outils import HoldPosition
+import threading
+from web.app import lancer_site, ouvrir_navigateur
+import session.seances
 from mouvements.positions import (
     bras_droit_leve,
     bras_gauche_leve,
     bras_en_x
 )
 
-# COMPTEUR
-
-from mouvements.compteur import CompteurMouvement
-
-# MAINTIEN
-
-from mouvements.outils import HoldPosition
-
-# SITE WEB
-import threading
-import webbrowser
-from web.app import lancer_site, ouvrir_navigateur
-
-
-# CIRCUIT
-
-from seance.seance_test import seance
-
-
-# ==========================================
-# LANCEMENT DU SITE
-# ==========================================
-
-threading.Thread(
-    target=lancer_site,
-    daemon=True
-).start()
-
-def ouvrir_navigateur():
-    time.sleep(1)  # laisse le temps à Flask de démarrer
-    webbrowser.open("http://127.0.0.1:5000")
-
-threading.Thread(
-    target=ouvrir_navigateur,
-    daemon=True
-).start()
-
-# ==========================================
-# DETECTEUR
-# ==========================================
-
-detector = PoseDetector()
-
-
-# ==========================================
-# CAMERA
-# ==========================================
-
+# Définition des variables
 cap = cv2.VideoCapture(0)
+compteur = CompteurMouvement()
+hold_bras_x = HoldPosition(bras_en_x,1.5)
+detection = PoseDetector()
+
+# Lancement du site
+threading.Thread(target=lancer_site,daemon=True).start()
+threading.Thread(target=ouvrir_navigateur,daemon=True).start()
+
+
 
 if not cap.isOpened():
     print("Impossible d'ouvrir la caméra.")
-    detector.close()
+    detection.close()
     raise SystemExit
-
-
-# ==========================================
-# COMPTEUR DE MOUVEMENT
-# ==========================================
-
-compteur = CompteurMouvement()
-
-
-# ==========================================
-# MAINTIEN BRAS EN X
-# ==========================================
-
-hold_bras_x = HoldPosition(
-    bras_en_x,
-    1.5
-)
-
-
 # ==========================================
 # BOUCLE PRINCIPALE
 # ==========================================
@@ -105,52 +49,30 @@ try:
             print("Impossible de lire la caméra.")
             break
 
-
-        # ======================================
         # DETECTION DU CORPS
-        # ======================================
 
-        corps = detector.detect(frame)
+        corps = detection.detect(frame)
+        """cette variable dit si il y a un corps à l'écran ou non"""
 
 
         if corps is not None:
-
-            # ==================================
-            # POSITIONS
-            # ==================================
+            """soit si il détecte un corps à l'écran"""
 
             if bras_droit_leve(corps):
-
-                state.position_actuelle = (
-                    "Bras droit levé"
-                )
-
+                state.position_actuelle = ("Bras droit levé")
             elif bras_gauche_leve(corps):
-
-                state.position_actuelle = (
-                    "Bras gauche levé"
-                )
-
+                state.position_actuelle = ("Bras gauche levé")
             elif bras_en_x(corps):
-
-                state.position_actuelle = (
-                    "Bras en X"
-                )
-
+                state.position_actuelle = ("Bras en X")
             else:
-
-                state.position_actuelle = (
-                    "Aucune"
-                )
+                state.position_actuelle = ("Aucune")
 
 
             # ==================================
             # MAINTIEN BRAS EN X
             # ==================================
 
-            progression, termine = (
-                hold_bras_x.update(corps)
-            )
+            progression, termine = (hold_bras_x.update(corps))
 
             state.progression_maintien = progression
             state.maintien_termine = termine
@@ -161,18 +83,17 @@ try:
             # ==================================
 
             if termine:
-
                 compteur.reset()
-
                 state.repetitions = 0
 
 
             # ==================================
             # MACHINE DU CIRCUIT
             # ==================================
-
+            seance = session.seances.seance_test 
+            """sers à choisir la séance, depuis les séances dispo dans session.seances"""
+            
             seance.update()
-
 
             # ==================================
             # INFORMATIONS DU CIRCUIT
@@ -310,7 +231,7 @@ try:
             # DESSIN DU SQUELETTE
             # ==================================
 
-            frame = dessiner_squelette(frame,)
+            frame = dessiner_squelette(frame,corps)
 
         # ==========================================
         # ENCODAGE POUR LE FEED WEB
@@ -338,6 +259,6 @@ finally:
 
     cap.release()
 
-    detector.close()
+    detection.close()
 
     print("Caméra arrêtée.")

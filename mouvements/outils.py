@@ -59,14 +59,8 @@ class HoldPosition:
 
 
         # Progression entre 0 et 100
-        progression = (
-            temps_ecoule / self.duree
-        ) * 100
-
-        progression = min(
-            progression,
-            100
-        )
+        progression = (temps_ecoule / self.duree) * 100
+        progression = min(progression,100)
 
 
         # Maintien terminé

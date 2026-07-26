@@ -43,5 +43,7 @@ def bras_en_x(corps):
         corps.poignet_gauche.x < corps.epaule_gauche.x
         and
         corps.poignet_droit.x > corps.epaule_droite.x
+        and
+        corps.poignet_droit.x > corps.poignet_gauche.x
     )
 print("positions chargé")

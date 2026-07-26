@@ -12,6 +12,7 @@ class CompteurMouvement:
             and nouveau_stage == "fin"
         ):
             self.stage = "fin"
+            self.repetitions += 1
 
         # Passage fin → début = nouvelle répétition
         elif (
@@ -19,7 +20,7 @@ class CompteurMouvement:
             and nouveau_stage == "debut"
         ):
             self.stage = "debut"
-            self.repetitions += 1
+            
 
         return self.stage, self.repetitions
 

@@ -1,5 +1,5 @@
 from flask import Flask, render_template, jsonify, Response
-
+import webbrowser
 import state
 import time
 
