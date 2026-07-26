@@ -1,20 +1,12 @@
-import cv2
-import threading
-
+import time
 import state
 
-
-# ==========================================
 # VISION
-# ==========================================
-
+import cv2
 from vision.detector import PoseDetector
 from vision.dessin import dessiner_squelette
 
-
-# ==========================================
 # POSITIONS
-# ==========================================
 
 from mouvements.positions import (
     bras_droit_leve,
@@ -22,31 +14,21 @@ from mouvements.positions import (
     bras_en_x
 )
 
-
-# ==========================================
 # COMPTEUR
-# ==========================================
 
 from mouvements.compteur import CompteurMouvement
 
-
-# ==========================================
 # MAINTIEN
-# ==========================================
 
 from mouvements.outils import HoldPosition
 
-
-# ==========================================
 # SITE WEB
-# ==========================================
+import threading
+import webbrowser
+from web.app import lancer_site, ouvrir_navigateur
 
-from web.app import lancer_site
 
-
-# ==========================================
 # CIRCUIT
-# ==========================================
 
 from seance.seance_test import seance
 
@@ -60,6 +42,14 @@ threading.Thread(
     daemon=True
 ).start()
 
+def ouvrir_navigateur():
+    time.sleep(1)  # laisse le temps à Flask de démarrer
+    webbrowser.open("http://127.0.0.1:5000")
+
+threading.Thread(
+    target=ouvrir_navigateur,
+    daemon=True
+).start()
 
 # ==========================================
 # DETECTEUR
@@ -320,19 +310,13 @@ try:
             # DESSIN DU SQUELETTE
             # ==================================
 
-            frame = dessiner_squelette(
-                frame,
-                corps
-            )
+            frame = dessiner_squelette(frame,)
 
         # ==========================================
         # ENCODAGE POUR LE FEED WEB
         # ==========================================
 
-        succes, buffer = cv2.imencode(
-        ".jpg",
-         frame
-        )
+        succes, buffer = cv2.imencode(".jpg",frame)
 
         if succes:
             state.latest_frame = buffer.tobytes()

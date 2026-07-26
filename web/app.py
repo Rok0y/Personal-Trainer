@@ -97,24 +97,11 @@ def generer_video():
 
 @app.route("/video")
 def video():
+    return Response(generer_video(),mimetype="multipart/x-mixed-replace; boundary=frame")
 
-    return Response(
-
-        generer_video(),
-
-        mimetype="multipart/x-mixed-replace; boundary=frame"
-    )
-
-
-# ==========================================
-# LANCEMENT
-# ==========================================
+def ouvrir_navigateur():
+    time.sleep(1)  # laisse le temps à Flask de démarrer
+    webbrowser.open("http://127.0.0.1:5000")
 
 def lancer_site():
-
-    app.run(
-        host="127.0.0.1",
-        port=5000,
-        debug=False,
-        threaded=True
-    )
+    app.run(host="127.0.0.1",port=5000,debug=False,threaded=True)
