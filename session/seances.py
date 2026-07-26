@@ -132,3 +132,4 @@ seance_Upper_Push = Circuit([
         repos_entre_series=60,
         repos_apres=0
     ),
+])
