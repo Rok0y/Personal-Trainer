@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify, Response
+from historique.database import recuperer_historique
 import webbrowser
 import state
 import time
@@ -105,3 +106,14 @@ def ouvrir_navigateur():
 
 def lancer_site():
     app.run(host="127.0.0.1",port=5000,debug=False,threaded=True)
+
+@app.route("/historique")
+def historique():
+
+    donnees = recuperer_historique()
+
+
+    return render_template(
+        "historique.html",
+        seances=donnees
+    )

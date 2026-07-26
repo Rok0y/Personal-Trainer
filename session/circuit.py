@@ -9,6 +9,7 @@ class BlocExercice:
         self.repetitions_par_serie = repetitions_par_serie
         self.repos_entre_series = repos_entre_series
         self.repos_apres = repos_apres
+        
 
 
 class Circuit:
@@ -19,22 +20,33 @@ class Circuit:
         self.serie_actuelle = 1
         self.phase = "exercice"
         self.debut_repos = None
+        self.historique_enregistre = False
+        self.debut = time.time()
 
 
     @property
     def bloc_actuel(self):
+        if self.index_exercice >= len(self.exercices):
+            return None
         return self.exercices[self.index_exercice]
 
     @property
     def exercice_actuel(self):
+        if self.bloc_actuel is None:
+            return None
         return self.bloc_actuel.exercice
 
     @property
     def nombre_series(self):
+        if self.bloc_actuel is None:
+            return 0
+
         return self.bloc_actuel.nombre_series
 
     @property
     def repetitions_cibles(self):
+        if self.bloc_actuel is None:
+            return 0
         return self.bloc_actuel.repetitions_par_serie
 
     @property
@@ -50,6 +62,20 @@ class Circuit:
         temps_ecoule = time.time() - self.debut_repos
         return max(0,duree - temps_ecoule)
 
+    @property
+    def duree_totale(self):
+        return int(time.time() - self.debut)
+    
+
+    def exporter(self):
+        exercices = []
+        for bloc in self.exercices:
+            exercices.append({
+                "nom": bloc.exercice.__name__,
+                "series": bloc.nombre_series,
+                "repetitions": bloc.repetitions_par_serie
+            })
+        return exercices
 
     def terminer_serie(self):
 
@@ -66,7 +92,7 @@ class Circuit:
             self.serie_actuelle += 1
             self.phase = "recuperation_serie"
             self.debut_repos = time.time()
-            return
+            returnAV
 
 
         # -----------------------------------------

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>Historique</title>
+
+
+<style>
+
+body {
+
+    background:#0a0d13;
+    color:white;
+    font-family:Arial;
+
+}
+
+
+.card {
+
+    background:#151b25;
+    padding:20px;
+    margin:20px;
+    border-radius:15px;
+
+}
+
+
+h1 {
+
+    color:#1be8c4;
+
+}
+
+
+.exercice {
+
+    margin-left:20px;
+
+}
+
+</style>
+
+
+</head>
+
+
+<body>
+
+
+<h1>
+Historique des séances
+</h1>
+
+
+{% for seance in seances %}
+
+
+<div class="card">
+
+
+<h2>
+{{ seance.date }}
+</h2>
+
+
+<p>
+Durée :
+{{ seance.duree }} secondes
+</p>
+
+
+
+{% for exercice in seance.exercices %}
+
+
+<div class="exercice">
+
+✓ {{ exercice[0] }}
+
+<br>
+
+{{ exercice[1] }} séries
+
+-
+
+{{ exercice[2] }} répétitions
+
+
+</div>
+
+
+{% endfor %}
+
+
+
+</div>
+
+
+{% endfor %}
+
+
+
+</body>
+
+</html>
