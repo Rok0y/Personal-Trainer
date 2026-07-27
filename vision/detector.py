@@ -42,7 +42,7 @@ class PoseDetector:
 
     def detect(self, frame):
         """Entrée : frame OpenCV (BGR)
-        Sortie : dictionnaire contenant les landmarks"""
+        Sortie : dictionnaire contenant les landmarks de con"""
 
         rgb = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB,data=rgb)

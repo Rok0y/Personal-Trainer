@@ -54,6 +54,14 @@ class Circuit:
             return None
         return self.exercices[self.index_exercice]
 
+    def prochain_bloc(self):
+        prochain_index = self.index_exercice + 1
+
+        if prochain_index >= len(self.exercices):
+            return None
+
+        return self.exercices[prochain_index]
+
     @property
     def poids(self):
         return self.bloc_actuel.poids

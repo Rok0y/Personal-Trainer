@@ -53,31 +53,31 @@ seance_test = Circuit([
         exercice=curl_biceps_droit,
         poids=8,
         mode=MODE_REPETITIONS,
-        nombre_series=1,
+        nombre_series=2,
         repetitions_par_serie=5,
         duree=0,
-        repos_entre_series=5,
-        repos_apres=5
+        repos_entre_series=15,
+        repos_apres=15
     ),
     BlocExercice(
         exercice=planche,
         poids=0,
         mode=MODE_MAINTIEN,
-        nombre_series=1,
+        nombre_series=2,
         repetitions_par_serie=None,
         duree=30,
-        repos_entre_series=5,
-        repos_apres=5
+        repos_entre_series=15,
+        repos_apres=15
     ),
     BlocExercice(
         exercice=curl_biceps_gauche,
         poids=8,
-        mode=MODE_REPETITIONS,
-        nombre_series=1,
-        repetitions_par_serie=5,
-        duree=0,
-        repos_entre_series=5,
-        repos_apres=5
+        mode=MODE_AMRAP,
+        nombre_series=2,
+        repetitions_par_serie=0,
+        duree=10,
+        repos_entre_series=15,
+        repos_apres=15
     ),
     BlocExercice(
         exercice=elevation_laterale,

@@ -1137,7 +1137,7 @@
     function afficherModeAmrap(etat) {
         document.getElementById("amrapReps").textContent = Number(etat.repetitions) || 0;
         document.getElementById("amrapTempsRestant").textContent =
-            Math.max(0, Math.round(Number(etat.temps_restant) || 0));
+            Math.max(0, Math.round(Number(etat.temps_amrap_restant) || 0));
     }
 
     // Met à jour un champ texte avec un petit fondu si la valeur a changé
@@ -1204,7 +1204,7 @@
         return `${min}:${sec}`;
     }
 
-    function mettreAJourPhase(phase, tempsRestant, progressionPreparation, exercice, serieActuelle, nombreSeries) {
+    function mettreAJourPhase(phase,tempsRestant,progressionPreparation,exercice,serieActuelle,nombreSeries,prochaineEtape) {
         const overlay = document.getElementById("restOverlay");
         const titre = document.getElementById("restTitle");
         const breathe = document.getElementById("breatheCircle");
@@ -1213,7 +1213,20 @@
         const prepPercent = document.getElementById("prepPercent");
         const temps = document.getElementById("restTime");
         const suivant = document.getElementById("restNext");
+        const {
+            exercice: prochainExercice,
+            poids: prochainPoids,
+            series: prochainSerie,
+            repetitions: prochainRepetitions,
+            mode: prochainMode,
+            duree: prochainDuree,
+        } = prochaineEtape || {};
 
+        if (phase === "termine") {
+            overlay.classList.remove("visible");
+            dernierePhase = phase;
+            return;
+        }
         const enPause = phase !== "exercice";
 
         if (!enPause) {
@@ -1223,7 +1236,35 @@
         }
 
         overlay.classList.add("visible");
-        suivant.innerHTML = `Série <strong>${serieActuelle} / ${nombreSeries}</strong> — ${exercice}`;
+        if (prochainExercice) {
+            const nombreSeries = `${prochainSerie} ${prochainSerie > 1 ? "séries" : "série"}`;
+            let consigne;
+
+            switch (prochainMode) {
+                case "maintien":
+                    consigne = `${nombreSeries} × ${prochainDuree} s de maintien`;
+                    break;
+                case "chrono":
+                    consigne = `${nombreSeries} × ${prochainDuree} s`;
+                    break;
+                case "amrap":
+                    consigne = `${nombreSeries} × AMRAP ${prochainDuree} s`;
+                    break;
+                case "repetitions":
+                default:
+                    consigne = `${nombreSeries} × ${prochainRepetitions} reps`;
+            }
+
+            suivant.innerHTML = `
+                Prochain :
+                <strong>${prochainExercice}</strong><br>
+                ${consigne}
+                ${prochainPoids ? `<br>${prochainPoids} kg` : ""}
+            `;
+
+        } else {
+            suivant.innerHTML = `Fin de séance`;
+        }
 
         if (phase === "preparation") {
             titre.textContent = "Préparation";
@@ -1235,9 +1276,10 @@
             prepPercent.textContent = `${Math.round(pct)}%`;
         } else {
             // Repos ou toute autre phase de pause : respiration + compte à rebours
-            titre.textContent = phase === "repos"
-                ? "Récupération"
-                : String(phase).charAt(0).toUpperCase() + String(phase).slice(1);
+            titre.textContent =
+                phase === "recuperation_serie" ? "Récupération" :
+                phase === "repos_exercice" ? "Repos" :
+                String(phase).charAt(0).toUpperCase() + String(phase).slice(1);
             breathe.classList.remove("hidden-mode");
             prepWrap.classList.remove("active");
             temps.textContent = formaterTemps(tempsRestant);
@@ -1393,11 +1435,12 @@
 
                 mettreAJourPhase(
                     data.phase,
-                    data.temps_restant,
+                    data.temps_repos_restant,
                     data.progression_preparation,
                     data.exercice_actuel,
                     data.serie_actuelle,
-                    data.nombre_series
+                    data.nombre_series,
+                    data.prochaine_etape
                 );
 
 

@@ -12,6 +12,7 @@ temps_maintien = 0
 duree_maintien = 0
 temps_chrono = 0
 chrono_termine = False
+prochaine_etape = None
 # ==========================================
 # CIRCUIT
 # ==========================================
@@ -19,7 +20,8 @@ chrono_termine = False
 serie_actuelle = 1
 nombre_series = 1
 phase = "exercice"
-temps_restant = 0
+temps_repos_restant = 0
+temps_amrap_restant = 0
 poids = 0
 
 # ==========================================

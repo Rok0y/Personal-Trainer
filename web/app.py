@@ -29,53 +29,26 @@ def etat():
 
     return jsonify({
 
-        "position_actuelle":
-            state.position_actuelle,
-
-        "exercice_actuel":
-            state.exercice_actuel,
-
+        "position_actuelle":state.position_actuelle,
+        "exercice_actuel":state.exercice_actuel,
         "poids": state.poids,
-
         "stage": state.stage,
-
-        "repetitions":
-            state.repetitions,
-
-        "repetitions_cibles":
-            state.repetitions_cibles,
-
-        "serie_actuelle":
-            state.serie_actuelle,
-
-        "nombre_series":
-            state.nombre_series,
-
-        "phase":
-            state.phase,
-
-        "temps_restant":
-            state.temps_restant,
-
-        "maintien_termine":
-            state.maintien_termine,
-
-        "progression_maintien":
-            state.progression_maintien,
-
+        "repetitions":state.repetitions,
+        "repetitions_cibles":state.repetitions_cibles,
+        "serie_actuelle":state.serie_actuelle,
+        "nombre_series":state.nombre_series,
+        "phase":state.phase,
+        "temps_repos_restant": state.temps_repos_restant,
+        "temps_amrap_restant": state.temps_amrap_restant,
+        "maintien_termine":state.maintien_termine,
+        "progression_maintien":state.progression_maintien,
         "progression_preparation": state.progression_preparation,
-        "mode":
-            state.mode,
-
-        "temps_maintien":
-            state.temps_maintien,
-
-        "duree_maintien":
-            state.duree_maintien,
-            
+        "mode":state.mode,
+        "temps_maintien":state.temps_maintien,
+        "duree_maintien":state.duree_maintien,
         "temps_chrono": state.temps_chrono,
-
         "chrono_termine": state.chrono_termine,
+        "prochaine_etape": state.prochaine_etape,
     })
 
 

@@ -2,7 +2,7 @@
 import time
 import state
 import cv2
-from session.moteur import executer_mode,gerer_mode_repetitions
+from session.moteur import executer_mode, decrire_prochaine_etape
 from historique.database import initialiser, enregistrer_seance
 from audio.lecteur import jouer
 from vision.detector import PoseDetector
@@ -11,6 +11,7 @@ from mouvements.compteur import CompteurMouvement
 from mouvements.outils import HoldPosition
 import threading
 from web.app import lancer_site, ouvrir_navigateur
+from audio.coach import coach, annoncer_prochaine_etape
 import session.seances
 from mouvements.positions import (
     bras_droit_leve,
@@ -28,8 +29,14 @@ ancienne_phase = None
 derniere_rep = 0
 fin_preparation = None 
 DELAI_AVANT_EXERCICE = 3
-seance = session.seances.Test_exercice
+seance = session.seances.seance_test
 """sers à choisir la séance, depuis les séances dispo dans session.seances"""
+
+state.prochaine_etape = decrire_prochaine_etape(
+    seance.bloc_actuel,
+    seance.nombre_series
+)
+
 
 # Initialisation de la base de données
 initialiser()
@@ -47,7 +54,6 @@ if not cap.isOpened():
 # ==========================================
 # BOUCLE PRINCIPALE
 # ==========================================
-from audio.coach import coach
 
 coach("debut")
 
@@ -104,13 +110,25 @@ try:
                     coach("preparation")
 
                 elif seance.phase == "exercice":
-                    coach("debut_serie")
+                    if ancienne_phase == "preparation":
+                        annoncer_prochaine_etape(
+                            state.prochaine_etape,
+                            "debut_serie"
+                        )
+                    else:
+                        coach("debut_serie")
 
                 elif seance.phase == "recuperation_serie":
-                    coach("repos")
+                    annoncer_prochaine_etape(
+                        state.prochaine_etape,
+                        "repos"
+                    )
 
                 elif seance.phase == "repos_exercice":
-                    coach("changement_exercice")
+                    annoncer_prochaine_etape(
+                        state.prochaine_etape,
+                        "changement_exercice"
+                    )
 
                 elif seance.phase == "termine":
                     coach("fin_seance")
@@ -127,7 +145,7 @@ try:
                 state.serie_actuelle = 0
                 state.nombre_series = 0
                 state.repetitions_cibles = 0
-                state.temps_restant = 0
+                state.temps_repos_restant = 0
                 state.poids = 0
                 state.exercice_actuel = "Séance terminée"
                 state.stage = "Terminé"
@@ -152,7 +170,7 @@ try:
                 state.serie_actuelle = seance.serie_actuelle
                 state.nombre_series = seance.nombre_series
                 state.repetitions_cibles = seance.repetitions_cibles
-                state.temps_restant = seance.temps_restant
+                state.temps_repos_restant = seance.temps_restant
                 state.poids = seance.poids
 
                 # ----------------------------------
@@ -174,7 +192,7 @@ try:
                     else:
                         # Étape 2 : compte à rebours avant de vraiment démarrer
                         temps_ecoule = time.time() - fin_preparation
-                        state.progression_preparation = 1.0
+                        state.progression_preparation = 100
                         state.stage = "Prêt ! Redescendez les bras..."
 
                         if temps_ecoule >= DELAI_AVANT_EXERCICE:

@@ -1,5 +1,5 @@
 import time
-
+from audio.coach import annoncer_progression
 from session.circuit import (
     MODE_REPETITIONS,
     MODE_MAINTIEN,
@@ -83,16 +83,10 @@ def gerer_mode_repetitions(
 
     if repetitions > derniere_rep:
 
-        coach(
-            "compteur",
-            repetitions
+        annoncer_progression(
+            repetitions,
+            bloc.repetitions_par_serie
         )
-
-        if repetitions == bloc.repetitions_par_serie:
-            coach("derniere_rep")
-
-        elif repetitions == bloc.repetitions_par_serie - 1:
-            coach("avant_derniere")
 
         derniere_rep = repetitions
 
@@ -101,6 +95,7 @@ def gerer_mode_repetitions(
 
     if repetitions >= bloc.repetitions_par_serie:
         seance.terminer_serie()
+        mettre_a_jour_prochain_exercice(seance,state)
         compteur.reset()
         state.repetitions = 0
         derniere_rep = 0
@@ -118,18 +113,19 @@ def gerer_mode_maintien(
 ):
 
     position = bloc.exercice.detection(corps)
+    if position != "maintien":
+        coach("correction_gainage")
 
+    maintenant = time.monotonic()
+
+    if not hasattr(bloc, "dernier_maintien"):
+        bloc.dernier_maintien = maintenant
+
+    temps_ecoule = maintenant - bloc.dernier_maintien
+    bloc.dernier_maintien = maintenant
 
     if position == "maintien":
-
-        bloc.temps_maintien += 1 / 30
-        # environ 30 images/seconde
-
-    else:
-
-        pass
-        # on ne rajoute rien,
-        # le chrono est simplement en pause
+        bloc.temps_maintien += temps_ecoule
 
 
     state.repetitions = 0
@@ -141,8 +137,9 @@ def gerer_mode_maintien(
     if bloc.temps_maintien >= bloc.duree:
 
         seance.terminer_serie()
-
+        mettre_a_jour_prochain_exercice(seance,state)
         bloc.temps_maintien = 0
+        del bloc.dernier_maintien
 
         return 0, 0, True
 
@@ -154,34 +151,30 @@ def gerer_mode_chrono(
     seance,
     state
 ):
+    maintenant = time.monotonic()
 
-    if not hasattr(bloc, "temps_chrono"):
-        bloc.temps_chrono = 0
+    if not hasattr(bloc, "debut_chrono"):
+        bloc.debut_chrono = maintenant
 
-
-    bloc.temps_chrono += 1 / 30
-
+    bloc.temps_chrono = maintenant - bloc.debut_chrono
 
     if bloc.temps_chrono >= bloc.duree:
-
         bloc.temps_chrono = bloc.duree
-
         state.temps_chrono = bloc.temps_chrono
         state.chrono_termine = True
 
-
         seance.terminer_serie()
+        mettre_a_jour_prochain_exercice(seance, state)
+
+        bloc.temps_chrono = 0
+        del bloc.debut_chrono
 
         return 0, 0, True
 
+    state.temps_chrono = bloc.temps_chrono
+    state.chrono_termine = False
 
-    else:
-
-        state.temps_chrono = bloc.temps_chrono
-        state.chrono_termine = False
-
-
-    return 0, 0, 
+    return 0, 0
 
 def gerer_mode_amrap(
     corps,
@@ -193,12 +186,12 @@ def gerer_mode_amrap(
     derniere_rep
 ):
 
-    if not hasattr(bloc, "temps_amrap"):
-        bloc.temps_amrap = 0
+    maintenant = time.monotonic()
 
+    if not hasattr(bloc, "debut_amrap"):
+        bloc.debut_amrap = maintenant
 
-    # temps écoulé
-    bloc.temps_amrap += 1 / 30
+    bloc.temps_amrap = maintenant - bloc.debut_amrap
 
 
     # détection du mouvement
@@ -222,7 +215,7 @@ def gerer_mode_amrap(
     state.stage = stage
     state.repetitions = repetitions
 
-    state.temps_restant = max(
+    state.temps_amrap_restant = max(
         0,
         bloc.duree - bloc.temps_amrap
     )
@@ -232,8 +225,9 @@ def gerer_mode_amrap(
     if bloc.temps_amrap >= bloc.duree:
 
         seance.terminer_serie()
-
+        mettre_a_jour_prochain_exercice(seance,state)
         bloc.temps_amrap = 0
+        del bloc.debut_amrap
 
         compteur.reset()
 
@@ -241,3 +235,61 @@ def gerer_mode_amrap(
 
 
     return derniere_rep, repetitions, False
+
+def decrire_prochaine_etape(bloc, nombre_series):
+    if bloc is None:
+        return None
+
+    return {
+        "exercice": bloc.exercice.nom,
+        "poids": bloc.poids,
+        "series": nombre_series,
+        "repetitions": bloc.repetitions_par_serie,
+        "mode": bloc.mode,
+        "duree": bloc.duree,
+    }
+
+def mettre_a_jour_prochain_exercice(circuit, state):
+
+    # --------------------------------------
+    # Repos entre deux séries
+    # On reprend le même exercice
+    # --------------------------------------
+
+    if circuit.phase == "recuperation_serie":
+
+        bloc = circuit.bloc_actuel
+
+        if bloc:
+
+            state.prochaine_etape = decrire_prochaine_etape(
+                bloc,
+                bloc.nombre_series - circuit.serie_actuelle + 1
+            )
+
+            return
+
+
+    # --------------------------------------
+    # Repos entre deux exercices
+    # On prépare le suivant
+    # --------------------------------------
+
+    if circuit.phase == "repos_exercice":
+
+        prochain = circuit.prochain_bloc()
+
+        if prochain:
+            state.prochaine_etape = decrire_prochaine_etape(
+                prochain,
+                prochain.nombre_series
+            )
+
+            return
+
+
+    # --------------------------------------
+    # Pas de prochain exercice
+    # --------------------------------------
+
+    state.prochaine_etape = None
