@@ -4,11 +4,14 @@
 
 position_actuelle = "Aucune"
 exercice_actuel = "Aucun"
+mode = "Aucun"
 stage = "Aucune"
 repetitions = 0
 repetitions_cibles = 10
-
-
+temps_maintien = 0
+duree_maintien = 0
+temps_chrono = 0
+chrono_termine = False
 # ==========================================
 # CIRCUIT
 # ==========================================

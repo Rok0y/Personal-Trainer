@@ -2,6 +2,7 @@
 import time
 import state
 import cv2
+from session.moteur import executer_mode,gerer_mode_repetitions
 from historique.database import initialiser, enregistrer_seance
 from audio.lecteur import jouer
 from vision.detector import PoseDetector
@@ -194,32 +195,18 @@ try:
                         # DETECTION DU MOUVEMENT
                         stage_detecte = exercice.detection(corps)
 
-                        # COMPTEUR
-                        stage, repetitions = compteur.mettre_a_jour(stage_detecte)
-                        if repetitions > derniere_rep:
-
-                            coach(
-                                "compteur",
-                                repetitions
-                            )
-
-                            if repetitions == seance.repetitions_cibles:
-                                coach("derniere_rep")
-
-                            elif repetitions == seance.repetitions_cibles - 1:
-                                coach("avant_derniere")
-
-                            derniere_rep = repetitions
-
-                        state.stage = stage
-                        state.repetitions = repetitions
+                        # Execution du moteur d'exo
+                        derniere_rep, repetitions, serie_terminee = executer_mode(
+                            seance=seance,
+                            corps=corps,
+                            compteur=compteur,
+                            state=state,
+                            coach=coach,
+                            derniere_rep=derniere_rep
+                        )
 
                         # SERIE TERMINEE
-                        if repetitions >= seance.repetitions_cibles:
-                            seance.terminer_serie()
-                            compteur.reset()
-                            state.repetitions = 0
-                            derniere_rep = 0
+                        if serie_terminee:
                             continue
 
                 # ----------------------------------

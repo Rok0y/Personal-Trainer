@@ -1,5 +1,10 @@
 import time
 
+MODE_REPETITIONS = "repetitions"
+MODE_MAINTIEN = "maintien"
+MODE_CHRONO = "chrono"
+MODE_AMRAP = "amrap"
+
 class Exercice:
 
     def __init__(
@@ -18,15 +23,17 @@ class Exercice:
 
 class BlocExercice:
 
-    def __init__(self,exercice,poids,mode,nombre_series,repetitions_par_serie,repos_entre_series,repos_apres):
+    def __init__(self,exercice,poids,mode,nombre_series,repetitions_par_serie,duree,repos_entre_series,repos_apres):
         self.exercice = exercice
         self.poids = poids
         self.mode = mode
         self.nombre_series = nombre_series
         self.repetitions_par_serie = repetitions_par_serie
+        self.duree = duree
         self.repos_entre_series = repos_entre_series
         self.repos_apres = repos_apres
-        
+
+        self.temps_maintien = 0
 
 
 class Circuit:
@@ -92,7 +99,7 @@ class Circuit:
         exercices = []
         for bloc in self.exercices:
             exercices.append({
-                "nom": bloc.exercice.__name__,
+                "nom": bloc.exercice.nom,
                 "series": bloc.nombre_series,
                 "repetitions": bloc.repetitions_par_serie
             })

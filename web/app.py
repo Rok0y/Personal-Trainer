@@ -63,7 +63,19 @@ def etat():
         "progression_maintien":
             state.progression_maintien,
 
-        "progression_preparation": state.progression_preparation
+        "progression_preparation": state.progression_preparation,
+        "mode":
+            state.mode,
+
+        "temps_maintien":
+            state.temps_maintien,
+
+        "duree_maintien":
+            state.duree_maintien,
+            
+        "temps_chrono": state.temps_chrono,
+
+        "chrono_termine": state.chrono_termine,
     })
 
 

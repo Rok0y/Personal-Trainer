@@ -666,6 +666,53 @@
             transition: width 0.3s ease;
         }
 
+        /* ---------- WORKOUT CARD (multi-modes : répétitions / maintien / chrono / amrap) ---------- */
+        /* Un seul bloc est visible à la fois, piloté par [data-mode] sur #workoutCard.
+           Le backend décide de la valeur de "mode" ; le CSS/JS ne fait qu'afficher. */
+
+        .workout-block {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        #workoutCard[data-mode="repetitions"] .workout-block--repetitions,
+        #workoutCard[data-mode="maintien"] .workout-block--maintien,
+        #workoutCard[data-mode="chrono"] .workout-block--chrono,
+        #workoutCard[data-mode="amrap"] .workout-block--amrap {
+            display: flex;
+        }
+
+        .maintien-status {
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--teal);
+            transition: color 0.25s ease;
+        }
+
+        .maintien-status--erreur {
+            color: var(--orange);
+        }
+
+        .chrono-value {
+            font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+            font-size: 92px;
+            line-height: 1;
+            color: var(--blue);
+            text-shadow: 0 0 24px var(--blue-glow);
+            letter-spacing: 0.02em;
+        }
+
+        .amrap-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
         /* ---------- Animations ---------- */
 
         @keyframes fadeIn {
@@ -902,16 +949,53 @@
 
     <div class="hud">
 
-        <div class="card reps-card">
-            <span class="label">Répétitions</span>
-            <div class="reps-value-wrap">
-                <span class="impact-ring" id="ring"></span>
-                <span class="reps-value" id="reps">0</span>
+        <div class="card reps-card workout-card" id="workoutCard" data-mode="repetitions">
+
+            <!-- MODE_REPETITIONS : "8 / 12 répétitions" -->
+            <div class="workout-block workout-block--repetitions">
+                <span class="label">Répétitions</span>
+                <div class="reps-value-wrap">
+                    <span class="impact-ring" id="ring"></span>
+                    <span class="reps-value" id="reps">0</span>
+                </div>
+                <span class="reps-target">objectif : <strong id="repsCible">10</strong></span>
+                <div class="reps-progress-track">
+                    <div class="reps-progress-fill" id="repsProgressFill"></div>
+                </div>
             </div>
-            <span class="reps-target">objectif : <strong id="repsCible">10</strong></span>
-            <div class="reps-progress-track">
-                <div class="reps-progress-fill" id="repsProgressFill"></div>
+
+            <!-- MODE_MAINTIEN : "7 / 15 secondes" -->
+            <div class="workout-block workout-block--maintien">
+                <span class="label">Maintien</span>
+                <div class="reps-value-wrap">
+                    <span class="impact-ring" id="maintienRing"></span>
+                    <span class="reps-value" id="maintienTemps">0</span>
+                </div>
+                <span class="reps-target">
+                    <strong id="maintienTempsTexte">0</strong> / <span id="maintienDureeTexte">0</span> secondes
+                </span>
+                <div class="reps-progress-track">
+                    <div class="reps-progress-fill" id="maintienProgressFill"></div>
+                </div>
+                <span class="maintien-status" id="maintienStatus">Maintenir la position</span>
             </div>
+
+            <!-- MODE_CHRONO (futur) : "45 secondes restantes" -->
+            <div class="workout-block workout-block--chrono">
+                <span class="label">Chrono</span>
+                <span class="chrono-value" id="chronoTemps">0</span>
+                <span class="reps-target">secondes restantes</span>
+            </div>
+
+            <!-- MODE_AMRAP (futur) : "12 répétitions en 60 secondes" -->
+            <div class="workout-block workout-block--amrap">
+                <span class="label">AMRAP</span>
+                <div class="amrap-row">
+                    <span class="reps-value" id="amrapReps">0</span>
+                </div>
+                <span class="reps-target"><strong id="amrapTempsRestant">60</strong> secondes restantes</span>
+            </div>
+
         </div>
 
     </div>
@@ -920,18 +1004,140 @@
 
 <script>
 
+    // ==========================================================
+    // AFFICHAGE DE L'ENTRAÎNEMENT (multi-modes)
+    // ----------------------------------------------------------
+    // Le backend Python décide de tout (mode actif, valeurs, état
+    // de l'exercice) via etat.mode. Ces fonctions se contentent
+    // d'afficher — aucune logique métier ne doit vivre ici.
+    //
+    // Pour ajouter un futur mode : créer afficherModeXxx(etat),
+    // l'ajouter au switch de updateWorkoutDisplay, et ajouter le
+    // bloc HTML .workout-block--xxx correspondant dans #workoutCard.
+    // ==========================================================
+
     let dernierReps = null;
+    let dernierMaintienEntier = null;
 
-    function declencherImpact() {
+    // Anime un nombre + son anneau lumineux (réutilisé par tous les modes)
+    function declencherImpact(idValeur, idAnneau) {
+        const valeurEl = document.getElementById(idValeur);
+        const anneauEl = idAnneau ? document.getElementById(idAnneau) : null;
+
+        valeurEl.classList.remove("hit");
+        if (anneauEl) anneauEl.classList.remove("hit");
+        void valeurEl.offsetWidth; // force le reflow pour rejouer l'animation
+        valeurEl.classList.add("hit");
+        if (anneauEl) anneauEl.classList.add("hit");
+    }
+
+    function updateWorkoutDisplay(etat) {
+        // Compatibilité : un backend qui n'envoie pas encore "mode"
+        // est traité comme du mode répétitions (comportement historique).
+        const mode = etat.mode || "repetitions";
+        const carte = document.getElementById("workoutCard");
+
+        switch (mode) {
+            case "repetitions":
+                carte.dataset.mode = "repetitions";
+                afficherModeRepetitions(etat);
+                break;
+
+            case "maintien":
+                carte.dataset.mode = "maintien";
+                afficherModeMaintien(etat);
+                break;
+
+            case "chrono":
+                carte.dataset.mode = "chrono";
+                afficherModeChrono(etat);
+                break;
+
+            case "amrap":
+                carte.dataset.mode = "amrap";
+                afficherModeAmrap(etat);
+                break;
+
+            default:
+                // Mode inconnu : on retombe sur l'affichage répétitions
+                // plutôt que de laisser l'interface vide/cassée.
+                carte.dataset.mode = "repetitions";
+                afficherModeRepetitions(etat);
+        }
+    }
+
+    // ---------- MODE_REPETITIONS : "8 / 12 répétitions" ----------
+    function afficherModeRepetitions(etat) {
         const repsEl = document.getElementById("reps");
-        const ringEl = document.getElementById("ring");
+        const cibleEl = document.getElementById("repsCible");
+        const fill = document.getElementById("repsProgressFill");
 
-        repsEl.classList.remove("hit");
-        ringEl.classList.remove("hit");
-        // force reflow so the animation can restart
-        void repsEl.offsetWidth;
-        repsEl.classList.add("hit");
-        ringEl.classList.add("hit");
+        const actuel = Number(etat.repetitions) || 0;
+        const cible = Number(etat.repetitions_cibles) || 0;
+
+        if (cibleEl.textContent.trim() !== String(cible)) {
+            cibleEl.textContent = cible;
+        }
+
+        if (dernierReps !== null && actuel !== dernierReps) {
+            declencherImpact("reps", "ring");
+        }
+        repsEl.textContent = actuel;
+        dernierReps = actuel;
+
+        const pct = cible > 0 ? Math.max(0, Math.min(100, (actuel / cible) * 100)) : 0;
+        fill.style.width = `${pct}%`;
+    }
+
+    // ---------- MODE_MAINTIEN : "7 / 15 secondes" ----------
+    function afficherModeMaintien(etat) {
+        const tempsEl = document.getElementById("maintienTemps");
+        const tempsTexteEl = document.getElementById("maintienTempsTexte");
+        const dureeTexteEl = document.getElementById("maintienDureeTexte");
+        const fill = document.getElementById("maintienProgressFill");
+        const statutEl = document.getElementById("maintienStatus");
+
+        const actuel = Number(etat.temps_maintien) || 0;
+        const cible = Number(etat.duree_maintien) || 0;
+        const actuelArrondi = Math.floor(actuel);
+
+        if (dernierMaintienEntier !== null && actuelArrondi !== dernierMaintienEntier) {
+            declencherImpact("maintienTemps", "maintienRing");
+        }
+        tempsEl.textContent = actuelArrondi;
+        tempsTexteEl.textContent = actuelArrondi;
+        dureeTexteEl.textContent = cible;
+        dernierMaintienEntier = actuelArrondi;
+
+        const pct = cible > 0 ? Math.max(0, Math.min(100, (actuel / cible) * 100)) : 0;
+        fill.style.width = `${pct}%`;
+
+        // NOTE : la posture (correcte/cassée) est déduite de "stage".
+        // Hypothèse à ajuster ici si le backend utilise d'autres libellés
+        // (ex: "incorrect", "pause") — seule cette liste doit changer.
+        const positionCassee = ["casse", "cassee", "incorrect", "mauvaise"].includes(
+            String(etat.stage || "").toLowerCase()
+        );
+
+        if (positionCassee) {
+            statutEl.textContent = "Position incorrecte";
+            statutEl.classList.add("maintien-status--erreur");
+        } else {
+            statutEl.textContent = "Maintenir la position";
+            statutEl.classList.remove("maintien-status--erreur");
+        }
+    }
+
+    // ---------- MODE_CHRONO: "45 secondes restantes" ----------
+    function afficherModeChrono(etat) {
+        const el = document.getElementById("chronoTemps");
+        el.textContent = Math.max(0,Math.round(Number(etat.temps_chrono) || 0));
+    }
+    // ---------- MODE_AMRAP (futur) : "12 répétitions en 60 secondes" ----------
+    function afficherModeAmrap(etat) {
+        document.getElementById("amrapReps").textContent = Number(etat.repetitions) || 0;
+        document.getElementById("amrapTempsRestant").textContent =
+            Math.max(0, Math.round(Number(etat.temps_restant) || 0));
     }
 
     // Met à jour un champ texte avec un petit fondu si la valeur a changé
@@ -984,23 +1190,6 @@
             valeurEl.textContent = valeur;
             badge.classList.remove("changing");
         }, 150);
-    }
-
-    // ---------- Objectif de répétitions ----------
-
-    function mettreAJourObjectifReps(cible) {
-        const cibleEl = document.getElementById("repsCible");
-        const valeur = String(cible);
-        if (cibleEl.textContent.trim() !== valeur) {
-            cibleEl.textContent = valeur;
-        }
-    }
-
-    function mettreAJourProgressionReps(actuel, cible) {
-        const fill = document.getElementById("repsProgressFill");
-        const total = Number(cible) || 0;
-        const pct = total > 0 ? Math.max(0, Math.min(100, (Number(actuel) / total) * 100)) : 0;
-        fill.style.width = `${pct}%`;
     }
 
     // ---------- Phase (exercice / préparation / repos) ----------
@@ -1143,17 +1332,65 @@
     }
 
     function mettreAJourEtat() {
+
         fetch("/etat")
             .then(response => response.json())
+
             .then(data => {
+
                 definirStatut(true);
 
+
+                // ======================================
+                // INFORMATIONS GENERALES
+                // ======================================
+
                 mettreAJourExercice(data.exercice_actuel);
-                mettreAJourSeries(data.serie_actuelle, data.nombre_series);
+
+                mettreAJourSeries(
+                    data.serie_actuelle,
+                    data.nombre_series
+                );
+
                 mettreAJourPoids(data.poids);
-                mettreAJourChamp("position", data.position_actuelle);
-                mettreAJourChamp("stage", data.stage);
-                mettreAJourMaintien(data.progression_maintien, data.maintien_termine);
+
+
+                mettreAJourChamp(
+                    "position",
+                    data.position_actuelle || "Aucune"
+                );
+
+                mettreAJourChamp(
+                    "stage",
+                    data.stage || "Aucune"
+                );
+
+
+                // ======================================
+                // AFFICHAGE DU MODE ACTUEL
+                // repetitions / maintien / chrono / amrap
+                // ======================================
+
+                updateWorkoutDisplay(data);
+
+
+
+                // ======================================
+                // MAINTIEN (bulle centrale)
+                // ======================================
+
+                mettreAJourMaintien(
+                    data.progression_maintien || 0,
+                    data.maintien_termine || false
+                );
+
+
+
+                // ======================================
+                // PHASE GENERALE
+                // préparation / repos / exercice
+                // ======================================
+
                 mettreAJourPhase(
                     data.phase,
                     data.temps_restant,
@@ -1163,21 +1400,21 @@
                     data.nombre_series
                 );
 
-                mettreAJourObjectifReps(data.repetitions_cibles);
-                mettreAJourProgressionReps(data.repetitions, data.repetitions_cibles);
 
-                const repsEl = document.getElementById("reps");
-                if (dernierReps !== null && data.repetitions !== dernierReps) {
-                    declencherImpact();
-                }
-                repsEl.textContent = data.repetitions;
-                dernierReps = data.repetitions;
             })
+
+
             .catch(error => {
+
                 definirStatut(false);
-                console.error("Erreur :", error);
+
+                console.error(
+                    "Erreur récupération état :",
+                    error
+                );
+
             });
-    }
+        }
 
     setInterval(mettreAJourEtat, 100);
     mettreAJourEtat();

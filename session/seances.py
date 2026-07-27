@@ -1,4 +1,4 @@
-from session.circuit import Circuit, BlocExercice,Exercice
+from session.circuit import Circuit, BlocExercice,MODE_CHRONO,MODE_MAINTIEN,MODE_REPETITIONS,MODE_AMRAP
 
 from mouvements.exercices import (
     curl_biceps_droit,
@@ -8,18 +8,20 @@ from mouvements.exercices import (
     extension_triceps_au_dessus_de_la_tete,
     developpe_couche_sol,
     developpe_epaule,
-    crunches
+    crunches,
+    planche
 )
 
 Test_exercice = Circuit([
     BlocExercice(
         exercice=curl_biceps_droit,
-        poids=0,
-        mode="repetitions",
+        poids=8,
+        mode=MODE_AMRAP,
         nombre_series=1,
-        repetitions_par_serie=1000,
+        repetitions_par_serie=0,
+        duree=30,
         repos_entre_series=30,
-        repos_apres=60
+        repos_apres=10
     )
 ])
 
@@ -27,18 +29,20 @@ seance_bras = Circuit([
     BlocExercice(
         exercice=curl_biceps_droit,
         poids=8,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=2,
         repetitions_par_serie=5,
+        duree=0,
         repos_entre_series=5,
         repos_apres=10
     ),
     BlocExercice(
         exercice=curl_biceps_gauche,
         poids=8,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=1,
         repetitions_par_serie=5,
+        duree=0,
         repos_entre_series=30,
         repos_apres=0
     )
@@ -48,54 +52,70 @@ seance_test = Circuit([
     BlocExercice(
         exercice=curl_biceps_droit,
         poids=8,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=1,
         repetitions_par_serie=5,
+        duree=0,
+        repos_entre_series=5,
+        repos_apres=5
+    ),
+    BlocExercice(
+        exercice=planche,
+        poids=0,
+        mode=MODE_MAINTIEN,
+        nombre_series=1,
+        repetitions_par_serie=None,
+        duree=30,
         repos_entre_series=5,
         repos_apres=5
     ),
     BlocExercice(
         exercice=curl_biceps_gauche,
         poids=8,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=1,
         repetitions_par_serie=5,
+        duree=0,
         repos_entre_series=5,
         repos_apres=5
     ),
     BlocExercice(
         exercice=elevation_laterale,
         poids=5,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=1,
         repetitions_par_serie=5,
+        duree=0,
         repos_entre_series=5,
         repos_apres=5
     ),
     BlocExercice(
         exercice=pompe,
         poids=0,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=1,
         repetitions_par_serie=5,
+        duree=0,
         repos_entre_series=5,
         repos_apres=5
     ),
     BlocExercice(
         exercice=extension_triceps_au_dessus_de_la_tete,
         poids=14,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=1,
         repetitions_par_serie=5,
+        duree=0,
         repos_entre_series=5,
         repos_apres=5
     ),
     BlocExercice(
         exercice=developpe_couche_sol,
         poids=10,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=1,
         repetitions_par_serie=5,
+        duree=0,
         repos_entre_series=5,
         repos_apres=0
     )
@@ -105,45 +125,50 @@ seance_Upper_Push = Circuit([
     BlocExercice(
         exercice=developpe_couche_sol,
         poids=10,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=4,
         repetitions_par_serie=12,
+        duree=0,
         repos_entre_series=45,
         repos_apres=90
     ),
     BlocExercice(
         exercice=pompe,
         poids=0,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=4,
         repetitions_par_serie=10,
+        duree=0,
         repos_entre_series=60,
         repos_apres=90
     ),
     BlocExercice(
         exercice=developpe_epaule,
         poids=8,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=3,
         repetitions_par_serie=12,
+        duree=0,
         repos_entre_series=45,
         repos_apres=90
     ),
     BlocExercice(
         exercice=elevation_laterale,
         poids=5,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=3,
         repetitions_par_serie=11,
+        duree=0,
         repos_entre_series=45,
         repos_apres=90
     ),
     BlocExercice(
         exercice=extension_triceps_au_dessus_de_la_tete,
         poids=14,
-        mode="repetitions",
+        mode=MODE_REPETITIONS,
         nombre_series=3,
         repetitions_par_serie=10,
+        duree=0,
         repos_entre_series=60,
         repos_apres=0
     ),
