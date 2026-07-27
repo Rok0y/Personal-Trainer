@@ -34,7 +34,7 @@ class BlocExercice:
         self.repos_apres = repos_apres
 
         self.temps_maintien = 0
-
+        self.temps_restant_precedent = None
 
 class Circuit:
 

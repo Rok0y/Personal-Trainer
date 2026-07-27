@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 
 
-CHEMIN_DB = "historique/trackmebuddy.db"
+CHEMIN_DB = "historique/personaltrainer.db"
 
 
 

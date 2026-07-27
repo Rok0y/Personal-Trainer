@@ -1,5 +1,5 @@
 import time
-from audio.coach import annoncer_progression
+from audio.coach import annoncer_progression,annoncer_temps_restant
 from session.circuit import (
     MODE_REPETITIONS,
     MODE_MAINTIEN,
@@ -113,9 +113,14 @@ def gerer_mode_maintien(
 ):
 
     position = bloc.exercice.detection(corps)
-    if position != "maintien":
-        coach("correction_gainage")
+    if position == "maintien":
+        bloc.position_maintien_validee = True
 
+    if (
+        position != "maintien"
+        and getattr(bloc, "position_maintien_validee", False)
+    ):
+        coach("correction_gainage")
     maintenant = time.monotonic()
 
     if not hasattr(bloc, "dernier_maintien"):
@@ -127,7 +132,10 @@ def gerer_mode_maintien(
     if position == "maintien":
         bloc.temps_maintien += temps_ecoule
 
-
+    annoncer_temps_restant(
+        bloc,
+        bloc.duree - bloc.temps_maintien
+    )
     state.repetitions = 0
     state.stage = position
     state.temps_maintien = bloc.temps_maintien
@@ -140,6 +148,7 @@ def gerer_mode_maintien(
         mettre_a_jour_prochain_exercice(seance,state)
         bloc.temps_maintien = 0
         del bloc.dernier_maintien
+        bloc.temps_restant_precedent = None
 
         return 0, 0, True
 
@@ -157,7 +166,10 @@ def gerer_mode_chrono(
         bloc.debut_chrono = maintenant
 
     bloc.temps_chrono = maintenant - bloc.debut_chrono
-
+    annoncer_temps_restant(
+        bloc,
+        bloc.duree - bloc.temps_chrono
+    )
     if bloc.temps_chrono >= bloc.duree:
         bloc.temps_chrono = bloc.duree
         state.temps_chrono = bloc.temps_chrono
@@ -168,6 +180,7 @@ def gerer_mode_chrono(
 
         bloc.temps_chrono = 0
         del bloc.debut_chrono
+        bloc.temps_restant_precedent = None
 
         return 0, 0, True
 
@@ -192,7 +205,10 @@ def gerer_mode_amrap(
         bloc.debut_amrap = maintenant
 
     bloc.temps_amrap = maintenant - bloc.debut_amrap
-
+    annoncer_temps_restant(
+        bloc,
+        bloc.duree - bloc.temps_amrap
+    )
 
     # détection du mouvement
     stage_detecte = bloc.exercice.detection(corps)
@@ -228,7 +244,7 @@ def gerer_mode_amrap(
         mettre_a_jour_prochain_exercice(seance,state)
         bloc.temps_amrap = 0
         del bloc.debut_amrap
-
+        bloc.temps_restant_precedent = None
         compteur.reset()
 
         return derniere_rep, repetitions, True

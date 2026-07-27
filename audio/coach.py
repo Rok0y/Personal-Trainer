@@ -60,33 +60,37 @@ messages = {
     "correction_gainage": [
         "correction_gainage_1.wav",
     ],
+    "temps_20": [
+        "temps_20_1.wav",
+    ],
+
+    "temps_10": [
+        "temps_10_1.wav",
+    ],
+
+    "temps_5": [
+        "temps_5_1.wav",
+    ],
     }
 
 
 priorites = {
 
     "rep": 1,
-
     "debut_serie": 5,
-
     "avant_derniere": 5,
-
     "derniere_rep": 10,
-
     "fin_serie": 10,
-
     "repos": 8,
-
     "changement_exercice": 8,
-
     "fin_seance": 10,
-
     "mi_parcours": 3,
-
     "encore_5": 4,
-
     "encore_3": 5,
     "correction_gainage": 7,
+    "temps_20": 6,
+    "temps_10": 7,
+    "temps_5": 8,
 }
 
 DELAIS_ENTRE_ANNONCES = {
@@ -215,3 +219,29 @@ def annoncer_progression(repetitions, cible):
 
     if cible >= 8 and repetitions == cible // 2:
         coach("mi_parcours")
+
+def annoncer_temps_restant(bloc, secondes_restantes):
+
+    if bloc.temps_restant_precedent is None:
+        bloc.temps_restant_precedent = secondes_restantes
+        return
+
+
+    seuils = [
+        (20, "temps_20"),
+        (10, "temps_10"),
+        (5, "temps_5"),
+    ]
+
+
+    for seuil, message in seuils:
+
+        if (
+            bloc.temps_restant_precedent > seuil
+            and secondes_restantes <= seuil
+        ):
+            coach(message)
+            break
+
+
+    bloc.temps_restant_precedent = secondes_restantes
