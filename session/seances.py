@@ -1,4 +1,4 @@
-from session.circuit import Circuit, BlocExercice
+from session.circuit import Circuit, BlocExercice,Exercice
 
 from mouvements.exercices import (
     curl_biceps_droit,
@@ -7,13 +7,15 @@ from mouvements.exercices import (
     pompe,
     extension_triceps_au_dessus_de_la_tete,
     developpe_couche_sol,
-    developpe_epaule
+    developpe_epaule,
+    crunches
 )
 
 Test_exercice = Circuit([
     BlocExercice(
-        exercice=pompe,
+        exercice=curl_biceps_droit,
         poids=0,
+        mode="repetitions",
         nombre_series=1,
         repetitions_par_serie=1000,
         repos_entre_series=30,
@@ -25,6 +27,7 @@ seance_bras = Circuit([
     BlocExercice(
         exercice=curl_biceps_droit,
         poids=8,
+        mode="repetitions",
         nombre_series=2,
         repetitions_par_serie=5,
         repos_entre_series=5,
@@ -33,6 +36,7 @@ seance_bras = Circuit([
     BlocExercice(
         exercice=curl_biceps_gauche,
         poids=8,
+        mode="repetitions",
         nombre_series=1,
         repetitions_par_serie=5,
         repos_entre_series=30,
@@ -44,6 +48,7 @@ seance_test = Circuit([
     BlocExercice(
         exercice=curl_biceps_droit,
         poids=8,
+        mode="repetitions",
         nombre_series=1,
         repetitions_par_serie=5,
         repos_entre_series=5,
@@ -52,6 +57,7 @@ seance_test = Circuit([
     BlocExercice(
         exercice=curl_biceps_gauche,
         poids=8,
+        mode="repetitions",
         nombre_series=1,
         repetitions_par_serie=5,
         repos_entre_series=5,
@@ -60,6 +66,7 @@ seance_test = Circuit([
     BlocExercice(
         exercice=elevation_laterale,
         poids=5,
+        mode="repetitions",
         nombre_series=1,
         repetitions_par_serie=5,
         repos_entre_series=5,
@@ -68,6 +75,7 @@ seance_test = Circuit([
     BlocExercice(
         exercice=pompe,
         poids=0,
+        mode="repetitions",
         nombre_series=1,
         repetitions_par_serie=5,
         repos_entre_series=5,
@@ -76,6 +84,7 @@ seance_test = Circuit([
     BlocExercice(
         exercice=extension_triceps_au_dessus_de_la_tete,
         poids=14,
+        mode="repetitions",
         nombre_series=1,
         repetitions_par_serie=5,
         repos_entre_series=5,
@@ -84,6 +93,7 @@ seance_test = Circuit([
     BlocExercice(
         exercice=developpe_couche_sol,
         poids=10,
+        mode="repetitions",
         nombre_series=1,
         repetitions_par_serie=5,
         repos_entre_series=5,
@@ -95,6 +105,7 @@ seance_Upper_Push = Circuit([
     BlocExercice(
         exercice=developpe_couche_sol,
         poids=10,
+        mode="repetitions",
         nombre_series=4,
         repetitions_par_serie=12,
         repos_entre_series=45,
@@ -103,6 +114,7 @@ seance_Upper_Push = Circuit([
     BlocExercice(
         exercice=pompe,
         poids=0,
+        mode="repetitions",
         nombre_series=4,
         repetitions_par_serie=10,
         repos_entre_series=60,
@@ -111,6 +123,7 @@ seance_Upper_Push = Circuit([
     BlocExercice(
         exercice=developpe_epaule,
         poids=8,
+        mode="repetitions",
         nombre_series=3,
         repetitions_par_serie=12,
         repos_entre_series=45,
@@ -119,6 +132,7 @@ seance_Upper_Push = Circuit([
     BlocExercice(
         exercice=elevation_laterale,
         poids=5,
+        mode="repetitions",
         nombre_series=3,
         repetitions_par_serie=11,
         repos_entre_series=45,
@@ -127,6 +141,7 @@ seance_Upper_Push = Circuit([
     BlocExercice(
         exercice=extension_triceps_au_dessus_de_la_tete,
         poids=14,
+        mode="repetitions",
         nombre_series=3,
         repetitions_par_serie=10,
         repos_entre_series=60,

@@ -1,11 +1,27 @@
 import time
 
+class Exercice:
+
+    def __init__(
+        self,
+        nom,
+        detection,
+        description="",
+        instructions=None,
+        erreurs=None
+    ):
+        self.nom = nom
+        self.detection = detection
+        self.description = description
+        self.instructions = instructions or []
+        self.erreurs = erreurs or []
 
 class BlocExercice:
 
-    def __init__(self,exercice,poids,nombre_series,repetitions_par_serie,repos_entre_series,repos_apres):
+    def __init__(self,exercice,poids,mode,nombre_series,repetitions_par_serie,repos_entre_series,repos_apres):
         self.exercice = exercice
         self.poids = poids
+        self.mode = mode
         self.nombre_series = nombre_series
         self.repetitions_par_serie = repetitions_par_serie
         self.repos_entre_series = repos_entre_series

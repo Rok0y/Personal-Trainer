@@ -502,18 +502,30 @@
             display: none;
         }
 
-        /* ---------- HUD (bottom overlay) ---------- */
+        /* ---------- SIDE PANEL (position + étape, bord gauche) ---------- */
+
+        .side-panel {
+            position: absolute;
+            left: 28px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            animation: slideInLeft 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+            animation-delay: 0.15s;
+        }
+
+        /* ---------- HUD (bottom-right overlay) ---------- */
 
         .hud {
             position: absolute;
-            left: 28px;
             right: 28px;
             bottom: 28px;
             z-index: 5;
-            display: grid;
-            grid-template-columns: 1fr 1fr auto;
-            gap: 18px;
-            align-items: end;
+            display: flex;
+            justify-content: flex-end;
             animation: riseIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
             animation-delay: 0.15s;
         }
@@ -529,11 +541,11 @@
 
         /* Position card */
         .position-card {
-            padding: 22px 26px;
+            padding: 20px 24px;
             display: flex;
             flex-direction: column;
             gap: 6px;
-            min-width: 220px;
+            width: 200px;
         }
 
         .label {
@@ -545,7 +557,7 @@
         }
 
         .position-value {
-            font-size: 30px;
+            font-size: 28px;
             font-weight: 700;
             color: var(--orange);
             transition: opacity 0.25s ease, transform 0.25s ease;
@@ -558,15 +570,15 @@
 
         /* Stage card */
         .stage-card {
-            padding: 22px 26px;
+            padding: 20px 24px;
             display: flex;
             flex-direction: column;
             gap: 6px;
-            min-width: 180px;
+            width: 200px;
         }
 
         .stage-value {
-            font-size: 30px;
+            font-size: 28px;
             font-weight: 700;
             color: var(--teal);
             text-transform: capitalize;
@@ -671,6 +683,11 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translate(-18px, -50%); }
+            to { opacity: 1; transform: translate(0, -50%); }
+        }
+
         @keyframes pulseDot {
             0%, 100% { transform: scale(1); opacity: 1; }
             50% { transform: scale(1.35); opacity: 0.6; }
@@ -720,13 +737,29 @@
         /* ---------- Responsive ---------- */
 
         @media (max-width: 760px) {
-            .hud {
-                grid-template-columns: 1fr 1fr;
-                justify-items: stretch;
+            .side-panel {
+                left: 16px;
+                right: 16px;
+                top: auto;
+                bottom: 28px;
+                transform: none;
+                flex-direction: row;
+                gap: 12px;
+                animation: riseIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+                animation-delay: 0.15s;
             }
-            .reps-card {
-                grid-column: 1 / -1;
-                order: -1;
+            .position-card,
+            .stage-card {
+                flex: 1;
+                width: auto;
+                padding: 16px 18px;
+            }
+            .hud {
+                position: absolute;
+                left: 16px;
+                right: 16px;
+                bottom: 108px;
+                justify-content: center;
             }
             .brand-name {
                 font-size: 14px;
@@ -853,7 +886,7 @@
         <span class="hold-caption">Maintien</span>
     </div>
 
-    <div class="hud">
+    <div class="side-panel">
 
         <div class="card position-card">
             <span class="label">Position</span>
@@ -864,6 +897,10 @@
             <span class="label">Étape</span>
             <span class="stage-value" id="stage">Aucune</span>
         </div>
+
+    </div>
+
+    <div class="hud">
 
         <div class="card reps-card">
             <span class="label">Répétitions</span>

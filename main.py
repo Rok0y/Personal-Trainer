@@ -27,7 +27,7 @@ ancienne_phase = None
 derniere_rep = 0
 fin_preparation = None 
 DELAI_AVANT_EXERCICE = 3
-seance = session.seances.seance_Upper_Push
+seance = session.seances.Test_exercice
 """sers à choisir la séance, depuis les séances dispo dans session.seances"""
 
 # Initialisation de la base de données
@@ -87,6 +87,7 @@ try:
             if termine:
                 compteur.reset()
                 state.repetitions = 0
+                derniere_rep = 0
 
             # ==================================
             # MACHINE DU CIRCUIT
@@ -188,10 +189,10 @@ try:
                     if exercice is not None:
 
                         # NOM DE L'EXERCICE
-                        state.exercice_actuel = exercice.__name__
+                        state.exercice_actuel = exercice.nom
 
                         # DETECTION DU MOUVEMENT
-                        stage_detecte = exercice(corps)
+                        stage_detecte = exercice.detection(corps)
 
                         # COMPTEUR
                         stage, repetitions = compteur.mettre_a_jour(stage_detecte)
