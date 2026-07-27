@@ -125,7 +125,7 @@ seance_Upper_Push = Circuit([
         repos_apres=90
     ),
     BlocExercice(
-        exercice=elevation_laterale,
+        exercice=extension_triceps_au_dessus_de_la_tete,
         poids=14,
         nombre_series=3,
         repetitions_par_serie=10,
