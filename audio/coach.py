@@ -80,6 +80,7 @@ messages = {
     "repos_5": [
         "repos_5.wav",
     ],
+    "bip": ["bip.wav",],
     }
 
 
@@ -103,6 +104,7 @@ priorites = {
     "temps_5": 8,
     "repos_10": 6,
     "repos_5": 8,
+    "bip": 2,
 }
 
 DELAIS_ENTRE_ANNONCES = {

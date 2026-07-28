@@ -136,6 +136,13 @@ def gerer_mode_maintien(
     if position == "maintien":
         bloc.temps_maintien += temps_ecoule
 
+
+    # Bip chaque seconde
+    seconde = int(bloc.temps_maintien)
+    if getattr(bloc, "derniere_seconde_bip", -1) != seconde:
+        bloc.derniere_seconde_bip = seconde
+        coach("bip")
+
     annoncer_temps_restant(
         bloc,
         bloc.duree - bloc.temps_maintien
@@ -153,7 +160,7 @@ def gerer_mode_maintien(
         bloc.temps_maintien = 0
         del bloc.dernier_maintien
         bloc.temps_restant_precedent = None
-
+        bloc.derniere_seconde_bip = -1
         return 0, 0, True
 
 

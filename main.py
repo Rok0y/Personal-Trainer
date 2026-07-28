@@ -29,7 +29,7 @@ ancienne_phase = None
 derniere_rep = 0
 fin_preparation = None 
 DELAI_AVANT_EXERCICE = 3
-seance = session.seances.seance_test
+seance = session.seances.seance_jambes_abdos
 """sers à choisir la séance, depuis les séances dispo dans session.seances"""
 
 state.prochaine_etape = decrire_prochaine_etape(
@@ -151,7 +151,7 @@ try:
 
 
             ancienne_phase = seance.phase
-            
+
             if seance.phase == "recuperation_serie":
                 annoncer_temps_repos(
                     seance,

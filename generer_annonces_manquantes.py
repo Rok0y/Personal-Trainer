@@ -1,15 +1,14 @@
 from pathlib import Path
 
-from session.seances import seance_test
+from session.seances import seance_test,seance_jambes_abdos
 from audio.coach import nom_annonce_etape
 
 
 DOSSIER = Path("audio/Fichiers")
 
 deja_vus = set()
-
-
-for bloc in seance_test.exercices:
+seance = seance_jambes_abdos
+for bloc in seance_jambes_abdos.exercices:
 
     etape = {
         "exercice": bloc.exercice.nom,
