@@ -57,7 +57,7 @@ seance_test = Circuit([
         repetitions_par_serie=5,
         duree=0,
         repos_entre_series=15,
-        repos_apres=15
+        repos_apres=30,
     ),
     BlocExercice(
         exercice=planche,
@@ -65,9 +65,9 @@ seance_test = Circuit([
         mode=MODE_MAINTIEN,
         nombre_series=2,
         repetitions_par_serie=None,
-        duree=30,
+        duree=10,
         repos_entre_series=15,
-        repos_apres=15
+        repos_apres=30,
     ),
     BlocExercice(
         exercice=curl_biceps_gauche,
@@ -77,7 +77,7 @@ seance_test = Circuit([
         repetitions_par_serie=0,
         duree=10,
         repos_entre_series=15,
-        repos_apres=15
+        repos_apres=30,
     ),
     BlocExercice(
         exercice=elevation_laterale,
@@ -87,7 +87,7 @@ seance_test = Circuit([
         repetitions_par_serie=5,
         duree=0,
         repos_entre_series=5,
-        repos_apres=5
+        repos_apres=30,
     ),
     BlocExercice(
         exercice=pompe,
@@ -97,7 +97,7 @@ seance_test = Circuit([
         repetitions_par_serie=5,
         duree=0,
         repos_entre_series=5,
-        repos_apres=5
+        repos_apres=30,
     ),
     BlocExercice(
         exercice=extension_triceps_au_dessus_de_la_tete,
@@ -107,7 +107,7 @@ seance_test = Circuit([
         repetitions_par_serie=5,
         duree=0,
         repos_entre_series=5,
-        repos_apres=5
+        repos_apres=30,
     ),
     BlocExercice(
         exercice=developpe_couche_sol,

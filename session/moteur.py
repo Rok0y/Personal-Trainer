@@ -82,6 +82,10 @@ def gerer_mode_repetitions(
     stage, repetitions = compteur.mettre_a_jour(stage_detecte)
 
     if repetitions > derniere_rep:
+        coach(
+            "compteur",
+            repetitions
+        )
 
         annoncer_progression(
             repetitions,
@@ -246,7 +250,7 @@ def gerer_mode_amrap(
         del bloc.debut_amrap
         bloc.temps_restant_precedent = None
         compteur.reset()
-
+        derniere_rep = 0
         return derniere_rep, repetitions, True
 
 
@@ -266,7 +270,9 @@ def decrire_prochaine_etape(bloc, nombre_series):
     }
 
 def mettre_a_jour_prochain_exercice(circuit, state):
-
+    print("mise à jour prochaine étape")
+    print("phase actuelle :", circuit.phase)
+    print("bloc :", circuit.bloc_actuel)
     # --------------------------------------
     # Repos entre deux séries
     # On reprend le même exercice

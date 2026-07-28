@@ -37,7 +37,10 @@ def lecteur_audio():
                 time.sleep(0.05)
 
         else:
-            print("Son introuvable :", chemin)
+            print("\n" + "=" * 60)
+            print("AUDIO MANQUANT À ENREGISTRER")
+            print(os.path.basename(chemin))
+            print("=" * 60 + "\n")
 
         file_audio.task_done()
 

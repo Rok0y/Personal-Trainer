@@ -3,6 +3,13 @@ from historique.database import recuperer_historique
 import webbrowser
 import state
 import time
+import logging
+
+class FiltreEtat(logging.Filter):
+    def filter(self, record):
+        return "GET /etat" not in record.getMessage()
+
+logging.getLogger("werkzeug").addFilter(FiltreEtat())
 
 
 app = Flask(__name__)

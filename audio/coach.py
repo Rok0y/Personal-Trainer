@@ -70,6 +70,15 @@ messages = {
 
     "temps_5": [
         "temps_5_1.wav",
+    ],"repos_10": [
+        "repos_10.wav",
+    ],
+
+    "repos_5": [
+        "repos_5.wav",
+    ],
+    "repos_5": [
+        "repos_5.wav",
     ],
     }
 
@@ -82,15 +91,18 @@ priorites = {
     "derniere_rep": 10,
     "fin_serie": 10,
     "repos": 8,
-    "changement_exercice": 8,
+    "changement_exercice": 5,
     "fin_seance": 10,
     "mi_parcours": 3,
     "encore_5": 4,
     "encore_3": 5,
     "correction_gainage": 7,
+    "temps_30": 4,
     "temps_20": 6,
     "temps_10": 7,
     "temps_5": 8,
+    "repos_10": 6,
+    "repos_5": 8,
 }
 
 DELAIS_ENTRE_ANNONCES = {
@@ -98,6 +110,7 @@ DELAIS_ENTRE_ANNONCES = {
 }
 
 dernieres_annonces = {}
+DOSSIER_SONS = Path(__file__).with_name("Fichiers")
 
 def coach(event, valeur=None):
 
@@ -127,9 +140,7 @@ def coach(event, valeur=None):
         priorites.get(event, 5)
     )
 
-DOSSIER_ANNONCES_ETAPES = (
-    Path(__file__).with_name("Fichiers") / "annonces_etapes"
-)
+DOSSIER_ANNONCES_ETAPES = Path(__file__).with_name("Fichiers")
 
 
 def normaliser_nom(texte):
@@ -148,14 +159,19 @@ def normaliser_nom(texte):
 
 
 def nom_annonce_etape(etape):
+
     exercice = normaliser_nom(etape["exercice"])
     series = etape["series"]
     mot_series = "serie" if series == 1 else "series"
+    poids = etape.get("poids", 0)
 
-    debut = f"prochain_{exercice}_{series}_{mot_series}"
+    if poids > 0:
+        debut = f"prochain_{exercice}_{poids}_kilos_{series}_{mot_series}"
+    else:
+        debut = f"prochain_{exercice}_{series}_{mot_series}"
 
     if etape["mode"] == "repetitions":
-        return f"{debut}_{etape['repetitions']}_reps"
+        return f"{debut}_{etape['repetitions']}_repetitions"
 
     if etape["mode"] == "maintien":
         return f"{debut}_{etape['duree']}_secondes"
@@ -170,6 +186,11 @@ def nom_annonce_etape(etape):
 
 
 def annoncer_prochaine_etape(etape, annonce_secours):
+
+    print("ANNONCE PROCHAINE ETAPE APPELEE")
+    print(etape)
+
+
     if etape is None:
         return
 
@@ -184,18 +205,14 @@ def annoncer_prochaine_etape(etape, annonce_secours):
     )
 
     if not candidats:
+        print("AUCUN WAV ETAPE TROUVE")
+        print("Recherche :", nom)
         coach(annonce_secours)
         return
 
     fichier = random.choice(candidats)
 
-    jouer(
-        str(
-            fichier.relative_to(
-                DOSSIER_ANNONCES_ETAPES.parent
-            )
-        )
-    )
+    jouer(fichier.name)
 
 
 def annoncer_progression(repetitions, cible):
@@ -245,3 +262,35 @@ def annoncer_temps_restant(bloc, secondes_restantes):
 
 
     bloc.temps_restant_precedent = secondes_restantes
+
+def annoncer_temps_repos(seance, state, annoncer_exercice=False):
+
+    secondes_restantes = int(seance.temps_restant)
+
+
+    if (
+        not hasattr(seance, "repos_restant_precedent")
+        or seance.repos_restant_precedent is None
+    ):
+        seance.repos_restant_precedent = secondes_restantes
+        return
+
+
+    seuils = [
+        (20, "repos_20"),
+        (10, "repos_10"),
+        (5, "repos_5"),
+    ]
+
+
+    for seuil, message in seuils:
+
+        if (
+            seance.repos_restant_precedent > seuil
+            and secondes_restantes <= seuil
+        ):
+            coach(message)
+            break
+
+
+    seance.repos_restant_precedent = secondes_restantes

@@ -11,7 +11,7 @@ from mouvements.compteur import CompteurMouvement
 from mouvements.outils import HoldPosition
 import threading
 from web.app import lancer_site, ouvrir_navigateur
-from audio.coach import coach, annoncer_prochaine_etape
+from audio.coach import coach, annoncer_prochaine_etape,annoncer_temps_repos
 import session.seances
 from mouvements.positions import (
     bras_droit_leve,
@@ -104,37 +104,69 @@ try:
             # ==================================
             # Le coach (une seule fois par changement de phase)
             # ==================================
+                        
             if seance.phase != ancienne_phase:
 
                 if seance.phase == "preparation":
                     coach("preparation")
 
+
                 elif seance.phase == "exercice":
-                    if ancienne_phase == "preparation":
-                        annoncer_prochaine_etape(
-                            state.prochaine_etape,
-                            "debut_serie"
-                        )
-                    else:
+
+                    if ancienne_phase in (
+                        "recuperation_serie",
+                        "repos_exercice"
+                    ):
                         coach("debut_serie")
 
+                    seance.repos_restant_precedent = None
+
+
                 elif seance.phase == "recuperation_serie":
-                    annoncer_prochaine_etape(
-                        state.prochaine_etape,
-                        "repos"
+
+                    coach("repos")
+
+                    seance.repos_restant_precedent = int(
+                        seance.temps_restant
                     )
 
+
                 elif seance.phase == "repos_exercice":
+
+                    coach("repos")
+
                     annoncer_prochaine_etape(
                         state.prochaine_etape,
                         "changement_exercice"
                     )
 
+                    seance.repos_restant_precedent = int(
+                        seance.temps_restant
+                    )
+
+
                 elif seance.phase == "termine":
+
                     coach("fin_seance")
 
-            ancienne_phase = seance.phase
 
+            ancienne_phase = seance.phase
+            
+            if seance.phase == "recuperation_serie":
+                annoncer_temps_repos(
+                    seance,
+                    state,
+                    annoncer_exercice=False
+                )
+
+
+            elif seance.phase == "repos_exercice":
+
+                annoncer_temps_repos(
+                    seance,
+                    state,
+                    annoncer_exercice=False
+                )        
             # ==================================
             # SEANCE TERMINEE
             # ==================================
@@ -187,6 +219,10 @@ try:
                         state.stage = "Préparation"
 
                         if termine:
+                            annoncer_prochaine_etape(
+                                state.prochaine_etape,
+                                "debut_serie"
+                            )
                             fin_preparation = time.time()
 
                     else:
@@ -196,6 +232,7 @@ try:
                         state.stage = "Prêt ! Redescendez les bras..."
 
                         if temps_ecoule >= DELAI_AVANT_EXERCICE:
+                            coach("debut_serie")
                             seance.commencer_exercice()
                             fin_preparation = None
 
