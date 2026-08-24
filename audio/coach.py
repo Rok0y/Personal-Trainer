@@ -80,7 +80,7 @@ messages = {
     "repos_5": [
         "repos_5.wav",
     ],
-    "bip": ["bip.wav",],
+    "bip": ["bip.wav"],
     }
 
 
@@ -142,7 +142,7 @@ def coach(event, valeur=None):
         priorites.get(event, 5)
     )
 
-DOSSIER_ANNONCES_ETAPES = Path(__file__).with_name("Fichiers")
+DOSSIER_ANNONCES_ETAPES = Path(__file__).with_name("Fichiers") / "annonces_etapes"
 
 
 def normaliser_nom(texte):

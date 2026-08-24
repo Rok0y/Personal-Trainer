@@ -2,7 +2,7 @@
 import time
 import state
 import cv2
-from session.moteur import executer_mode, decrire_prochaine_etape
+from session.moteur import executer_mode, decrire_prochaine_etape, mettre_a_jour_prochain_exercice
 from historique.database import initialiser, enregistrer_seance
 from audio.lecteur import jouer
 from vision.detector import PoseDetector
@@ -75,6 +75,10 @@ try:
         corps = detection.detect(frame) if controleur.statut == "running" else None
         """cette variable dit si il y a un corps à l'écran ou non"""
 
+        if seance is not None and controleur.statut == "running" and corps is None:
+            seance.update()
+            mettre_a_jour_prochain_exercice(seance, state)
+
         if controleur.statut == "paused":
             state.phase = "pause"
             state.stage = "En pause"
@@ -107,6 +111,7 @@ try:
             # MACHINE DU CIRCUIT
             # ==================================
             seance.update()
+            mettre_a_jour_prochain_exercice(seance, state)
 
             # ==================================
             # Le coach (une seule fois par changement de phase)
@@ -196,7 +201,8 @@ try:
 
                     enregistrer_seance(
                         duree=seance.duree_totale,
-                        exercices=seance.exporter()
+                        exercices=seance.exporter(),
+                        nom_seance=controleur.nom_selectionne,
                     )
 
                     seance.historique_enregistre = True
@@ -294,6 +300,18 @@ try:
             # ==================================
 
             frame = dessiner_squelette(frame, corps)
+
+        # La fin doit être publiée même si la pose disparaît à la dernière frame.
+        if seance is not None and seance.phase == "termine":
+            controleur.marquer_terminee()
+            state.phase = "termine"
+            state.serie_actuelle = 0
+            state.nombre_series = 0
+            state.repetitions_cibles = 0
+            state.temps_repos_restant = 0
+            state.poids = 0
+            state.exercice_actuel = "Séance terminée"
+            state.stage = "Terminé"
 
         # ==========================================
         # ENCODAGE POUR LE FEED WEB

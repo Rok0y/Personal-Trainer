@@ -46,6 +46,7 @@ class Circuit:
         self.debut_repos = None
         self.historique_enregistre = False
         self.debut = time.time()
+        self.resultats_series = []
 
 
     @property
@@ -101,17 +102,53 @@ class Circuit:
     @property
     def duree_totale(self):
         return int(time.time() - self.debut)
+
+    @property
+    def nombre_series_total(self):
+        return sum(bloc.nombre_series for bloc in self.exercices)
+
+    @property
+    def series_terminees(self):
+        return sum(bloc.nombre_series for bloc in self.exercices[:self.index_exercice]) + max(0, self.serie_actuelle - 1)
+
+    def passer_pause(self):
+        if self.phase not in ("recuperation_serie", "repos_exercice"):
+            return False
+        self.debut_repos = None
+        if self.phase == "recuperation_serie":
+            self.phase = "exercice"
+        else:
+            self.passer_exercice_suivant()
+        return True
     
 
     def exporter(self):
         exercices = []
-        for bloc in self.exercices:
+        for index, bloc in enumerate(self.exercices):
+            resultats = [
+                resultat for resultat in self.resultats_series
+                if resultat["index_exercice"] == index
+            ]
             exercices.append({
                 "nom": bloc.exercice.nom,
-                "series": bloc.nombre_series,
-                "repetitions": bloc.repetitions_par_serie
+                "series": len(resultats),
+                "repetitions": sum(resultat.get("repetitions", 0) for resultat in resultats),
+                "poids": bloc.poids,
+                "mode": bloc.mode,
+                "duree": bloc.duree,
+                "series_cibles": bloc.nombre_series,
+                "repetitions_cibles": bloc.repetitions_par_serie,
             })
         return exercices
+
+    def enregistrer_resultat_serie(self, repetitions=0, duree=0, completee=True):
+        self.resultats_series.append({
+            "index_exercice": self.index_exercice,
+            "serie": self.serie_actuelle,
+            "repetitions": repetitions,
+            "duree": duree,
+            "completee": completee,
+        })
 
     def _reinitialiser_etat_serie(self):
         bloc = self.bloc_actuel

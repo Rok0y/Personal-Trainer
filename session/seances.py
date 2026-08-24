@@ -1,4 +1,6 @@
 from copy import deepcopy
+import json
+from pathlib import Path
 
 from session.circuit import Circuit, BlocExercice,MODE_CHRONO,MODE_MAINTIEN,MODE_REPETITIONS,MODE_AMRAP
 
@@ -19,6 +21,18 @@ from mouvements.exercices import (
     planche_laterale_droite,
     planche_laterale_gauche
 )
+
+FICHIER_SEANCES_PERSONNALISEES = Path(__file__).with_name("seances_personnalisees.json")
+CATALOGUE_EXERCICES = {
+    exercice.nom: exercice
+    for exercice in (
+        curl_biceps_droit, curl_biceps_gauche, elevation_laterale, pompe,
+        extension_triceps_au_dessus_de_la_tete, developpe_couche_sol,
+        developpe_epaule, crunches, planche, squat, fente_droite,
+        fente_gauche, souleve_roumain, planche_laterale_droite,
+        planche_laterale_gauche,
+    )
+}
 
 Test_exercice = Circuit([
     BlocExercice(
@@ -294,15 +308,54 @@ CATALOGUE_SEANCES = {
 }
 
 
+def catalogue_exercices():
+    return {
+        nom: {"nom": exercice.nom, "description": exercice.description}
+        for nom, exercice in CATALOGUE_EXERCICES.items()
+    }
+
+
+def _lire_seances_personnalisees():
+    if not FICHIER_SEANCES_PERSONNALISEES.exists():
+        return {}
+    with FICHIER_SEANCES_PERSONNALISEES.open(encoding="utf-8") as fichier:
+        return json.load(fichier)
+
+
+def enregistrer_seance_personnalisee(nom, blocs):
+    donnees = _lire_seances_personnalisees()
+    donnees[nom] = blocs
+    with FICHIER_SEANCES_PERSONNALISEES.open("w", encoding="utf-8") as fichier:
+        json.dump(donnees, fichier, ensure_ascii=False, indent=2)
+
+
+def creer_seance_personnalisee(nom):
+    blocs = _lire_seances_personnalisees().get(nom)
+    if blocs is None:
+        raise KeyError(f"Séance inconnue : {nom}")
+    return Circuit([
+        BlocExercice(
+            exercice=CATALOGUE_EXERCICES[bloc["exercice"]],
+            poids=bloc["poids"],
+            mode=bloc["mode"],
+            nombre_series=bloc["series"],
+            repetitions_par_serie=bloc.get("repetitions", 0),
+            duree=bloc.get("duree", 0),
+            repos_entre_series=bloc["repos_entre_series"],
+            repos_apres=bloc["repos_apres"],
+        ) for bloc in blocs
+    ])
+
+
 def creer_seance(nom):
     """Retourne un circuit neuf, indépendant des séances déjà utilisées."""
     if nom not in CATALOGUE_SEANCES:
-        raise KeyError(f"Séance inconnue : {nom}")
+        return creer_seance_personnalisee(nom)
     return deepcopy(CATALOGUE_SEANCES[nom])
 
 
 def catalogue():
-    return {
+    resultats = {
         nom: {
             "nom": nom,
             "exercices": circuit.exporter(),
@@ -310,3 +363,10 @@ def catalogue():
         }
         for nom, circuit in CATALOGUE_SEANCES.items()
     }
+    for nom, blocs in _lire_seances_personnalisees().items():
+        resultats[nom] = {
+            "nom": nom,
+            "nombre_exercices": len(blocs),
+            "exercices": blocs,
+        }
+    return resultats

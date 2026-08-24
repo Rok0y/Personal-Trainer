@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Créer une séance</title>
+<style>
+body{margin:0;background:#f4f0e8;color:#172026;font-family:Arial,sans-serif}main{width:min(900px,calc(100% - 40px));margin:auto;padding:44px 0}h1{font:400 clamp(38px,7vw,72px) Georgia,serif}.bloc{display:grid;grid-template-columns:2fr repeat(8,1fr);gap:8px;padding:12px 0;border-bottom:1px solid #d8d0c3}.bloc select,.bloc input{min-width:0;padding:9px;border:1px solid #d8d0c3;background:#fffaf1}.actions{margin-top:24px;display:flex;gap:12px;align-items:center}button,a{padding:12px 16px;border:1px solid #172026;background:transparent;color:#172026;text-decoration:none;cursor:pointer}button{background:#ef5b35;color:white;border-color:#ef5b35}.bloc button{padding:8px;background:#fff;color:#ef5b35;border-color:#ef5b35}@media(max-width:700px){.bloc{grid-template-columns:1fr 1fr 1fr}.bloc select{grid-column:span 3}.bloc input{width:100%}}
+</style>
+</head>
+<body><main>
+<h1>Créer une séance</h1>
+<label>Nom de la séance <input id="nom" required></label>
+<div id="blocs"></div>
+<div class="actions"><button id="ajouter" type="button">Ajouter un exercice</button><button id="enregistrer" type="button">Enregistrer</button><a href="/">Annuler</a></div>
+<script>
+const exercices={{ exercices|tojson }};const blocs=document.getElementById("blocs");
+function ajouterBloc(){const ligne=document.createElement("div");ligne.className="bloc";ligne.innerHTML=`<select class="exercice">${Object.keys(exercices).map(n=>`<option>${n}</option>`).join("")}</select><select class="mode"><option value="repetitions">Repetitions</option><option value="maintien">Maintien</option><option value="chrono">Chrono</option><option value="amrap">AMRAP</option></select><input class="poids" type="number" min="0" value="0" placeholder="kg"><input class="series" type="number" min="1" value="1" placeholder="series"><input class="repetitions" type="number" min="0" value="10" placeholder="reps"><input class="duree" type="number" min="0" value="0" placeholder="duree"><input class="reposEntre" type="number" min="0" value="30" placeholder="repos série"><input class="reposApres" type="number" min="0" value="30" placeholder="repos exercice"><button type="button">X</button>`;ligne.querySelector("button").onclick=()=>ligne.remove();blocs.appendChild(ligne)}
+document.getElementById("ajouter").onclick=ajouterBloc;ajouterBloc();
+document.getElementById("enregistrer").onclick=async()=>{const nom=document.getElementById("nom").value.trim();const lignes=[...document.querySelectorAll(".bloc")];const data={nom,blocs:lignes.map(l=>({exercice:l.querySelector(".exercice").value,mode:l.querySelector(".mode").value,poids:Number(l.querySelector(".poids").value),series:Number(l.querySelector(".series").value),repetitions:Number(l.querySelector(".repetitions").value),duree:Number(l.querySelector(".duree").value),repos_entre_series:Number(l.querySelector(".reposEntre").value),repos_apres:Number(l.querySelector(".reposApres").value)}))};const rep=await fetch("/api/seances",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});if(rep.ok)location.href="/"};
+</script></main></body></html>

@@ -1,110 +1,55 @@
 <!DOCTYPE html>
-
 <html lang="fr">
-
 <head>
-
-<meta charset="UTF-8">
-
-<title>Historique</title>
-
-
-<style>
-
-body {
-
-    background:#0a0d13;
-    color:white;
-    font-family:Arial;
-
-}
-
-
-.card {
-
-    background:#151b25;
-    padding:20px;
-    margin:20px;
-    border-radius:15px;
-
-}
-
-
-h1 {
-
-    color:#1be8c4;
-
-}
-
-
-.exercice {
-
-    margin-left:20px;
-
-}
-
-</style>
-
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historique des séances</title>
+    <style>
+        :root { --bg: #0a0d13; --panel: #151b25; --line: rgba(255,255,255,.1); --text: #f4f2ec; --muted: #8d97ab; --teal: #1be8c4; --orange: #ff5a36; }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font-family: Arial, sans-serif; }
+        main { width: min(1100px, calc(100% - 40px)); margin: auto; padding: 44px 0; }
+        header { display: flex; justify-content: space-between; align-items: center; gap: 20px; border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 24px; }
+        h1 { margin: 0; color: var(--teal); font-size: clamp(30px, 5vw, 52px); }
+        h2 { margin: 0 0 12px; font-size: 21px; }
+        a { color: var(--teal); text-decoration: none; }
+        .back { color: var(--text); }
+        .card { background: var(--panel); border: 1px solid var(--line); padding: 22px; margin: 14px 0; }
+        .meta { display: flex; flex-wrap: wrap; gap: 18px; color: var(--muted); font-size: 14px; }
+        .status { color: var(--teal); text-transform: uppercase; font-size: 12px; font-weight: bold; }
+        .status.abandoned { color: var(--orange); }
+        .exercise { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
+        .exercise-line { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .best { color: var(--orange); font-size: 13px; margin-top: 8px; }
+        .empty { color: var(--muted); }
+    </style>
 </head>
-
-
 <body>
-
-
-<h1>
-Historique des séances
-</h1>
-
-
-{% for seance in seances %}
-
-
-<div class="card">
-
-
-<h2>
-{{ seance.date }}
-</h2>
-
-
-<p>
-Durée :
-{{ seance.duree }} secondes
-</p>
-
-
-
-{% for exercice in seance.exercices %}
-
-
-<div class="exercice">
-
-✓ {{ exercice[0] }}
-
-<br>
-
-{{ exercice[1] }} séries
-
--
-
-{{ exercice[2] }} répétitions
-
-
-</div>
-
-
-{% endfor %}
-
-
-
-</div>
-
-
-{% endfor %}
-
-
-
+<main>
+    <header>
+        <h1>Historique</h1>
+        <a class="back" href="/">Accueil</a>
+    </header>
+    {% if not seances %}<p class="empty">Aucune séance enregistrée.</p>{% endif %}
+    {% for seance in seances %}
+    <article class="card">
+        {% if detail %}<a href="/historique">Retour à la liste</a>{% else %}<a href="/historique/{{ seance.id }}"><h2>{{ seance.nom or "Seance" }}</h2></a>{% endif %}
+        <div class="meta">
+            <span>{{ seance.date }}</span>
+            <span>{{ seance.duree }} secondes</span>
+            <span class="status{% if seance.statut == 'abandoned' %} abandoned{% endif %}">{{ seance.statut }}</span>
+        </div>
+        {% for exercice in seance.exercices %}
+        <section class="exercise">
+            <div class="exercise-line"><strong>{{ exercice.nom }}</strong><span>{{ exercice.mode }} · {{ exercice.poids }} kg</span></div>
+            <div class="meta">{{ exercice.series }} séries · {{ exercice.repetitions }} répétitions{% if exercice.duree %} · {{ exercice.duree }} secondes{% endif %}</div>
+            {% if exercice.mode == 'repetitions' and exercice.poids %}
+                <div class="best">Previous best : {{ meilleurs.get(exercice.nom, 0)|round(1) }} kg·répétitions</div>
+            {% endif %}
+        </section>
+        {% endfor %}
+    </article>
+    {% endfor %}
+</main>
 </body>
-
 </html>

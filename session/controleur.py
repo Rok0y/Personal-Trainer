@@ -1,6 +1,6 @@
 import threading
 
-from session.seances import catalogue, creer_seance
+from session.seances import catalogue, creer_seance, enregistrer_seance_personnalisee
 
 
 class SessionManager:
@@ -16,6 +16,11 @@ class SessionManager:
     def catalogue(self):
         with self._verrou:
             return catalogue()
+
+    def creer_seance_personnalisee(self, nom, blocs):
+        if not nom or not blocs:
+            raise ValueError("Nom et exercices requis")
+        enregistrer_seance_personnalisee(nom, blocs)
 
     def definir_reset_progression(self, callback):
         with self._verrou:
@@ -87,6 +92,18 @@ class SessionManager:
                 self.statut = "finished"
             return resultat
 
+    def passer_pause(self):
+        with self._verrou:
+            self._preparer_commande_serie()
+            return self.seance.passer_pause()
+
+    def terminer_seance(self):
+        with self._verrou:
+            if self.seance is None or self.statut not in ("running", "paused"):
+                raise RuntimeError("Aucune séance active")
+            self.seance.phase = "termine"
+            self.statut = "finished"
+
     def abandonner(self):
         with self._verrou:
             if self.seance is None or self.statut not in ("running", "paused"):
@@ -108,9 +125,22 @@ class SessionManager:
 
     def etat(self):
         with self._verrou:
+            seance_active = self.seance is not None
+            commandes = {
+                "reset": self.statut in ("running", "paused"),
+                "recommencer": self.statut in ("running", "paused"),
+                "precedente": self.statut in ("running", "paused") and seance_active and self.seance.serie_actuelle > 1,
+                "suivante": self.statut in ("running", "paused") and seance_active and self.seance.serie_actuelle < self.seance.nombre_series,
+                "terminer": self.statut in ("running", "paused"),
+                "passer_pause": self.statut in ("running", "paused") and seance_active and self.seance.phase in ("recuperation_serie", "repos_exercice"),
+                "terminer_seance": self.statut in ("running", "paused"),
+            }
             return {
                 "statut": self.statut,
                 "seance": self.nom_selectionne,
                 "phase": self.seance.phase if self.seance else "idle",
                 "serie_actuelle": self.seance.serie_actuelle if self.seance else 0,
+                "nombre_series_total": self.seance.nombre_series_total if seance_active else 0,
+                "series_terminees": self.seance.series_terminees if seance_active else 0,
+                "commandes_autorisees": commandes,
             }

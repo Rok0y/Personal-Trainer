@@ -18,6 +18,9 @@
         .session:hover, .session.selected { border-color: var(--accent); background: #fffaf1; }
         .session h2 { margin: 0 0 18px; font-size: 25px; font-weight: 400; }
         .session p { margin: 6px 0; color: #657078; font: 14px Arial, sans-serif; }
+        .session details { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; font: 13px/1.6 Arial, sans-serif; }
+        .session summary { color: var(--accent); cursor: pointer; }
+        .session ul { padding-left: 18px; color: #657078; }
         .start { margin-top: 28px; border: 0; background: var(--accent); color: white; padding: 14px 22px; font: 700 14px Arial, sans-serif; cursor: pointer; }
         .start:disabled { opacity: .4; cursor: not-allowed; }
         a { color: var(--ink); font: 14px Arial, sans-serif; }
@@ -34,12 +37,20 @@
         <button class="session{% if identifiant == selection %} selected{% endif %}" data-seance="{{ identifiant }}" type="button">
             <h2>{{ seance.nom|replace('_', ' ')|title }}</h2>
             <p>{{ seance.nombre_exercices }} exercices</p>
-            <p>{% for exercice in seance.exercices[:3] %}{{ exercice.nom }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+            <details>
+                <summary>Voir le contenu</summary>
+                <ul>
+                {% for exercice in seance.exercices %}
+                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}secondes{% else %}répétitions{% endif %}</li>
+                {% endfor %}
+                </ul>
+            </details>
         </button>
         {% endfor %}
     </section>
     <button class="start" id="demarrer" type="button" disabled>Demarrer la seance</button>
     <p><a href="/historique">Voir l'historique</a></p>
+    <p><a href="/creer-seance">Créer une séance personnalisée</a></p>
 </main>
 <script>
     let selection = {{ selection|tojson }};

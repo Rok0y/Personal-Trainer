@@ -34,6 +34,13 @@ def initialiser():
         )
     """)
 
+    colonnes_seances = {
+        ligne[1] for ligne in curseur.execute("PRAGMA table_info(seances)")
+    }
+    if "statut" not in colonnes_seances:
+        curseur.execute("ALTER TABLE seances ADD COLUMN statut TEXT DEFAULT 'finished'")
+    if "nom_seance" not in colonnes_seances:
+        curseur.execute("ALTER TABLE seances ADD COLUMN nom_seance TEXT")
 
     # Table des exercices réalisés
     curseur.execute("""
@@ -55,6 +62,16 @@ def initialiser():
         )
     """)
 
+    colonnes_exercices = {
+        ligne[1] for ligne in curseur.execute("PRAGMA table_info(exercices)")
+    }
+    if "poids" not in colonnes_exercices:
+        curseur.execute("ALTER TABLE exercices ADD COLUMN poids REAL DEFAULT 0")
+    if "mode" not in colonnes_exercices:
+        curseur.execute("ALTER TABLE exercices ADD COLUMN mode TEXT")
+    if "duree" not in colonnes_exercices:
+        curseur.execute("ALTER TABLE exercices ADD COLUMN duree REAL DEFAULT 0")
+
 
     conn.commit()
 
@@ -64,7 +81,9 @@ def initialiser():
 
 def enregistrer_seance(
     duree,
-    exercices
+    exercices,
+    statut="finished",
+    nom_seance=None
 ):
 
     conn = connexion()
@@ -82,13 +101,15 @@ def enregistrer_seance(
     curseur.execute(
         """
         INSERT INTO seances
-        (date, duree)
+        (date, duree, statut, nom_seance)
 
-        VALUES (?, ?)
+        VALUES (?, ?, ?, ?)
         """,
         (
             date,
-            duree
+            duree,
+            statut,
+            nom_seance
         )
     )
 
@@ -109,10 +130,13 @@ def enregistrer_seance(
                 seance_id,
                 nom,
                 series,
-                repetitions
+                repetitions,
+                poids,
+                mode,
+                duree
             )
 
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
 
             """,
 
@@ -120,7 +144,10 @@ def enregistrer_seance(
                 seance_id,
                 exercice["nom"],
                 exercice["series"],
-                exercice["repetitions"]
+                exercice["repetitions"],
+                exercice.get("poids", 0),
+                exercice.get("mode"),
+                exercice.get("duree", 0)
             )
         )
 
@@ -140,7 +167,9 @@ def recuperer_historique():
         SELECT
             id,
             date,
-            duree
+            duree,
+            statut,
+            nom_seance
         FROM seances
 
         ORDER BY id DESC
@@ -162,7 +191,10 @@ def recuperer_historique():
             SELECT
                 nom,
                 series,
-                repetitions
+                repetitions,
+                poids,
+                mode,
+                duree
 
             FROM exercices
 
@@ -176,9 +208,22 @@ def recuperer_historique():
 
         resultat.append({
 
+            "id": seance[0],
             "date": seance[1],
             "duree": seance[2],
-            "exercices": exercices
+            "statut": seance[3] or "finished",
+            "nom": seance[4],
+            "exercices": [
+                {
+                    "nom": exercice[0],
+                    "series": exercice[1],
+                    "repetitions": exercice[2],
+                    "poids": exercice[3] or 0,
+                    "mode": exercice[4] or "repetitions",
+                    "duree": exercice[5] or 0,
+                }
+                for exercice in exercices
+            ]
 
         })
 

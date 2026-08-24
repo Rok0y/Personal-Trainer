@@ -98,6 +98,10 @@ def gerer_mode_repetitions(
     state.repetitions = repetitions
 
     if repetitions >= bloc.repetitions_par_serie:
+        seance.enregistrer_resultat_serie(
+            repetitions=repetitions,
+            completee=True,
+        )
         seance.terminer_serie()
         mettre_a_jour_prochain_exercice(seance,state)
         compteur.reset()
@@ -155,6 +159,10 @@ def gerer_mode_maintien(
 
     if bloc.temps_maintien >= bloc.duree:
 
+        seance.enregistrer_resultat_serie(
+            duree=bloc.temps_maintien,
+            completee=True,
+        )
         seance.terminer_serie()
         mettre_a_jour_prochain_exercice(seance,state)
         bloc.temps_maintien = 0
@@ -186,6 +194,10 @@ def gerer_mode_chrono(
         state.temps_chrono = bloc.temps_chrono
         state.chrono_termine = True
 
+        seance.enregistrer_resultat_serie(
+            duree=bloc.temps_chrono,
+            completee=True,
+        )
         seance.terminer_serie()
         mettre_a_jour_prochain_exercice(seance, state)
 
@@ -251,6 +263,10 @@ def gerer_mode_amrap(
     # fin du défi
     if bloc.temps_amrap >= bloc.duree:
 
+        seance.enregistrer_resultat_serie(
+            repetitions=repetitions,
+            completee=True,
+        )
         seance.terminer_serie()
         mettre_a_jour_prochain_exercice(seance,state)
         bloc.temps_amrap = 0
@@ -277,9 +293,14 @@ def decrire_prochaine_etape(bloc, nombre_series):
     }
 
 def mettre_a_jour_prochain_exercice(circuit, state):
-    print("mise à jour prochaine étape")
-    print("phase actuelle :", circuit.phase)
-    print("bloc :", circuit.bloc_actuel)
+    if circuit.phase in ("preparation", "exercice"):
+        bloc = circuit.bloc_actuel
+        state.prochaine_etape = decrire_prochaine_etape(
+            bloc,
+            circuit.nombre_series - circuit.serie_actuelle + 1
+            if bloc else 0,
+        )
+        return
     # --------------------------------------
     # Repos entre deux séries
     # On reprend le même exercice

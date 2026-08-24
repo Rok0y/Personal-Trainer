@@ -1,6 +1,7 @@
 from flask import Flask, render_template, jsonify, Response, request, redirect
 from historique.database import recuperer_historique
 from session.controleur import SessionManager
+from session.seances import catalogue_exercices
 import webbrowser
 import state
 import time
@@ -15,6 +16,20 @@ logging.getLogger("werkzeug").addFilter(FiltreEtat())
 
 app = Flask(__name__)
 controleur = SessionManager()
+
+
+def meilleurs_volumes(seances):
+    meilleurs = {}
+    for seance in seances:
+        if seance.get("statut") == "abandoned":
+            continue
+        for exercice in seance.get("exercices", []):
+            if exercice.get("mode") != "repetitions":
+                continue
+            volume = (exercice.get("poids") or 0) * (exercice.get("series") or 0) * (exercice.get("repetitions") or 0)
+            nom = exercice.get("nom")
+            meilleurs[nom] = max(meilleurs.get(nom, 0), volume)
+    return meilleurs
 
 
 def executer_commande(fonction):
@@ -62,6 +77,8 @@ def index():
 @app.route("/etat")
 def etat():
 
+    etat_session = controleur.etat()
+
     return jsonify({
 
         "position_actuelle":state.position_actuelle,
@@ -84,13 +101,31 @@ def etat():
         "temps_chrono": state.temps_chrono,
         "chrono_termine": state.chrono_termine,
         "prochaine_etape": state.prochaine_etape,
-        "statut_session": controleur.etat()["statut"],
+        "statut_session": etat_session["statut"],
+        "series_terminees": etat_session["series_terminees"],
+        "nombre_series_total": etat_session["nombre_series_total"],
+        "commandes_autorisees": etat_session["commandes_autorisees"],
     })
 
 
 @app.route("/api/seances")
 def seances_disponibles():
     return jsonify(controleur.catalogue())
+
+
+@app.route("/creer-seance")
+def creer_seance_page():
+    return render_template("creer_seance.html", exercices=catalogue_exercices())
+
+
+@app.route("/api/seances", methods=["POST"])
+def creer_seance_api():
+    donnees = request.get_json(silent=True) or {}
+    try:
+        controleur.creer_seance_personnalisee(donnees.get("nom"), donnees.get("blocs"))
+        return jsonify({"ok": True}), 201
+    except (KeyError, ValueError) as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
 
 
 @app.route("/api/seance/selectionner", methods=["POST"])
@@ -133,6 +168,16 @@ def commander_serie(commande):
     if commande not in commandes:
         return jsonify({"ok": False, "erreur": "Commande inconnue"}), 404
     return executer_commande(commandes[commande])
+
+
+@app.route("/api/pause/passer", methods=["POST"])
+def passer_pause():
+    return executer_commande(controleur.passer_pause)
+
+
+@app.route("/api/seance/terminer", methods=["POST"])
+def terminer_seance():
+    return executer_commande(controleur.terminer_seance)
 
 
 @app.route("/api/seance/abandonner", methods=["POST"])
@@ -200,5 +245,24 @@ def historique():
 
     return render_template(
         "historique.html",
-        seances=donnees
+        seances=donnees,
+        meilleurs=meilleurs_volumes(donnees),
+        detail=False,
+    )
+
+
+@app.route("/historique/<int:seance_id>")
+def detail_historique(seance_id):
+    donnees = recuperer_historique()
+    seance = next(
+        (element for element in donnees if element["id"] == seance_id),
+        None,
+    )
+    if seance is None:
+        return "Seance introuvable", 404
+    return render_template(
+        "historique.html",
+        seances=[seance],
+        meilleurs=meilleurs_volumes(donnees),
+        detail=True,
     )

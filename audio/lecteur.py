@@ -8,7 +8,7 @@ pygame.mixer.init()
 
 DOSSIER_SONS = os.path.join(
     os.path.dirname(__file__),
-    "fichiers"
+    "Fichiers"
 )
 
 file_audio = queue.PriorityQueue()
@@ -30,6 +30,10 @@ def lecteur_audio():
         if os.path.exists(chemin):
 
             son = pygame.mixer.Sound(chemin)
+
+            # Les annonces courtes doivent rester clairement audibles.
+            if nom == "bip.wav":
+                son.set_volume(1.0)
 
             son.play()
 
