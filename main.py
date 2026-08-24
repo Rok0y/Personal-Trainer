@@ -29,7 +29,7 @@ ancienne_phase = None
 derniere_rep = 0
 fin_preparation = None 
 DELAI_AVANT_EXERCICE = 3
-seance = session.seances.seance_jambes_abdos
+seance = session.seances.seance_Upper_Push
 """sers à choisir la séance, depuis les séances dispo dans session.seances"""
 
 state.prochaine_etape = decrire_prochaine_etape(
