@@ -4,24 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Historique des séances</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        :root { --bg: #0a0d13; --panel: #151b25; --line: rgba(255,255,255,.1); --text: #f4f2ec; --muted: #8d97ab; --teal: #1be8c4; --orange: #ff5a36; }
+        :root {
+            --bg: #0a0d13;
+            --glass: rgba(15, 19, 28, 0.6);
+            --glass-strong: rgba(15, 19, 28, 0.82);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.14);
+            --text: #f4f2ec;
+            --muted: #8d97ab;
+            --orange: #ff5a36;
+            --orange-glow: rgba(255, 90, 54, 0.45);
+            --teal: #1be8c4;
+            --teal-glow: rgba(27, 232, 196, 0.45);
+        }
         * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font-family: Arial, sans-serif; }
+        body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Space Grotesk', Arial, sans-serif; }
         main { width: min(1100px, calc(100% - 40px)); margin: auto; padding: 44px 0; }
-        header { display: flex; justify-content: space-between; align-items: center; gap: 20px; border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 24px; }
-        h1 { margin: 0; color: var(--teal); font-size: clamp(30px, 5vw, 52px); }
-        h2 { margin: 0 0 12px; font-size: 21px; }
-        a { color: var(--teal); text-decoration: none; }
-        .back { color: var(--text); }
-        .card { background: var(--panel); border: 1px solid var(--line); padding: 22px; margin: 14px 0; }
-        .meta { display: flex; flex-wrap: wrap; gap: 18px; color: var(--muted); font-size: 14px; }
-        .status { color: var(--teal); text-transform: uppercase; font-size: 12px; font-weight: bold; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center; gap: 20px;
+            border-bottom: 1px solid var(--border); padding-bottom: 22px; margin-bottom: 28px;
+            animation: dropIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        h1 {
+            margin: 0; font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+            color: var(--teal); font-size: clamp(34px, 5vw, 56px); letter-spacing: .01em;
+        }
+        h2 { margin: 0 0 12px; font-family: 'Bebas Neue', 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 400; letter-spacing: .01em; }
+
+        a { color: var(--teal); text-decoration: none; font-weight: 700; font-size: 13px; letter-spacing: .02em; }
+        a:hover { text-decoration: underline; }
+        a.back {
+            color: var(--text); border: 1px solid var(--border-strong); border-radius: 999px;
+            padding: 9px 18px; text-transform: uppercase; letter-spacing: .06em;
+        }
+        a.back:hover { border-color: var(--teal); color: var(--teal); text-decoration: none; }
+
+        .card {
+            background: var(--glass); border: 1px solid var(--border-strong); border-radius: 18px;
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            padding: 24px; margin: 14px 0; box-shadow: 0 20px 50px rgba(0,0,0,.35);
+        }
+        .card > a { display: block; }
+
+        .meta { display: flex; flex-wrap: wrap; gap: 18px; color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+        .status {
+            color: var(--teal); text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 6px var(--teal-glow); }
         .status.abandoned { color: var(--orange); }
-        .exercise { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
-        .exercise-line { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-        .best { color: var(--orange); font-size: 13px; margin-top: 8px; }
+        .status.abandoned::before { background: var(--orange); box-shadow: 0 0 6px var(--orange-glow); }
+
+        .exercise { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 14px; }
+        .exercise-line { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+        .exercise-line strong { font-weight: 700; }
+        .best { color: var(--orange); font-size: 12px; margin-top: 8px; text-transform: uppercase; letter-spacing: .04em; }
         .empty { color: var(--muted); }
+
+        @keyframes dropIn { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>

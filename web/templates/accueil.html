@@ -4,26 +4,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Personal Trainer - Selection</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        :root { --ink: #172026; --paper: #f4f0e8; --accent: #ef5b35; --line: #d8d0c3; }
+        :root {
+            --bg: #0a0d13;
+            --glass: rgba(15, 19, 28, 0.6);
+            --glass-strong: rgba(15, 19, 28, 0.82);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.14);
+            --text: #f4f2ec;
+            --muted: #8d97ab;
+            --orange: #ff5a36;
+            --orange-glow: rgba(255, 90, 54, 0.45);
+            --teal: #1be8c4;
+            --teal-glow: rgba(27, 232, 196, 0.45);
+        }
+
         * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; color: var(--ink); background: var(--paper); font-family: Georgia, serif; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Space Grotesk', Arial, sans-serif;
+        }
+
         main { width: min(1080px, calc(100% - 40px)); margin: 0 auto; padding: 56px 0; }
-        header { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 42px; border-bottom: 1px solid var(--line); padding-bottom: 24px; }
-        h1 { margin: 0; font-size: clamp(42px, 8vw, 88px); line-height: .9; font-weight: 400; }
-        .kicker { margin: 0 0 8px; color: var(--accent); font: 700 12px Arial, sans-serif; letter-spacing: .16em; text-transform: uppercase; }
-        .hint { max-width: 250px; margin: 0; font: 14px/1.5 Arial, sans-serif; color: #657078; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: end; gap: 24px;
+            margin-bottom: 42px; border-bottom: 1px solid var(--border); padding-bottom: 24px;
+            animation: dropIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .kicker {
+            margin: 0 0 8px; display: inline-flex; align-items: center; gap: 8px;
+            color: var(--orange); font: 700 12px 'Space Grotesk', sans-serif;
+            letter-spacing: .16em; text-transform: uppercase;
+        }
+        .kicker::before {
+            content: ""; width: 8px; height: 8px; border-radius: 50%;
+            background: var(--orange); box-shadow: 0 0 8px var(--orange-glow);
+            animation: pulseDot 2s ease-in-out infinite;
+        }
+
+        h1 {
+            margin: 0; font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+            font-size: clamp(42px, 8vw, 88px); line-height: .92; font-weight: 400;
+            letter-spacing: .01em;
+        }
+
+        .hint { max-width: 250px; margin: 0; font: 14px/1.5 'Space Grotesk', sans-serif; color: var(--muted); }
+
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
-        .session { border: 1px solid var(--line); background: rgba(255,255,255,.35); padding: 22px; text-align: left; cursor: pointer; color: inherit; font: inherit; }
-        .session:hover, .session.selected { border-color: var(--accent); background: #fffaf1; }
-        .session h2 { margin: 0 0 18px; font-size: 25px; font-weight: 400; }
-        .session p { margin: 6px 0; color: #657078; font: 14px Arial, sans-serif; }
-        .session details { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; font: 13px/1.6 Arial, sans-serif; }
-        .session summary { color: var(--accent); cursor: pointer; }
-        .session ul { padding-left: 18px; color: #657078; }
-        .start { margin-top: 28px; border: 0; background: var(--accent); color: white; padding: 14px 22px; font: 700 14px Arial, sans-serif; cursor: pointer; }
-        .start:disabled { opacity: .4; cursor: not-allowed; }
-        a { color: var(--ink); font: 14px Arial, sans-serif; }
+
+        .session {
+            border: 1px solid var(--border-strong); background: var(--glass);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            border-radius: 18px; padding: 22px; text-align: left; cursor: pointer;
+            color: inherit; font: inherit; transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+        }
+        .session:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+        .session.selected {
+            border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal-glow), 0 20px 50px rgba(0,0,0,.45);
+        }
+
+        .session h2 { margin: 0 0 18px; font-family: 'Bebas Neue', 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 400; letter-spacing: .01em; }
+        .session p { margin: 6px 0; color: var(--muted); font: 14px 'Space Grotesk', sans-serif; }
+
+        .session details { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 12px; font: 13px/1.6 'Space Grotesk', sans-serif; }
+        .session summary { color: var(--teal); cursor: pointer; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; font-weight: 600; }
+        .session ul { padding-left: 18px; color: var(--muted); margin: 10px 0 0; }
+        .session li { margin: 4px 0; }
+
+        .start {
+            margin-top: 28px; border: 0; border-radius: 999px; background: var(--orange); color: #0a0d13;
+            padding: 14px 26px; font: 700 14px 'Space Grotesk', sans-serif; letter-spacing: .04em;
+            text-transform: uppercase; cursor: pointer; box-shadow: 0 0 24px var(--orange-glow);
+            transition: opacity .2s ease, transform .2s ease;
+        }
+        .start:hover:not(:disabled) { transform: translateY(-1px); }
+        .start:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
+
+        .links { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 18px; }
+        a { color: var(--teal); font: 700 13px 'Space Grotesk', sans-serif; text-decoration: none; letter-spacing: .02em; }
+        a:hover { text-decoration: underline; }
+
+        @keyframes dropIn { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulseDot { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: .6; } }
     </style>
 </head>
 <body>
@@ -49,8 +122,10 @@
         {% endfor %}
     </section>
     <button class="start" id="demarrer" type="button" disabled>Demarrer la seance</button>
-    <p><a href="/historique">Voir l'historique</a></p>
-    <p><a href="/creer-seance">Créer une séance personnalisée</a></p>
+    <div class="links">
+        <a href="/historique">Voir l'historique</a>
+        <a href="/creer-seance">Créer une séance personnalisée</a>
+    </div>
 </main>
 <script>
     let selection = {{ selection|tojson }};

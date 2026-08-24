@@ -3,15 +3,99 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Créer une séance</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
-body{margin:0;background:#f4f0e8;color:#172026;font-family:Arial,sans-serif}main{width:min(900px,calc(100% - 40px));margin:auto;padding:44px 0}h1{font:400 clamp(38px,7vw,72px) Georgia,serif}.bloc{display:grid;grid-template-columns:2fr repeat(8,1fr);gap:8px;padding:12px 0;border-bottom:1px solid #d8d0c3}.bloc select,.bloc input{min-width:0;padding:9px;border:1px solid #d8d0c3;background:#fffaf1}.actions{margin-top:24px;display:flex;gap:12px;align-items:center}button,a{padding:12px 16px;border:1px solid #172026;background:transparent;color:#172026;text-decoration:none;cursor:pointer}button{background:#ef5b35;color:white;border-color:#ef5b35}.bloc button{padding:8px;background:#fff;color:#ef5b35;border-color:#ef5b35}@media(max-width:700px){.bloc{grid-template-columns:1fr 1fr 1fr}.bloc select{grid-column:span 3}.bloc input{width:100%}}
+    :root {
+        --bg: #0a0d13;
+        --glass: rgba(15, 19, 28, 0.6);
+        --glass-strong: rgba(15, 19, 28, 0.82);
+        --border: rgba(255, 255, 255, 0.08);
+        --border-strong: rgba(255, 255, 255, 0.14);
+        --text: #f4f2ec;
+        --muted: #8d97ab;
+        --orange: #ff5a36;
+        --orange-glow: rgba(255, 90, 54, 0.45);
+        --teal: #1be8c4;
+        --teal-glow: rgba(27, 232, 196, 0.45);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Space Grotesk', Arial, sans-serif; }
+    main { width: min(900px, calc(100% - 40px)); margin: auto; padding: 44px 0; }
+
+    h1 {
+        margin: 0 0 8px; font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+        font-size: clamp(38px, 7vw, 72px); font-weight: 400; letter-spacing: .01em;
+    }
+    .kicker {
+        margin: 0 0 8px; display: inline-flex; align-items: center; gap: 8px;
+        color: var(--orange); font: 700 12px 'Space Grotesk', sans-serif;
+        letter-spacing: .16em; text-transform: uppercase;
+    }
+    .kicker::before {
+        content: ""; width: 8px; height: 8px; border-radius: 50%;
+        background: var(--orange); box-shadow: 0 0 8px var(--orange-glow);
+    }
+
+    label { display: block; margin: 28px 0 20px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    #nom {
+        display: block; margin-top: 10px; width: 100%; max-width: 420px;
+        padding: 13px 16px; border-radius: 10px; border: 1px solid var(--border-strong);
+        background: var(--glass); color: var(--text); font: 15px 'Space Grotesk', sans-serif;
+    }
+    #nom:focus { outline: none; border-color: var(--teal); }
+
+    .bloc {
+        display: grid; grid-template-columns: 2fr repeat(8, 1fr); gap: 8px; align-items: center;
+        padding: 14px; margin: 10px 0; border: 1px solid var(--border); border-radius: 14px;
+        background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .bloc select, .bloc input {
+        min-width: 0; padding: 10px; border-radius: 8px; border: 1px solid var(--border-strong);
+        background: rgba(255,255,255,.04); color: var(--text); font: 13px 'Space Grotesk', sans-serif;
+    }
+    .bloc select:focus, .bloc input:focus { outline: none; border-color: var(--teal); }
+    .bloc select option { background: #0f1420; color: var(--text); }
+
+    .actions { margin-top: 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+    button, a.btn {
+        padding: 12px 18px; border-radius: 999px; border: 1px solid var(--border-strong);
+        background: transparent; color: var(--text); text-decoration: none; cursor: pointer;
+        font: 700 13px 'Space Grotesk', sans-serif; letter-spacing: .03em; text-transform: uppercase;
+        transition: border-color .2s ease, color .2s ease;
+    }
+    button:hover, a.btn:hover { border-color: var(--teal); color: var(--teal); }
+
+    #enregistrer { background: var(--orange); color: #0a0d13; border-color: var(--orange); box-shadow: 0 0 24px var(--orange-glow); }
+    #enregistrer:hover { color: #0a0d13; border-color: var(--orange); opacity: .9; }
+
+    .bloc button {
+        padding: 8px; border-radius: 8px; background: transparent; color: var(--orange);
+        border-color: var(--border-strong); font-size: 13px;
+    }
+    .bloc button:hover { border-color: var(--orange); color: var(--orange); }
+
+    @media (max-width: 700px) {
+        .bloc { grid-template-columns: 1fr 1fr 1fr; }
+        .bloc select { grid-column: span 3; }
+        .bloc input { width: 100%; }
+    }
 </style>
 </head>
 <body><main>
+<p class="kicker">Personal Trainer</p>
 <h1>Créer une séance</h1>
-<label>Nom de la séance <input id="nom" required></label>
+<label for="nom">Nom de la séance <input id="nom" required></label>
 <div id="blocs"></div>
-<div class="actions"><button id="ajouter" type="button">Ajouter un exercice</button><button id="enregistrer" type="button">Enregistrer</button><a href="/">Annuler</a></div>
+<div class="actions">
+    <button id="ajouter" type="button">Ajouter un exercice</button>
+    <button id="enregistrer" type="button">Enregistrer</button>
+    <a class="btn" href="/">Annuler</a>
+</div>
 <script>
 const exercices={{ exercices|tojson }};const blocs=document.getElementById("blocs");
 function ajouterBloc(){const ligne=document.createElement("div");ligne.className="bloc";ligne.innerHTML=`<select class="exercice">${Object.keys(exercices).map(n=>`<option>${n}</option>`).join("")}</select><select class="mode"><option value="repetitions">Repetitions</option><option value="maintien">Maintien</option><option value="chrono">Chrono</option><option value="amrap">AMRAP</option></select><input class="poids" type="number" min="0" value="0" placeholder="kg"><input class="series" type="number" min="1" value="1" placeholder="series"><input class="repetitions" type="number" min="0" value="10" placeholder="reps"><input class="duree" type="number" min="0" value="0" placeholder="duree"><input class="reposEntre" type="number" min="0" value="30" placeholder="repos série"><input class="reposApres" type="number" min="0" value="30" placeholder="repos exercice"><button type="button">X</button>`;ligne.querySelector("button").onclick=()=>ligne.remove();blocs.appendChild(ligne)}
