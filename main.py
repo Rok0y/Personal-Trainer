@@ -10,7 +10,7 @@ from vision.dessin import dessiner_squelette
 from mouvements.compteur import CompteurMouvement
 from mouvements.outils import HoldPosition
 import threading
-from web.app import lancer_site, ouvrir_navigateur
+from web.app import lancer_site, ouvrir_navigateur, controleur
 from audio.coach import coach, annoncer_prochaine_etape,annoncer_temps_repos
 import session.seances
 from mouvements.positions import (
@@ -29,8 +29,10 @@ ancienne_phase = None
 derniere_rep = 0
 fin_preparation = None 
 DELAI_AVANT_EXERCICE = 3
-seance = session.seances.seance_Upper_Push
-"""sers à choisir la séance, depuis les séances dispo dans session.seances"""
+controleur.definir_reset_progression(lambda: compteur.reset())
+seance = controleur.selectionner("upper_push")
+controleur.demarrer()
+"""La séance active est partagée avec l'API web."""
 
 state.prochaine_etape = decrire_prochaine_etape(
     seance.bloc_actuel,
@@ -72,6 +74,10 @@ try:
         corps = detection.detect(frame)
         """cette variable dit si il y a un corps à l'écran ou non"""
 
+        if controleur.statut == "paused":
+            state.phase = "pause"
+            state.stage = "En pause"
+            corps = None
         if corps is not None:
             """soit si il détecte un corps à l'écran"""
 

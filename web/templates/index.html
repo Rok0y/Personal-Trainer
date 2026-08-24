@@ -530,6 +530,32 @@
             animation-delay: 0.15s;
         }
 
+        .series-controls {
+            position: absolute;
+            left: 28px;
+            bottom: 28px;
+            z-index: 5;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-width: min(620px, calc(100vw - 56px));
+        }
+
+        .series-controls button {
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text);
+            background: var(--glass-strong);
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .series-controls button:hover {
+            border-color: var(--teal);
+            color: var(--teal);
+        }
+
         .card {
             background: var(--glass-strong);
             border: 1px solid var(--border-strong);
@@ -1000,9 +1026,55 @@
 
     </div>
 
+    <nav class="series-controls" aria-label="Commandes de série">
+        <button type="button" data-commande="/api/serie/reset">Reset série</button>
+        <button type="button" data-commande="/api/serie/recommencer">Recommencer</button>
+        <button type="button" data-commande="/api/serie/precedente">Série précédente</button>
+        <button type="button" data-commande="/api/serie/suivante">Série suivante</button>
+        <button type="button" data-commande="/api/serie/terminer">Série terminée</button>
+        <button type="button" data-commande="/api/seance/pause">Pause</button>
+        <button type="button" data-commande="/api/seance/reprendre">Reprendre</button>
+        <button type="button" data-commande="/api/seance/abandonner">Abandonner</button>
+    </nav>
+
 </div>
 
 <script>
+
+    async function envoyerCommande(url) {
+        const reponse = await fetch(url, { method: "POST" });
+        const donnees = await reponse.json();
+        if (!reponse.ok || !donnees.ok) {
+            throw new Error(donnees.erreur || "Commande impossible");
+        }
+        mettreAJourEtat();
+    }
+
+    function initialiserCommandes() {
+        document.querySelectorAll("[data-commande]").forEach((bouton) => {
+            bouton.addEventListener("click", () => {
+                envoyerCommande(bouton.dataset.commande).catch(console.error);
+            });
+        });
+
+        document.addEventListener("keydown", (evenement) => {
+            if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) {
+                return;
+            }
+            const commandes = {
+                r: "/api/serie/reset",
+                e: "/api/serie/recommencer",
+                ArrowLeft: "/api/serie/precedente",
+                ArrowRight: "/api/serie/suivante",
+                Enter: "/api/serie/terminer",
+            };
+            const url = commandes[evenement.key];
+            if (url) {
+                evenement.preventDefault();
+                envoyerCommande(url).catch(console.error);
+            }
+        });
+    }
 
     // ==========================================================
     // AFFICHAGE DE L'ENTRAÎNEMENT (multi-modes)
@@ -1459,6 +1531,7 @@
             });
         }
 
+    initialiserCommandes();
     setInterval(mettreAJourEtat, 100);
     mettreAJourEtat();
 

@@ -17,6 +17,10 @@ class SessionManager:
         with self._verrou:
             return catalogue()
 
+    def definir_reset_progression(self, callback):
+        with self._verrou:
+            self._reset_progression = callback
+
     def selectionner(self, nom):
         with self._verrou:
             if self.statut in ("running", "paused"):
