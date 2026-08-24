@@ -104,7 +104,11 @@ def selectionner_seance():
 
 @app.route("/api/seance/demarrer", methods=["POST"])
 def demarrer_seance():
-    return executer_commande(controleur.demarrer)
+    def demarrer_et_retourner_etat():
+        controleur.demarrer()
+        return controleur.etat()
+
+    return executer_commande(demarrer_et_retourner_etat)
 
 
 @app.route("/api/seance/pause", methods=["POST"])
