@@ -113,6 +113,68 @@ class Circuit:
             })
         return exercices
 
+    def _reinitialiser_etat_serie(self):
+        bloc = self.bloc_actuel
+        if bloc is None:
+            return
+
+        bloc.temps_maintien = 0
+        bloc.temps_restant_precedent = None
+        for nom in (
+            "dernier_maintien",
+            "derniere_seconde_bip",
+            "debut_chrono",
+            "temps_chrono",
+            "debut_amrap",
+            "temps_amrap",
+        ):
+            if hasattr(bloc, nom):
+                delattr(bloc, nom)
+
+    def remettre_serie_a_zero(self):
+        """Efface la progression de la série courante sans changer d'index."""
+        self._reinitialiser_etat_serie()
+        if self.phase not in ("termine", "preparation"):
+            self.phase = "exercice"
+            self.debut_repos = None
+
+    def recommencer_serie(self):
+        """Relance entièrement la série courante depuis son état initial."""
+        self._reinitialiser_etat_serie()
+        self.phase = "exercice"
+        self.debut_repos = None
+
+    def serie_precedente(self):
+        """Revient à la série précédente, si elle existe."""
+        if self.serie_actuelle <= 1 or self.bloc_actuel is None:
+            return False
+
+        self.serie_actuelle -= 1
+        self._reinitialiser_etat_serie()
+        self.phase = "exercice"
+        self.debut_repos = None
+        return True
+
+    def serie_suivante(self):
+        """Avance à la série suivante, sans dépasser le bloc actuel."""
+        if self.serie_actuelle >= self.nombre_series or self.bloc_actuel is None:
+            return False
+
+        self.serie_actuelle += 1
+        self._reinitialiser_etat_serie()
+        self.phase = "exercice"
+        self.debut_repos = None
+        return True
+
+    def terminer_serie_manuellement(self):
+        """Valide immédiatement la série courante et lance la transition."""
+        if self.phase in ("termine", "preparation"):
+            return False
+
+        self._reinitialiser_etat_serie()
+        self.terminer_serie()
+        return True
+
     def terminer_serie(self):
 
         """

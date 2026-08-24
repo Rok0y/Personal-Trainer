@@ -1,5 +1,6 @@
-from flask import Flask, render_template, jsonify, Response
+from flask import Flask, render_template, jsonify, Response, request
 from historique.database import recuperer_historique
+from session.controleur import SessionManager
 import webbrowser
 import state
 import time
@@ -13,6 +14,19 @@ logging.getLogger("werkzeug").addFilter(FiltreEtat())
 
 
 app = Flask(__name__)
+controleur = SessionManager()
+
+
+def executer_commande(fonction):
+    try:
+        resultat = fonction()
+        return jsonify({
+            "ok": True,
+            "resultat": resultat,
+            "etat": controleur.etat(),
+        })
+    except (KeyError, RuntimeError) as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 409
 
 
 # ==========================================
@@ -56,7 +70,56 @@ def etat():
         "temps_chrono": state.temps_chrono,
         "chrono_termine": state.chrono_termine,
         "prochaine_etape": state.prochaine_etape,
+        "statut_session": controleur.etat()["statut"],
     })
+
+
+@app.route("/api/seances")
+def seances_disponibles():
+    return jsonify(controleur.catalogue())
+
+
+@app.route("/api/seance/selectionner", methods=["POST"])
+def selectionner_seance():
+    donnees = request.get_json(silent=True) or {}
+    nom = donnees.get("nom")
+    if not nom:
+        return jsonify({"ok": False, "erreur": "Le nom de séance est requis"}), 400
+    return executer_commande(lambda: controleur.selectionner(nom) and controleur.etat())
+
+
+@app.route("/api/seance/demarrer", methods=["POST"])
+def demarrer_seance():
+    return executer_commande(controleur.demarrer)
+
+
+@app.route("/api/seance/pause", methods=["POST"])
+def mettre_en_pause():
+    return executer_commande(controleur.mettre_en_pause)
+
+
+@app.route("/api/seance/reprendre", methods=["POST"])
+def reprendre_seance():
+    return executer_commande(controleur.reprendre)
+
+
+@app.route("/api/serie/<commande>", methods=["POST"])
+def commander_serie(commande):
+    commandes = {
+        "reset": controleur.remettre_serie_a_zero,
+        "recommencer": controleur.recommencer_serie,
+        "precedente": controleur.serie_precedente,
+        "suivante": controleur.serie_suivante,
+        "terminer": controleur.terminer_serie,
+    }
+    if commande not in commandes:
+        return jsonify({"ok": False, "erreur": "Commande inconnue"}), 404
+    return executer_commande(commandes[commande])
+
+
+@app.route("/api/seance/abandonner", methods=["POST"])
+def abandonner_seance():
+    return executer_commande(controleur.abandonner)
 
 
 # ==========================================

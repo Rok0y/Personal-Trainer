@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from session.circuit import Circuit, BlocExercice,MODE_CHRONO,MODE_MAINTIEN,MODE_REPETITIONS,MODE_AMRAP
 
 from mouvements.exercices import (
@@ -282,3 +284,29 @@ seance_jambes_abdos = Circuit([
         repos_apres=90
     ),
 ])
+
+
+CATALOGUE_SEANCES = {
+    "bras": seance_bras,
+    "test": seance_test,
+    "upper_push": seance_Upper_Push,
+    "jambes_abdos": seance_jambes_abdos,
+}
+
+
+def creer_seance(nom):
+    """Retourne un circuit neuf, indépendant des séances déjà utilisées."""
+    if nom not in CATALOGUE_SEANCES:
+        raise KeyError(f"Séance inconnue : {nom}")
+    return deepcopy(CATALOGUE_SEANCES[nom])
+
+
+def catalogue():
+    return {
+        nom: {
+            "nom": nom,
+            "exercices": circuit.exporter(),
+            "nombre_exercices": len(circuit.exercices),
+        }
+        for nom, circuit in CATALOGUE_SEANCES.items()
+    }
