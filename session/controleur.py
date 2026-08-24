@@ -28,6 +28,8 @@ class SessionManager:
             self.seance = creer_seance(nom)
             self.nom_selectionne = nom
             self.statut = "ready"
+            if self._reset_progression is not None:
+                self._reset_progression()
             return self.seance
 
     def demarrer(self):
@@ -90,6 +92,19 @@ class SessionManager:
             if self.seance is None or self.statut not in ("running", "paused"):
                 raise RuntimeError("Aucune séance active")
             self.statut = "abandoned"
+
+    def marquer_terminee(self):
+        with self._verrou:
+            if self.seance is not None and self.seance.phase == "termine":
+                self.statut = "finished"
+
+    def nouvelle_seance(self):
+        with self._verrou:
+            if self.statut in ("running", "paused"):
+                raise RuntimeError("Une séance est déjà en cours")
+            self.seance = None
+            self.nom_selectionne = None
+            self.statut = "idle"
 
     def etat(self):
         with self._verrou:

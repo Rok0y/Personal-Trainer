@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, Response, request
+from flask import Flask, render_template, jsonify, Response, request, redirect
 from historique.database import recuperer_historique
 from session.controleur import SessionManager
 import webbrowser
@@ -35,6 +35,20 @@ def executer_commande(fonction):
 
 @app.route("/")
 def index():
+
+    if controleur.statut in ("idle", "ready"):
+        return render_template(
+            "accueil.html",
+            seances=controleur.catalogue(),
+            selection=controleur.nom_selectionne,
+        )
+
+    if controleur.statut in ("finished", "abandoned"):
+        return render_template(
+            "fin.html",
+            etat=controleur.etat(),
+            exercices=controleur.seance.exporter() if controleur.seance else [],
+        )
 
     return render_template(
         "index.html"
@@ -120,6 +134,15 @@ def commander_serie(commande):
 @app.route("/api/seance/abandonner", methods=["POST"])
 def abandonner_seance():
     return executer_commande(controleur.abandonner)
+
+
+@app.route("/nouvelle")
+def nouvelle_seance():
+    try:
+        controleur.nouvelle_seance()
+    except RuntimeError:
+        return redirect("/")
+    return redirect("/")
 
 
 # ==========================================

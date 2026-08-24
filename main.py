@@ -31,7 +31,6 @@ fin_preparation = None
 DELAI_AVANT_EXERCICE = 3
 controleur.definir_reset_progression(lambda: compteur.reset())
 seance = controleur.selectionner("upper_push")
-controleur.demarrer()
 """La séance active est partagée avec l'API web."""
 
 state.prochaine_etape = decrire_prochaine_etape(
@@ -70,8 +69,10 @@ try:
             print("Impossible de lire la caméra.")
             break
 
+        seance = controleur.seance
+
         # DETECTION DU CORPS
-        corps = detection.detect(frame)
+        corps = detection.detect(frame) if controleur.statut == "running" else None
         """cette variable dit si il y a un corps à l'écran ou non"""
 
         if controleur.statut == "paused":
@@ -178,6 +179,8 @@ try:
             # ==================================
 
             if seance.phase == "termine":
+
+                controleur.marquer_terminee()
 
                 state.phase = seance.phase
                 state.serie_actuelle = 0
