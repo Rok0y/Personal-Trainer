@@ -62,7 +62,7 @@ def index():
         return render_template(
             "fin.html",
             etat=controleur.etat(),
-            exercices=controleur.seance.exporter() if controleur.seance else [],
+            exercices=controleur.seance.exporter_resultats() if controleur.seance else [],
         )
 
     return render_template(

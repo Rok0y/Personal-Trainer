@@ -34,6 +34,33 @@ CATALOGUE_EXERCICES = {
     )
 }
 
+MATERIEL_EXERCICES = {
+    "Curl biceps droit": "Deux haltères",
+    "Curl biceps gauche": "Deux haltères",
+    "Elevations latérales": "Deux haltères",
+    "Pompes": "Aucun matériel",
+    "Developpé couché altères": "Deux haltères et un tapis ou banc",
+    "Extension Triceps": "Un haltère",
+    "Développé épaule": "Deux haltères",
+    "Crunches": "Un tapis",
+    "Gainage planche": "Un tapis",
+    "Squat": "Un haltère et un tapis",
+    "Fente droite": "Un haltère et un tapis",
+    "Fente gauche": "Un haltère et un tapis",
+    "Souleve de terre roumain": "Deux haltères",
+    "Gainage planche laterale gauche": "Un tapis",
+    "Gainage planche laterale droite": "Un tapis",
+}
+
+
+def materiel_exercice(nom, poids):
+    materiel = MATERIEL_EXERCICES.get(nom, "A préciser")
+    if not poids or "haltère" not in materiel:
+        return materiel
+    if materiel.startswith("Deux haltères"):
+        return materiel.replace("Deux haltères", f"Deux haltères de {poids} kg", 1)
+    return materiel.replace("Un haltère", f"Un haltère de {poids} kg", 1)
+
 Test_exercice = Circuit([
     BlocExercice(
         exercice=planche_laterale_droite,
@@ -310,7 +337,11 @@ CATALOGUE_SEANCES = {
 
 def catalogue_exercices():
     return {
-        nom: {"nom": exercice.nom, "description": exercice.description}
+        nom: {
+            "nom": exercice.nom,
+            "description": exercice.description,
+            "materiel": materiel_exercice(nom, 0),
+        }
         for nom, exercice in CATALOGUE_EXERCICES.items()
     }
 
@@ -358,15 +389,38 @@ def catalogue():
     resultats = {
         nom: {
             "nom": nom,
-            "exercices": circuit.exporter(),
+            "exercices": circuit.exporter_configuration(),
             "nombre_exercices": len(circuit.exercices),
         }
         for nom, circuit in CATALOGUE_SEANCES.items()
     }
     for nom, blocs in _lire_seances_personnalisees().items():
+        exercices = [
+            {
+                **bloc,
+                "nom": bloc["exercice"],
+                "materiel": MATERIEL_EXERCICES.get(
+                    bloc["exercice"],
+                    "A préciser",
+                ),
+            }
+            for bloc in blocs
+        ]
         resultats[nom] = {
             "nom": nom,
             "nombre_exercices": len(blocs),
-            "exercices": blocs,
+            "exercices": exercices,
+            "materiel": sorted({exercice["materiel"] for exercice in exercices}),
         }
+    for seance in resultats.values():
+        for exercice in seance["exercices"]:
+            exercice["materiel"] = materiel_exercice(
+                exercice["nom"],
+                exercice.get("poids", 0),
+            )
+        seance["materiel"] = sorted({
+            exercice["materiel"]
+            for exercice in seance["exercices"]
+            if exercice["materiel"] != "Aucun matériel"
+        })
     return resultats

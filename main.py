@@ -201,7 +201,7 @@ try:
 
                     enregistrer_seance(
                         duree=seance.duree_totale,
-                        exercices=seance.exporter(),
+                        exercices=seance.exporter_resultats(),
                         nom_seance=controleur.nom_selectionne,
                     )
 

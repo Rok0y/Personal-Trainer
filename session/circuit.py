@@ -122,7 +122,20 @@ class Circuit:
         return True
     
 
-    def exporter(self):
+    def exporter_configuration(self):
+        return [
+            {
+                "nom": bloc.exercice.nom,
+                "series": bloc.nombre_series,
+                "repetitions": bloc.repetitions_par_serie,
+                "poids": bloc.poids,
+                "mode": bloc.mode,
+                "duree": bloc.duree,
+            }
+            for bloc in self.exercices
+        ]
+
+    def exporter_resultats(self):
         exercices = []
         for index, bloc in enumerate(self.exercices):
             resultats = [
@@ -140,6 +153,10 @@ class Circuit:
                 "repetitions_cibles": bloc.repetitions_par_serie,
             })
         return exercices
+
+    def exporter(self):
+        """Conserve l'ancien nom pour l'export des résultats réalisés."""
+        return self.exporter_resultats()
 
     def enregistrer_resultat_serie(self, repetitions=0, duree=0, completee=True):
         self.resultats_series.append({

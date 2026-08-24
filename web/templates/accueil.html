@@ -81,6 +81,7 @@
         .session summary { color: var(--teal); cursor: pointer; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; font-weight: 600; }
         .session ul { padding-left: 18px; color: var(--muted); margin: 10px 0 0; }
         .session li { margin: 4px 0; }
+        .equipment { margin: 12px 0 0; color: var(--text); font-size: 13px; }
 
         .start {
             margin-top: 28px; border: 0; border-radius: 999px; background: var(--orange); color: #0a0d13;
@@ -110,11 +111,14 @@
         <button class="session{% if identifiant == selection %} selected{% endif %}" data-seance="{{ identifiant }}" type="button">
             <h2>{{ seance.nom|replace('_', ' ')|title }}</h2>
             <p>{{ seance.nombre_exercices }} exercices</p>
+            {% if seance.materiel %}
+            <p class="equipment"><strong>Matériel :</strong> {{ seance.materiel|join(', ') }}</p>
+            {% endif %}
             <details>
                 <summary>Voir le contenu</summary>
                 <ul>
                 {% for exercice in seance.exercices %}
-                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}secondes{% else %}répétitions{% endif %}</li>
+                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}secondes{% else %}répétitions{% endif %}{% if exercice.materiel and exercice.materiel != 'Aucun matériel' %} · {{ exercice.materiel }}{% endif %}</li>
                 {% endfor %}
                 </ul>
             </details>
