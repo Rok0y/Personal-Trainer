@@ -49,12 +49,15 @@
     #nom:focus { outline: none; border-color: var(--teal); }
 
     .bloc {
-        display: grid; grid-template-columns: 2fr repeat(8, 1fr); gap: 8px; align-items: center;
+        display: grid; grid-template-columns: 2fr repeat(8, 1fr); gap: 8px; align-items: end;
         padding: 14px; margin: 10px 0; border: 1px solid var(--border); border-radius: 14px;
         background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     }
+    .champ { min-width: 0; }
+    .champ label { display: block; margin: 0 0 6px; color: var(--muted); font-size: 10px; line-height: 1.2; text-transform: uppercase; letter-spacing: .05em; }
+    .champ label span { display: block; color: var(--text); font-size: 11px; text-transform: none; letter-spacing: 0; }
     .bloc select, .bloc input {
-        min-width: 0; padding: 10px; border-radius: 8px; border: 1px solid var(--border-strong);
+        width: 100%; min-width: 0; padding: 10px; border-radius: 8px; border: 1px solid var(--border-strong);
         background: rgba(255,255,255,.04); color: var(--text); font: 13px 'Space Grotesk', sans-serif;
     }
     .bloc select:focus, .bloc input:focus { outline: none; border-color: var(--teal); }
@@ -73,7 +76,7 @@
     #enregistrer { background: var(--orange); color: #0a0d13; border-color: var(--orange); box-shadow: 0 0 24px var(--orange-glow); }
     #enregistrer:hover { color: #0a0d13; border-color: var(--orange); opacity: .9; }
 
-    .bloc button {
+    .bloc > button {
         padding: 8px; border-radius: 8px; background: transparent; color: var(--orange);
         border-color: var(--border-strong); font-size: 13px;
     }
@@ -81,14 +84,14 @@
 
     @media (max-width: 700px) {
         .bloc { grid-template-columns: 1fr 1fr 1fr; }
-        .bloc select { grid-column: span 3; }
-        .bloc input { width: 100%; }
+        .champ:first-child, .champ:nth-child(2) { grid-column: span 3; }
     }
 </style>
 </head>
 <body><main>
 <p class="kicker">Personal Trainer</p>
 <h1>Créer une séance</h1>
+<p class="hint">Choisis un exercice et un mode. Les durées et les temps de repos sont en secondes.</p>
 <label for="nom">Nom de la séance <input id="nom" required></label>
 <div id="blocs"></div>
 <div class="actions">
@@ -98,7 +101,7 @@
 </div>
 <script>
 const exercices={{ exercices|tojson }};const blocs=document.getElementById("blocs");
-function ajouterBloc(){const ligne=document.createElement("div");ligne.className="bloc";ligne.innerHTML=`<select class="exercice">${Object.keys(exercices).map(n=>`<option>${n}</option>`).join("")}</select><select class="mode"><option value="repetitions">Repetitions</option><option value="maintien">Maintien</option><option value="chrono">Chrono</option><option value="amrap">AMRAP</option></select><input class="poids" type="number" min="0" value="0" placeholder="kg"><input class="series" type="number" min="1" value="1" placeholder="series"><input class="repetitions" type="number" min="0" value="10" placeholder="reps"><input class="duree" type="number" min="0" value="0" placeholder="duree"><input class="reposEntre" type="number" min="0" value="30" placeholder="repos série"><input class="reposApres" type="number" min="0" value="30" placeholder="repos exercice"><button type="button">X</button>`;ligne.querySelector("button").onclick=()=>ligne.remove();blocs.appendChild(ligne)}
+function ajouterBloc(){const ligne=document.createElement("div");ligne.className="bloc";ligne.innerHTML=`<div class="champ"><label>Exercice</label><select class="exercice">${Object.keys(exercices).map(n=>`<option>${n}</option>`).join("")}</select></div><div class="champ"><label>Mode</label><select class="mode"><option value="repetitions">Repetitions</option><option value="maintien">Maintien</option><option value="chrono">Chrono</option><option value="amrap">AMRAP</option></select></div><div class="champ"><label>Poids <span>en kg</span></label><input class="poids" type="number" min="0" value="0"></div><div class="champ"><label>Séries</label><input class="series" type="number" min="1" value="1"></div><div class="champ"><label>Répétitions</label><input class="repetitions" type="number" min="0" value="10"></div><div class="champ"><label>Durée <span>en secondes</span></label><input class="duree" type="number" min="0" value="0"></div><div class="champ"><label>Repos série <span>en secondes</span></label><input class="reposEntre" type="number" min="0" value="30"></div><div class="champ"><label>Repos exercice <span>en secondes</span></label><input class="reposApres" type="number" min="0" value="30"></div><button type="button" aria-label="Supprimer cet exercice">X</button>`;ligne.querySelector("button").onclick=()=>ligne.remove();blocs.appendChild(ligne)}
 document.getElementById("ajouter").onclick=ajouterBloc;ajouterBloc();
 document.getElementById("enregistrer").onclick=async()=>{const nom=document.getElementById("nom").value.trim();const lignes=[...document.querySelectorAll(".bloc")];const data={nom,blocs:lignes.map(l=>({exercice:l.querySelector(".exercice").value,mode:l.querySelector(".mode").value,poids:Number(l.querySelector(".poids").value),series:Number(l.querySelector(".series").value),repetitions:Number(l.querySelector(".repetitions").value),duree:Number(l.querySelector(".duree").value),repos_entre_series:Number(l.querySelector(".reposEntre").value),repos_apres:Number(l.querySelector(".reposApres").value)}))};const rep=await fetch("/api/seances",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});if(rep.ok)location.href="/"};
 </script></main></body></html>

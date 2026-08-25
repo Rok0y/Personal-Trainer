@@ -1,0 +1,64 @@
+{
+  "Upper Pull": [
+    {
+      "exercice": "Rowing unilateral droit",
+      "mode": "repetitions",
+      "poids": 14,
+      "series": 4,
+      "repetitions": 8,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 45
+    },
+    {
+      "exercice": "Rowing unilateral gauche",
+      "mode": "repetitions",
+      "poids": 14,
+      "series": 4,
+      "repetitions": 8,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 90
+    },
+    {
+      "exercice": "Rowing penche",
+      "mode": "repetitions",
+      "poids": 8,
+      "series": 3,
+      "repetitions": 8,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 90
+    },
+    {
+      "exercice": "Curl biceps droit",
+      "mode": "repetitions",
+      "poids": 8,
+      "series": 4,
+      "repetitions": 11,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 90
+    },
+    {
+      "exercice": "Curl biceps gauche",
+      "mode": "repetitions",
+      "poids": 8,
+      "series": 4,
+      "repetitions": 11,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 90
+    },
+    {
+      "exercice": "Oiseau",
+      "mode": "repetitions",
+      "poids": 8,
+      "series": 3,
+      "repetitions": 12,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 0
+    }
+  ]
+}

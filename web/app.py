@@ -56,6 +56,7 @@ def index():
             "accueil.html",
             seances=controleur.catalogue(),
             selection=controleur.nom_selectionne,
+            exercices=catalogue_exercices(),
         )
 
     if controleur.statut in ("finished", "abandoned"):
@@ -85,12 +86,14 @@ def etat():
         "exercice_actuel":state.exercice_actuel,
         "poids": state.poids,
         "stage": state.stage,
+        "erreur": state.erreur,
         "repetitions":state.repetitions,
         "repetitions_cibles":state.repetitions_cibles,
         "serie_actuelle":state.serie_actuelle,
         "nombre_series":state.nombre_series,
         "phase":state.phase,
         "temps_repos_restant": state.temps_repos_restant,
+        "duree_session": controleur.seance.duree_totale if controleur.seance else 0,
         "temps_amrap_restant": state.temps_amrap_restant,
         "maintien_termine":state.maintien_termine,
         "progression_maintien":state.progression_maintien,
@@ -103,6 +106,7 @@ def etat():
         "prochaine_etape": state.prochaine_etape,
         "statut_session": etat_session["statut"],
         "series_terminees": etat_session["series_terminees"],
+        "exercices": etat_session["exercices"],
         "nombre_series_total": etat_session["nombre_series_total"],
         "commandes_autorisees": etat_session["commandes_autorisees"],
     })
@@ -128,12 +132,27 @@ def creer_seance_api():
         return jsonify({"ok": False, "erreur": str(erreur)}), 400
 
 
+@app.route("/api/seances/<nom>", methods=["DELETE"])
+def supprimer_seance_api(nom):
+    try:
+        controleur.supprimer_seance_personnalisee(nom)
+        return jsonify({"ok": True})
+    except KeyError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 404
+
+
 @app.route("/api/seance/selectionner", methods=["POST"])
 def selectionner_seance():
     donnees = request.get_json(silent=True) or {}
     nom = donnees.get("nom")
     if not nom:
         return jsonify({"ok": False, "erreur": "Le nom de séance est requis"}), 400
+    if nom == "test" and donnees.get("exercice") and donnees.get("mode"):
+        return executer_commande(
+            lambda: controleur.selectionner_test(
+                donnees["exercice"], donnees["mode"]
+            ) and controleur.etat()
+        )
     return executer_commande(lambda: controleur.selectionner(nom) and controleur.etat())
 
 

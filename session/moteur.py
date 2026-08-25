@@ -63,6 +63,13 @@ def executer_mode(
     raise NotImplementedError(
         f"Mode inconnu : {bloc.mode}"
     )
+
+
+def mettre_a_jour_erreur(exercice, corps, state):
+    state.erreur = next(
+        (message for verifier in exercice.erreurs if (message := verifier(corps))),
+        None,
+    )
     
     
 
@@ -77,6 +84,7 @@ def gerer_mode_repetitions(
     derniere_rep
 ):
     serie_terminee = False
+    mettre_a_jour_erreur(exercice, corps, state)
     stage_detecte = exercice.detection(corps)
 
     stage, repetitions = compteur.mettre_a_jour(stage_detecte)
@@ -120,6 +128,7 @@ def gerer_mode_maintien(
     coach
 ):
 
+    mettre_a_jour_erreur(bloc.exercice, corps, state)
     position = bloc.exercice.detection(corps)
     if position == "maintien":
         bloc.position_maintien_validee = True
@@ -222,6 +231,7 @@ def gerer_mode_amrap(
     derniere_rep
 ):
 
+    mettre_a_jour_erreur(bloc.exercice, corps, state)
     maintenant = time.monotonic()
 
     if not hasattr(bloc, "debut_amrap"):

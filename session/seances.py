@@ -19,7 +19,11 @@ from mouvements.exercices import (
     fente_gauche,
     souleve_roumain,
     planche_laterale_droite,
-    planche_laterale_gauche
+    planche_laterale_gauche,
+    rowing_unilateral_droit,
+    rowing_unilateral_gauche,
+    rowing_penche,
+    oiseau,
 )
 
 FICHIER_SEANCES_PERSONNALISEES = Path(__file__).with_name("seances_personnalisees.json")
@@ -30,7 +34,7 @@ CATALOGUE_EXERCICES = {
         extension_triceps_au_dessus_de_la_tete, developpe_couche_sol,
         developpe_epaule, crunches, planche, squat, fente_droite,
         fente_gauche, souleve_roumain, planche_laterale_droite,
-        planche_laterale_gauche,
+        planche_laterale_gauche, rowing_unilateral_droit,rowing_unilateral_gauche, rowing_penche, oiseau,
     )
 }
 
@@ -38,18 +42,22 @@ MATERIEL_EXERCICES = {
     "Curl biceps droit": "Deux haltères",
     "Curl biceps gauche": "Deux haltères",
     "Elevations latérales": "Deux haltères",
-    "Pompes": "Aucun matériel",
-    "Developpé couché altères": "Deux haltères et un tapis ou banc",
+    "Pompes": "",
+    "Developpé couché altères": "Deux haltères et un tapis",
     "Extension Triceps": "Un haltère",
     "Développé épaule": "Deux haltères",
     "Crunches": "Un tapis",
     "Gainage planche": "Un tapis",
-    "Squat": "Un haltère et un tapis",
-    "Fente droite": "Un haltère et un tapis",
-    "Fente gauche": "Un haltère et un tapis",
+    "Squat": "Deux haltères et un tapis",
+    "Fente droite": "Deux haltères et un tapis",
+    "Fente gauche": "Deux haltère et un tapis",
     "Souleve de terre roumain": "Deux haltères",
     "Gainage planche laterale gauche": "Un tapis",
     "Gainage planche laterale droite": "Un tapis",
+    "Rowing unilateral droit": "Un haltère et une chaise",
+    "Rowing unilateral gauche": "Un haltère et une chaise",
+    "Rowing penché": "Deux haltères",
+    "Oiseau": "Deux haltères"
 }
 
 
@@ -61,15 +69,67 @@ def materiel_exercice(nom, poids):
         return materiel.replace("Deux haltères", f"Deux haltères de {poids} kg", 1)
     return materiel.replace("Un haltère", f"Un haltère de {poids} kg", 1)
 
+
+def formater_materiel(materiels):
+    """Regroupe le matériel d'une séance dans une phrase lisible."""
+    elements = set()
+    poids_deux_haltere = []
+    poids_un_haltere = []
+
+    for materiel in materiels:
+        if not materiel or materiel == "Aucun matériel":
+            continue
+        if "tapis" in materiel:
+            elements.add("Un tapis")
+        if "Deux haltères" in materiel:
+            poids = materiel.removeprefix("Deux haltères de ").split(" et un tapis")[0]
+            if poids != materiel:
+                if poids not in poids_deux_haltere:
+                    poids_deux_haltere.append(poids)
+            else:
+                elements.add("Deux haltères")
+        elif "Deux haltère" in materiel:
+            elements.add("Deux haltères")
+        if "Un haltère" in materiel:
+            poids = materiel.removeprefix("Un haltère de ").split(" et un tapis")[0]
+            if poids != materiel:
+                if poids not in poids_un_haltere:
+                    poids_un_haltere.append(poids)
+            else:
+                elements.add("Un haltère")
+
+    def poids_formates(poids):
+        return ", ".join(poids[:-1]) + " et " + poids[-1] if len(poids) > 1 else poids[0]
+
+    if poids_deux_haltere:
+        elements.add(f"Deux haltères de {poids_formates(poids_deux_haltere)}")
+    if poids_un_haltere:
+        elements.add(f"Un haltère de {poids_formates(poids_un_haltere)}")
+
+    ordre = {"Un tapis": 0, "Deux haltères": 1, "Un haltère": 2}
+    elements_ordonnes = sorted(
+        elements,
+        key=lambda element: (ordre.get(element, 3), element),
+    )
+    elements_ordonnes = [
+        element if index == 0 else element[0].lower() + element[1:]
+        for index, element in enumerate(elements_ordonnes)
+    ]
+    if len(elements_ordonnes) <= 1:
+        return elements_ordonnes[0] if elements_ordonnes else ""
+    if len(elements_ordonnes) == 2:
+        return " et ".join(elements_ordonnes)
+    return ", ".join(elements_ordonnes[:-1]) + ", et " + elements_ordonnes[-1]
+
 Test_exercice = Circuit([
     BlocExercice(
-        exercice=planche_laterale_droite,
+        exercice=rowing_unilateral_droit,
         poids=0,
-        mode=MODE_MAINTIEN,
+        mode=MODE_REPETITIONS,
         nombre_series=1,
-        repetitions_par_serie=0,
-        duree=300,
-        repos_entre_series=30,
+        repetitions_par_serie=10,
+        duree=0,
+        repos_entre_series=20,
         repos_apres=10
     )
 ])
@@ -329,7 +389,7 @@ seance_jambes_abdos = Circuit([
 
 CATALOGUE_SEANCES = {
     "bras": seance_bras,
-    "test": seance_test,
+    "test": Test_exercice,
     "upper_push": seance_Upper_Push,
     "jambes_abdos": seance_jambes_abdos,
 }
@@ -360,6 +420,15 @@ def enregistrer_seance_personnalisee(nom, blocs):
         json.dump(donnees, fichier, ensure_ascii=False, indent=2)
 
 
+def supprimer_seance_personnalisee(nom):
+    donnees = _lire_seances_personnalisees()
+    if nom not in donnees:
+        raise KeyError(f"Séance personnalisée inconnue : {nom}")
+    del donnees[nom]
+    with FICHIER_SEANCES_PERSONNALISEES.open("w", encoding="utf-8") as fichier:
+        json.dump(donnees, fichier, ensure_ascii=False, indent=2)
+
+
 def creer_seance_personnalisee(nom):
     blocs = _lire_seances_personnalisees().get(nom)
     if blocs is None:
@@ -383,6 +452,24 @@ def creer_seance(nom):
     if nom not in CATALOGUE_SEANCES:
         return creer_seance_personnalisee(nom)
     return deepcopy(CATALOGUE_SEANCES[nom])
+
+
+def creer_seance_test(nom_exercice, mode):
+    if nom_exercice not in CATALOGUE_EXERCICES:
+        raise KeyError("Exercice inconnu")
+    if mode not in (MODE_REPETITIONS, MODE_MAINTIEN, MODE_CHRONO, MODE_AMRAP):
+        raise ValueError("Mode inconnu")
+
+    bloc = deepcopy(Test_exercice.exercices[0])
+    bloc.exercice = CATALOGUE_EXERCICES[nom_exercice]
+    bloc.mode = mode
+    if mode == MODE_REPETITIONS:
+        bloc.repetitions_par_serie = 10
+        bloc.duree = 0
+    else:
+        bloc.repetitions_par_serie = 0
+        bloc.duree = 10
+    return Circuit([bloc])
 
 
 def catalogue():
@@ -418,9 +505,7 @@ def catalogue():
                 exercice["nom"],
                 exercice.get("poids", 0),
             )
-        seance["materiel"] = sorted({
-            exercice["materiel"]
-            for exercice in seance["exercices"]
-            if exercice["materiel"] != "Aucun matériel"
-        })
+        seance["materiel"] = formater_materiel(
+            exercice["materiel"] for exercice in seance["exercices"]
+        )
     return resultats

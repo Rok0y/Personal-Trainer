@@ -476,3 +476,187 @@ planche_laterale_droite = Exercice(
     ],
     erreurs=[]
 )
+
+# ==================================
+# Rowing unilateral gauche
+# ==================================
+
+def rowing_unilateral_gauche_detection(corps):
+    angle_coude_gauche = calculer_angle(corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche)
+    angle_buste_gauche = calculer_angle(corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche)
+
+    poignet_au_dessus_hanche = corps.poignet_gauche.y < corps.hanche_gauche.y
+    buste_penche = angle_buste_gauche < 160
+
+    if angle_coude_gauche < 70 and poignet_au_dessus_hanche and buste_penche:
+        return "fin"
+    elif angle_coude_gauche > 150:
+        return "debut"
+    return "milieu"
+
+def rowing_unilateral_gauche_erreur_buste(corps):
+    angle_buste_gauche = calculer_angle(corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche)
+    if angle_buste_gauche >= 160:
+        return "Penche-toi davantage vers l'avant"
+    return None
+
+rowing_unilateral_gauche = Exercice(
+    nom="Rowing unilateral gauche",
+
+    detection=rowing_unilateral_gauche_detection,
+
+    description="Rowing unilatéral bras gauche : tirer l'haltère vers la hanche en contractant le dos.",
+
+    instructions=[
+        "Garde le dos droit, buste penché en avant.",
+        "Tire le coude vers l'arrière, proche du corps.",
+        "Monte le poignet au-dessus de la hanche.",
+        "Contracte l'omoplate en haut du mouvement.",
+        "Contrôle la descente."
+    ],
+
+    erreurs=[
+        rowing_unilateral_gauche_erreur_buste
+    ]
+)
+
+# ==================================
+# Rowing unilateral droit
+# ==================================
+
+def rowing_unilateral_droit_detection(corps):
+    angle_coude_droit = calculer_angle(corps.epaule_droite, corps.coude_droit, corps.poignet_droit)
+    angle_buste_droit = calculer_angle(corps.epaule_droite, corps.hanche_droite, corps.genou_droit)
+
+    poignet_au_dessus_hanche = corps.poignet_droit.y < corps.hanche_droite.y
+    buste_penche = angle_buste_droit < 160
+
+    if angle_coude_droit < 70 and poignet_au_dessus_hanche and buste_penche:
+        return "fin"
+    elif angle_coude_droit > 150:
+        return "debut"
+    return "milieu"
+
+def rowing_unilateral_droit_erreur_buste(corps):
+    angle_buste_droit = calculer_angle(corps.epaule_droite, corps.hanche_droite, corps.genou_droit)
+    if angle_buste_droit >= 160:
+        return "Penche-toi davantage vers l'avant"
+    return None
+
+rowing_unilateral_droit = Exercice(
+    nom="Rowing unilateral droit",
+
+    detection=rowing_unilateral_droit_detection,
+
+    description="Rowing unilatéral bras droit : tirer l'haltère vers la hanche en contractant le dos.",
+
+    instructions=[
+        "Garde le dos droit, buste penché en avant.",
+        "Tire le coude vers l'arrière, proche du corps.",
+        "Monte le poignet au-dessus de la hanche.",
+        "Contracte l'omoplate en haut du mouvement.",
+        "Contrôle la descente."
+    ],
+
+    erreurs=[
+        rowing_unilateral_droit_erreur_buste
+    ]
+)
+
+# ==================================
+# Rowing penche
+# ==================================
+
+def rowing_penche_detection(corps):
+    angle_coude_gauche = calculer_angle(corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche)
+    angle_buste_gauche = calculer_angle(corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche)
+
+    poignet_au_dessus_hanche = corps.poignet_gauche.y < corps.hanche_gauche.y
+    buste_penche = angle_buste_gauche < 165
+
+    if angle_coude_gauche < 70 and poignet_au_dessus_hanche and buste_penche:
+        return "fin"
+    elif angle_coude_gauche > 150:
+        return "debut"
+    return "milieu"
+
+def rowing_penche_erreur_buste(corps):
+    angle_buste_gauche = calculer_angle(corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche)
+    if angle_buste_gauche >= 165:
+        return "Penche-toi davantage vers l'avant"
+    return None
+
+def rowing_penche_erreur_genoux(corps):
+    angle_genou_gauche = calculer_angle(corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche)
+    if angle_genou_gauche < 155:
+        return "Garde les jambes presque tendues, plie moins les genoux"
+    return None
+
+rowing_penche = Exercice(
+    nom="Rowing penche",
+
+    detection=rowing_penche_detection,
+
+    description="Rowing penché à deux haltères en prise neutre : tirer les coudes le plus haut possible.",
+
+    instructions=[
+        "Penche le buste en avant, dos droit.",
+        "Garde les jambes presque tendues, avec une légère flexion des genoux.",
+        "Saisis les haltères en prise neutre.",
+        "Tire les coudes le plus haut possible, le long du corps.",
+        "Monte le poignet au-dessus de la hanche.",
+        "Contracte les omoplates en haut du mouvement.",
+        "Contrôle la descente."
+    ],
+
+    erreurs=[
+        rowing_penche_erreur_buste,
+        rowing_penche_erreur_genoux
+    ]
+)
+
+# ==================================
+# Oiseau
+# ==================================
+
+def oiseau_detection(corps):
+    angle_bras_gauche = calculer_angle(corps.hanche_gauche, corps.epaule_gauche, corps.coude_gauche)
+    angle_bras_droit = calculer_angle(corps.hanche_droite, corps.epaule_droite, corps.coude_droit)
+    angle_bras_moyen = (angle_bras_gauche + angle_bras_droit) / 2
+
+    if angle_bras_moyen > 80:
+        return "fin"
+    elif angle_bras_moyen < 30:
+        return "debut"
+    return "milieu"
+
+def oiseau_erreur_coudes(corps):
+    angle_coude_gauche = calculer_angle(corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche)
+    angle_coude_droit = calculer_angle(corps.epaule_droite, corps.coude_droit, corps.poignet_droit)
+    angle_coude_moyen = (angle_coude_gauche + angle_coude_droit) / 2
+
+    if angle_coude_moyen > 170:
+        return "Garde les coudes legerement flechis, ne tends pas completement les bras"
+    if angle_coude_moyen < 120:
+        return "Ne plie pas trop les coudes"
+    return None
+
+oiseau = Exercice(
+    nom="Oiseau",
+
+    detection=oiseau_detection,
+
+    description="Oiseau debout à deux haltères : écarter les bras sur les côtés, coudes légèrement fléchis.",
+
+    instructions=[
+        "Penche légèrement le buste en avant.",
+        "Garde les coudes légèrement fléchis.",
+        "Écarte les bras sur les côtés jusqu'à hauteur des épaules.",
+        "Contracte les omoplates en haut du mouvement.",
+        "Contrôle la descente."
+    ],
+
+    erreurs=[
+        oiseau_erreur_coudes
+    ]
+)

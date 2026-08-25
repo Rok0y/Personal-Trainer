@@ -1,6 +1,12 @@
 import threading
 
-from session.seances import catalogue, creer_seance, enregistrer_seance_personnalisee
+from session.seances import (
+    catalogue,
+    creer_seance,
+    creer_seance_test,
+    enregistrer_seance_personnalisee,
+    supprimer_seance_personnalisee,
+)
 
 
 class SessionManager:
@@ -22,6 +28,10 @@ class SessionManager:
             raise ValueError("Nom et exercices requis")
         enregistrer_seance_personnalisee(nom, blocs)
 
+    def supprimer_seance_personnalisee(self, nom):
+        with self._verrou:
+            supprimer_seance_personnalisee(nom)
+
     def definir_reset_progression(self, callback):
         with self._verrou:
             self._reset_progression = callback
@@ -32,6 +42,17 @@ class SessionManager:
                 raise RuntimeError("Une séance est déjà en cours")
             self.seance = creer_seance(nom)
             self.nom_selectionne = nom
+            self.statut = "ready"
+            if self._reset_progression is not None:
+                self._reset_progression()
+            return self.seance
+
+    def selectionner_test(self, nom_exercice, mode):
+        with self._verrou:
+            if self.statut in ("running", "paused"):
+                raise RuntimeError("Une séance est déjà en cours")
+            self.seance = creer_seance_test(nom_exercice, mode)
+            self.nom_selectionne = "test"
             self.statut = "ready"
             if self._reset_progression is not None:
                 self._reset_progression()
@@ -142,5 +163,6 @@ class SessionManager:
                 "serie_actuelle": self.seance.serie_actuelle if self.seance else 0,
                 "nombre_series_total": self.seance.nombre_series_total if seance_active else 0,
                 "series_terminees": self.seance.series_terminees if seance_active else 0,
+                "exercices": self.seance.exporter_configuration() if seance_active else [],
                 "commandes_autorisees": commandes,
             }

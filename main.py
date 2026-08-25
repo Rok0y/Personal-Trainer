@@ -2,6 +2,7 @@
 import time
 import state
 import cv2
+import ctypes
 from session.moteur import executer_mode, decrire_prochaine_etape, mettre_a_jour_prochain_exercice
 from historique.database import initialiser, enregistrer_seance
 from audio.lecteur import jouer
@@ -29,6 +30,18 @@ ancienne_phase = None
 derniere_rep = 0
 fin_preparation = None 
 DELAI_AVANT_EXERCICE = 3
+
+
+def empecher_veille():
+    if hasattr(ctypes, "windll"):
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000001 | 0x00000002)
+
+
+def autoriser_veille():
+    if hasattr(ctypes, "windll"):
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
+
+
 controleur.definir_reset_progression(lambda: compteur.reset())
 seance = controleur.selectionner("upper_push")
 """La séance active est partagée avec l'API web."""
@@ -70,9 +83,15 @@ try:
             break
 
         seance = controleur.seance
+        if controleur.statut in ("running", "paused"):
+            empecher_veille()
+        else:
+            autoriser_veille()
 
         # DETECTION DU CORPS
         corps = detection.detect(frame) if controleur.statut == "running" else None
+        if corps is None:
+            state.erreur = None
         """cette variable dit si il y a un corps à l'écran ou non"""
 
         if seance is not None and controleur.statut == "running" and corps is None:
@@ -336,5 +355,6 @@ finally:
     cap.release()
 
     detection.close()
+    autoriser_veille()
 
     print("Caméra arrêtée.")
