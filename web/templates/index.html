@@ -1098,6 +1098,11 @@
             <span class="stage-value" id="stage">Aucune</span>
         </div>
 
+        <div class="card comment-card" id="commentCard" hidden>
+            <span class="label">Note exercice</span>
+            <span class="stage-value" id="exerciseComment"></span>
+        </div>
+
     </div>
 
     <div class="hud">
@@ -1175,7 +1180,15 @@
 <script>
 
     async function envoyerCommande(url) {
-        const reponse = await fetch(url, { method: "POST" });
+        const options = { method: "POST" };
+        if (url === "/api/serie/terminer") {
+            options.headers = { "Content-Type": "application/json" };
+            options.body = JSON.stringify({
+                repetitions: Number(window.dernierEtat?.repetitions) || 0,
+                duree: Number(window.dernierEtat?.temps_maintien || window.dernierEtat?.temps_chrono) || 0,
+            });
+        }
+        const reponse = await fetch(url, options);
         const donnees = await reponse.json();
         if (!reponse.ok || !donnees.ok) {
             throw new Error(donnees.erreur || "Commande impossible");
@@ -1285,6 +1298,14 @@
                 carte.dataset.mode = "repetitions";
                 afficherModeRepetitions(etat);
         }
+    }
+
+    function updateExerciseComment(etat) {
+        const card = document.getElementById("commentCard");
+        const text = document.getElementById("exerciseComment");
+        if (!card || !text) return;
+        text.textContent = etat.commentaire_exercice || "";
+        card.hidden = !etat.commentaire_exercice;
     }
 
     // ---------- MODE_REPETITIONS : "8 / 12 répétitions" ----------
@@ -1654,6 +1675,8 @@
 
             .then(data => {
 
+                window.dernierEtat = data;
+
                 definirStatut(true);
                 actualiserCommandes(data.commandes_autorisees, data.statut_session, data.phase);
                 const totalSeries = Number(data.nombre_series_total) || 0;
@@ -1698,6 +1721,7 @@
                 // ======================================
 
                 updateWorkoutDisplay(data);
+                updateExerciseComment(data);
 
 
 

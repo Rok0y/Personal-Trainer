@@ -46,4 +46,9 @@ def bras_en_x(corps):
         and
         corps.poignet_droit.x > corps.poignet_gauche.x
     )
+
+
+def deux_bras_leves(corps):
+    """Détecte les deux bras levés au-dessus des épaules."""
+    return bras_droit_leve(corps) and bras_gauche_leve(corps)
 print("positions chargé")

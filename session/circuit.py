@@ -23,7 +23,7 @@ class Exercice:
 
 class BlocExercice:
 
-    def __init__(self,exercice,poids,mode,nombre_series,repetitions_par_serie,duree,repos_entre_series,repos_apres):
+    def __init__(self,exercice,poids,mode,nombre_series,repetitions_par_serie,duree,repos_entre_series,repos_apres,commentaire=""):
         self.exercice = exercice
         self.poids = poids
         self.mode = mode
@@ -32,6 +32,7 @@ class BlocExercice:
         self.duree = duree
         self.repos_entre_series = repos_entre_series
         self.repos_apres = repos_apres
+        self.commentaire = commentaire or ""
 
         self.temps_maintien = 0
         self.temps_restant_precedent = None
@@ -131,6 +132,7 @@ class Circuit:
                 "poids": bloc.poids,
                 "mode": bloc.mode,
                 "duree": bloc.duree,
+                "commentaire": bloc.commentaire,
             }
             for bloc in self.exercices
         ]
@@ -148,9 +150,11 @@ class Circuit:
                 "repetitions": sum(resultat.get("repetitions", 0) for resultat in resultats),
                 "poids": bloc.poids,
                 "mode": bloc.mode,
-                "duree": bloc.duree,
+                "duree": resultats[0].get("objectif_duree", bloc.duree) if resultats else bloc.duree,
                 "series_cibles": bloc.nombre_series,
-                "repetitions_cibles": bloc.repetitions_par_serie,
+                "repetitions_cibles": resultats[0].get("objectif_repetitions", bloc.repetitions_par_serie) if resultats else bloc.repetitions_par_serie,
+                "duree_cible": resultats[0].get("objectif_duree", bloc.duree) if resultats else bloc.duree,
+                "commentaire": bloc.commentaire,
                 "series_detaillees": [
                     {
                         **resultat,
@@ -164,18 +168,61 @@ class Circuit:
     def a_des_resultats(self):
         return bool(self.resultats_series)
 
+    def objectifs_reussis(self):
+        """Indique si chaque bloc a validé toutes ses séries à la cible."""
+        for index, bloc in enumerate(self.exercices):
+            series = [
+                resultat for resultat in self.resultats_series
+                if resultat["index_exercice"] == index and resultat.get("completee")
+            ]
+            if len(series) != bloc.nombre_series:
+                return False
+            if bloc.mode in (MODE_REPETITIONS, MODE_AMRAP):
+                if any(resultat.get("repetitions", 0) < bloc.repetitions_par_serie for resultat in series):
+                    return False
+            elif bloc.mode in (MODE_MAINTIEN, MODE_CHRONO):
+                if any(resultat.get("duree", 0) < bloc.duree for resultat in series):
+                    return False
+        return bool(self.exercices)
+
+    def appliquer_progression(self):
+        """Augmente la cible sans modifier le nombre de séries."""
+        if not self.objectifs_reussis():
+            return False
+        for bloc in self.exercices:
+            if bloc.mode in (MODE_REPETITIONS, MODE_AMRAP):
+                bloc.repetitions_par_serie += 1
+            elif bloc.mode in (MODE_MAINTIEN, MODE_CHRONO):
+                bloc.duree += 2
+        return True
+
     def exporter(self):
         """Conserve l'ancien nom pour l'export des résultats réalisés."""
         return self.exporter_resultats()
 
     def enregistrer_resultat_serie(self, repetitions=0, duree=0, completee=True):
-        self.resultats_series.append({
+        """Enregistre une seule performance par exercice et par numéro de série.
+
+        Une série refaite après navigation remplace son ancien résultat : elle ne
+        peut donc ni disparaître ni être comptée deux fois dans l'historique.
+        """
+        resultat = {
             "index_exercice": self.index_exercice,
             "serie": self.serie_actuelle,
             "repetitions": repetitions,
             "duree": duree,
             "completee": completee,
-        })
+            "objectif_repetitions": self.bloc_actuel.repetitions_par_serie,
+            "objectif_duree": self.bloc_actuel.duree,
+        }
+        for index, precedent in enumerate(self.resultats_series):
+            if (
+                precedent["index_exercice"] == self.index_exercice
+                and precedent["serie"] == self.serie_actuelle
+            ):
+                self.resultats_series[index] = resultat
+                return
+        self.resultats_series.append(resultat)
 
     def _reinitialiser_etat_serie(self):
         bloc = self.bloc_actuel
@@ -230,11 +277,16 @@ class Circuit:
         self.debut_repos = None
         return True
 
-    def terminer_serie_manuellement(self):
-        """Valide immédiatement la série courante et lance la transition."""
-        if self.phase in ("termine", "preparation"):
+    def terminer_serie_manuellement(self, repetitions=0, duree=0):
+        """Enregistre la performance courante puis lance la transition."""
+        if self.phase != "exercice":
             return False
 
+        self.enregistrer_resultat_serie(
+            repetitions=repetitions,
+            duree=duree,
+            completee=True,
+        )
         self._reinitialiser_etat_serie()
         self.terminer_serie()
         return True

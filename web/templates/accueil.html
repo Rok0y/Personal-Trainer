@@ -61,7 +61,7 @@
 
         .hint { max-width: 250px; margin: 0; font: 14px/1.5 'Space Grotesk', sans-serif; color: var(--muted); }
 
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
 
         .session {
             border: 1px solid var(--border-strong); background: var(--glass);
@@ -110,6 +110,19 @@
         .previous a { font-size: 12px; }
         .previous-exercise { padding: 8px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
         .previous-series { margin-top: 4px; color: var(--text); font-size: 12px; }
+        .session-editor { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+        .session-editor h3 { margin: 0 0 10px; color: var(--teal); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+        .edit-exercise { display: grid; grid-template-columns: 1fr; gap: 10px; align-items: start; padding: 14px 0; border-top: 1px solid var(--border); }
+        .edit-exercise:first-of-type { border-top: 0; }
+        .edit-exercise label { color: var(--text); font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
+        .edit-exercise textarea { grid-column: 1 / -1; min-height: 48px; resize: vertical; }
+        .edit-exercise input, .edit-exercise textarea { width: 100%; padding: 7px 8px; border: 1px solid var(--border-strong); border-radius: 7px; background: rgba(255,255,255,.04); color: var(--text); font: 12px 'Space Grotesk', sans-serif; }
+        .number-control { display: flex; align-items: center; gap: 6px; min-width: 0; position: relative; padding-top: 16px; max-width: 270px; }
+        .number-control::before { content: attr(data-unit); position: absolute; top: 0; left: 0; color: var(--muted); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+        .number-control input { min-width: 0; width: auto; flex: 1; text-align: center; }
+        .number-control button { width: 34px; height: 30px; padding: 0; border: 1px solid var(--border-strong); border-radius: 5px; background: transparent; color: var(--teal); cursor: pointer; }
+        .save-session { margin-top: 12px; padding: 8px 12px; border: 1px solid var(--teal); border-radius: 999px; background: transparent; color: var(--teal); cursor: pointer; font: 700 11px 'Space Grotesk', sans-serif; text-transform: uppercase; }
+        .editor-equipment { margin: 0; color: var(--muted); font-size: 12px; }
 
         @keyframes dropIn { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulseDot { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: .6; } }
@@ -149,16 +162,33 @@
                 <button id="configurer-test" type="button">Utiliser cette configuration</button>
             </div>
             {% endif %}
-            {% if seance.materiel %}
-            <p class="equipment"><strong>Matériel :</strong> {{ seance.materiel }}</p>
-            {% endif %}
             <details>
                 <summary>Voir le contenu</summary>
                 <ul>
                 {% for exercice in seance.exercices %}
-                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}secondes{% else %}répétitions{% endif %}{% if exercice.materiel and exercice.materiel != 'Aucun matériel' %} · {{ exercice.materiel }}{% endif %}</li>
+                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}secondes{% else %}répétitions{% endif %}</li>
                 {% endfor %}
                 </ul>
+                {% if identifiant != 'test' %}
+                <form class="session-editor" data-editor="{{ identifiant }}">
+                    <h3>Objectifs et commentaires</h3>
+                    {% for exercice in seance.exercices %}
+                    <div class="edit-exercise" data-exercice="{{ exercice.nom or exercice.exercice }}" data-mode="{{ exercice.mode }}" data-poids="{{ exercice.poids|default(0) }}" data-repos-series="{{ exercice.repos_entre_series|default(0) }}" data-repos-apres="{{ exercice.repos_apres|default(0) }}">
+                        <label>{{ exercice.nom or exercice.exercice }}</label>
+                        <p class="editor-equipment">Matériel : {{ exercice.materiel or 'Aucun matériel' }}</p>
+                        <span class="number-control" data-unit="Charge (kg)"><button type="button" data-delta="-1" aria-label="Diminuer la charge">−</button><input class="edit-weight" aria-label="Charge en kilogrammes" type="number" min="0" step="0.5" value="{{ exercice.poids|default(0) }}" title="Charge en kilogrammes"><button type="button" data-delta="1" aria-label="Augmenter la charge">+</button></span>
+                        <span class="number-control" data-unit="Séries"><button type="button" data-delta="-1" aria-label="Retirer une série">−</button><input class="edit-series" aria-label="Séries" type="number" min="1" value="{{ exercice.series }}" title="Séries"><button type="button" data-delta="1" aria-label="Ajouter une série">+</button></span>
+                        {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}
+                        <span class="number-control" data-unit="Secondes"><button type="button" data-delta="-1" aria-label="Retirer une seconde">−</button><input class="edit-target" aria-label="Secondes" type="number" min="1" value="{{ exercice.duree }}" title="Secondes"><button type="button" data-delta="1" aria-label="Ajouter une seconde">+</button></span>
+                        {% else %}
+                        <span class="number-control" data-unit="Répétitions"><button type="button" data-delta="-1" aria-label="Retirer une répétition">−</button><input class="edit-target" aria-label="Répétitions" type="number" min="0" value="{{ exercice.repetitions }}" title="Répétitions"><button type="button" data-delta="1" aria-label="Ajouter une répétition">+</button></span>
+                        {% endif %}
+                        <textarea class="edit-comment" placeholder="Commentaire (optionnel)">{{ exercice.commentaire|default('') }}</textarea>
+                    </div>
+                    {% endfor %}
+                    <button class="save-session" type="submit">Sauvegarder les objectifs</button>
+                </form>
+                {% endif %}
             </details>
         </div>
         {% endfor %}
@@ -236,6 +266,34 @@
             } else {
                 window.alert(donnees.erreur || "Impossible de supprimer la séance.");
             }
+        });
+    });
+    document.querySelectorAll(".session-editor").forEach((formulaire) => {
+        formulaire.addEventListener("click", (evenement) => evenement.stopPropagation());
+        formulaire.querySelectorAll("[data-delta]").forEach((bouton) => bouton.addEventListener("click", () => {
+            const champ = bouton.parentElement.querySelector("input");
+            const minimum = Number(champ.min) || 0;
+            champ.value = Math.max(minimum, (Number(champ.value) || 0) + Number(bouton.dataset.delta));
+        }));
+        formulaire.addEventListener("submit", async (evenement) => {
+            evenement.preventDefault();
+            const blocs = [...formulaire.querySelectorAll(".edit-exercise")].map((ligne) => {
+                const mode = ligne.dataset.mode;
+                const cible = Number(ligne.querySelector(".edit-target").value);
+                return {
+                    exercice: ligne.dataset.exercice, mode, poids: Math.max(0, Number(ligne.querySelector(".edit-weight").value) || 0),
+                    series: Math.max(1, Number(ligne.querySelector(".edit-series").value) || 1),
+                    repetitions: mode === "maintien" || mode === "chrono" ? 0 : Math.max(0, cible || 0),
+                    duree: mode === "maintien" || mode === "chrono" ? Math.max(1, cible || 1) : 0,
+                    repos_entre_series: Number(ligne.dataset.reposSeries) || 0,
+                    repos_apres: Number(ligne.dataset.reposApres) || 0,
+                    commentaire: ligne.querySelector(".edit-comment").value.trim(),
+                };
+            });
+            const reponse = await fetch(`/api/seances/${encodeURIComponent(formulaire.dataset.editor)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ blocs }) });
+            const donnees = await reponse.json();
+            if (!donnees.ok) window.alert(donnees.erreur || "Sauvegarde impossible.");
+            else window.location.reload();
         });
     });
     boutonDemarrer.addEventListener("click", async () => {

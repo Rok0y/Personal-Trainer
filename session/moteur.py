@@ -300,6 +300,7 @@ def decrire_prochaine_etape(bloc, nombre_series):
         "repetitions": bloc.repetitions_par_serie,
         "mode": bloc.mode,
         "duree": bloc.duree,
+        "commentaire": bloc.commentaire,
     }
 
 def mettre_a_jour_prochain_exercice(circuit, state):

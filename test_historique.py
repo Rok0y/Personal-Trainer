@@ -82,6 +82,25 @@ class HistoriqueTests(unittest.TestCase):
         self.assertEqual(stat["pb"]["valeur"], 45)
         self.assertEqual(stat["duree"], 45)
 
+    def test_objectif_et_commentaire_sont_persistes_separement_du_resultat(self):
+        database.enregistrer_seance(
+            duree=30,
+            exercices=[{
+                "nom": "Pompes",
+                "series": 1,
+                "series_cibles": 2,
+                "repetitions": 14,
+                "repetitions_cibles": 16,
+                "commentaire": "Garder le dos droit",
+                "series_detaillees": [{"serie": 1, "repetitions": 14}],
+            }],
+        )
+
+        exercice = database.recuperer_historique()[0]["exercices"][0]
+        self.assertEqual(exercice["repetitions"], 14)
+        self.assertEqual(exercice["repetitions_cibles"], 16)
+        self.assertEqual(exercice["commentaire"], "Garder le dos droit")
+
 
 if __name__ == "__main__":
     unittest.main()

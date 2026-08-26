@@ -5,6 +5,7 @@ from session.seances import (
     creer_seance,
     creer_seance_test,
     enregistrer_seance_personnalisee,
+    enregistrer_configuration_seance,
     supprimer_seance_personnalisee,
 )
 
@@ -105,10 +106,13 @@ class SessionManager:
             self._preparer_commande_serie()
             return self.seance.serie_suivante()
 
-    def terminer_serie(self):
+    def terminer_serie(self, repetitions=0, duree=0):
         with self._verrou:
             self._preparer_commande_serie()
-            resultat = self.seance.terminer_serie_manuellement()
+            resultat = self.seance.terminer_serie_manuellement(
+                repetitions=repetitions,
+                duree=duree,
+            )
             if self.seance.phase == "termine":
                 self.statut = "finished"
             return resultat
@@ -136,6 +140,22 @@ class SessionManager:
         with self._verrou:
             if self.seance is not None and self.seance.phase == "termine":
                 self.statut = "finished"
+                if not getattr(self.seance, "progression_appliquee", False):
+                    if self.seance.appliquer_progression():
+                        enregistrer_configuration_seance(
+                            self.nom_selectionne, self.seance,
+                        )
+                    self.seance.progression_appliquee = True
+
+    def modifier_configuration(self, nom, blocs):
+        with self._verrou:
+            if self.statut in ("running", "paused"):
+                raise RuntimeError("Une séance est déjà en cours")
+            if not blocs:
+                raise ValueError("Au moins un exercice est requis")
+            # Validate through the normal session construction path before saving.
+            enregistrer_seance_personnalisee(nom, blocs)
+            creer_seance(nom)
 
     def nouvelle_seance(self):
         with self._verrou:

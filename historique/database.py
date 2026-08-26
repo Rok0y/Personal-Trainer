@@ -71,6 +71,14 @@ def initialiser():
         curseur.execute("ALTER TABLE exercices ADD COLUMN mode TEXT")
     if "duree" not in colonnes_exercices:
         curseur.execute("ALTER TABLE exercices ADD COLUMN duree REAL DEFAULT 0")
+    if "commentaire" not in colonnes_exercices:
+        curseur.execute("ALTER TABLE exercices ADD COLUMN commentaire TEXT DEFAULT ''")
+    if "series_cibles" not in colonnes_exercices:
+        curseur.execute("ALTER TABLE exercices ADD COLUMN series_cibles INTEGER")
+    if "repetitions_cibles" not in colonnes_exercices:
+        curseur.execute("ALTER TABLE exercices ADD COLUMN repetitions_cibles INTEGER")
+    if "duree_cible" not in colonnes_exercices:
+        curseur.execute("ALTER TABLE exercices ADD COLUMN duree_cible REAL")
 
     curseur.execute("""
         CREATE TABLE IF NOT EXISTS series_realisees (
@@ -151,10 +159,14 @@ def enregistrer_seance(
                 repetitions,
                 poids,
                 mode,
-                duree
+                duree,
+                commentaire,
+                series_cibles,
+                repetitions_cibles,
+                duree_cible
             )
 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
             """,
 
@@ -165,7 +177,11 @@ def enregistrer_seance(
                 exercice["repetitions"],
                 exercice.get("poids", 0),
                 exercice.get("mode"),
-                exercice.get("duree", 0)
+                exercice.get("duree", 0),
+                exercice.get("commentaire", ""),
+                exercice.get("series_cibles", exercice["series"]),
+                exercice.get("repetitions_cibles", 0),
+                exercice.get("duree_cible", exercice.get("duree", 0)),
             )
         )
 
@@ -193,7 +209,9 @@ def enregistrer_seance(
     conn.close()
 
 def recuperer_historique():
-
+    # Permet aussi la lecture d'une base créée par une version précédente,
+    # même lorsque l'application n'a pas encore lancé son initialisation.
+    initialiser()
     conn = connexion()
 
     curseur = conn.cursor()
@@ -231,7 +249,11 @@ def recuperer_historique():
                 repetitions,
                 poids,
                 mode,
-                duree
+                duree,
+                commentaire,
+                series_cibles,
+                repetitions_cibles,
+                duree_cible
 
             FROM exercices
 
@@ -258,6 +280,10 @@ def recuperer_historique():
                     "poids": exercice[4] or 0,
                     "mode": exercice[5] or "repetitions",
                     "duree": exercice[6] or 0,
+                    "commentaire": exercice[7] or "",
+                    "series_cibles": exercice[8] or exercice[2],
+                    "repetitions_cibles": exercice[9] or 0,
+                    "duree_cible": exercice[10] or 0,
                     "series_detaillees": recuperer_series(curseur, exercice[0]),
                 }
                 for exercice in exercices

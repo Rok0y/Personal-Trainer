@@ -87,7 +87,7 @@
     <div class="status{% if etat.statut == 'abandoned' %} abandoned{% endif %}">{{ etat.seance|replace('_', ' ')|title }}</div>
     <section class="results" aria-label="Résultats des exercices">
         {% for exercice in exercices %}
-        <div class="result"><span>{{ exercice.nom }}</span><strong>{{ exercice.series }} séries · {{ exercice.repetitions }} répétitions</strong></div>
+        <div class="result"><span>{{ exercice.nom }}{% if exercice.commentaire %}<br><small>{{ exercice.commentaire }}</small>{% endif %}</span><strong>Objectif {{ exercice.series_cibles }} × {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}{{ exercice.duree_cible|round(1) }} s{% else %}{{ exercice.repetitions_cibles }} reps{% endif %}<br>Réalisé : {{ exercice.series }} séries · {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}{{ exercice.duree|round(1) }} secondes{% else %}{{ exercice.repetitions }} répétitions{% endif %}</strong></div>
         {% else %}
         <p class="empty">Aucun résultat enregistré.</p>
         {% endfor %}

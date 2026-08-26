@@ -142,7 +142,9 @@
         {% for exercice in seance.exercices %}
         <details class="exercise">
             <summary><div class="exercise-line"><strong>{{ exercice.nom }}</strong><span>{{ exercice.series }} séries · {{ exercice.repetitions }} répétitions{% if exercice.poids %} · {{ exercice.poids }} kg{% endif %}</span></div></summary>
-            <div class="meta">Mode : {{ exercice.mode }}{% if exercice.duree %} · {{ exercice.duree|round(1) }} secondes{% endif %}</div>
+            <div class="meta">Objectif : {{ exercice.series_cibles }} séries · {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}{{ exercice.duree_cible|round(1) }} secondes{% else %}{{ exercice.repetitions_cibles }} répétitions{% endif %}</div>
+            <div class="meta">Mode : {{ exercice.mode }}{% if exercice.duree %} · résultat durée {{ exercice.duree|round(1) }} secondes{% endif %}</div>
+            {% if exercice.commentaire %}<div class="meta">Note : {{ exercice.commentaire }}</div>{% endif %}
             {% if exercice.series_detaillees %}
             <ul class="series">{% for serie in exercice.series_detaillees %}<li>Série {{ serie.serie }} : {{ serie.repetitions }} répétitions{% if serie.poids %} à {{ serie.poids }} kg{% endif %}{% if serie.duree %} pendant {{ serie.duree|round(1) }} s{% endif %}</li>{% endfor %}</ul>
             {% else %}<p class="empty">Détail par série indisponible pour cette ancienne séance.</p>{% endif %}

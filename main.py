@@ -17,13 +17,15 @@ import session.seances
 from mouvements.positions import (
     bras_droit_leve,
     bras_gauche_leve,
-    bras_en_x
+    bras_en_x,
+    deux_bras_leves,
 )
 
 # Définition des variables
 cap = cv2.VideoCapture(0)
 compteur = CompteurMouvement()
-hold_bras_x = HoldPosition(bras_en_x, 1.5)
+hold_bras_x = HoldPosition(bras_en_x, 3)
+hold_deux_bras_leves = HoldPosition(deux_bras_leves, 3)
 preparation = HoldPosition(bras_en_x, 1.5)
 detection = PoseDetector()
 ancienne_phase = None
@@ -106,7 +108,9 @@ try:
             """soit si il détecte un corps à l'écran"""
 
             # Détection des positions de controle
-            if bras_droit_leve(corps):
+            if deux_bras_leves(corps):
+                state.position_actuelle = "Deux bras levés"
+            elif bras_droit_leve(corps):
                 state.position_actuelle = "Bras droit levé"
             elif bras_gauche_leve(corps):
                 state.position_actuelle = "Bras gauche levé"
@@ -115,13 +119,23 @@ try:
             else:
                 state.position_actuelle = "Aucune"
 
-            # MAINTIEN BRAS EN X
-            progression, termine = hold_bras_x.update(corps)
-            state.progression_maintien = progression
-            state.maintien_termine = termine
+            # Bras en X valide une série uniquement pendant l'exercice.
+            progression_x, termine_x = hold_bras_x.update(corps)
+            state.progression_maintien = progression_x
+            state.maintien_termine = termine_x
 
-            # RESET DES REPETITIONS
-            if termine:
+            # Deux bras levés réinitialisent la série sans valider le résultat.
+            _, reset = hold_deux_bras_leves.update(corps)
+            if reset and seance.phase == "exercice":
+                compteur.reset()
+                state.repetitions = 0
+                derniere_rep = 0
+
+            if termine_x and seance.phase == "exercice":
+                seance.terminer_serie_manuellement(
+                    repetitions=state.repetitions,
+                    duree=state.temps_maintien or state.temps_chrono,
+                )
                 compteur.reset()
                 state.repetitions = 0
                 derniere_rep = 0

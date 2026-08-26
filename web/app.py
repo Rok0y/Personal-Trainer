@@ -78,6 +78,7 @@ def etat():
 
         "position_actuelle":state.position_actuelle,
         "exercice_actuel":state.exercice_actuel,
+        "commentaire_exercice": controleur.seance.bloc_actuel.commentaire if controleur.seance and controleur.seance.bloc_actuel else "",
         "poids": state.poids,
         "stage": state.stage,
         "erreur": state.erreur,
@@ -135,6 +136,16 @@ def supprimer_seance_api(nom):
         return jsonify({"ok": False, "erreur": str(erreur)}), 404
 
 
+@app.route("/api/seances/<nom>", methods=["PUT"])
+def modifier_seance_api(nom):
+    donnees = request.get_json(silent=True) or {}
+    try:
+        controleur.modifier_configuration(nom, donnees.get("blocs"))
+        return jsonify({"ok": True})
+    except (KeyError, ValueError, RuntimeError) as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
+
+
 @app.route("/api/seance/selectionner", methods=["POST"])
 def selectionner_seance():
     donnees = request.get_json(silent=True) or {}
@@ -188,6 +199,13 @@ def commander_serie(commande):
     }
     if commande not in commandes:
         return jsonify({"ok": False, "erreur": "Commande inconnue"}), 404
+    donnees = request.get_json(silent=True) or {}
+    if commande == "terminer":
+        repetitions = donnees.get("repetitions", state.repetitions)
+        duree = donnees.get("duree", state.temps_maintien or state.temps_chrono)
+        return executer_commande(
+            lambda: controleur.terminer_serie(repetitions=repetitions, duree=duree)
+        )
     return executer_commande(commandes[commande])
 
 

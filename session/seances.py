@@ -420,6 +420,30 @@ def enregistrer_seance_personnalisee(nom, blocs):
         json.dump(donnees, fichier, ensure_ascii=False, indent=2)
 
 
+def exporter_blocs(circuit):
+    """Produit une définition JSON indépendante des objets Python du catalogue."""
+    return [
+        {
+            "exercice": bloc.exercice.nom,
+            "poids": bloc.poids,
+            "mode": bloc.mode,
+            "series": bloc.nombre_series,
+            "repetitions": bloc.repetitions_par_serie,
+            "duree": bloc.duree,
+            "repos_entre_series": bloc.repos_entre_series,
+            "repos_apres": bloc.repos_apres,
+            "commentaire": bloc.commentaire,
+        }
+        for bloc in circuit.exercices
+    ]
+
+
+def enregistrer_configuration_seance(nom, circuit):
+    """Persist the current targets, including overrides for built-in workouts."""
+    if nom != "test":
+        enregistrer_seance_personnalisee(nom, exporter_blocs(circuit))
+
+
 def supprimer_seance_personnalisee(nom):
     donnees = _lire_seances_personnalisees()
     if nom not in donnees:
@@ -443,13 +467,14 @@ def creer_seance_personnalisee(nom):
             duree=bloc.get("duree", 0),
             repos_entre_series=bloc["repos_entre_series"],
             repos_apres=bloc["repos_apres"],
+            commentaire=bloc.get("commentaire", ""),
         ) for bloc in blocs
     ])
 
 
 def creer_seance(nom):
     """Retourne un circuit neuf, indépendant des séances déjà utilisées."""
-    if nom not in CATALOGUE_SEANCES:
+    if nom not in CATALOGUE_SEANCES or nom in _lire_seances_personnalisees():
         return creer_seance_personnalisee(nom)
     return deepcopy(CATALOGUE_SEANCES[nom])
 
