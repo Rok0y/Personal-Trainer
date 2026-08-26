@@ -72,6 +72,24 @@ def initialiser():
     if "duree" not in colonnes_exercices:
         curseur.execute("ALTER TABLE exercices ADD COLUMN duree REAL DEFAULT 0")
 
+    curseur.execute("""
+        CREATE TABLE IF NOT EXISTS series_realisees (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            exercice_id INTEGER NOT NULL,
+            numero INTEGER NOT NULL,
+            repetitions INTEGER DEFAULT 0,
+            poids REAL DEFAULT 0,
+            duree REAL DEFAULT 0,
+            completee INTEGER DEFAULT 1,
+            FOREIGN KEY(exercice_id) REFERENCES exercices(id)
+        )
+    """)
+
+    curseur.execute("""
+        CREATE INDEX IF NOT EXISTS index_series_exercice
+        ON series_realisees(exercice_id)
+    """)
+
 
     conn.commit()
 
@@ -151,6 +169,24 @@ def enregistrer_seance(
             )
         )
 
+        exercice_id = curseur.lastrowid
+        for serie in exercice.get("series_detaillees", []):
+            curseur.execute(
+                """
+                INSERT INTO series_realisees
+                (exercice_id, numero, repetitions, poids, duree, completee)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    exercice_id,
+                    serie.get("serie", 0),
+                    serie.get("repetitions", 0),
+                    serie.get("poids", exercice.get("poids", 0)),
+                    serie.get("duree", 0),
+                    int(serie.get("completee", True)),
+                ),
+            )
+
 
     conn.commit()
 
@@ -189,6 +225,7 @@ def recuperer_historique():
 
         curseur.execute("""
             SELECT
+            id,
                 nom,
                 series,
                 repetitions,
@@ -215,12 +252,13 @@ def recuperer_historique():
             "nom": seance[4],
             "exercices": [
                 {
-                    "nom": exercice[0],
-                    "series": exercice[1],
-                    "repetitions": exercice[2],
-                    "poids": exercice[3] or 0,
-                    "mode": exercice[4] or "repetitions",
-                    "duree": exercice[5] or 0,
+                    "nom": exercice[1],
+                    "series": exercice[2],
+                    "repetitions": exercice[3],
+                    "poids": exercice[4] or 0,
+                    "mode": exercice[5] or "repetitions",
+                    "duree": exercice[6] or 0,
+                    "series_detaillees": recuperer_series(curseur, exercice[0]),
                 }
                 for exercice in exercices
             ]
@@ -232,3 +270,105 @@ def recuperer_historique():
 
 
     return resultat
+
+
+def recuperer_series(curseur, exercice_id):
+    curseur.execute("""
+        SELECT numero, repetitions, poids, duree, completee
+        FROM series_realisees
+        WHERE exercice_id = ?
+        ORDER BY numero
+    """, (exercice_id,))
+    return [
+        {
+            "serie": ligne[0],
+            "repetitions": ligne[1] or 0,
+            "poids": ligne[2] or 0,
+            "duree": ligne[3] or 0,
+            "completee": bool(ligne[4]),
+        }
+        for ligne in curseur.fetchall()
+    ]
+
+
+def statistiques_exercices(seances=None):
+    """Calcule les records uniquement sur les séances détaillées terminées."""
+    seances = recuperer_historique() if seances is None else seances
+    statistiques = {}
+
+    for seance in seances:
+        if seance.get("statut") == "abandoned":
+            continue
+        for exercice in seance.get("exercices", []):
+            series = [
+                serie for serie in exercice.get("series_detaillees", [])
+                if serie.get("completee")
+            ]
+            if not series:
+                continue
+
+            nom = exercice["nom"]
+            poids = max((serie.get("poids", 0) or 0) for serie in series)
+            repetitions = sum(serie.get("repetitions", 0) or 0 for serie in series)
+            volume = sum(
+                (serie.get("poids", 0) or 0) * (serie.get("repetitions", 0) or 0)
+                for serie in series
+            )
+            duree = sum(serie.get("duree", 0) or 0 for serie in series)
+            entree = statistiques.setdefault(nom, {
+                "nom": nom,
+                "mode": exercice.get("mode", "repetitions"),
+                "seances": 0,
+                "series": 0,
+                "repetitions": 0,
+                "volume": 0,
+                "duree": 0,
+                "meilleure_charge": {"valeur": 0, "seance_id": None, "date": None},
+                "meilleures_repetitions": {"valeur": 0, "seance_id": None, "date": None},
+                "meilleur_volume": {"valeur": 0, "seance_id": None, "date": None},
+                "meilleure_duree": {"valeur": 0, "seance_id": None, "date": None},
+                "progression": [],
+            })
+            entree["seances"] += 1
+            entree["series"] += len(series)
+            entree["repetitions"] += repetitions
+            entree["volume"] += volume
+            entree["duree"] += duree
+            entree["progression"].append({
+                "seance_id": seance["id"],
+                "date": seance["date"],
+                "repetitions": repetitions,
+                "volume": volume,
+                "duree": duree,
+            })
+
+            for cle, valeur in (
+                ("meilleure_charge", poids),
+                ("meilleures_repetitions", repetitions),
+                ("meilleur_volume", volume),
+                ("meilleure_duree", duree),
+            ):
+                if valeur > entree[cle]["valeur"]:
+                    entree[cle] = {
+                        "valeur": valeur,
+                        "seance_id": seance["id"],
+                        "date": seance["date"],
+                    }
+
+            if exercice.get("mode") in ("maintien", "chrono"):
+                entree["pb"] = entree["meilleure_duree"]
+            elif poids > 0:
+                entree["pb"] = entree["meilleur_volume"]
+            else:
+                entree["pb"] = entree["meilleures_repetitions"]
+
+    return statistiques
+
+
+def derniere_performance(nom_seance):
+    """Retourne la dernière séance terminée portant ce nom, si elle existe."""
+    seances = recuperer_historique()
+    for seance in seances:
+        if seance.get("nom") == nom_seance and seance.get("statut") != "abandoned":
+            return seance
+    return None

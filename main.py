@@ -202,7 +202,7 @@ try:
             # SEANCE TERMINEE
             # ==================================
 
-            if seance.phase == "termine":
+            if seance.phase in ("termine", "abandonne"):
 
                 controleur.marquer_terminee()
 
@@ -215,13 +215,14 @@ try:
                 state.exercice_actuel = "Séance terminée"
                 state.stage = "Terminé"
 
-                if not seance.historique_enregistre:
+                if not seance.historique_enregistre and seance.a_des_resultats():
                     print(">>> ENREGISTREMENT HISTORIQUE <<<")
 
                     enregistrer_seance(
                         duree=seance.duree_totale,
                         exercices=seance.exporter_resultats(),
                         nom_seance=controleur.nom_selectionne,
+                        statut="abandoned" if seance.phase == "abandonne" else "finished",
                     )
 
                     seance.historique_enregistre = True

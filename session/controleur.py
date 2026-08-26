@@ -129,6 +129,7 @@ class SessionManager:
         with self._verrou:
             if self.seance is None or self.statut not in ("running", "paused"):
                 raise RuntimeError("Aucune séance active")
+            self.seance.phase = "abandonne"
             self.statut = "abandoned"
 
     def marquer_terminee(self):

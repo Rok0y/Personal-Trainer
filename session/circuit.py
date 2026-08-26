@@ -151,8 +151,18 @@ class Circuit:
                 "duree": bloc.duree,
                 "series_cibles": bloc.nombre_series,
                 "repetitions_cibles": bloc.repetitions_par_serie,
+                "series_detaillees": [
+                    {
+                        **resultat,
+                        "poids": bloc.poids,
+                    }
+                    for resultat in resultats
+                ],
             })
         return exercices
+
+    def a_des_resultats(self):
+        return bool(self.resultats_series)
 
     def exporter(self):
         """Conserve l'ancien nom pour l'export des résultats réalisés."""

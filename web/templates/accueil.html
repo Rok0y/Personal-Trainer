@@ -103,6 +103,13 @@
         .links { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 18px; }
         a { color: var(--teal); font: 700 13px 'Space Grotesk', sans-serif; text-decoration: none; letter-spacing: .02em; }
         a:hover { text-decoration: underline; }
+        .previous { display: none; margin-top: 24px; padding: 18px 20px; border-left: 2px solid var(--teal); background: var(--glass-strong); }
+        .previous.visible { display: block; animation: dropIn .35s ease both; }
+        .previous h2 { margin: 0 0 8px; font: 400 24px 'Bebas Neue', sans-serif; }
+        .previous p { margin: 6px 0; color: var(--muted); font-size: 13px; }
+        .previous a { font-size: 12px; }
+        .previous-exercise { padding: 8px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+        .previous-series { margin-top: 4px; color: var(--text); font-size: 12px; }
 
         @keyframes dropIn { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulseDot { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: .6; } }
@@ -157,14 +164,17 @@
         {% endfor %}
     </section>
     <button class="start" id="demarrer" type="button" disabled>Demarrer la seance</button>
+    <section class="previous" id="previous" aria-live="polite"></section>
     <div class="links">
         <a href="/historique">Voir l'historique</a>
+        <a href="/records">Voir les records</a>
         <a href="/creer-seance">Créer une séance personnalisée</a>
     </div>
 </main>
 <script>
     let selection = {{ selection|tojson }};
     const boutonDemarrer = document.getElementById("demarrer");
+    const panneauPrecedent = document.getElementById("previous");
     function actualiserSelection() {
         document.querySelectorAll("[data-seance]").forEach((bouton) => {
             bouton.classList.toggle("selected", bouton.dataset.seance === selection);
@@ -174,7 +184,25 @@
     async function selectionnerSeance(nom, configuration = {}) {
         const reponse = await fetch("/api/seance/selectionner", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nom, ...configuration }) });
         const donnees = await reponse.json();
-        if (donnees.ok) { selection = nom; actualiserSelection(); }
+        if (donnees.ok) {
+            selection = nom;
+            actualiserSelection();
+            afficherDernierePerformance(donnees.resultat.derniere_performance);
+        }
+    }
+    function afficherDernierePerformance(seance) {
+        if (!seance) {
+            panneauPrecedent.classList.remove("visible");
+            return;
+        }
+        panneauPrecedent.innerHTML = `<h2>Derniere execution · ${seance.date}</h2>` +
+            seance.exercices.map((exercice) => {
+                const series = (exercice.series_detaillees || []).map((serie) => `${serie.repetitions || serie.duree}${serie.poids ? ` x ${serie.poids} kg` : ""}`).join(" · ");
+                const unite = exercice.mode === "maintien" || exercice.mode === "chrono" ? "secondes" : "repetitions";
+                return `<div class="previous-exercise"><strong>${exercice.nom}</strong> · ${exercice.repetitions || exercice.duree} ${unite}<div class="previous-series">${series || "Détail par série indisponible"}</div></div>`;
+            }).join("") +
+            `<a href="/historique/${seance.id}">Voir la seance dans l'historique</a>`;
+        panneauPrecedent.classList.add("visible");
     }
     document.querySelectorAll("[data-seance]").forEach((bouton) => {
         bouton.addEventListener("click", () => selectionnerSeance(bouton.dataset.seance));

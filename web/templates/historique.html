@@ -68,6 +68,27 @@
         .exercise-line strong { font-weight: 700; }
         .best { color: var(--orange); font-size: 12px; margin-top: 8px; text-transform: uppercase; letter-spacing: .04em; }
         .empty { color: var(--muted); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 28px; }
+        .stat-card { background: var(--glass); border: 1px solid var(--border-strong); border-radius: 12px; padding: 18px; }
+        .stat-card h2 { margin-bottom: 8px; }
+        .stat-card p { margin: 5px 0; color: var(--muted); font-size: 13px; }
+        .stat-card strong { color: var(--text); }
+        .progression { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
+        .progression-row { display: grid; grid-template-columns: 82px 1fr 42px; align-items: center; gap: 8px; margin: 7px 0; color: var(--muted); font-size: 11px; }
+        .progression-track { height: 8px; background: rgba(255,255,255,.08); }
+        .progression-value { height: 100%; min-width: 3px; background: var(--teal); }
+        .series { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 22px; }
+        .tab { padding: 9px 14px; border: 1px solid var(--border-strong); border-radius: 8px; color: var(--muted); }
+        .tab.active, .tab:hover { color: var(--teal); border-color: var(--teal); text-decoration: none; }
+        details.card { padding: 0; overflow: hidden; }
+        details.card > summary { list-style: none; cursor: pointer; padding: 24px; }
+        details.card > summary::-webkit-details-marker, details.exercise > summary::-webkit-details-marker { display: none; }
+        details.card[open] > summary { border-bottom: 1px solid var(--border); }
+        details.exercise { margin: 14px 24px; padding: 0; border-top: 1px solid var(--border); }
+        details.exercise > summary { list-style: none; cursor: pointer; padding: 14px 0 4px; }
+        details.exercise[open] > summary { color: var(--teal); }
+        .summary-title { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 
         @keyframes dropIn { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -78,25 +99,58 @@
         <h1>Historique</h1>
         <a class="back" href="/">Accueil</a>
     </header>
+    <nav class="tabs" aria-label="Suivi"><a class="tab active" href="/historique">Historique</a><a class="tab" href="/records">Records</a></nav>
+    {% if not detail and statistiques %}
+    <section class="stats-grid" aria-label="Records par exercice">
+        {% for nom, stat in statistiques.items() %}
+        <article class="stat-card" id="progression-{{ loop.index }}">
+            <h2>{{ nom }}</h2>
+            <p><strong>PB :</strong> {{ stat.pb.valeur|round(1) }} {% if stat.mode == 'maintien' or stat.mode == 'chrono' %}secondes{% elif stat.meilleur_volume.valeur > 0 %}kg de volume{% else %}repetitions{% endif %}</p>
+            <p>{{ stat.seances }} seances · {{ stat.series }} series · {{ stat.repetitions }} repetitions</p>
+            {% if stat.volume %}<p>{{ stat.volume|round(1) }} kg de volume total</p>{% endif %}
+            {% if stat.duree %}<p>{{ stat.duree|round(1) }} secondes au total</p>{% endif %}
+            <p>PB du {{ stat.pb.date }}</p>
+            <div class="progression" aria-label="Progression de {{ nom }}">
+                {% for point in stat.progression %}
+                {% if stat.meilleur_volume.valeur > 0 %}
+                    {% set valeur = point.volume %}
+                {% elif stat.mode == 'maintien' or stat.mode == 'chrono' %}
+                    {% set valeur = point.duree %}
+                {% else %}
+                    {% set valeur = point.repetitions %}
+                {% endif %}
+                <div class="progression-row">
+                    <span>{{ point.date }}</span>
+                    <a class="progression-track" href="/historique/{{ point.seance_id }}" title="Voir la séance"><span class="progression-value" style="width: {{ (valeur / stat.pb.valeur * 100) if stat.pb.valeur else 0 }}%"></span></a>
+                    <span>{{ valeur|round(1) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </article>
+        {% endfor %}
+    </section>
+    {% endif %}
     {% if not seances %}<p class="empty">Aucune séance enregistrée.</p>{% endif %}
     {% for seance in seances %}
-    <article class="card">
-        {% if detail %}<a href="/historique">Retour à la liste</a>{% else %}<a href="/historique/{{ seance.id }}"><h2>{{ seance.nom or "Seance" }}</h2></a>{% endif %}
-        <div class="meta">
-            <span>{{ seance.date }}</span>
-            <span>{{ seance.duree }} secondes</span>
-            <span class="status{% if seance.statut == 'abandoned' %} abandoned{% endif %}">{{ seance.statut }}</span>
-        </div>
+    <details class="card"{% if detail %} open{% endif %}>
+        <summary>
+            <div class="summary-title"><h2>{{ seance.nom or "Seance" }}</h2><span class="status{% if seance.statut == 'abandoned' %} abandoned{% endif %}">{{ seance.statut }}</span></div>
+            <div class="meta"><span>{{ seance.date }}</span><span>{{ seance.duree }} secondes</span><span>{{ seance.exercices|length }} exercices</span></div>
+        </summary>
+        <div style="padding-bottom: 10px;">
+        {% if detail %}<a style="margin: 0 24px;" href="/historique">Retour à la liste</a>{% endif %}
         {% for exercice in seance.exercices %}
-        <section class="exercise">
-            <div class="exercise-line"><strong>{{ exercice.nom }}</strong><span>{{ exercice.mode }} · {{ exercice.poids }} kg</span></div>
-            <div class="meta">{{ exercice.series }} séries · {{ exercice.repetitions }} répétitions{% if exercice.duree %} · {{ exercice.duree }} secondes{% endif %}</div>
-            {% if exercice.mode == 'repetitions' and exercice.poids %}
-                <div class="best">Previous best : {{ meilleurs.get(exercice.nom, 0)|round(1) }} kg·répétitions</div>
-            {% endif %}
-        </section>
+        <details class="exercise">
+            <summary><div class="exercise-line"><strong>{{ exercice.nom }}</strong><span>{{ exercice.series }} séries · {{ exercice.repetitions }} répétitions{% if exercice.poids %} · {{ exercice.poids }} kg{% endif %}</span></div></summary>
+            <div class="meta">Mode : {{ exercice.mode }}{% if exercice.duree %} · {{ exercice.duree|round(1) }} secondes{% endif %}</div>
+            {% if exercice.series_detaillees %}
+            <ul class="series">{% for serie in exercice.series_detaillees %}<li>Série {{ serie.serie }} : {{ serie.repetitions }} répétitions{% if serie.poids %} à {{ serie.poids }} kg{% endif %}{% if serie.duree %} pendant {{ serie.duree|round(1) }} s{% endif %}</li>{% endfor %}</ul>
+            {% else %}<p class="empty">Détail par série indisponible pour cette ancienne séance.</p>{% endif %}
+            {% if exercice.mode == 'repetitions' and exercice.poids %}<div class="best">Previous best : {{ meilleurs.get(exercice.nom, 0)|round(1) }} kg·répétitions</div>{% endif %}
+        </details>
         {% endfor %}
-    </article>
+        </div>
+    </details>
     {% endfor %}
 </main>
 </body>

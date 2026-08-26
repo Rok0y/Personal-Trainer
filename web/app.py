@@ -1,5 +1,5 @@
 from flask import Flask, render_template, jsonify, Response, request, redirect
-from historique.database import recuperer_historique
+from historique.database import recuperer_historique, statistiques_exercices, derniere_performance
 from session.controleur import SessionManager
 from session.seances import catalogue_exercices
 import webbrowser
@@ -19,17 +19,11 @@ controleur = SessionManager()
 
 
 def meilleurs_volumes(seances):
-    meilleurs = {}
-    for seance in seances:
-        if seance.get("statut") == "abandoned":
-            continue
-        for exercice in seance.get("exercices", []):
-            if exercice.get("mode") != "repetitions":
-                continue
-            volume = (exercice.get("poids") or 0) * (exercice.get("series") or 0) * (exercice.get("repetitions") or 0)
-            nom = exercice.get("nom")
-            meilleurs[nom] = max(meilleurs.get(nom, 0), volume)
-    return meilleurs
+    return {
+        nom: stat["meilleur_volume"]["valeur"]
+        for nom, stat in statistiques_exercices(seances).items()
+        if stat["meilleur_volume"]["valeur"]
+    }
 
 
 def executer_commande(fonction):
@@ -148,12 +142,20 @@ def selectionner_seance():
     if not nom:
         return jsonify({"ok": False, "erreur": "Le nom de séance est requis"}), 400
     if nom == "test" and donnees.get("exercice") and donnees.get("mode"):
-        return executer_commande(
-            lambda: controleur.selectionner_test(
-                donnees["exercice"], donnees["mode"]
-            ) and controleur.etat()
-        )
-    return executer_commande(lambda: controleur.selectionner(nom) and controleur.etat())
+        def selectionner_test_et_preparer():
+            controleur.selectionner_test(donnees["exercice"], donnees["mode"])
+            etat = controleur.etat()
+            etat["derniere_performance"] = derniere_performance("test")
+            return etat
+
+        return executer_commande(selectionner_test_et_preparer)
+    def selectionner_et_preparer():
+        controleur.selectionner(nom)
+        etat = controleur.etat()
+        etat["derniere_performance"] = derniere_performance(nom)
+        return etat
+
+    return executer_commande(selectionner_et_preparer)
 
 
 @app.route("/api/seance/demarrer", methods=["POST"])
@@ -266,7 +268,17 @@ def historique():
         "historique.html",
         seances=donnees,
         meilleurs=meilleurs_volumes(donnees),
+        statistiques=statistiques_exercices(donnees),
         detail=False,
+    )
+
+
+@app.route("/records")
+def records():
+    donnees = recuperer_historique()
+    return render_template(
+        "records.html",
+        statistiques=statistiques_exercices(donnees),
     )
 
 
@@ -283,5 +295,6 @@ def detail_historique(seance_id):
         "historique.html",
         seances=[seance],
         meilleurs=meilleurs_volumes(donnees),
+        statistiques=statistiques_exercices(donnees),
         detail=True,
     )

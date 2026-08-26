@@ -54,6 +54,18 @@ class CircuitSeriesTests(unittest.TestCase):
         self.assertEqual(circuit.serie_actuelle, 2)
         self.assertEqual(circuit.phase, "recuperation_serie")
 
+    def test_exporte_les_series_detaillees_avec_le_poids(self):
+        circuit = creer_circuit()
+        circuit.exercices[0].poids = 10
+        circuit.enregistrer_resultat_serie(repetitions=5)
+        circuit.serie_actuelle = 2
+        circuit.enregistrer_resultat_serie(repetitions=3)
+
+        detail = circuit.exporter_resultats()[0]["series_detaillees"]
+
+        self.assertEqual([serie["repetitions"] for serie in detail], [5, 3])
+        self.assertEqual([serie["poids"] for serie in detail], [10, 10])
+
 
 if __name__ == "__main__":
     unittest.main()
