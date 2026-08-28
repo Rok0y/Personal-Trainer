@@ -39,8 +39,8 @@ CATALOGUE_EXERCICES = {
 }
 
 MATERIEL_EXERCICES = {
-    "Curl biceps droit": "Deux haltères",
-    "Curl biceps gauche": "Deux haltères",
+    "Curl biceps droit": "Un haltère",
+    "Curl biceps gauche": "Un haltère",
     "Elevations latérales": "Deux haltères",
     "Pompes": "",
     "Developpé couché altères": "Deux haltères et un tapis",

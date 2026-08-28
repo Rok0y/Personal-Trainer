@@ -514,6 +514,25 @@
             font-weight: 700;
         }
 
+        .overlay-session-info {
+            color: var(--muted);
+            font-size: 12px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+
+        .overlay-session-info strong { color: var(--text); }
+
+        .overlay-session-progress {
+            width: min(560px, calc(100vw - 56px));
+        }
+
+        #overlaySessionProgressSegments {
+            display: flex;
+            gap: 8px;
+            min-height: 22px;
+        }
+
         .prep-ring-wrap {
             position: relative;
             width: 170px;
@@ -1066,6 +1085,10 @@
         </div>
 
         <span class="rest-next" id="restNext">Prochain : —</span>
+        <div class="overlay-session-info">Temps total : <strong id="overlaySessionDuration">0:00</strong></div>
+        <div class="overlay-session-progress" aria-label="Progression de la séance">
+            <div id="overlaySessionProgressSegments"></div>
+        </div>
     </div>
 
     <div class="hold-container" id="holdContainer">
@@ -1463,40 +1486,45 @@
         const signature = JSON.stringify(exercices || []);
         if (signature === signatureProgression) return;
 
-        const conteneur = document.getElementById("sessionProgressSegments");
-        conteneur.innerHTML = "";
-        (exercices || []).forEach((exercice) => {
-            const groupe = document.createElement("div");
-            groupe.className = "progress-exercise";
-            const etiquette = document.createElement("span");
-            etiquette.className = "progress-exercise-label";
-            etiquette.textContent = exercice.nom;
-            const series = document.createElement("div");
-            series.className = "progress-series";
-            for (let index = 0; index < Number(exercice.series || 0); index++) {
-                const segment = document.createElement("span");
-                segment.className = "progress-segment";
-                series.appendChild(segment);
-            }
-            groupe.append(etiquette, series);
-            conteneur.appendChild(groupe);
+        ["sessionProgressSegments", "overlaySessionProgressSegments"].forEach((id) => {
+            const conteneur = document.getElementById(id);
+            conteneur.replaceChildren();
+            (exercices || []).forEach((exercice) => {
+                const groupe = document.createElement("div");
+                groupe.className = "progress-exercise";
+                const etiquette = document.createElement("span");
+                etiquette.className = "progress-exercise-label";
+                etiquette.textContent = exercice.nom;
+                const series = document.createElement("div");
+                series.className = "progress-series";
+                for (let index = 0; index < Number(exercice.series || 0); index++) {
+                    const segment = document.createElement("span");
+                    segment.className = "progress-segment";
+                    series.appendChild(segment);
+                }
+                groupe.append(etiquette, series);
+                conteneur.appendChild(groupe);
+            });
         });
         signatureProgression = signature;
     }
 
     function mettreAJourProgression(exercices, seriesTerminees) {
         initialiserProgression(exercices);
-        const segments = document.querySelectorAll(".progress-segment");
         const terminees = Number(seriesTerminees) || 0;
-        segments.forEach((segment, index) => {
-            segment.classList.toggle("complete", index < terminees);
-            segment.classList.toggle("active", index === terminees);
+        ["sessionProgressSegments", "overlaySessionProgressSegments"].forEach((id) => {
+            const conteneur = document.getElementById(id);
+            conteneur.querySelectorAll(".progress-segment").forEach((segment, index) => {
+                segment.classList.toggle("complete", index < terminees);
+                segment.classList.toggle("active", index === terminees);
+            });
         });
     }
 
     function mettreAJourDuree(secondes) {
         const minutes = Math.floor(Math.max(0, Number(secondes) || 0) / 60);
         document.getElementById("sessionDuration").textContent = `${minutes} min`;
+        document.getElementById("overlaySessionDuration").textContent = formaterTemps(secondes);
     }
 
     function mettreAJourPhase(phase,tempsRestant,progressionPreparation,exercice,serieActuelle,nombreSeries,prochaineEtape) {

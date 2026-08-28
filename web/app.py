@@ -26,6 +26,27 @@ def meilleurs_volumes(seances):
     }
 
 
+def noms_exercices_individuels():
+    """Noms d'affichage des exercices du catalogue (utilisés par le mode "test")."""
+    return {
+        exercice.get("nom")
+        for exercice in catalogue_exercices().values()
+        if exercice.get("nom")
+    }
+
+
+def est_seance_de_test(seance, noms_exercices):
+    """Une "séance" issue du mode test ne contient qu'un seul exercice et porte
+    directement le nom de cet exercice : elle ne doit pas apparaitre dans
+    l'historique des entrainements, seulement dans les records."""
+    return (seance.get("nom") or "").strip() in noms_exercices
+
+
+def seances_entrainement(donnees):
+    noms_exercices = noms_exercices_individuels()
+    return [s for s in donnees if not est_seance_de_test(s, noms_exercices)]
+
+
 def executer_commande(fonction):
     try:
         resultat = fonction()
@@ -46,11 +67,36 @@ def executer_commande(fonction):
 def index():
 
     if controleur.statut in ("idle", "ready"):
+        seances = controleur.catalogue()
+        dernieres_series = {}
+        for seance in recuperer_historique():
+            nom = seance.get("nom")
+            if (
+                nom in seances
+                and nom not in dernieres_series
+                and seance.get("statut") != "abandoned"
+            ):
+                dernieres_series[nom] = {
+                    exercice["nom"]: {
+                        "date": seance["date"],
+                        "mode": exercice.get("mode", "repetitions"),
+                        "serie": next(
+                            (
+                                serie
+                                for serie in reversed(exercice.get("series_detaillees", []))
+                                if serie.get("completee", True)
+                            ),
+                            None,
+                        ),
+                    }
+                    for exercice in seance.get("exercices", [])
+                }
         return render_template(
             "accueil.html",
-            seances=controleur.catalogue(),
+            seances=seances,
             selection=controleur.nom_selectionne,
             exercices=catalogue_exercices(),
+            dernieres_series=dernieres_series,
         )
 
     if controleur.statut in ("finished", "abandoned"):
@@ -281,12 +327,10 @@ def historique():
 
     donnees = recuperer_historique()
 
-
     return render_template(
         "historique.html",
-        seances=donnees,
+        seances=seances_entrainement(donnees),
         meilleurs=meilleurs_volumes(donnees),
-        statistiques=statistiques_exercices(donnees),
         detail=False,
     )
 
@@ -313,6 +357,5 @@ def detail_historique(seance_id):
         "historique.html",
         seances=[seance],
         meilleurs=meilleurs_volumes(donnees),
-        statistiques=statistiques_exercices(donnees),
         detail=True,
     )
