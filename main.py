@@ -12,8 +12,9 @@ from mouvements.compteur import CompteurMouvement
 from mouvements.outils import HoldPosition
 import threading
 from web.app import lancer_site, ouvrir_navigateur, controleur
-from audio.coach import coach, annoncer_prochaine_etape,annoncer_temps_repos
+from audio.coach import coach, annoncer_prochaine_etape,annoncer_temps_repos,PHRASES
 import session.seances
+from audio.tts import prechauffer
 from mouvements.positions import (
     bras_droit_leve,
     bras_gauche_leve,
@@ -72,6 +73,12 @@ if not cap.isOpened():
 # ==========================================
 
 coach("debut")
+
+threading.Thread(
+    target=prechauffer,
+    args=([str(n) for n in range(1, 31)] + [texte for liste in PHRASES.values() for texte in liste],),
+    daemon=True,
+).start()
 
 try:
 

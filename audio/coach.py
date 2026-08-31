@@ -1,220 +1,117 @@
 import random
 import time
-from pathlib import Path
-import re
-import unicodedata
-from audio.lecteur import jouer
+
+from audio.lecteur import jouer, jouer_texte
 
 
-messages = {
-
-    "rep": [
-        "rep.wav"
-    ],
-    "debut": [
-        "debut.wav"
-    ],
-
-    "avant_derniere": [
-        "avant_derniere.wav"
-    ],
-
-    "derniere_rep": [
-        "derniere_rep.wav"
-    ],
-
-    "fin_serie": [
-        "fin_serie.wav"
-    ],
-
-    "repos": [
-        "repos.wav"
-    ],
-
-    "changement_exercice": [
-        "changement_exercice.wav"
-    ],
-
-    "fin_seance": [
-        "fin_seance.wav"
-    ],
-
-    "debut_serie": [
-        "debut_serie.wav"
-    ],
-
-    "preparation": [
-        "preparation.wav"
-    ],
-    "mi_parcours": [
-        "mi_parcours_1.wav",
-    ],
-
-    "encore_5": [
-        "encore_5_1.wav",
-    ],
-
-    "encore_3": [
-        "encore_3_1.wav",
-    ],
-    "correction_gainage": [
-        "correction_gainage_1.wav",
-    ],
-    "temps_20": [
-        "temps_20_1.wav",
-    ],
-
-    "temps_10": [
-        "temps_10_1.wav",
-    ],
-
-    "temps_5": [
-        "temps_5_1.wav",
-    ],"repos_10": [
-        "repos_10.wav",
-    ],
-
-    "repos_5": [
-        "repos_5.wav",
-    ],
-    "repos_5": [
-        "repos_5.wav",
-    ],
-    "bip": ["bip.wav"],
-    }
-
+PHRASES = {
+    "debut": ["C'est parti !"],
+    "repos": ["Récupération."],
+    "changement_exercice": ["Changement d'exercice."],
+    "fin_seance": ["Séance terminée, beau travail !"],
+    "debut_serie": ["Prêt ? Go !"],
+    "preparation": ["Mets-toi en position."],
+    "avant_derniere": ["Encore une !"],
+    "derniere_rep": ["Dernière répétition !"],
+    "fin_serie": ["Série terminée."],
+    "mi_parcours": ["Tu es à la moitié."],
+    "encore_5": ["Encore cinq."],
+    "encore_3": ["Encore trois."],
+    "correction_gainage": ["Attention, tu casses la position."],
+    "temps_20": ["Vingt secondes."],
+    "temps_10": ["Dix secondes."],
+    "temps_5": ["Cinq secondes."],
+    "repos_10": ["Dix secondes de repos."],
+    "repos_5": ["Cinq secondes de repos."],
+}
 
 priorites = {
-
-    "rep": 1,
-    "debut_serie": 5,
-    "avant_derniere": 5,
-    "derniere_rep": 10,
-    "fin_serie": 10,
-    "repos": 8,
-    "changement_exercice": 5,
-    "fin_seance": 10,
-    "mi_parcours": 3,
-    "encore_5": 4,
-    "encore_3": 5,
-    "correction_gainage": 7,
-    "temps_30": 4,
-    "temps_20": 6,
-    "temps_10": 7,
-    "temps_5": 8,
-    "repos_10": 6,
-    "repos_5": 8,
+    "debut": 5, "debut_serie": 5, "avant_derniere": 5, "derniere_rep": 10,
+    "fin_serie": 10, "repos": 8, "changement_exercice": 5, "fin_seance": 10,
+    "mi_parcours": 3, "encore_5": 4, "encore_3": 5, "correction_gainage": 7,
+    "temps_20": 6, "temps_10": 7, "temps_5": 8, "repos_10": 6, "repos_5": 8,
     "bip": 2,
 }
 
-DELAIS_ENTRE_ANNONCES = {
-    "correction_gainage": 8,
-}
+DELAIS_ENTRE_ANNONCES = {"correction_gainage": 8}
 
 dernieres_annonces = {}
-DOSSIER_SONS = Path(__file__).with_name("Fichiers")
+dernieres_erreurs = {}
+DELAI_ERREUR = 4  # secondes avant de répéter la même erreur de forme
+
 
 def coach(event, valeur=None):
 
     if event == "compteur":
-        jouer(f"{valeur}.wav", 1)
+        jouer_texte(str(valeur), priorite=1)
         return
 
-    if event not in messages:
+    if event == "bip":
+        jouer("bip.wav", priorites.get("bip", 2))
+        return
+
+    if event not in PHRASES:
         return
 
     maintenant = time.monotonic()
     delai = DELAIS_ENTRE_ANNONCES.get(event, 0)
     derniere_annonce = dernieres_annonces.get(event)
 
-    if (
-        derniere_annonce is not None
-        and maintenant - derniere_annonce < delai
-    ):
+    if derniere_annonce is not None and maintenant - derniere_annonce < delai:
         return
-
-    son = random.choice(messages[event])
 
     dernieres_annonces[event] = maintenant
-
-    jouer(
-        son,
-        priorites.get(event, 5)
-    )
-
-DOSSIER_ANNONCES_ETAPES = Path(__file__).with_name("Fichiers") / "annonces_etapes"
+    texte = random.choice(PHRASES[event])
+    jouer_texte(texte, priorites.get(event, 5))
 
 
-def normaliser_nom(texte):
-    texte_sans_accents = unicodedata.normalize("NFD", texte)
-    texte_sans_accents = "".join(
-        caractere
-        for caractere in texte_sans_accents
-        if unicodedata.category(caractere) != "Mn"
-    )
+def annoncer_erreur(message):
+    """Prononce directement le texte renvoyé par une fonction 'erreurs' d'un exercice."""
+    if not message:
+        return
 
-    return re.sub(
-        r"[^a-z0-9]+",
-        "_",
-        texte_sans_accents.lower()
-    ).strip("_")
+    maintenant = time.monotonic()
+    derniere = dernieres_erreurs.get(message)
+
+    if derniere is not None and maintenant - derniere < DELAI_ERREUR:
+        return
+
+    dernieres_erreurs[message] = maintenant
+    jouer_texte(message, priorite=6)
 
 
-def nom_annonce_etape(etape):
-
-    exercice = normaliser_nom(etape["exercice"])
+def construire_phrase_etape(etape):
+    exercice = etape["exercice"]
     series = etape["series"]
-    mot_series = "serie" if series == 1 else "series"
+    mot_series = "série" if series == 1 else "séries"
     poids = etape.get("poids", 0)
 
+    phrase = f"Prochain exercice : {exercice}"
+
     if poids > 0:
-        debut = f"prochain_{exercice}_{poids}_kilos_{series}_{mot_series}"
-    else:
-        debut = f"prochain_{exercice}_{series}_{mot_series}"
+        phrase += f", avec un haltère de {poids} kilos"
+
+    phrase += f", {series} {mot_series}"
 
     if etape["mode"] == "repetitions":
-        return f"{debut}_{etape['repetitions']}_repetitions"
+        phrase += f", {etape['repetitions']} répétitions."
+    elif etape["mode"] == "maintien":
+        phrase += f", maintien de {etape['duree']} secondes."
+    elif etape["mode"] == "chrono":
+        phrase += f", chrono de {etape['duree']} secondes."
+    elif etape["mode"] == "amrap":
+        phrase += f", en amrap pendant {etape['duree']} secondes."
 
-    if etape["mode"] == "maintien":
-        return f"{debut}_{etape['duree']}_secondes"
+    if etape.get("commentaire"):
+        phrase += f" {etape['commentaire']}"
 
-    if etape["mode"] == "chrono":
-        return f"{debut}_chrono_{etape['duree']}_secondes"
-
-    if etape["mode"] == "amrap":
-        return f"{debut}_amrap_{etape['duree']}_secondes"
-
-    return None
-
-
-def annoncer_prochaine_etape(etape, annonce_secours):
-
-    print("ANNONCE PROCHAINE ETAPE APPELEE")
-    print(etape)
+    return phrase
 
 
+def annoncer_prochaine_etape(etape, annonce_secours=None):
     if etape is None:
         return
-
-    nom = nom_annonce_etape(etape)
-
-    if nom is None:
-        coach(annonce_secours)
-        return
-
-    candidats = list(
-        DOSSIER_ANNONCES_ETAPES.glob(f"{nom}_*.wav")
-    )
-
-    if not candidats:
-        print("AUCUN WAV ETAPE TROUVE")
-        print("Recherche :", nom)
-        coach(annonce_secours)
-        return
-
-    fichier = random.choice(candidats)
-
-    jouer(fichier.name)
+    jouer_texte(construire_phrase_etape(etape), priorite=5)
 
 
 def annoncer_progression(repetitions, cible):
@@ -222,77 +119,43 @@ def annoncer_progression(repetitions, cible):
 
     if restantes == 0:
         coach("fin_serie")
-        return
-
-    if restantes == 1:
+    elif restantes == 1:
         coach("avant_derniere")
-        return
-
-    if restantes == 3:
+    elif restantes == 3:
         coach("encore_3")
-        return
-
-    if restantes == 5:
+    elif restantes == 5:
         coach("encore_5")
-        return
-
-    if cible >= 8 and repetitions == cible // 2:
+    elif cible >= 8 and repetitions == cible // 2:
         coach("mi_parcours")
 
-def annoncer_temps_restant(bloc, secondes_restantes):
 
+def annoncer_temps_restant(bloc, secondes_restantes):
     if bloc.temps_restant_precedent is None:
         bloc.temps_restant_precedent = secondes_restantes
         return
 
-
-    seuils = [
-        (20, "temps_20"),
-        (10, "temps_10"),
-        (5, "temps_5"),
-    ]
-
+    seuils = [(20, "temps_20"), (10, "temps_10"), (5, "temps_5")]
 
     for seuil, message in seuils:
-
-        if (
-            bloc.temps_restant_precedent > seuil
-            and secondes_restantes <= seuil
-        ):
+        if bloc.temps_restant_precedent > seuil and secondes_restantes <= seuil:
             coach(message)
             break
-
 
     bloc.temps_restant_precedent = secondes_restantes
 
-def annoncer_temps_repos(seance, state, annoncer_exercice=False):
 
+def annoncer_temps_repos(seance, state, annoncer_exercice=False):
     secondes_restantes = int(seance.temps_restant)
 
-
-    if (
-        not hasattr(seance, "repos_restant_precedent")
-        or seance.repos_restant_precedent is None
-    ):
+    if not hasattr(seance, "repos_restant_precedent") or seance.repos_restant_precedent is None:
         seance.repos_restant_precedent = secondes_restantes
         return
 
-
-    seuils = [
-        (20, "repos_20"),
-        (10, "repos_10"),
-        (5, "repos_5"),
-    ]
-
+    seuils = [(20, "repos_20"), (10, "repos_10"), (5, "repos_5")]
 
     for seuil, message in seuils:
-
-        if (
-            seance.repos_restant_precedent > seuil
-            and secondes_restantes <= seuil
-        ):
+        if seance.repos_restant_precedent > seuil and secondes_restantes <= seuil:
             coach(message)
             break
-
 
     seance.repos_restant_precedent = secondes_restantes

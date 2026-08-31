@@ -1,5 +1,6 @@
 import time
-from audio.coach import annoncer_progression,annoncer_temps_restant
+from audio.coach import annoncer_progression, annoncer_temps_restant, annoncer_erreur
+
 from session.circuit import (
     MODE_REPETITIONS,
     MODE_MAINTIEN,
@@ -7,7 +8,14 @@ from session.circuit import (
     MODE_AMRAP
 )
 
-
+def mettre_a_jour_erreur(exercice, corps, state):
+    message = next(
+        (message for verifier in exercice.erreurs if (message := verifier(corps))),
+        None,
+    )
+    state.erreur = message
+    annoncer_erreur(message)
+    
 def executer_mode(
     seance,
     corps,

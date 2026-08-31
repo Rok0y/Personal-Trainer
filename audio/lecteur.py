@@ -17,29 +17,18 @@ compteur_audio = 0
 
 
 def lecteur_audio():
-
     while True:
-
         priorite, _, nom = file_audio.get()
 
-        chemin = os.path.join(
-            DOSSIER_SONS,
-            nom
-        )
+        chemin = nom if os.path.isabs(nom) else os.path.join(DOSSIER_SONS, nom)
 
         if os.path.exists(chemin):
-
             son = pygame.mixer.Sound(chemin)
-
-            # Les annonces courtes doivent rester clairement audibles.
-            if nom == "bip.wav":
+            if os.path.basename(chemin) == "bip.wav":
                 son.set_volume(1.0)
-
             son.play()
-
             while pygame.mixer.get_busy():
                 time.sleep(0.05)
-
         else:
             print("\n" + "=" * 60)
             print("AUDIO MANQUANT À ENREGISTRER")
@@ -47,6 +36,21 @@ def lecteur_audio():
             print("=" * 60 + "\n")
 
         file_audio.task_done()
+
+
+def jouer_texte(texte, priorite=5):
+    """Génère (ou récupère du cache) l'audio TTS pour ce texte, puis le joue."""
+    from audio.tts import generer  # import local pour éviter une dépendance circulaire
+
+    global compteur_audio
+
+    if priorite >= 5:
+        vider_petits_sons()
+
+    compteur_audio += 1
+    chemin = generer(texte)
+
+    file_audio.put((-priorite, compteur_audio, str(chemin)))
 
 
 threading.Thread(

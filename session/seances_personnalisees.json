@@ -84,5 +84,40 @@
       "repos_apres": 0,
       "commentaire": ""
     }
+  ],
+  "test de séance": [
+    {
+      "exercice": "Curl biceps droit",
+      "poids": 5,
+      "mode": "repetitions",
+      "series": 2,
+      "repetitions": 11,
+      "duree": 0,
+      "repos_entre_series": 25,
+      "repos_apres": 30,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Curl biceps gauche",
+      "poids": 8,
+      "mode": "repetitions",
+      "series": 2,
+      "repetitions": 11,
+      "duree": 0,
+      "repos_entre_series": 30,
+      "repos_apres": 30,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Elevations latérales",
+      "poids": 10,
+      "mode": "repetitions",
+      "series": 2,
+      "repetitions": 11,
+      "duree": 0,
+      "repos_entre_series": 30,
+      "repos_apres": 30,
+      "commentaire": ""
+    }
   ]
 }
