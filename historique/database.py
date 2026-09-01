@@ -79,6 +79,12 @@ def initialiser():
         curseur.execute("ALTER TABLE exercices ADD COLUMN repetitions_cibles INTEGER")
     if "duree_cible" not in colonnes_exercices:
         curseur.execute("ALTER TABLE exercices ADD COLUMN duree_cible REAL")
+    if "entrelace_avec" not in colonnes_exercices:
+        curseur.execute("ALTER TABLE exercices ADD COLUMN entrelace_avec TEXT")
+    if "repos_entre_series" not in colonnes_exercices:
+        curseur.execute("ALTER TABLE exercices ADD COLUMN repos_entre_series INTEGER DEFAULT 0")
+    if "repos_apres" not in colonnes_exercices:
+        curseur.execute("ALTER TABLE exercices ADD COLUMN repos_apres INTEGER DEFAULT 0")
 
     curseur.execute("""
         CREATE TABLE IF NOT EXISTS series_realisees (
@@ -163,10 +169,13 @@ def enregistrer_seance(
                 commentaire,
                 series_cibles,
                 repetitions_cibles,
-                duree_cible
+                duree_cible,
+                entrelace_avec,
+                repos_entre_series,
+                repos_apres
             )
 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
             """,
 
@@ -182,6 +191,9 @@ def enregistrer_seance(
                 exercice.get("series_cibles", exercice["series"]),
                 exercice.get("repetitions_cibles", 0),
                 exercice.get("duree_cible", exercice.get("duree", 0)),
+                exercice.get("entrelace_avec"),
+                exercice.get("repos_entre_series", 0),
+                exercice.get("repos_apres", 0),
             )
         )
 
@@ -253,7 +265,10 @@ def recuperer_historique():
                 commentaire,
                 series_cibles,
                 repetitions_cibles,
-                duree_cible
+                duree_cible,
+                entrelace_avec,
+                repos_entre_series,
+                repos_apres
 
             FROM exercices
 
@@ -284,6 +299,9 @@ def recuperer_historique():
                     "series_cibles": exercice[8] or exercice[2],
                     "repetitions_cibles": exercice[9] or 0,
                     "duree_cible": exercice[10] or 0,
+                    "entrelace_avec": exercice[11],
+                    "repos_entre_series": exercice[12] or 0,
+                    "repos_apres": exercice[13] or 0,
                     "series_detaillees": recuperer_series(curseur, exercice[0]),
                 }
                 for exercice in exercices
@@ -398,6 +416,25 @@ def derniere_performance(nom_seance):
         if seance.get("nom") == nom_seance and seance.get("statut") != "abandoned":
             return seance
     return None
+
+
+def renommer_seance(ancien_nom, nouveau_nom):
+    """Reporte l'historique sur le nouveau nom quand une séance est renommée.
+
+    Sans cela, l'historique déjà enregistré reste attaché à l'ancien nom et
+    n'apparait plus ni sur l'accueil ni dans la dernière performance.
+    """
+    if ancien_nom == nouveau_nom:
+        return
+
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "UPDATE seances SET nom_seance = ? WHERE nom_seance = ?",
+        (nouveau_nom, ancien_nom),
+    )
+    conn.commit()
+    conn.close()
 
 
 def supprimer_seance(seance_id):

@@ -1539,7 +1539,9 @@
         const {
             exercice: prochainExercice,
             poids: prochainPoids,
-            series: prochainSerie,
+            serie_actuelle: prochainSerieActuelle,
+            nombre_total_series: prochainNombreSeries,
+            series: prochainSerie,  // Legacy: nombre restant ou numéro local
             repetitions: prochainRepetitions,
             mode: prochainMode,
             duree: prochainDuree,
@@ -1560,22 +1562,26 @@
 
         overlay.classList.add("visible");
         if (prochainExercice) {
-            const nombreSeries = `${prochainSerie} ${prochainSerie > 1 ? "séries" : "série"}`;
+            // Utiliser les nouveaux champs si disponibles, sinon fallback sur l'ancien 'series'
+            const serieLabel = prochainNombreSeries !== undefined 
+                ? `Série ${prochainSerieActuelle} de ${prochainNombreSeries}`
+                : `${prochainSerie} ${prochainSerie > 1 ? "séries" : "série"}`;
+            
             let consigne;
 
             switch (prochainMode) {
                 case "maintien":
-                    consigne = `${nombreSeries} × ${prochainDuree} s de maintien`;
+                    consigne = `${serieLabel} × ${prochainDuree} s de maintien`;
                     break;
                 case "chrono":
-                    consigne = `${nombreSeries} × ${prochainDuree} s`;
+                    consigne = `${serieLabel} × ${prochainDuree} s`;
                     break;
                 case "amrap":
-                    consigne = `${nombreSeries} × AMRAP ${prochainDuree} s`;
+                    consigne = `${serieLabel} × AMRAP ${prochainDuree} s`;
                     break;
                 case "repetitions":
                 default:
-                    consigne = `${nombreSeries} × ${prochainRepetitions} reps`;
+                    consigne = `${serieLabel} × ${prochainRepetitions} reps`;
             }
 
             suivant.innerHTML = `

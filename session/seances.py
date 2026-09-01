@@ -433,6 +433,7 @@ def exporter_blocs(circuit):
             "repos_entre_series": bloc.repos_entre_series,
             "repos_apres": bloc.repos_apres,
             "commentaire": bloc.commentaire,
+            "entrelace_avec": bloc.entrelace_avec,
         }
         for bloc in circuit.exercices
     ]
@@ -453,23 +454,37 @@ def supprimer_seance_personnalisee(nom):
         json.dump(donnees, fichier, ensure_ascii=False, indent=2)
 
 
+def construire_circuit(blocs):
+    """Construit un circuit à partir d'une définition JSON, en validant les noms."""
+    if not blocs:
+        raise ValueError("Au moins un exercice est requis")
+    inconnus = [
+        bloc.get("exercice") for bloc in blocs
+        if bloc.get("exercice") not in CATALOGUE_EXERCICES
+    ]
+    if inconnus:
+        raise KeyError(f"Exercice inconnu : {inconnus[0]}")
+    return Circuit([
+        BlocExercice(
+            exercice=CATALOGUE_EXERCICES[bloc["exercice"]],
+            poids=bloc.get("poids", 0),
+            mode=bloc.get("mode", MODE_REPETITIONS),
+            nombre_series=bloc.get("series", 1),
+            repetitions_par_serie=bloc.get("repetitions", 0),
+            duree=bloc.get("duree", 0),
+            repos_entre_series=bloc.get("repos_entre_series", 0),
+            repos_apres=bloc.get("repos_apres", 0),
+            commentaire=bloc.get("commentaire", ""),
+            entrelace_avec=bloc.get("entrelace_avec"),
+        ) for bloc in blocs
+    ])
+
+
 def creer_seance_personnalisee(nom):
     blocs = _lire_seances_personnalisees().get(nom)
     if blocs is None:
         raise KeyError(f"Séance inconnue : {nom}")
-    return Circuit([
-        BlocExercice(
-            exercice=CATALOGUE_EXERCICES[bloc["exercice"]],
-            poids=bloc["poids"],
-            mode=bloc["mode"],
-            nombre_series=bloc["series"],
-            repetitions_par_serie=bloc.get("repetitions", 0),
-            duree=bloc.get("duree", 0),
-            repos_entre_series=bloc["repos_entre_series"],
-            repos_apres=bloc["repos_apres"],
-            commentaire=bloc.get("commentaire", ""),
-        ) for bloc in blocs
-    ])
+    return construire_circuit(blocs)
 
 
 def creer_seance(nom):

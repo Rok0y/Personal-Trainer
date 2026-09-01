@@ -289,14 +289,20 @@ def gerer_mode_amrap(
 
     return derniere_rep, repetitions, False
 
-def decrire_prochaine_etape(bloc, nombre_series):
+def decrire_prochaine_etape(bloc, serie_actuelle, nombre_total_series=None):
     if bloc is None:
         return None
+    
+    # Si nombre_total_series n'est pas fourni, utiliser serie_actuelle comme avant (legacy)
+    if nombre_total_series is None:
+        nombre_total_series = serie_actuelle
 
     return {
         "exercice": bloc.exercice.nom,
         "poids": bloc.poids,
-        "series": nombre_series,
+        "serie_actuelle": serie_actuelle,
+        "nombre_total_series": nombre_total_series,
+        "series": serie_actuelle,
         "repetitions": bloc.repetitions_par_serie,
         "mode": bloc.mode,
         "duree": bloc.duree,
@@ -308,8 +314,8 @@ def mettre_a_jour_prochain_exercice(circuit, state):
         bloc = circuit.bloc_actuel
         state.prochaine_etape = decrire_prochaine_etape(
             bloc,
-            circuit.nombre_series - circuit.serie_actuelle + 1
-            if bloc else 0,
+            circuit.serie_actuelle,
+            bloc.nombre_series if bloc else 0,
         )
         return
     # --------------------------------------
@@ -325,7 +331,8 @@ def mettre_a_jour_prochain_exercice(circuit, state):
 
             state.prochaine_etape = decrire_prochaine_etape(
                 bloc,
-                bloc.nombre_series - circuit.serie_actuelle + 1
+                circuit.serie_actuelle,
+                bloc.nombre_series,
             )
 
             return
@@ -343,6 +350,7 @@ def mettre_a_jour_prochain_exercice(circuit, state):
         if prochain:
             state.prochaine_etape = decrire_prochaine_etape(
                 prochain,
+                1,
                 prochain.nombre_series
             )
 

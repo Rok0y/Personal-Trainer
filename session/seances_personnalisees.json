@@ -141,5 +141,92 @@
       "repos_apres": 0,
       "commentaire": ""
     }
+  ],
+  "jambes_abdos": [
+    {
+      "exercice": "Fente droite",
+      "poids": 0,
+      "mode": "repetitions",
+      "series": 4,
+      "repetitions": 12,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 45,
+      "commentaire": "",
+      "entrelace_avec": "Fente gauche"
+    },
+    {
+      "exercice": "Fente gauche",
+      "poids": 0,
+      "mode": "repetitions",
+      "series": 4,
+      "repetitions": 12,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 90,
+      "commentaire": ""
+    }
+  ],
+  "testete": [
+    {
+      "exercice": "Curl biceps droit",
+      "poids": 0,
+      "mode": "repetitions",
+      "series": 2,
+      "repetitions": 9,
+      "duree": 0,
+      "repos_entre_series": 10,
+      "repos_apres": 30,
+      "commentaire": "",
+      "entrelace_avec": "Curl biceps gauche"
+    },
+    {
+      "exercice": "Curl biceps gauche",
+      "poids": 0,
+      "mode": "repetitions",
+      "series": 2,
+      "repetitions": 8,
+      "duree": 0,
+      "repos_entre_series": 10,
+      "repos_apres": 30,
+      "commentaire": "",
+      "entrelace_avec": null
+    },
+    {
+      "exercice": "Elevations latérales",
+      "poids": 0,
+      "mode": "repetitions",
+      "series": 1,
+      "repetitions": 12,
+      "duree": 0,
+      "repos_entre_series": 0,
+      "repos_apres": 0,
+      "commentaire": "",
+      "entrelace_avec": null
+    }
+  ],
+  "Prout": [
+    {
+      "exercice": "Curl biceps droit",
+      "poids": 0,
+      "mode": "repetitions",
+      "series": 2,
+      "repetitions": 7,
+      "duree": 0,
+      "repos_entre_series": 10,
+      "repos_apres": 30,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Curl biceps gauche",
+      "poids": 0,
+      "mode": "repetitions",
+      "series": 2,
+      "repetitions": 5,
+      "duree": 0,
+      "repos_entre_series": 10,
+      "repos_apres": 30,
+      "commentaire": ""
+    }
   ]
 }

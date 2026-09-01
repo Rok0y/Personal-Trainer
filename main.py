@@ -44,13 +44,47 @@ def autoriser_veille():
         ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
 
 
+def publier_fin_de_seance(seance):
+    """Publie l'état final et enregistre l'historique.
+
+    Doit être appelée à chaque frame, y compris quand aucun corps n'est
+    détecté : une séance terminée depuis le site (ou pendant que l'utilisateur
+    est hors champ) doit malgré tout être écrite dans l'historique.
+    """
+    controleur.marquer_terminee()
+
+    state.phase = seance.phase
+    state.serie_actuelle = 0
+    state.nombre_series = 0
+    state.repetitions_cibles = 0
+    state.temps_repos_restant = 0
+    state.poids = 0
+    state.exercice_actuel = "Séance terminée"
+    state.stage = "Terminé"
+
+    if seance.historique_enregistre or not seance.a_des_resultats():
+        return
+
+    print(">>> ENREGISTREMENT HISTORIQUE <<<")
+
+    enregistrer_seance(
+        duree=seance.duree_totale,
+        exercices=seance.exporter_resultats(),
+        nom_seance=controleur.nom_selectionne,
+        statut="abandoned" if seance.phase == "abandonne" else "finished",
+    )
+
+    seance.historique_enregistre = True
+
+
 controleur.definir_reset_progression(lambda: compteur.reset())
 seance = controleur.selectionner("upper_push")
 """La séance active est partagée avec l'API web."""
 
 state.prochaine_etape = decrire_prochaine_etape(
     seance.bloc_actuel,
-    seance.nombre_series
+    1,
+    seance.nombre_series if seance.bloc_actuel else 0
 )
 
 
@@ -213,39 +247,12 @@ try:
                     annoncer_exercice=False
                 )        
             # ==================================
-            # SEANCE TERMINEE
-            # ==================================
-
-            if seance.phase in ("termine", "abandonne"):
-
-                controleur.marquer_terminee()
-
-                state.phase = seance.phase
-                state.serie_actuelle = 0
-                state.nombre_series = 0
-                state.repetitions_cibles = 0
-                state.temps_repos_restant = 0
-                state.poids = 0
-                state.exercice_actuel = "Séance terminée"
-                state.stage = "Terminé"
-
-                if not seance.historique_enregistre and seance.a_des_resultats():
-                    print(">>> ENREGISTREMENT HISTORIQUE <<<")
-
-                    enregistrer_seance(
-                        duree=seance.duree_totale,
-                        exercices=seance.exporter_resultats(),
-                        nom_seance=controleur.nom_selectionne,
-                        statut="abandoned" if seance.phase == "abandonne" else "finished",
-                    )
-
-                    seance.historique_enregistre = True
-
-            # ==================================
             # SEANCE EN COURS
+            # (la fin de séance est traitée plus bas, hors du bloc
+            #  « un corps est détecté »)
             # ==================================
 
-            else:
+            if seance.phase not in ("termine", "abandonne"):
 
                 state.phase = seance.phase
                 state.serie_actuelle = seance.serie_actuelle
@@ -336,16 +343,8 @@ try:
             frame = dessiner_squelette(frame, corps)
 
         # La fin doit être publiée même si la pose disparaît à la dernière frame.
-        if seance is not None and seance.phase == "termine":
-            controleur.marquer_terminee()
-            state.phase = "termine"
-            state.serie_actuelle = 0
-            state.nombre_series = 0
-            state.repetitions_cibles = 0
-            state.temps_repos_restant = 0
-            state.poids = 0
-            state.exercice_actuel = "Séance terminée"
-            state.stage = "Terminé"
+        if seance is not None and seance.phase in ("termine", "abandonne"):
+            publier_fin_de_seance(seance)
 
         # ==========================================
         # ENCODAGE POUR LE FEED WEB

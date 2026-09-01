@@ -1,5 +1,10 @@
 from flask import Flask, render_template, jsonify, Response, request, redirect
-from historique.database import recuperer_historique, statistiques_exercices, derniere_performance
+from historique.database import (
+    recuperer_historique,
+    statistiques_exercices,
+    derniere_performance,
+    renommer_seance,
+)
 from session.controleur import SessionManager
 from session.seances import catalogue_exercices
 import webbrowser
@@ -169,6 +174,19 @@ def creer_seance_page():
     return render_template("creer_seance.html", exercices=catalogue_exercices())
 
 
+@app.route("/editer-seance/<nom>")
+def editer_seance_page(nom):
+    seance = controleur.catalogue().get(nom)
+    if seance is None:
+        return "Séance introuvable", 404
+    return render_template(
+        "editer_seance.html",
+        exercices=catalogue_exercices(),
+        seance_nom=nom,
+        seance_exercices=seance["exercices"],
+    )
+
+
 @app.route("/api/seances", methods=["POST"])
 def creer_seance_api():
     donnees = request.get_json(silent=True) or {}
@@ -191,9 +209,20 @@ def supprimer_seance_api(nom):
 @app.route("/api/seances/<nom>", methods=["PUT"])
 def modifier_seance_api(nom):
     donnees = request.get_json(silent=True) or {}
+    nouveau_nom = (donnees.get("nom") or nom).strip()
+    blocs = donnees.get("blocs")
+
     try:
-        controleur.modifier_configuration(nom, donnees.get("blocs"))
-        return jsonify({"ok": True})
+        # La séance est d'abord validée sous son nouveau nom : si un exercice
+        # est inconnu, rien n'est supprimé ni renommé.
+        controleur.modifier_configuration(nouveau_nom, blocs)
+        if nouveau_nom != nom:
+            try:
+                controleur.supprimer_seance_personnalisee(nom)
+            except KeyError:
+                pass  # séance intégrée sans surcharge enregistrée
+            renommer_seance(nom, nouveau_nom)
+        return jsonify({"ok": True, "nom": nouveau_nom})
     except (KeyError, ValueError, RuntimeError) as erreur:
         return jsonify({"ok": False, "erreur": str(erreur)}), 400
 

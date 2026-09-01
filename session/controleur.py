@@ -2,6 +2,7 @@ import threading
 
 from session.seances import (
     catalogue,
+    construire_circuit,
     creer_seance,
     creer_seance_test,
     enregistrer_seance_personnalisee,
@@ -27,6 +28,7 @@ class SessionManager:
     def creer_seance_personnalisee(self, nom, blocs):
         if not nom or not blocs:
             raise ValueError("Nom et exercices requis")
+        construire_circuit(blocs)  # valide avant d'écrire sur le disque
         enregistrer_seance_personnalisee(nom, blocs)
 
     def supprimer_seance_personnalisee(self, nom):
@@ -151,11 +153,11 @@ class SessionManager:
         with self._verrou:
             if self.statut in ("running", "paused"):
                 raise RuntimeError("Une séance est déjà en cours")
-            if not blocs:
-                raise ValueError("Au moins un exercice est requis")
+            if not nom:
+                raise ValueError("Le nom de la séance est requis")
             # Validate through the normal session construction path before saving.
+            construire_circuit(blocs)
             enregistrer_seance_personnalisee(nom, blocs)
-            creer_seance(nom)
 
     def nouvelle_seance(self):
         with self._verrou:

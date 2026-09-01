@@ -90,6 +90,9 @@
         .session-header { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
         .delete-session { flex: 0 0 auto; padding: 7px 10px; border: 1px solid rgba(255, 90, 54, .65); border-radius: 8px; background: transparent; color: var(--orange); cursor: pointer; font: 700 11px 'Space Grotesk', sans-serif; text-transform: uppercase; }
         .delete-session:hover { border-color: var(--orange); background: rgba(255, 90, 54, .12); }
+        .session-actions { display: flex; flex: 0 0 auto; gap: 8px; align-items: center; }
+        .edit-session { flex: 0 0 auto; padding: 7px 10px; border: 1px solid rgba(27, 232, 196, .55); border-radius: 8px; color: var(--teal); text-decoration: none; font: 700 11px 'Space Grotesk', sans-serif; text-transform: uppercase; }
+        .edit-session:hover { border-color: var(--teal); background: rgba(27, 232, 196, .12); }
 
         .start {
             margin-top: 28px; border: 0; border-radius: 999px; background: var(--orange); color: #0a0d13;
@@ -153,9 +156,14 @@
         <div class="session{% if identifiant == selection %} selected{% endif %}" data-seance="{{ identifiant }}" role="button" tabindex="0">
             <div class="session-header">
                 <h2>{{ seance.nom }}</h2>
-                {% if identifiant not in ('bras', 'test', 'upper_push', 'jambes_abdos') %}
-                <button class="delete-session" data-nom="{{ identifiant }}" type="button">Supprimer</button>
-                {% endif %}
+                <span class="session-actions">
+                    {% if identifiant != 'test' %}
+                    <a class="edit-session" href="/editer-seance/{{ identifiant|urlencode }}">Éditer</a>
+                    {% endif %}
+                    {% if identifiant not in ('bras', 'test', 'upper_push', 'jambes_abdos') %}
+                    <button class="delete-session" data-nom="{{ identifiant }}" type="button">Supprimer</button>
+                    {% endif %}
+                </span>
             </div>
             <p>{{ seance.nombre_exercices }} exercices</p>
 
@@ -182,7 +190,7 @@
                 <summary>Voir le contenu</summary>
                 <ul>
                 {% for exercice in seance.exercices %}
-                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}secondes{% else %}répétitions{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}</li>
+                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}</li>
                 {% endfor %}
                 </ul>
             </details>
@@ -192,7 +200,7 @@
                 <summary>Objectifs et commentaires</summary>
                 <form class="session-editor" data-editor="{{ identifiant }}">
                     {% for exercice in seance.exercices %}
-                    <div class="edit-exercise" data-exercice="{{ exercice.nom or exercice.exercice }}" data-mode="{{ exercice.mode }}" data-poids="{{ exercice.poids|default(0) }}" data-repos-series="{{ exercice.repos_entre_series|default(0) }}" data-repos-apres="{{ exercice.repos_apres|default(0) }}">
+                    <div class="edit-exercise" data-exercice="{{ exercice.nom or exercice.exercice }}" data-mode="{{ exercice.mode }}" data-poids="{{ exercice.poids|default(0) }}" data-repos-series="{{ exercice.repos_entre_series|default(0) }}" data-repos-apres="{{ exercice.repos_apres|default(0) }}" data-entrelace="{{ exercice.entrelace_avec or '' }}">
                         <label>{{ exercice.nom or exercice.exercice }}</label>
                         <p class="editor-equipment">Matériel : {{ exercice.materiel or 'Aucun matériel' }}</p>
                         <span class="number-control" data-unit="Charge (kg)"><button type="button" data-delta="-1" aria-label="Diminuer la charge">−</button><input class="edit-weight" aria-label="Charge en kilogrammes" type="number" min="0" step="0.5" value="{{ exercice.poids|default(0) }}" title="Charge en kilogrammes"><button type="button" data-delta="1" aria-label="Augmenter la charge">+</button></span>
@@ -258,9 +266,12 @@
         panneauPrecedent.classList.add("visible");
     }
     document.querySelectorAll("[data-seance]").forEach((bouton) => {
-        bouton.addEventListener("click", () => selectionnerSeance(bouton.dataset.seance));
+        bouton.addEventListener("click", (evenement) => {
+            if (evenement.target.closest(".edit-session")) return;
+            selectionnerSeance(bouton.dataset.seance);
+        });
         bouton.addEventListener("keydown", (evenement) => {
-            if (evenement.target.closest(".delete-session")) return;
+            if (evenement.target.closest(".delete-session, .edit-session")) return;
             if (evenement.key === "Enter" || evenement.key === " ") {
                 evenement.preventDefault();
                 selectionnerSeance(bouton.dataset.seance);
@@ -314,6 +325,9 @@
                     repos_entre_series: Number(ligne.dataset.reposSeries) || 0,
                     repos_apres: Number(ligne.dataset.reposApres) || 0,
                     commentaire: ligne.querySelector(".edit-comment").value.trim(),
+                    // Cet éditeur ne touche qu'aux objectifs : l'entrelacement
+                    // défini dans « Éditer » doit être renvoyé tel quel.
+                    entrelace_avec: ligne.dataset.entrelace || null,
                 };
             });
             const reponse = await fetch(`/api/seances/${encodeURIComponent(formulaire.dataset.editor)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ blocs }) });

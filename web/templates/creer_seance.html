@@ -49,7 +49,7 @@
     #nom:focus { outline: none; border-color: var(--teal); }
 
     .bloc {
-        display: grid; grid-template-columns: 2fr repeat(8, 1fr); gap: 8px; align-items: end;
+        display: grid; grid-template-columns: 40px 2fr repeat(8, 1fr) 40px; gap: 8px; align-items: end;
         padding: 14px; margin: 10px 0; border: 1px solid var(--border); border-radius: 14px;
         background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     }
@@ -82,6 +82,14 @@
     }
     .bloc button:hover { border-color: var(--orange); color: var(--orange); }
 
+    .bloc > .entrelace-btn {
+        color: var(--teal);
+        font-size: 16px;
+        padding: 6px 8px;
+    }
+    .bloc .entrelace-btn:hover { border-color: var(--teal); }
+    .bloc .entrelace-btn.active { background: rgba(27, 232, 196, 0.15); border-color: var(--teal); color: var(--teal); }
+
     @media (max-width: 700px) {
         .bloc { grid-template-columns: 1fr 1fr 1fr; }
         .champ:first-child, .champ:nth-child(2) { grid-column: span 3; }
@@ -100,8 +108,126 @@
     <a class="btn" href="/">Annuler</a>
 </div>
 <script>
-const exercices={{ exercices|tojson }};const blocs=document.getElementById("blocs");
-function ajouterBloc(){const ligne=document.createElement("div");ligne.className="bloc";ligne.innerHTML=`<div class="champ"><label>Exercice</label><select class="exercice">${Object.keys(exercices).map(n=>`<option>${n}</option>`).join("")}</select></div><div class="champ"><label>Mode</label><select class="mode"><option value="repetitions">Repetitions</option><option value="maintien">Maintien</option><option value="chrono">Chrono</option><option value="amrap">AMRAP</option></select></div><div class="champ"><label>Poids <span>en kg</span></label><input class="poids" type="number" min="0" value="0"></div><div class="champ"><label>Séries</label><input class="series" type="number" min="1" value="1"></div><div class="champ"><label>Répétitions</label><input class="repetitions" type="number" min="0" value="10"></div><div class="champ"><label>Durée <span>en secondes</span></label><input class="duree" type="number" min="0" value="0"></div><div class="champ"><label>Repos série <span>en secondes</span></label><input class="reposEntre" type="number" min="0" value="30"></div><div class="champ"><label>Repos exercice <span>en secondes</span></label><input class="reposApres" type="number" min="0" value="30"></div><button type="button" aria-label="Supprimer cet exercice">X</button>`;ligne.querySelector("button").onclick=()=>ligne.remove();blocs.appendChild(ligne)}
-document.getElementById("ajouter").onclick=ajouterBloc;ajouterBloc();
-document.getElementById("enregistrer").onclick=async()=>{const nom=document.getElementById("nom").value.trim();const lignes=[...document.querySelectorAll(".bloc")];const data={nom,blocs:lignes.map(l=>({exercice:l.querySelector(".exercice").value,mode:l.querySelector(".mode").value,poids:Number(l.querySelector(".poids").value),series:Number(l.querySelector(".series").value),repetitions:Number(l.querySelector(".repetitions").value),duree:Number(l.querySelector(".duree").value),repos_entre_series:Number(l.querySelector(".reposEntre").value),repos_apres:Number(l.querySelector(".reposApres").value)}))};const rep=await fetch("/api/seances",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});if(rep.ok)location.href="/"};
+const exercices = {{ exercices|tojson }};
+const blocs = document.getElementById("blocs");
+
+function ajouterBloc() {
+    const ligne = document.createElement("div");
+    ligne.className = "bloc";
+    
+    const exercicesOptions = Object.keys(exercices)
+        .map(n => `<option>${n}</option>`)
+        .join("");
+    
+    ligne.innerHTML = `
+        <button type="button" class="entrelace-btn" title="Entrelacer avec le suivant">⟷</button>
+        <div class="champ">
+            <label>Exercice</label>
+            <select class="exercice">${exercicesOptions}</select>
+        </div>
+        <div class="champ">
+            <label>Mode</label>
+            <select class="mode">
+                <option value="repetitions">Repetitions</option>
+                <option value="maintien">Maintien</option>
+                <option value="chrono">Chrono</option>
+                <option value="amrap">AMRAP</option>
+            </select>
+        </div>
+        <div class="champ">
+            <label>Poids <span>en kg</span></label>
+            <input class="poids" type="number" min="0" value="0">
+        </div>
+        <div class="champ">
+            <label>Séries</label>
+            <input class="series" type="number" min="1" value="1">
+        </div>
+        <div class="champ">
+            <label>Répétitions</label>
+            <input class="repetitions" type="number" min="0" value="10">
+        </div>
+        <div class="champ">
+            <label>Durée <span>secondes</span></label>
+            <input class="duree" type="number" min="0" value="0">
+        </div>
+        <div class="champ">
+            <label>Repos série <span>secondes</span></label>
+            <input class="reposEntre" type="number" min="0" value="30">
+        </div>
+        <div class="champ">
+            <label>Repos exercice <span>secondes</span></label>
+            <input class="reposApres" type="number" min="0" value="30">
+        </div>
+        <button type="button" class="sup-btn" aria-label="Supprimer cet exercice">X</button>
+    `;
+    
+    // Gestion du bouton d'entrelacement : simple drapeau « avec le bloc
+    // suivant », le nom du partenaire est résolu à l'enregistrement.
+    const entrelaceBtn = ligne.querySelector(".entrelace-btn");
+
+    entrelaceBtn.onclick = (e) => {
+        e.preventDefault();
+
+        const suivant = ligne.nextElementSibling;
+        if (!suivant && !entrelaceBtn.classList.contains("active")) {
+            alert("Aucun exercice suivant à entrelacer");
+            return;
+        }
+
+        entrelaceBtn.classList.toggle("active");
+        entrelaceBtn.title = entrelaceBtn.classList.contains("active")
+            ? `Entrelacé avec : ${suivant.querySelector(".exercice").value}`
+            : "Entrelacer avec le suivant";
+    };
+
+    // Gestion du bouton de suppression
+    ligne.querySelector(".sup-btn").onclick = () => ligne.remove();
+    
+    blocs.appendChild(ligne);
+}
+
+document.getElementById("ajouter").onclick = ajouterBloc;
+ajouterBloc();
+
+document.getElementById("enregistrer").onclick = async () => {
+    const nom = document.getElementById("nom").value.trim();
+    const lignes = [...document.querySelectorAll(".bloc")];
+    
+    const data = {
+        nom,
+        blocs: lignes.map((l, idx) => {
+            const bloc = {
+                exercice: l.querySelector(".exercice").value,
+                mode: l.querySelector(".mode").value,
+                poids: Number(l.querySelector(".poids").value),
+                series: Number(l.querySelector(".series").value),
+                repetitions: Number(l.querySelector(".repetitions").value),
+                duree: Number(l.querySelector(".duree").value),
+                repos_entre_series: Number(l.querySelector(".reposEntre").value),
+                repos_apres: Number(l.querySelector(".reposApres").value)
+            };
+            
+            // Ajouter entrelace_avec si l'utilisateur a cliqué sur le bouton
+            const suivant = lignes[idx + 1];
+            if (suivant && l.querySelector(".entrelace-btn").classList.contains("active")) {
+                bloc.entrelace_avec = suivant.querySelector(".exercice").value;
+            }
+
+            return bloc;
+        })
+    };
+    
+    const rep = await fetch("/api/seances", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data)
+    });
+    
+    if (rep.ok) {
+        location.href = "/";
+    } else {
+        const err = await rep.json();
+        alert("Erreur: " + (err.erreur || "Impossible de sauvegarder"));
+    }
+};
 </script></main></body></html>
