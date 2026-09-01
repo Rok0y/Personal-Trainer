@@ -204,8 +204,8 @@
                         {% endif %}
                         <textarea class="edit-comment" placeholder="Commentaire (optionnel)">{{ exercice.commentaire|default('') }}</textarea>
                         {% set derniere = dernieres_series.get(identifiant, {}).get(exercice.nom or exercice.exercice) %}
-                        {% if derniere and derniere.serie %}
-                        <div class="last-series"><strong>Dernière série · </strong>Séance du {{ derniere.date }} : série {{ derniere.serie.serie }} — {% if derniere.mode == 'maintien' or derniere.mode == 'chrono' %}{{ derniere.serie.duree }} secondes{% else %}{{ derniere.serie.repetitions }} répétitions{% endif %}{% if derniere.serie.poids %} à {{ derniere.serie.poids }} kg{% endif %}</div>
+                        {% if derniere and derniere.series %}
+                        <div class="last-series"><strong>Dernière série · </strong>Séance du {{ derniere.date }} : {% for serie in derniere.series %}{% if derniere.mode == 'maintien' or derniere.mode == 'chrono' %}{{ serie.duree|round(1) }} s{% else %}{{ serie.repetitions }}{% if serie.poids %} x {{ serie.poids }} kg{% endif %}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</div>
                         {% endif %}
                     </div>
                     {% endfor %}

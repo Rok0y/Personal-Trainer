@@ -398,3 +398,56 @@ def derniere_performance(nom_seance):
         if seance.get("nom") == nom_seance and seance.get("statut") != "abandoned":
             return seance
     return None
+
+
+def supprimer_seance(seance_id):
+    """Supprime une séance de l'historique, avec tous ses exercices et séries."""
+    conn = connexion()
+    curseur = conn.cursor()
+
+    curseur.execute("SELECT id FROM seances WHERE id = ?", (seance_id,))
+    if curseur.fetchone() is None:
+        conn.close()
+        raise KeyError(f"Séance {seance_id} introuvable")
+
+    curseur.execute(
+        """
+        DELETE FROM series_realisees
+        WHERE exercice_id IN (
+            SELECT id FROM exercices WHERE seance_id = ?
+        )
+        """,
+        (seance_id,),
+    )
+    curseur.execute("DELETE FROM exercices WHERE seance_id = ?", (seance_id,))
+    curseur.execute("DELETE FROM seances WHERE id = ?", (seance_id,))
+
+    conn.commit()
+    conn.close()
+
+
+def supprimer_exercice_de_seance(seance_id, nom_exercice):
+    """Supprime un exercice précis (et ses séries) d'une séance de l'historique."""
+    conn = connexion()
+    curseur = conn.cursor()
+
+    curseur.execute(
+        "SELECT id FROM exercices WHERE seance_id = ? AND nom = ?",
+        (seance_id, nom_exercice),
+    )
+    ids_exercices = [ligne[0] for ligne in curseur.fetchall()]
+    if not ids_exercices:
+        conn.close()
+        raise KeyError(f"Exercice « {nom_exercice} » introuvable pour la séance {seance_id}")
+
+    curseur.executemany(
+        "DELETE FROM series_realisees WHERE exercice_id = ?",
+        [(id_exercice,) for id_exercice in ids_exercices],
+    )
+    curseur.executemany(
+        "DELETE FROM exercices WHERE id = ?",
+        [(id_exercice,) for id_exercice in ids_exercices],
+    )
+
+    conn.commit()
+    conn.close()

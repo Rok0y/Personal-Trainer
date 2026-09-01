@@ -67,7 +67,7 @@
       "poids": 8,
       "mode": "repetitions",
       "series": 2,
-      "repetitions": 8,
+      "repetitions": 7,
       "duree": 0,
       "repos_entre_series": 0,
       "repos_apres": 0,
@@ -78,9 +78,66 @@
       "poids": 8,
       "mode": "repetitions",
       "series": 1,
-      "repetitions": 8,
+      "repetitions": 6,
       "duree": 0,
       "repos_entre_series": 0,
+      "repos_apres": 0,
+      "commentaire": ""
+    }
+  ],
+  "upper_push": [
+    {
+      "exercice": "Developpé couché altères",
+      "poids": 10,
+      "mode": "repetitions",
+      "series": 4,
+      "repetitions": 14,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Pompes",
+      "poids": 0,
+      "mode": "repetitions",
+      "series": 4,
+      "repetitions": 11,
+      "duree": 0,
+      "repos_entre_series": 60,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Développé épaule",
+      "poids": 8,
+      "mode": "repetitions",
+      "series": 3,
+      "repetitions": 12,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Elevations latérales",
+      "poids": 5,
+      "mode": "repetitions",
+      "series": 3,
+      "repetitions": 13,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Extension Triceps",
+      "poids": 14,
+      "mode": "repetitions",
+      "series": 3,
+      "repetitions": 11,
+      "duree": 0,
+      "repos_entre_series": 60,
       "repos_apres": 0,
       "commentaire": ""
     }

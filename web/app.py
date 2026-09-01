@@ -7,6 +7,15 @@ import state
 import time
 import logging
 
+# Ces deux fonctions doivent être ajoutées à historique/database.py pour que la
+# suppression fonctionne (voir le gabarit fourni séparément). Import protégé pour
+# ne pas empêcher le lancement du site tant qu'elles n'existent pas.
+try:
+    from historique.database import supprimer_seance, supprimer_exercice_de_seance
+except ImportError:
+    supprimer_seance = None
+    supprimer_exercice_de_seance = None
+
 class FiltreEtat(logging.Filter):
     def filter(self, record):
         return "GET /etat" not in record.getMessage()
@@ -80,14 +89,11 @@ def index():
                     exercice["nom"]: {
                         "date": seance["date"],
                         "mode": exercice.get("mode", "repetitions"),
-                        "serie": next(
-                            (
-                                serie
-                                for serie in reversed(exercice.get("series_detaillees", []))
-                                if serie.get("completee", True)
-                            ),
-                            None,
-                        ),
+                        "series": [
+                            serie
+                            for serie in exercice.get("series_detaillees", [])
+                            if serie.get("completee", True)
+                        ],
                     }
                     for exercice in seance.get("exercices", [])
                 }
@@ -359,3 +365,31 @@ def detail_historique(seance_id):
         meilleurs=meilleurs_volumes(donnees),
         detail=True,
     )
+
+
+@app.route("/api/historique/<int:seance_id>", methods=["DELETE"])
+def supprimer_seance_historique_api(seance_id):
+    if supprimer_seance is None:
+        return jsonify({
+            "ok": False,
+            "erreur": "Fonction supprimer_seance manquante dans historique/database.py",
+        }), 501
+    try:
+        supprimer_seance(seance_id)
+        return jsonify({"ok": True})
+    except (KeyError, ValueError) as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 404
+
+
+@app.route("/api/historique/<int:seance_id>/exercice/<nom>", methods=["DELETE"])
+def supprimer_exercice_historique_api(seance_id, nom):
+    if supprimer_exercice_de_seance is None:
+        return jsonify({
+            "ok": False,
+            "erreur": "Fonction supprimer_exercice_de_seance manquante dans historique/database.py",
+        }), 501
+    try:
+        supprimer_exercice_de_seance(seance_id, nom)
+        return jsonify({"ok": True})
+    except (KeyError, ValueError) as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 404

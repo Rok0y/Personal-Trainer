@@ -168,12 +168,15 @@ class Circuit:
     def a_des_resultats(self):
         return bool(self.resultats_series)
 
-    def objectifs_reussis(self):
-        """Indique si chaque bloc a validé toutes ses séries à la cible."""
-        for index, bloc in enumerate(self.exercices):
+    def objectifs_reussis(self, index=None):
+        """Indique si un bloc précis (ou tous, si index=None) a validé
+        toutes ses séries à la cible."""
+        indices = range(len(self.exercices)) if index is None else [index]
+        for i in indices:
+            bloc = self.exercices[i]
             series = [
                 resultat for resultat in self.resultats_series
-                if resultat["index_exercice"] == index and resultat.get("completee")
+                if resultat["index_exercice"] == i and resultat.get("completee")
             ]
             if len(series) != bloc.nombre_series:
                 return False
@@ -186,15 +189,18 @@ class Circuit:
         return bool(self.exercices)
 
     def appliquer_progression(self):
-        """Augmente la cible sans modifier le nombre de séries."""
-        if not self.objectifs_reussis():
-            return False
-        for bloc in self.exercices:
+        """Augmente la cible exercice par exercice, uniquement pour
+        ceux ayant individuellement réussi toutes leurs séries."""
+        progression_appliquee = False
+        for index, bloc in enumerate(self.exercices):
+            if not self.objectifs_reussis(index):
+                continue
             if bloc.mode in (MODE_REPETITIONS, MODE_AMRAP):
                 bloc.repetitions_par_serie += 1
             elif bloc.mode in (MODE_MAINTIEN, MODE_CHRONO):
                 bloc.duree += 2
-        return True
+            progression_appliquee = True
+        return progression_appliquee
 
     def exporter(self):
         """Conserve l'ancien nom pour l'export des résultats réalisés."""
