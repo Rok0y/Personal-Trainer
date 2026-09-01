@@ -1,21 +1,10 @@
 import time
-from audio.coach import annoncer_progression,annoncer_temps_restant
-from session.circuit import (
-    MODE_REPETITIONS,
-    MODE_MAINTIEN,
-    MODE_CHRONO,
-    MODE_AMRAP
-)
+
+from audio.coach import annoncer_progression, annoncer_temps_restant
+from session.circuit import MODE_AMRAP, MODE_CHRONO, MODE_MAINTIEN, MODE_REPETITIONS
 
 
-def executer_mode(
-    seance,
-    corps,
-    compteur,
-    state,
-    coach,
-    derniere_rep
-):
+def executer_mode(seance, corps, compteur, state, coach, derniere_rep):
 
     bloc = seance.bloc_actuel
     state.mode = bloc.mode
@@ -30,24 +19,16 @@ def executer_mode(
             compteur=compteur,
             state=state,
             coach=coach,
-            derniere_rep=derniere_rep
+            derniere_rep=derniere_rep,
         )
     elif bloc.mode == MODE_MAINTIEN:
 
         return gerer_mode_maintien(
-            corps=corps,
-            bloc=bloc,
-            seance=seance,
-            state=state,
-            coach=coach
+            corps=corps, bloc=bloc, seance=seance, state=state, coach=coach
         )
     elif bloc.mode == MODE_CHRONO:
 
-        return gerer_mode_chrono(
-            bloc=bloc,
-            seance=seance,
-            state=state
-        )
+        return gerer_mode_chrono(bloc=bloc, seance=seance, state=state)
     elif bloc.mode == MODE_AMRAP:
 
         return gerer_mode_amrap(
@@ -57,12 +38,23 @@ def executer_mode(
             seance=seance,
             state=state,
             coach=coach,
-            derniere_rep=derniere_rep
+            derniere_rep=derniere_rep,
         )
-    
-    raise NotImplementedError(
-        f"Mode inconnu : {bloc.mode}"
-    )
+
+    raise NotImplementedError(f"Mode inconnu : {bloc.mode}")
+
+
+def _finaliser_serie(seance, state, bloc):
+    """Termine la série en cours et réinitialise les champs temporels du bloc.
+
+    Factorise ce que les quatre gerer_mode_* répétaient (terminer_serie +
+    mettre_a_jour_prochain_exercice + reset des attributs temporels), délégué
+    à Circuit.reinitialiser_etat_serie pour n'avoir qu'un seul endroit qui
+    connaît la liste de ces attributs.
+    """
+    seance.terminer_serie()
+    mettre_a_jour_prochain_exercice(seance, state)
+    seance.reinitialiser_etat_serie(bloc)
 
 
 def mettre_a_jour_erreur(exercice, corps, state):
@@ -70,18 +62,10 @@ def mettre_a_jour_erreur(exercice, corps, state):
         (message for verifier in exercice.erreurs if (message := verifier(corps))),
         None,
     )
-    
-    
+
 
 def gerer_mode_repetitions(
-    corps,
-    exercice,
-    bloc,
-    seance,
-    compteur,
-    state,
-    coach,
-    derniere_rep
+    corps, exercice, bloc, seance, compteur, state, coach, derniere_rep
 ):
     serie_terminee = False
     mettre_a_jour_erreur(exercice, corps, state)
@@ -90,15 +74,9 @@ def gerer_mode_repetitions(
     stage, repetitions = compteur.mettre_a_jour(stage_detecte)
 
     if repetitions > derniere_rep:
-        coach(
-            "compteur",
-            repetitions
-        )
+        coach("compteur", repetitions)
 
-        annoncer_progression(
-            repetitions,
-            bloc.repetitions_par_serie
-        )
+        annoncer_progression(repetitions, bloc.repetitions_par_serie)
 
         derniere_rep = repetitions
 
@@ -110,8 +88,7 @@ def gerer_mode_repetitions(
             repetitions=repetitions,
             completee=True,
         )
-        seance.terminer_serie()
-        mettre_a_jour_prochain_exercice(seance,state)
+        _finaliser_serie(seance, state, bloc)
         compteur.reset()
         state.repetitions = 0
         derniere_rep = 0
@@ -120,23 +97,15 @@ def gerer_mode_repetitions(
 
     return derniere_rep, repetitions, serie_terminee
 
-def gerer_mode_maintien(
-    corps,
-    bloc,
-    seance,
-    state,
-    coach
-):
+
+def gerer_mode_maintien(corps, bloc, seance, state, coach):
 
     mettre_a_jour_erreur(bloc.exercice, corps, state)
     position = bloc.exercice.detection(corps)
     if position == "maintien":
         bloc.position_maintien_validee = True
 
-    if (
-        position != "maintien"
-        and getattr(bloc, "position_maintien_validee", False)
-    ):
+    if position != "maintien" and getattr(bloc, "position_maintien_validee", False):
         coach("correction_gainage")
     maintenant = time.monotonic()
 
@@ -149,22 +118,17 @@ def gerer_mode_maintien(
     if position == "maintien":
         bloc.temps_maintien += temps_ecoule
 
-
     # Bip chaque seconde
     seconde = int(bloc.temps_maintien)
     if getattr(bloc, "derniere_seconde_bip", -1) != seconde:
         bloc.derniere_seconde_bip = seconde
         coach("bip")
 
-    annoncer_temps_restant(
-        bloc,
-        bloc.duree - bloc.temps_maintien
-    )
+    annoncer_temps_restant(bloc, bloc.duree - bloc.temps_maintien)
     state.repetitions = 0
     state.stage = position
     state.temps_maintien = bloc.temps_maintien
     state.duree_maintien = bloc.duree
-
 
     if bloc.temps_maintien >= bloc.duree:
 
@@ -172,32 +136,20 @@ def gerer_mode_maintien(
             duree=bloc.temps_maintien,
             completee=True,
         )
-        seance.terminer_serie()
-        mettre_a_jour_prochain_exercice(seance,state)
-        bloc.temps_maintien = 0
-        del bloc.dernier_maintien
-        bloc.temps_restant_precedent = None
-        bloc.derniere_seconde_bip = -1
+        _finaliser_serie(seance, state, bloc)
         return 0, 0, True
-
 
     return 0, 0, False
 
-def gerer_mode_chrono(
-    bloc,
-    seance,
-    state
-):
+
+def gerer_mode_chrono(bloc, seance, state):
     maintenant = time.monotonic()
 
     if not hasattr(bloc, "debut_chrono"):
         bloc.debut_chrono = maintenant
 
     bloc.temps_chrono = maintenant - bloc.debut_chrono
-    annoncer_temps_restant(
-        bloc,
-        bloc.duree - bloc.temps_chrono
-    )
+    annoncer_temps_restant(bloc, bloc.duree - bloc.temps_chrono)
     if bloc.temps_chrono >= bloc.duree:
         bloc.temps_chrono = bloc.duree
         state.temps_chrono = bloc.temps_chrono
@@ -207,12 +159,7 @@ def gerer_mode_chrono(
             duree=bloc.temps_chrono,
             completee=True,
         )
-        seance.terminer_serie()
-        mettre_a_jour_prochain_exercice(seance, state)
-
-        bloc.temps_chrono = 0
-        del bloc.debut_chrono
-        bloc.temps_restant_precedent = None
+        _finaliser_serie(seance, state, bloc)
 
         return 0, 0, True
 
@@ -221,15 +168,8 @@ def gerer_mode_chrono(
 
     return 0, 0
 
-def gerer_mode_amrap(
-    corps,
-    bloc,
-    compteur,
-    seance,
-    state,
-    coach,
-    derniere_rep
-):
+
+def gerer_mode_amrap(corps, bloc, compteur, seance, state, coach, derniere_rep):
 
     mettre_a_jour_erreur(bloc.exercice, corps, state)
     maintenant = time.monotonic()
@@ -238,37 +178,24 @@ def gerer_mode_amrap(
         bloc.debut_amrap = maintenant
 
     bloc.temps_amrap = maintenant - bloc.debut_amrap
-    annoncer_temps_restant(
-        bloc,
-        bloc.duree - bloc.temps_amrap
-    )
+    annoncer_temps_restant(bloc, bloc.duree - bloc.temps_amrap)
 
     # détection du mouvement
     stage_detecte = bloc.exercice.detection(corps)
 
-
     stage, repetitions = compteur.mettre_a_jour(stage_detecte)
-
 
     if repetitions > derniere_rep:
 
-        coach(
-            "compteur",
-            repetitions
-        )
+        coach("compteur", repetitions)
 
         derniere_rep = repetitions
-
 
     # affichage web
     state.stage = stage
     state.repetitions = repetitions
 
-    state.temps_amrap_restant = max(
-        0,
-        bloc.duree - bloc.temps_amrap
-    )
-
+    state.temps_amrap_restant = max(0, bloc.duree - bloc.temps_amrap)
 
     # fin du défi
     if bloc.temps_amrap >= bloc.duree:
@@ -277,22 +204,18 @@ def gerer_mode_amrap(
             repetitions=repetitions,
             completee=True,
         )
-        seance.terminer_serie()
-        mettre_a_jour_prochain_exercice(seance,state)
-        bloc.temps_amrap = 0
-        del bloc.debut_amrap
-        bloc.temps_restant_precedent = None
+        _finaliser_serie(seance, state, bloc)
         compteur.reset()
         derniere_rep = 0
         return derniere_rep, repetitions, True
 
-
     return derniere_rep, repetitions, False
+
 
 def decrire_prochaine_etape(bloc, serie_actuelle, nombre_total_series=None):
     if bloc is None:
         return None
-    
+
     # Si nombre_total_series n'est pas fourni, utiliser serie_actuelle comme avant (legacy)
     if nombre_total_series is None:
         nombre_total_series = serie_actuelle
@@ -308,6 +231,7 @@ def decrire_prochaine_etape(bloc, serie_actuelle, nombre_total_series=None):
         "duree": bloc.duree,
         "commentaire": bloc.commentaire,
     }
+
 
 def mettre_a_jour_prochain_exercice(circuit, state):
     if circuit.phase in ("preparation", "exercice"):
@@ -337,7 +261,6 @@ def mettre_a_jour_prochain_exercice(circuit, state):
 
             return
 
-
     # --------------------------------------
     # Repos entre deux exercices
     # On prépare le suivant
@@ -349,13 +272,10 @@ def mettre_a_jour_prochain_exercice(circuit, state):
 
         if prochain:
             state.prochaine_etape = decrire_prochaine_etape(
-                prochain,
-                1,
-                prochain.nombre_series
+                prochain, 1, prochain.nombre_series
             )
 
             return
-
 
     # --------------------------------------
     # Pas de prochain exercice

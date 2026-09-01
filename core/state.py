@@ -39,3 +39,6 @@ progression_preparation = 0
 # ==========================================
 
 latest_frame = None
+frame_id = 0
+"""Incrémenté à chaque nouvelle frame encodée : permet au flux
+web de n'envoyer une image que lorsqu'elle a réellement changé."""

@@ -1,28 +1,39 @@
 # Tous les imports
-import time
-import state
-import cv2
 import ctypes
-from session.moteur import executer_mode, decrire_prochaine_etape, mettre_a_jour_prochain_exercice
-from historique.database import initialiser, enregistrer_seance
+import threading
+import time
+
+import cv2
+
+import session.seances
+from audio.coach import annoncer_prochaine_etape, annoncer_temps_repos, coach
 from audio.lecteur import jouer
-from vision.detector import PoseDetector
-from vision.dessin import dessiner_squelette
+from core import state
+from historique.database import enregistrer_seance, initialiser
 from mouvements.compteur import CompteurMouvement
 from mouvements.outils import HoldPosition
-import threading
-from web.app import lancer_site, ouvrir_navigateur, controleur
-from audio.coach import coach, annoncer_prochaine_etape,annoncer_temps_repos
-import session.seances
 from mouvements.positions import (
     bras_droit_leve,
-    bras_gauche_leve,
     bras_en_x,
+    bras_gauche_leve,
     deux_bras_leves,
 )
+from session.moteur import (
+    decrire_prochaine_etape,
+    executer_mode,
+    mettre_a_jour_prochain_exercice,
+)
+from vision.dessin import dessiner_squelette
+from vision.detector import PoseDetector
+from web.app import controleur, lancer_site, ouvrir_navigateur
 
 # Définition des variables
 cap = cv2.VideoCapture(0)
+# La caméra ouvre en 1920x1080 par défaut : les JPEG font alors ~380 KB
+# et saturent le flux MJPEG. 1280x720 suffit largement pour la détection.
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+QUALITE_JPEG = [cv2.IMWRITE_JPEG_QUALITY, 70]
 compteur = CompteurMouvement()
 hold_bras_x = HoldPosition(bras_en_x, 3)
 hold_deux_bras_leves = HoldPosition(deux_bras_leves, 3)
@@ -30,7 +41,7 @@ preparation = HoldPosition(bras_en_x, 1.5)
 detection = PoseDetector()
 ancienne_phase = None
 derniere_rep = 0
-fin_preparation = None 
+fin_preparation = None
 DELAI_AVANT_EXERCICE = 3
 
 
@@ -82,9 +93,7 @@ seance = controleur.selectionner("upper_push")
 """La séance active est partagée avec l'API web."""
 
 state.prochaine_etape = decrire_prochaine_etape(
-    seance.bloc_actuel,
-    1,
-    seance.nombre_series if seance.bloc_actuel else 0
+    seance.bloc_actuel, 1, seance.nombre_series if seance.bloc_actuel else 0
 )
 
 
@@ -183,69 +192,47 @@ try:
             # ==================================
             # Le coach (une seule fois par changement de phase)
             # ==================================
-                        
+
             if seance.phase != ancienne_phase:
 
                 if seance.phase == "preparation":
                     coach("preparation")
 
-
                 elif seance.phase == "exercice":
 
-                    if ancienne_phase in (
-                        "recuperation_serie",
-                        "repos_exercice"
-                    ):
+                    if ancienne_phase in ("recuperation_serie", "repos_exercice"):
                         coach("debut_serie")
 
                     seance.repos_restant_precedent = None
-
 
                 elif seance.phase == "recuperation_serie":
 
                     coach("repos")
 
-                    seance.repos_restant_precedent = int(
-                        seance.temps_restant
-                    )
-
+                    seance.repos_restant_precedent = int(seance.temps_restant)
 
                 elif seance.phase == "repos_exercice":
 
                     coach("repos")
 
                     annoncer_prochaine_etape(
-                        state.prochaine_etape,
-                        "changement_exercice"
+                        state.prochaine_etape, "changement_exercice"
                     )
 
-                    seance.repos_restant_precedent = int(
-                        seance.temps_restant
-                    )
-
+                    seance.repos_restant_precedent = int(seance.temps_restant)
 
                 elif seance.phase == "termine":
 
                     coach("fin_seance")
 
-
             ancienne_phase = seance.phase
 
             if seance.phase == "recuperation_serie":
-                annoncer_temps_repos(
-                    seance,
-                    state,
-                    annoncer_exercice=False
-                )
-
+                annoncer_temps_repos(seance, state, annoncer_exercice=False)
 
             elif seance.phase == "repos_exercice":
 
-                annoncer_temps_repos(
-                    seance,
-                    state,
-                    annoncer_exercice=False
-                )        
+                annoncer_temps_repos(seance, state, annoncer_exercice=False)
             # ==================================
             # SEANCE EN COURS
             # (la fin de séance est traitée plus bas, hors du bloc
@@ -276,8 +263,7 @@ try:
 
                         if termine:
                             annoncer_prochaine_etape(
-                                state.prochaine_etape,
-                                "debut_serie"
+                                state.prochaine_etape, "debut_serie"
                             )
                             fin_preparation = time.time()
 
@@ -313,7 +299,7 @@ try:
                             compteur=compteur,
                             state=state,
                             coach=coach,
-                            derniere_rep=derniere_rep
+                            derniere_rep=derniere_rep,
                         )
 
                         # SERIE TERMINEE
@@ -350,10 +336,11 @@ try:
         # ENCODAGE POUR LE FEED WEB
         # ==========================================
 
-        succes, buffer = cv2.imencode(".jpg", frame)
+        succes, buffer = cv2.imencode(".jpg", frame, QUALITE_JPEG)
 
         if succes:
             state.latest_frame = buffer.tobytes()
+            state.frame_id += 1
 
 
 # ==========================================

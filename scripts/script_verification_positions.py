@@ -14,14 +14,9 @@ Touches :
 
 import cv2
 
-from vision.detector import PoseDetector
+from mouvements.positions import bras_droit_leve, bras_en_x, bras_gauche_leve
 from vision.dessin import dessiner_squelette
-
-from mouvements.positions import (
-    bras_droit_leve,
-    bras_gauche_leve,
-    bras_en_x,
-)
+from vision.detector import PoseDetector
 
 # ------------------------------------------------------------------
 # Ajoute ici tes nouvelles fonctions de position à tester, par ex :

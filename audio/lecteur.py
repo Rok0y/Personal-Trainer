@@ -1,15 +1,13 @@
-import pygame
 import os
-import threading
 import queue
+import threading
 import time
+
+import pygame
 
 pygame.mixer.init()
 
-DOSSIER_SONS = os.path.join(
-    os.path.dirname(__file__),
-    "Fichiers"
-)
+DOSSIER_SONS = os.path.join(os.path.dirname(__file__), "Fichiers")
 
 file_audio = queue.PriorityQueue()
 
@@ -22,10 +20,7 @@ def lecteur_audio():
 
         priorite, _, nom = file_audio.get()
 
-        chemin = os.path.join(
-            DOSSIER_SONS,
-            nom
-        )
+        chemin = os.path.join(DOSSIER_SONS, nom)
 
         if os.path.exists(chemin):
 
@@ -49,10 +44,7 @@ def lecteur_audio():
         file_audio.task_done()
 
 
-threading.Thread(
-    target=lecteur_audio,
-    daemon=True
-).start()
+threading.Thread(target=lecteur_audio, daemon=True).start()
 
 
 def vider_petits_sons():
@@ -82,10 +74,4 @@ def jouer(nom, priorite=5):
 
     compteur_audio += 1
 
-    file_audio.put(
-        (
-            -priorite,
-            compteur_audio,
-            nom
-        )
-    )
+    file_audio.put((-priorite, compteur_audio, nom))

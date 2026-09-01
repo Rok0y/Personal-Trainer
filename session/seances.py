@@ -1,40 +1,60 @@
-from copy import deepcopy
 import json
+from copy import deepcopy
 from pathlib import Path
 
-from session.circuit import Circuit, BlocExercice,MODE_CHRONO,MODE_MAINTIEN,MODE_REPETITIONS,MODE_AMRAP
-
 from mouvements.exercices import (
+    crunches,
     curl_biceps_droit,
     curl_biceps_gauche,
-    elevation_laterale,
-    pompe,
-    extension_triceps_au_dessus_de_la_tete,
     developpe_couche_sol,
     developpe_epaule,
-    crunches,
-    planche,
-    squat,
+    elevation_laterale,
+    extension_triceps_au_dessus_de_la_tete,
     fente_droite,
     fente_gauche,
-    souleve_roumain,
+    oiseau,
+    planche,
     planche_laterale_droite,
     planche_laterale_gauche,
+    pompe,
+    rowing_penche,
     rowing_unilateral_droit,
     rowing_unilateral_gauche,
-    rowing_penche,
-    oiseau,
+    souleve_roumain,
+    squat,
+)
+from session.circuit import (
+    MODE_AMRAP,
+    MODE_CHRONO,
+    MODE_MAINTIEN,
+    MODE_REPETITIONS,
+    BlocExercice,
+    Circuit,
 )
 
 FICHIER_SEANCES_PERSONNALISEES = Path(__file__).with_name("seances_personnalisees.json")
 CATALOGUE_EXERCICES = {
     exercice.nom: exercice
     for exercice in (
-        curl_biceps_droit, curl_biceps_gauche, elevation_laterale, pompe,
-        extension_triceps_au_dessus_de_la_tete, developpe_couche_sol,
-        developpe_epaule, crunches, planche, squat, fente_droite,
-        fente_gauche, souleve_roumain, planche_laterale_droite,
-        planche_laterale_gauche, rowing_unilateral_droit,rowing_unilateral_gauche, rowing_penche, oiseau,
+        curl_biceps_droit,
+        curl_biceps_gauche,
+        elevation_laterale,
+        pompe,
+        extension_triceps_au_dessus_de_la_tete,
+        developpe_couche_sol,
+        developpe_epaule,
+        crunches,
+        planche,
+        squat,
+        fente_droite,
+        fente_gauche,
+        souleve_roumain,
+        planche_laterale_droite,
+        planche_laterale_gauche,
+        rowing_unilateral_droit,
+        rowing_unilateral_gauche,
+        rowing_penche,
+        oiseau,
     )
 }
 
@@ -57,7 +77,7 @@ MATERIEL_EXERCICES = {
     "Rowing unilateral droit": "Un haltère et une chaise",
     "Rowing unilateral gauche": "Un haltère et une chaise",
     "Rowing penché": "Deux haltères",
-    "Oiseau": "Deux haltères"
+    "Oiseau": "Deux haltères",
 }
 
 
@@ -99,7 +119,9 @@ def formater_materiel(materiels):
                 elements.add("Un haltère")
 
     def poids_formates(poids):
-        return ", ".join(poids[:-1]) + " et " + poids[-1] if len(poids) > 1 else poids[0]
+        return (
+            ", ".join(poids[:-1]) + " et " + poids[-1] if len(poids) > 1 else poids[0]
+        )
 
     if poids_deux_haltere:
         elements.add(f"Deux haltères de {poids_formates(poids_deux_haltere)}")
@@ -121,270 +143,281 @@ def formater_materiel(materiels):
         return " et ".join(elements_ordonnes)
     return ", ".join(elements_ordonnes[:-1]) + ", et " + elements_ordonnes[-1]
 
-Test_exercice = Circuit([
-    BlocExercice(
-        exercice=rowing_unilateral_droit,
-        poids=0,
-        mode=MODE_REPETITIONS,
-        nombre_series=1,
-        repetitions_par_serie=10,
-        duree=0,
-        repos_entre_series=20,
-        repos_apres=10
-    )
-])
 
-seance_bras = Circuit([
-    BlocExercice(
-        exercice=curl_biceps_droit,
-        poids=8,
-        mode=MODE_REPETITIONS,
-        nombre_series=2,
-        repetitions_par_serie=5,
-        duree=0,
-        repos_entre_series=5,
-        repos_apres=10
-    ),
-    BlocExercice(
-        exercice=curl_biceps_gauche,
-        poids=8,
-        mode=MODE_REPETITIONS,
-        nombre_series=1,
-        repetitions_par_serie=5,
-        duree=0,
-        repos_entre_series=30,
-        repos_apres=0
-    )
-])
+Test_exercice = Circuit(
+    [
+        BlocExercice(
+            exercice=rowing_unilateral_droit,
+            poids=0,
+            mode=MODE_REPETITIONS,
+            nombre_series=1,
+            repetitions_par_serie=10,
+            duree=0,
+            repos_entre_series=20,
+            repos_apres=10,
+        )
+    ]
+)
 
-seance_test = Circuit([
-    BlocExercice(
-        exercice=curl_biceps_droit,
-        poids=8,
-        mode=MODE_REPETITIONS,
-        nombre_series=2,
-        repetitions_par_serie=5,
-        duree=0,
-        repos_entre_series=15,
-        repos_apres=30,
-    ),
-    BlocExercice(
-        exercice=planche,
-        poids=0,
-        mode=MODE_MAINTIEN,
-        nombre_series=2,
-        repetitions_par_serie=None,
-        duree=10,
-        repos_entre_series=15,
-        repos_apres=30,
-    ),
-    BlocExercice(
-        exercice=curl_biceps_gauche,
-        poids=8,
-        mode=MODE_AMRAP,
-        nombre_series=2,
-        repetitions_par_serie=0,
-        duree=10,
-        repos_entre_series=15,
-        repos_apres=30,
-    ),
-    BlocExercice(
-        exercice=elevation_laterale,
-        poids=5,
-        mode=MODE_REPETITIONS,
-        nombre_series=1,
-        repetitions_par_serie=5,
-        duree=0,
-        repos_entre_series=5,
-        repos_apres=30,
-    ),
-    BlocExercice(
-        exercice=pompe,
-        poids=0,
-        mode=MODE_REPETITIONS,
-        nombre_series=1,
-        repetitions_par_serie=5,
-        duree=0,
-        repos_entre_series=5,
-        repos_apres=30,
-    ),
-    BlocExercice(
-        exercice=extension_triceps_au_dessus_de_la_tete,
-        poids=14,
-        mode=MODE_REPETITIONS,
-        nombre_series=1,
-        repetitions_par_serie=5,
-        duree=0,
-        repos_entre_series=5,
-        repos_apres=30,
-    ),
-    BlocExercice(
-        exercice=developpe_couche_sol,
-        poids=10,
-        mode=MODE_REPETITIONS,
-        nombre_series=1,
-        repetitions_par_serie=5,
-        duree=0,
-        repos_entre_series=5,
-        repos_apres=0
-    )
-])
+seance_bras = Circuit(
+    [
+        BlocExercice(
+            exercice=curl_biceps_droit,
+            poids=8,
+            mode=MODE_REPETITIONS,
+            nombre_series=2,
+            repetitions_par_serie=5,
+            duree=0,
+            repos_entre_series=5,
+            repos_apres=10,
+        ),
+        BlocExercice(
+            exercice=curl_biceps_gauche,
+            poids=8,
+            mode=MODE_REPETITIONS,
+            nombre_series=1,
+            repetitions_par_serie=5,
+            duree=0,
+            repos_entre_series=30,
+            repos_apres=0,
+        ),
+    ]
+)
 
-seance_Upper_Push = Circuit([
-    BlocExercice(
-        exercice=developpe_couche_sol,
-        poids=10,
-        mode=MODE_REPETITIONS,
-        nombre_series=4,
-        repetitions_par_serie=12,
-        duree=0,
-        repos_entre_series=45,
-        repos_apres=90
-    ),
-    BlocExercice(
-        exercice=pompe,
-        poids=0,
-        mode=MODE_REPETITIONS,
-        nombre_series=4,
-        repetitions_par_serie=10,
-        duree=0,
-        repos_entre_series=60,
-        repos_apres=90
-    ),
-    BlocExercice(
-        exercice=developpe_epaule,
-        poids=8,
-        mode=MODE_REPETITIONS,
-        nombre_series=3,
-        repetitions_par_serie=12,
-        duree=0,
-        repos_entre_series=45,
-        repos_apres=90
-    ),
-    BlocExercice(
-        exercice=elevation_laterale,
-        poids=5,
-        mode=MODE_REPETITIONS,
-        nombre_series=3,
-        repetitions_par_serie=11,
-        duree=0,
-        repos_entre_series=45,
-        repos_apres=90
-    ),
-    BlocExercice(
-        exercice=extension_triceps_au_dessus_de_la_tete,
-        poids=14,
-        mode=MODE_REPETITIONS,
-        nombre_series=3,
-        repetitions_par_serie=10,
-        duree=0,
-        repos_entre_series=60,
-        repos_apres=0
-    ),
-])
+seance_test = Circuit(
+    [
+        BlocExercice(
+            exercice=curl_biceps_droit,
+            poids=8,
+            mode=MODE_REPETITIONS,
+            nombre_series=2,
+            repetitions_par_serie=5,
+            duree=0,
+            repos_entre_series=15,
+            repos_apres=30,
+        ),
+        BlocExercice(
+            exercice=planche,
+            poids=0,
+            mode=MODE_MAINTIEN,
+            nombre_series=2,
+            repetitions_par_serie=None,
+            duree=10,
+            repos_entre_series=15,
+            repos_apres=30,
+        ),
+        BlocExercice(
+            exercice=curl_biceps_gauche,
+            poids=8,
+            mode=MODE_AMRAP,
+            nombre_series=2,
+            repetitions_par_serie=0,
+            duree=10,
+            repos_entre_series=15,
+            repos_apres=30,
+        ),
+        BlocExercice(
+            exercice=elevation_laterale,
+            poids=5,
+            mode=MODE_REPETITIONS,
+            nombre_series=1,
+            repetitions_par_serie=5,
+            duree=0,
+            repos_entre_series=5,
+            repos_apres=30,
+        ),
+        BlocExercice(
+            exercice=pompe,
+            poids=0,
+            mode=MODE_REPETITIONS,
+            nombre_series=1,
+            repetitions_par_serie=5,
+            duree=0,
+            repos_entre_series=5,
+            repos_apres=30,
+        ),
+        BlocExercice(
+            exercice=extension_triceps_au_dessus_de_la_tete,
+            poids=14,
+            mode=MODE_REPETITIONS,
+            nombre_series=1,
+            repetitions_par_serie=5,
+            duree=0,
+            repos_entre_series=5,
+            repos_apres=30,
+        ),
+        BlocExercice(
+            exercice=developpe_couche_sol,
+            poids=10,
+            mode=MODE_REPETITIONS,
+            nombre_series=1,
+            repetitions_par_serie=5,
+            duree=0,
+            repos_entre_series=5,
+            repos_apres=0,
+        ),
+    ]
+)
 
-seance_jambes_abdos = Circuit([
-    BlocExercice(
-        exercice=squat,
-        poids=10,
-        mode=MODE_REPETITIONS,
-        nombre_series=4,
-        repetitions_par_serie=10,
-        duree=0,
-        repos_entre_series=50,
-        repos_apres=90
-    ),
-    BlocExercice(
-        exercice=fente_droite,
-        poids=10,
-        mode=MODE_REPETITIONS,
-        nombre_series=4,
-        repetitions_par_serie=10,
-        duree=0,
-        repos_entre_series=45,
-        repos_apres=90
-    ),    
-    BlocExercice(
-        exercice=fente_gauche,
-        poids=10,
-        mode=MODE_REPETITIONS,
-        nombre_series=4,
-        repetitions_par_serie=10,
-        duree=0,
-        repos_entre_series=45,
-        repos_apres=90
-    ),
-    BlocExercice(
-        exercice=souleve_roumain,
-        poids=10,
-        mode=MODE_REPETITIONS,
-        nombre_series=4,
-        repetitions_par_serie=8,
-        duree=0,
-        repos_entre_series=60,
-        repos_apres=90
-    ),
-    BlocExercice(
-        exercice=crunches,
-        poids=0,
-        mode=MODE_REPETITIONS,
-        nombre_series=3,
-        repetitions_par_serie=17,
-        duree=0,
-        repos_entre_series=45,
-        repos_apres=90
-    ),
-    BlocExercice(
-        exercice=planche,
-        poids=0,
-        mode=MODE_MAINTIEN,
-        nombre_series=3,
-        repetitions_par_serie=0,
-        duree=40,
-        repos_entre_series=45,
-        repos_apres=90
-    ),
-    BlocExercice(
-        exercice=planche_laterale_droite,
-        poids=0,
-        mode=MODE_MAINTIEN,
-        nombre_series=1,
-        repetitions_par_serie=0,
-        duree=35,
-        repos_entre_series=45,
-        repos_apres=90
-    ),
-    BlocExercice(
-        exercice=planche_laterale_gauche,
-        poids=0,
-        mode=MODE_MAINTIEN,
-        nombre_series=1,
-        repetitions_par_serie=0,
-        duree=35,
-        repos_entre_series=45,
-        repos_apres=90
-    ),
-    BlocExercice(
-        exercice=planche_laterale_droite,
-        poids=0,
-        mode=MODE_MAINTIEN,
-        nombre_series=1,
-        repetitions_par_serie=0,
-        duree=35,
-        repos_entre_series=45,
-        repos_apres=90
-    ),
-    BlocExercice(
-        exercice=planche_laterale_gauche,
-        poids=0,
-        mode=MODE_MAINTIEN,
-        nombre_series=1,
-        repetitions_par_serie=0,
-        duree=35,
-        repos_entre_series=45,
-        repos_apres=90
-    ),
-])
+seance_Upper_Push = Circuit(
+    [
+        BlocExercice(
+            exercice=developpe_couche_sol,
+            poids=10,
+            mode=MODE_REPETITIONS,
+            nombre_series=4,
+            repetitions_par_serie=12,
+            duree=0,
+            repos_entre_series=45,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=pompe,
+            poids=0,
+            mode=MODE_REPETITIONS,
+            nombre_series=4,
+            repetitions_par_serie=10,
+            duree=0,
+            repos_entre_series=60,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=developpe_epaule,
+            poids=8,
+            mode=MODE_REPETITIONS,
+            nombre_series=3,
+            repetitions_par_serie=12,
+            duree=0,
+            repos_entre_series=45,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=elevation_laterale,
+            poids=5,
+            mode=MODE_REPETITIONS,
+            nombre_series=3,
+            repetitions_par_serie=11,
+            duree=0,
+            repos_entre_series=45,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=extension_triceps_au_dessus_de_la_tete,
+            poids=14,
+            mode=MODE_REPETITIONS,
+            nombre_series=3,
+            repetitions_par_serie=10,
+            duree=0,
+            repos_entre_series=60,
+            repos_apres=0,
+        ),
+    ]
+)
+
+seance_jambes_abdos = Circuit(
+    [
+        BlocExercice(
+            exercice=squat,
+            poids=10,
+            mode=MODE_REPETITIONS,
+            nombre_series=4,
+            repetitions_par_serie=10,
+            duree=0,
+            repos_entre_series=50,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=fente_droite,
+            poids=10,
+            mode=MODE_REPETITIONS,
+            nombre_series=4,
+            repetitions_par_serie=10,
+            duree=0,
+            repos_entre_series=45,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=fente_gauche,
+            poids=10,
+            mode=MODE_REPETITIONS,
+            nombre_series=4,
+            repetitions_par_serie=10,
+            duree=0,
+            repos_entre_series=45,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=souleve_roumain,
+            poids=10,
+            mode=MODE_REPETITIONS,
+            nombre_series=4,
+            repetitions_par_serie=8,
+            duree=0,
+            repos_entre_series=60,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=crunches,
+            poids=0,
+            mode=MODE_REPETITIONS,
+            nombre_series=3,
+            repetitions_par_serie=17,
+            duree=0,
+            repos_entre_series=45,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=planche,
+            poids=0,
+            mode=MODE_MAINTIEN,
+            nombre_series=3,
+            repetitions_par_serie=0,
+            duree=40,
+            repos_entre_series=45,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=planche_laterale_droite,
+            poids=0,
+            mode=MODE_MAINTIEN,
+            nombre_series=1,
+            repetitions_par_serie=0,
+            duree=35,
+            repos_entre_series=45,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=planche_laterale_gauche,
+            poids=0,
+            mode=MODE_MAINTIEN,
+            nombre_series=1,
+            repetitions_par_serie=0,
+            duree=35,
+            repos_entre_series=45,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=planche_laterale_droite,
+            poids=0,
+            mode=MODE_MAINTIEN,
+            nombre_series=1,
+            repetitions_par_serie=0,
+            duree=35,
+            repos_entre_series=45,
+            repos_apres=90,
+        ),
+        BlocExercice(
+            exercice=planche_laterale_gauche,
+            poids=0,
+            mode=MODE_MAINTIEN,
+            nombre_series=1,
+            repetitions_par_serie=0,
+            duree=35,
+            repos_entre_series=45,
+            repos_apres=90,
+        ),
+    ]
+)
 
 
 CATALOGUE_SEANCES = {
@@ -459,25 +492,29 @@ def construire_circuit(blocs):
     if not blocs:
         raise ValueError("Au moins un exercice est requis")
     inconnus = [
-        bloc.get("exercice") for bloc in blocs
+        bloc.get("exercice")
+        for bloc in blocs
         if bloc.get("exercice") not in CATALOGUE_EXERCICES
     ]
     if inconnus:
         raise KeyError(f"Exercice inconnu : {inconnus[0]}")
-    return Circuit([
-        BlocExercice(
-            exercice=CATALOGUE_EXERCICES[bloc["exercice"]],
-            poids=bloc.get("poids", 0),
-            mode=bloc.get("mode", MODE_REPETITIONS),
-            nombre_series=bloc.get("series", 1),
-            repetitions_par_serie=bloc.get("repetitions", 0),
-            duree=bloc.get("duree", 0),
-            repos_entre_series=bloc.get("repos_entre_series", 0),
-            repos_apres=bloc.get("repos_apres", 0),
-            commentaire=bloc.get("commentaire", ""),
-            entrelace_avec=bloc.get("entrelace_avec"),
-        ) for bloc in blocs
-    ])
+    return Circuit(
+        [
+            BlocExercice(
+                exercice=CATALOGUE_EXERCICES[bloc["exercice"]],
+                poids=bloc.get("poids", 0),
+                mode=bloc.get("mode", MODE_REPETITIONS),
+                nombre_series=bloc.get("series", 1),
+                repetitions_par_serie=bloc.get("repetitions", 0),
+                duree=bloc.get("duree", 0),
+                repos_entre_series=bloc.get("repos_entre_series", 0),
+                repos_apres=bloc.get("repos_apres", 0),
+                commentaire=bloc.get("commentaire", ""),
+                entrelace_avec=bloc.get("entrelace_avec"),
+            )
+            for bloc in blocs
+        ]
+    )
 
 
 def creer_seance_personnalisee(nom):

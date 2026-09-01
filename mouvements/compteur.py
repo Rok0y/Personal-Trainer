@@ -17,7 +17,6 @@ class CompteurMouvement:
             self.stage = "debut"
         elif self.stage is None:
             self.stage = nouveau_stage
-            
 
         return self.stage, self.repetitions
 

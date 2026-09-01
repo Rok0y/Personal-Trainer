@@ -1,29 +1,26 @@
-from flask import Flask, render_template, jsonify, Response, request, redirect
+import logging
+import time
+import webbrowser
+
+from flask import Flask, Response, jsonify, redirect, render_template, request
+
+from core import state
 from historique.database import (
-    recuperer_historique,
-    statistiques_exercices,
     derniere_performance,
+    recuperer_historique,
     renommer_seance,
+    statistiques_exercices,
+    supprimer_exercice_de_seance,
+    supprimer_seance,
 )
 from session.controleur import SessionManager
 from session.seances import catalogue_exercices
-import webbrowser
-import state
-import time
-import logging
 
-# Ces deux fonctions doivent être ajoutées à historique/database.py pour que la
-# suppression fonctionne (voir le gabarit fourni séparément). Import protégé pour
-# ne pas empêcher le lancement du site tant qu'elles n'existent pas.
-try:
-    from historique.database import supprimer_seance, supprimer_exercice_de_seance
-except ImportError:
-    supprimer_seance = None
-    supprimer_exercice_de_seance = None
 
 class FiltreEtat(logging.Filter):
     def filter(self, record):
         return "GET /etat" not in record.getMessage()
+
 
 logging.getLogger("werkzeug").addFilter(FiltreEtat())
 
@@ -64,11 +61,13 @@ def seances_entrainement(donnees):
 def executer_commande(fonction):
     try:
         resultat = fonction()
-        return jsonify({
-            "ok": True,
-            "resultat": resultat,
-            "etat": controleur.etat(),
-        })
+        return jsonify(
+            {
+                "ok": True,
+                "resultat": resultat,
+                "etat": controleur.etat(),
+            }
+        )
     except (KeyError, RuntimeError) as erreur:
         return jsonify({"ok": False, "erreur": str(erreur)}), 409
 
@@ -76,6 +75,7 @@ def executer_commande(fonction):
 # ==========================================
 # PAGE PRINCIPALE
 # ==========================================
+
 
 @app.route("/")
 def index():
@@ -114,54 +114,60 @@ def index():
         return render_template(
             "fin.html",
             etat=controleur.etat(),
-            exercices=controleur.seance.exporter_resultats() if controleur.seance else [],
+            exercices=(
+                controleur.seance.exporter_resultats() if controleur.seance else []
+            ),
         )
 
-    return render_template(
-        "index.html"
-    )
+    return render_template("index.html")
 
 
 # ==========================================
 # ETAT
 # ==========================================
 
+
 @app.route("/etat")
 def etat():
 
     etat_session = controleur.etat()
 
-    return jsonify({
-
-        "position_actuelle":state.position_actuelle,
-        "exercice_actuel":state.exercice_actuel,
-        "commentaire_exercice": controleur.seance.bloc_actuel.commentaire if controleur.seance and controleur.seance.bloc_actuel else "",
-        "poids": state.poids,
-        "stage": state.stage,
-        "erreur": state.erreur,
-        "repetitions":state.repetitions,
-        "repetitions_cibles":state.repetitions_cibles,
-        "serie_actuelle":state.serie_actuelle,
-        "nombre_series":state.nombre_series,
-        "phase":state.phase,
-        "temps_repos_restant": state.temps_repos_restant,
-        "duree_session": controleur.seance.duree_totale if controleur.seance else 0,
-        "temps_amrap_restant": state.temps_amrap_restant,
-        "maintien_termine":state.maintien_termine,
-        "progression_maintien":state.progression_maintien,
-        "progression_preparation": state.progression_preparation,
-        "mode":state.mode,
-        "temps_maintien":state.temps_maintien,
-        "duree_maintien":state.duree_maintien,
-        "temps_chrono": state.temps_chrono,
-        "chrono_termine": state.chrono_termine,
-        "prochaine_etape": state.prochaine_etape,
-        "statut_session": etat_session["statut"],
-        "series_terminees": etat_session["series_terminees"],
-        "exercices": etat_session["exercices"],
-        "nombre_series_total": etat_session["nombre_series_total"],
-        "commandes_autorisees": etat_session["commandes_autorisees"],
-    })
+    return jsonify(
+        {
+            "position_actuelle": state.position_actuelle,
+            "exercice_actuel": state.exercice_actuel,
+            "commentaire_exercice": (
+                controleur.seance.bloc_actuel.commentaire
+                if controleur.seance and controleur.seance.bloc_actuel
+                else ""
+            ),
+            "poids": state.poids,
+            "stage": state.stage,
+            "erreur": state.erreur,
+            "repetitions": state.repetitions,
+            "repetitions_cibles": state.repetitions_cibles,
+            "serie_actuelle": state.serie_actuelle,
+            "nombre_series": state.nombre_series,
+            "phase": state.phase,
+            "temps_repos_restant": state.temps_repos_restant,
+            "duree_session": controleur.seance.duree_totale if controleur.seance else 0,
+            "temps_amrap_restant": state.temps_amrap_restant,
+            "maintien_termine": state.maintien_termine,
+            "progression_maintien": state.progression_maintien,
+            "progression_preparation": state.progression_preparation,
+            "mode": state.mode,
+            "temps_maintien": state.temps_maintien,
+            "duree_maintien": state.duree_maintien,
+            "temps_chrono": state.temps_chrono,
+            "chrono_termine": state.chrono_termine,
+            "prochaine_etape": state.prochaine_etape,
+            "statut_session": etat_session["statut"],
+            "series_terminees": etat_session["series_terminees"],
+            "exercices": etat_session["exercices"],
+            "nombre_series_total": etat_session["nombre_series_total"],
+            "commandes_autorisees": etat_session["commandes_autorisees"],
+        }
+    )
 
 
 @app.route("/api/seances")
@@ -234,6 +240,7 @@ def selectionner_seance():
     if not nom:
         return jsonify({"ok": False, "erreur": "Le nom de séance est requis"}), 400
     if nom == "test" and donnees.get("exercice") and donnees.get("mode"):
+
         def selectionner_test_et_preparer():
             controleur.selectionner_test(donnees["exercice"], donnees["mode"])
             etat = controleur.etat()
@@ -241,6 +248,7 @@ def selectionner_seance():
             return etat
 
         return executer_commande(selectionner_test_et_preparer)
+
     def selectionner_et_preparer():
         controleur.selectionner(nom)
         etat = controleur.etat()
@@ -318,18 +326,24 @@ def nouvelle_seance():
 # GENERATEUR VIDEO
 # ==========================================
 
+
 def generer_video():
+
+    dernier_id = -1
 
     while True:
 
         frame = state.latest_frame
 
-        if frame is None:
+        # Sans ce garde-fou, la même image est renvoyée en boucle aussi vite
+        # que possible : le flux sature et la vidéo prend du retard.
+        if frame is None or state.frame_id == dernier_id:
 
-            time.sleep(0.01)
+            time.sleep(0.005)
 
             continue
 
+        dernier_id = state.frame_id
 
         yield (
             b"--frame\r\n"
@@ -346,16 +360,22 @@ def generer_video():
 # ROUTE VIDEO
 # ==========================================
 
+
 @app.route("/video")
 def video():
-    return Response(generer_video(),mimetype="multipart/x-mixed-replace; boundary=frame")
+    return Response(
+        generer_video(), mimetype="multipart/x-mixed-replace; boundary=frame"
+    )
+
 
 def ouvrir_navigateur():
     time.sleep(1)  # laisse le temps à Flask de démarrer
     webbrowser.open("http://127.0.0.1:5000")
 
+
 def lancer_site():
-    app.run(host="127.0.0.1",port=5000,debug=False,threaded=True)
+    app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
+
 
 @app.route("/historique")
 def historique():
@@ -398,11 +418,6 @@ def detail_historique(seance_id):
 
 @app.route("/api/historique/<int:seance_id>", methods=["DELETE"])
 def supprimer_seance_historique_api(seance_id):
-    if supprimer_seance is None:
-        return jsonify({
-            "ok": False,
-            "erreur": "Fonction supprimer_seance manquante dans historique/database.py",
-        }), 501
     try:
         supprimer_seance(seance_id)
         return jsonify({"ok": True})
@@ -412,11 +427,6 @@ def supprimer_seance_historique_api(seance_id):
 
 @app.route("/api/historique/<int:seance_id>/exercice/<nom>", methods=["DELETE"])
 def supprimer_exercice_historique_api(seance_id, nom):
-    if supprimer_exercice_de_seance is None:
-        return jsonify({
-            "ok": False,
-            "erreur": "Fonction supprimer_exercice_de_seance manquante dans historique/database.py",
-        }), 501
     try:
         supprimer_exercice_de_seance(seance_id, nom)
         return jsonify({"ok": True})

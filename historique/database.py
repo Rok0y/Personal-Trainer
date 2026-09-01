@@ -1,17 +1,12 @@
 import sqlite3
 from datetime import datetime
 
-
 CHEMIN_DB = "historique/personaltrainer.db"
-
 
 
 def connexion():
 
-    return sqlite3.connect(
-        CHEMIN_DB
-    )
-
+    return sqlite3.connect(CHEMIN_DB)
 
 
 def initialiser():
@@ -19,7 +14,6 @@ def initialiser():
     conn = connexion()
 
     curseur = conn.cursor()
-
 
     # Table des séances
     curseur.execute("""
@@ -82,9 +76,13 @@ def initialiser():
     if "entrelace_avec" not in colonnes_exercices:
         curseur.execute("ALTER TABLE exercices ADD COLUMN entrelace_avec TEXT")
     if "repos_entre_series" not in colonnes_exercices:
-        curseur.execute("ALTER TABLE exercices ADD COLUMN repos_entre_series INTEGER DEFAULT 0")
+        curseur.execute(
+            "ALTER TABLE exercices ADD COLUMN repos_entre_series INTEGER DEFAULT 0"
+        )
     if "repos_apres" not in colonnes_exercices:
-        curseur.execute("ALTER TABLE exercices ADD COLUMN repos_apres INTEGER DEFAULT 0")
+        curseur.execute(
+            "ALTER TABLE exercices ADD COLUMN repos_apres INTEGER DEFAULT 0"
+        )
 
     curseur.execute("""
         CREATE TABLE IF NOT EXISTS series_realisees (
@@ -104,29 +102,18 @@ def initialiser():
         ON series_realisees(exercice_id)
     """)
 
-
     conn.commit()
 
     conn.close()
 
 
-
-def enregistrer_seance(
-    duree,
-    exercices,
-    statut="finished",
-    nom_seance=None
-):
+def enregistrer_seance(duree, exercices, statut="finished", nom_seance=None):
 
     conn = connexion()
 
     curseur = conn.cursor()
 
-
-    date = datetime.now().strftime(
-        "%d/%m/%Y %H:%M"
-    )
-
+    date = datetime.now().strftime("%d/%m/%Y %H:%M")
 
     # Création séance
 
@@ -137,18 +124,10 @@ def enregistrer_seance(
 
         VALUES (?, ?, ?, ?)
         """,
-        (
-            date,
-            duree,
-            statut,
-            nom_seance
-        )
+        (date, duree, statut, nom_seance),
     )
 
-
     seance_id = curseur.lastrowid
-
-
 
     # Ajout exercices
 
@@ -178,7 +157,6 @@ def enregistrer_seance(
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
             """,
-
             (
                 seance_id,
                 exercice["nom"],
@@ -194,7 +172,7 @@ def enregistrer_seance(
                 exercice.get("entrelace_avec"),
                 exercice.get("repos_entre_series", 0),
                 exercice.get("repos_apres", 0),
-            )
+            ),
         )
 
         exercice_id = curseur.lastrowid
@@ -215,10 +193,10 @@ def enregistrer_seance(
                 ),
             )
 
-
     conn.commit()
 
     conn.close()
+
 
 def recuperer_historique():
     # Permet aussi la lecture d'une base créée par une version précédente,
@@ -227,7 +205,6 @@ def recuperer_historique():
     conn = connexion()
 
     curseur = conn.cursor()
-
 
     curseur.execute("""
         SELECT
@@ -241,19 +218,16 @@ def recuperer_historique():
         ORDER BY id DESC
     """)
 
-
     seances = curseur.fetchall()
 
-
     resultat = []
-
 
     for seance in seances:
 
         seance_id = seance[0]
 
-
-        curseur.execute("""
+        curseur.execute(
+            """
             SELECT
             id,
                 nom,
@@ -274,55 +248,56 @@ def recuperer_historique():
 
             WHERE seance_id = ?
 
-        """, (seance_id,))
-
+        """,
+            (seance_id,),
+        )
 
         exercices = curseur.fetchall()
 
-
-        resultat.append({
-
-            "id": seance[0],
-            "date": seance[1],
-            "duree": seance[2],
-            "statut": seance[3] or "finished",
-            "nom": seance[4],
-            "exercices": [
-                {
-                    "nom": exercice[1],
-                    "series": exercice[2],
-                    "repetitions": exercice[3],
-                    "poids": exercice[4] or 0,
-                    "mode": exercice[5] or "repetitions",
-                    "duree": exercice[6] or 0,
-                    "commentaire": exercice[7] or "",
-                    "series_cibles": exercice[8] or exercice[2],
-                    "repetitions_cibles": exercice[9] or 0,
-                    "duree_cible": exercice[10] or 0,
-                    "entrelace_avec": exercice[11],
-                    "repos_entre_series": exercice[12] or 0,
-                    "repos_apres": exercice[13] or 0,
-                    "series_detaillees": recuperer_series(curseur, exercice[0]),
-                }
-                for exercice in exercices
-            ]
-
-        })
-
+        resultat.append(
+            {
+                "id": seance[0],
+                "date": seance[1],
+                "duree": seance[2],
+                "statut": seance[3] or "finished",
+                "nom": seance[4],
+                "exercices": [
+                    {
+                        "nom": exercice[1],
+                        "series": exercice[2],
+                        "repetitions": exercice[3],
+                        "poids": exercice[4] or 0,
+                        "mode": exercice[5] or "repetitions",
+                        "duree": exercice[6] or 0,
+                        "commentaire": exercice[7] or "",
+                        "series_cibles": exercice[8] or exercice[2],
+                        "repetitions_cibles": exercice[9] or 0,
+                        "duree_cible": exercice[10] or 0,
+                        "entrelace_avec": exercice[11],
+                        "repos_entre_series": exercice[12] or 0,
+                        "repos_apres": exercice[13] or 0,
+                        "series_detaillees": recuperer_series(curseur, exercice[0]),
+                    }
+                    for exercice in exercices
+                ],
+            }
+        )
 
     conn.close()
-
 
     return resultat
 
 
 def recuperer_series(curseur, exercice_id):
-    curseur.execute("""
+    curseur.execute(
+        """
         SELECT numero, repetitions, poids, duree, completee
         FROM series_realisees
         WHERE exercice_id = ?
         ORDER BY numero
-    """, (exercice_id,))
+    """,
+        (exercice_id,),
+    )
     return [
         {
             "serie": ligne[0],
@@ -345,7 +320,8 @@ def statistiques_exercices(seances=None):
             continue
         for exercice in seance.get("exercices", []):
             series = [
-                serie for serie in exercice.get("series_detaillees", [])
+                serie
+                for serie in exercice.get("series_detaillees", [])
                 if serie.get("completee")
             ]
             if not series:
@@ -359,32 +335,41 @@ def statistiques_exercices(seances=None):
                 for serie in series
             )
             duree = sum(serie.get("duree", 0) or 0 for serie in series)
-            entree = statistiques.setdefault(nom, {
-                "nom": nom,
-                "mode": exercice.get("mode", "repetitions"),
-                "seances": 0,
-                "series": 0,
-                "repetitions": 0,
-                "volume": 0,
-                "duree": 0,
-                "meilleure_charge": {"valeur": 0, "seance_id": None, "date": None},
-                "meilleures_repetitions": {"valeur": 0, "seance_id": None, "date": None},
-                "meilleur_volume": {"valeur": 0, "seance_id": None, "date": None},
-                "meilleure_duree": {"valeur": 0, "seance_id": None, "date": None},
-                "progression": [],
-            })
+            entree = statistiques.setdefault(
+                nom,
+                {
+                    "nom": nom,
+                    "mode": exercice.get("mode", "repetitions"),
+                    "seances": 0,
+                    "series": 0,
+                    "repetitions": 0,
+                    "volume": 0,
+                    "duree": 0,
+                    "meilleure_charge": {"valeur": 0, "seance_id": None, "date": None},
+                    "meilleures_repetitions": {
+                        "valeur": 0,
+                        "seance_id": None,
+                        "date": None,
+                    },
+                    "meilleur_volume": {"valeur": 0, "seance_id": None, "date": None},
+                    "meilleure_duree": {"valeur": 0, "seance_id": None, "date": None},
+                    "progression": [],
+                },
+            )
             entree["seances"] += 1
             entree["series"] += len(series)
             entree["repetitions"] += repetitions
             entree["volume"] += volume
             entree["duree"] += duree
-            entree["progression"].append({
-                "seance_id": seance["id"],
-                "date": seance["date"],
-                "repetitions": repetitions,
-                "volume": volume,
-                "duree": duree,
-            })
+            entree["progression"].append(
+                {
+                    "seance_id": seance["id"],
+                    "date": seance["date"],
+                    "repetitions": repetitions,
+                    "volume": volume,
+                    "duree": duree,
+                }
+            )
 
             for cle, valeur in (
                 ("meilleure_charge", poids),
@@ -475,7 +460,9 @@ def supprimer_exercice_de_seance(seance_id, nom_exercice):
     ids_exercices = [ligne[0] for ligne in curseur.fetchall()]
     if not ids_exercices:
         conn.close()
-        raise KeyError(f"Exercice « {nom_exercice} » introuvable pour la séance {seance_id}")
+        raise KeyError(
+            f"Exercice « {nom_exercice} » introuvable pour la séance {seance_id}"
+        )
 
     curseur.executemany(
         "DELETE FROM series_realisees WHERE exercice_id = ?",

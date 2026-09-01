@@ -1,8 +1,7 @@
 from pathlib import Path
 
-from session.seances import seance_test,seance_jambes_abdos
 from audio.coach import nom_annonce_etape
-
+from session.seances import seance_jambes_abdos, seance_test
 
 DOSSIER = Path("audio/Fichiers")
 
@@ -24,15 +23,12 @@ for bloc in seance_jambes_abdos.exercices:
     if nom is None:
         continue
 
-
     attendu = f"{nom}_1.wav"
-
 
     if attendu in deja_vus:
         continue
 
     deja_vus.add(attendu)
-
 
     if not (DOSSIER / attendu).exists():
         print(attendu)

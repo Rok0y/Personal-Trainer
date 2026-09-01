@@ -20,9 +20,12 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 - `audio/` — Coach vocal : sélection et déclenchement des annonces (`coach.py`), lecture des fichiers son (`lecteur.py`), banque de fichiers audio (`Fichiers/`) et outils de génération/nettoyage des sons (`nettoyer_sons.py`, `generer_annonces_manquantes.py`).
 - `historique/` — Persistance SQLite des séances, statistiques et records (`database.py`, base `personaltrainer.db`).
 - `web/` — Serveur Flask (`app.py`) exposant l'API et les pages (démarrage/pause de séance, historique, records, création/édition de séances) et les templates HTML associés (`templates/`).
-- `références/` — Scripts de prototypage (détection simple, compteur de curls, etc.) conservés à titre de référence mais **non branchés** sur l'application principale.
+- `core/` — État partagé entre la boucle caméra et le site web (`state.py`).
+- `scripts/` — Outils de développement manuels, hors du chemin critique de l'application (`script_verification_positions.py`).
 
-Le point d'entrée de l'application est `main.py`, qui orchestre la boucle caméra, la machine à séances, le coach vocal et le serveur web. L'état partagé entre la boucle caméra et le site web transite par `state.py`.
+Le point d'entrée de l'application est `main.py`, qui orchestre la boucle caméra, la machine à séances, le coach vocal et le serveur web. L'état partagé entre la boucle caméra et le site web transite par `core/state.py`.
+
+`audio/generer_annonces_manquantes.py` et `scripts/script_verification_positions.py` important des modules du projet par chemin absolu (`audio.coach`, `session.seances`, `mouvements.positions`...), il faut les lancer avec `python -m`, depuis la racine du dépôt, pour que ces imports se résolvent correctement — par exemple `python -m scripts.script_verification_positions` (un simple `python scripts/script_verification_positions.py` échouerait, Python n'ajoutant que le dossier du script à son chemin d'import).
 
 ## Prérequis
 
@@ -40,15 +43,8 @@ Au lancement, l'application initialise la base de données d'historique, ouvre l
 
 ## Tests
 
-Les tests sont des fichiers `test_*.py` à la racine du dépôt, écrits avec `unittest` (voir par exemple `test_circuit.py`, `test_compteur.py`, `test_controleur.py`, `test_historique.py`). Ils peuvent être exécutés avec `pytest` :
-
-```bash
-pytest
-```
-
-(`test_db.py` et `test_position.py` sont plutôt des scripts d'exploration manuelle — le premier affiche l'historique en base, le second ouvre la caméra pour tester interactivement la détection de pose — et non des suites `unittest` à proprement parler.)
+Il n'y a pas de suite de tests automatisée dans ce dépôt. `scripts/script_verification_positions.py` est un outil d'exploration manuelle qui ouvre la caméra pour tester interactivement la détection de pose et les gestes de contrôle.
 
 ## Notes
 
 - Il n'y a actuellement aucune intégration continue (CI) configurée sur ce dépôt.
-- Le dossier `références/` contient du code de prototypage (détection de pose simplifiée, compteur d'exercice isolé, etc.) qui n'est pas utilisé par l'application et sert uniquement de matériel de référence pour le développement.

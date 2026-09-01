@@ -5,8 +5,8 @@ from session.seances import (
     construire_circuit,
     creer_seance,
     creer_seance_test,
-    enregistrer_seance_personnalisee,
     enregistrer_configuration_seance,
+    enregistrer_seance_personnalisee,
     supprimer_seance_personnalisee,
 )
 
@@ -145,7 +145,8 @@ class SessionManager:
                 if not getattr(self.seance, "progression_appliquee", False):
                     if self.seance.appliquer_progression():
                         enregistrer_configuration_seance(
-                            self.nom_selectionne, self.seance,
+                            self.nom_selectionne,
+                            self.seance,
                         )
                     self.seance.progression_appliquee = True
 
@@ -173,10 +174,16 @@ class SessionManager:
             commandes = {
                 "reset": self.statut in ("running", "paused"),
                 "recommencer": self.statut in ("running", "paused"),
-                "precedente": self.statut in ("running", "paused") and seance_active and self.seance.serie_actuelle > 1,
-                "suivante": self.statut in ("running", "paused") and seance_active and self.seance.serie_actuelle < self.seance.nombre_series,
+                "precedente": self.statut in ("running", "paused")
+                and seance_active
+                and self.seance.serie_actuelle > 1,
+                "suivante": self.statut in ("running", "paused")
+                and seance_active
+                and self.seance.serie_actuelle < self.seance.nombre_series,
                 "terminer": self.statut in ("running", "paused"),
-                "passer_pause": self.statut in ("running", "paused") and seance_active and self.seance.phase in ("recuperation_serie", "repos_exercice"),
+                "passer_pause": self.statut in ("running", "paused")
+                and seance_active
+                and self.seance.phase in ("recuperation_serie", "repos_exercice"),
                 "terminer_seance": self.statut in ("running", "paused"),
             }
             return {
@@ -184,8 +191,14 @@ class SessionManager:
                 "seance": self.nom_selectionne,
                 "phase": self.seance.phase if self.seance else "idle",
                 "serie_actuelle": self.seance.serie_actuelle if self.seance else 0,
-                "nombre_series_total": self.seance.nombre_series_total if seance_active else 0,
-                "series_terminees": self.seance.series_terminees if seance_active else 0,
-                "exercices": self.seance.exporter_configuration() if seance_active else [],
+                "nombre_series_total": (
+                    self.seance.nombre_series_total if seance_active else 0
+                ),
+                "series_terminees": (
+                    self.seance.series_terminees if seance_active else 0
+                ),
+                "exercices": (
+                    self.seance.exporter_configuration() if seance_active else []
+                ),
                 "commandes_autorisees": commandes,
             }

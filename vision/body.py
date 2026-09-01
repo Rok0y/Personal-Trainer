@@ -9,7 +9,6 @@ class LandmarkPoint:
         self.z = z
         self.visibilite = visibilite
 
-
     def __repr__(self):
         return (
             f"x={self.x:.3f}, "
@@ -19,7 +18,6 @@ class LandmarkPoint:
         )
 
 
-
 class Body:
     """
     Représente le corps complet.
@@ -27,7 +25,6 @@ class Body:
 
     def __init__(self, points):
         self.points = points
-
 
     def __getattr__(self, name):
         """
@@ -40,10 +37,7 @@ class Body:
         if name in self.points:
             return self.points[name]
 
-        raise AttributeError(
-            f"Le point '{name}' n'existe pas"
-        )
-
+        raise AttributeError(f"Le point '{name}' n'existe pas")
 
     def get_point(self, name):
         """
@@ -52,7 +46,6 @@ class Body:
         """
 
         return self.points.get(name)
-
 
     def __repr__(self):
         return f"Body({len(self.points)} points)"

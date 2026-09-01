@@ -5,25 +5,32 @@ MODE_MAINTIEN = "maintien"
 MODE_CHRONO = "chrono"
 MODE_AMRAP = "amrap"
 
+
 class Exercice:
 
-    def __init__(
-        self,
-        nom,
-        detection,
-        description="",
-        instructions=None,
-        erreurs=None
-    ):
+    def __init__(self, nom, detection, description="", instructions=None, erreurs=None):
         self.nom = nom
         self.detection = detection
         self.description = description
         self.instructions = instructions or []
         self.erreurs = erreurs or []
 
+
 class BlocExercice:
 
-    def __init__(self,exercice,poids,mode,nombre_series,repetitions_par_serie,duree,repos_entre_series,repos_apres,commentaire="",entrelace_avec=None):
+    def __init__(
+        self,
+        exercice,
+        poids,
+        mode,
+        nombre_series,
+        repetitions_par_serie,
+        duree,
+        repos_entre_series,
+        repos_apres,
+        commentaire="",
+        entrelace_avec=None,
+    ):
         self.exercice = exercice
         self.poids = poids
         self.mode = mode
@@ -38,6 +45,7 @@ class BlocExercice:
         self.temps_maintien = 0
         self.temps_restant_precedent = None
 
+
 class Circuit:
 
     def __init__(self, exercices):
@@ -51,16 +59,20 @@ class Circuit:
         self.resultats_series = []
         self.paires_entrelacees = self._detecter_paires_entrelacees()
         self.serie_actuelle_locale = 1
-        self._exercice_precedent_entrelace = None  # Track l'exercice avant un partenaire
+        self._exercice_precedent_entrelace = (
+            None  # Track l'exercice avant un partenaire
+        )
 
     def _detecter_paires_entrelacees(self):
         """Détecte les paires d'exercices entrelacés.
-        Retourne un dict {index: nom_du_partenaire} pour les exercices qui ont un partenaire."""
+        Retourne un dict {index: nom_du_partenaire} pour les exercices qui ont un partenaire.
+        """
         paires = {}
         for index, bloc in enumerate(self.exercices):
             if bloc.entrelace_avec:
                 partenaire_index = self._trouver_exercice_par_nom(
-                    bloc.entrelace_avec, index,
+                    bloc.entrelace_avec,
+                    index,
                 )
                 if partenaire_index is not None:
                     paires[index] = partenaire_index
@@ -88,18 +100,17 @@ class Circuit:
 
     def _obtenir_vrai_prochain_exercice_index(self):
         """Retourne l'indice du vrai prochain exercice, en sautant le partenaire entrelacé.
-        
+
         Si l'exercice courant A a un partenaire B, le prochain exercice est celui après B.
         """
         prochain_index = self.index_exercice + 1
         partenaire_direct = self._obtenir_partenaire_entrelace(self.index_exercice)
-        
+
         # Sauter le partenaire direct s'il existe
         if partenaire_direct is not None:
             prochain_index = max(prochain_index, partenaire_direct + 1)
-        
-        return prochain_index
 
+        return prochain_index
 
     @property
     def bloc_actuel(self):
@@ -149,7 +160,7 @@ class Circuit:
         else:
             return 0
         temps_ecoule = time.time() - self.debut_repos
-        return max(0,duree - temps_ecoule)
+        return max(0, duree - temps_ecoule)
 
     @property
     def duree_totale(self):
@@ -166,9 +177,11 @@ class Circuit:
         if self.paires_entrelacees:
             # Compter les séries complètes de tous les indices entrelacés
             return len(self.resultats_series)
-        
+
         # Cas normal : pas d'entrelacement
-        return sum(bloc.nombre_series for bloc in self.exercices[:self.index_exercice]) + max(0, self.serie_actuelle - 1)
+        return sum(
+            bloc.nombre_series for bloc in self.exercices[: self.index_exercice]
+        ) + max(0, self.serie_actuelle - 1)
 
     def passer_pause(self):
         if self.phase not in ("recuperation_serie", "repos_exercice"):
@@ -179,7 +192,6 @@ class Circuit:
         else:
             self.passer_exercice_suivant()
         return True
-    
 
     def exporter_configuration(self):
         return [
@@ -202,31 +214,50 @@ class Circuit:
         exercices = []
         for index, bloc in enumerate(self.exercices):
             resultats = [
-                resultat for resultat in self.resultats_series
+                resultat
+                for resultat in self.resultats_series
                 if resultat["index_exercice"] == index
             ]
-            exercices.append({
-                "nom": bloc.exercice.nom,
-                "series": len(resultats),
-                "repetitions": sum(resultat.get("repetitions", 0) for resultat in resultats),
-                "poids": bloc.poids,
-                "mode": bloc.mode,
-                "duree": resultats[0].get("objectif_duree", bloc.duree) if resultats else bloc.duree,
-                "series_cibles": bloc.nombre_series,
-                "repetitions_cibles": resultats[0].get("objectif_repetitions", bloc.repetitions_par_serie) if resultats else bloc.repetitions_par_serie,
-                "duree_cible": resultats[0].get("objectif_duree", bloc.duree) if resultats else bloc.duree,
-                "commentaire": bloc.commentaire,
-                "entrelace_avec": bloc.entrelace_avec,
-                "repos_entre_series": bloc.repos_entre_series,
-                "repos_apres": bloc.repos_apres,
-                "series_detaillees": [
-                    {
-                        **resultat,
-                        "poids": bloc.poids,
-                    }
-                    for resultat in resultats
-                ],
-            })
+            exercices.append(
+                {
+                    "nom": bloc.exercice.nom,
+                    "series": len(resultats),
+                    "repetitions": sum(
+                        resultat.get("repetitions", 0) for resultat in resultats
+                    ),
+                    "poids": bloc.poids,
+                    "mode": bloc.mode,
+                    "duree": (
+                        resultats[0].get("objectif_duree", bloc.duree)
+                        if resultats
+                        else bloc.duree
+                    ),
+                    "series_cibles": bloc.nombre_series,
+                    "repetitions_cibles": (
+                        resultats[0].get(
+                            "objectif_repetitions", bloc.repetitions_par_serie
+                        )
+                        if resultats
+                        else bloc.repetitions_par_serie
+                    ),
+                    "duree_cible": (
+                        resultats[0].get("objectif_duree", bloc.duree)
+                        if resultats
+                        else bloc.duree
+                    ),
+                    "commentaire": bloc.commentaire,
+                    "entrelace_avec": bloc.entrelace_avec,
+                    "repos_entre_series": bloc.repos_entre_series,
+                    "repos_apres": bloc.repos_apres,
+                    "series_detaillees": [
+                        {
+                            **resultat,
+                            "poids": bloc.poids,
+                        }
+                        for resultat in resultats
+                    ],
+                }
+            )
         return exercices
 
     def a_des_resultats(self):
@@ -239,13 +270,17 @@ class Circuit:
         for i in indices:
             bloc = self.exercices[i]
             series = [
-                resultat for resultat in self.resultats_series
+                resultat
+                for resultat in self.resultats_series
                 if resultat["index_exercice"] == i and resultat.get("completee")
             ]
             if len(series) != bloc.nombre_series:
                 return False
             if bloc.mode in (MODE_REPETITIONS, MODE_AMRAP):
-                if any(resultat.get("repetitions", 0) < bloc.repetitions_par_serie for resultat in series):
+                if any(
+                    resultat.get("repetitions", 0) < bloc.repetitions_par_serie
+                    for resultat in series
+                ):
                     return False
             elif bloc.mode in (MODE_MAINTIEN, MODE_CHRONO):
                 if any(resultat.get("duree", 0) < bloc.duree for resultat in series):
@@ -294,8 +329,14 @@ class Circuit:
                 return
         self.resultats_series.append(resultat)
 
-    def _reinitialiser_etat_serie(self):
-        bloc = self.bloc_actuel
+    def reinitialiser_etat_serie(self, bloc=None):
+        """Remet à zéro les champs temporels d'un bloc (par défaut le bloc courant).
+
+        Utilisée à la fois en interne (navigation entre séries) et par
+        `session/moteur.py` à la fin de chaque mode, pour éviter que les deux
+        modules ne dupliquent la liste des attributs à réinitialiser.
+        """
+        bloc = bloc if bloc is not None else self.bloc_actuel
         if bloc is None:
             return
 
@@ -314,14 +355,14 @@ class Circuit:
 
     def remettre_serie_a_zero(self):
         """Efface la progression de la série courante sans changer d'index."""
-        self._reinitialiser_etat_serie()
+        self.reinitialiser_etat_serie()
         if self.phase not in ("termine", "preparation"):
             self.phase = "exercice"
             self.debut_repos = None
 
     def recommencer_serie(self):
         """Relance entièrement la série courante depuis son état initial."""
-        self._reinitialiser_etat_serie()
+        self.reinitialiser_etat_serie()
         self.phase = "exercice"
         self.debut_repos = None
 
@@ -331,7 +372,7 @@ class Circuit:
             return False
 
         self.serie_actuelle -= 1
-        self._reinitialiser_etat_serie()
+        self.reinitialiser_etat_serie()
         self.phase = "exercice"
         self.debut_repos = None
         return True
@@ -342,7 +383,7 @@ class Circuit:
             return False
 
         self.serie_actuelle += 1
-        self._reinitialiser_etat_serie()
+        self.reinitialiser_etat_serie()
         self.phase = "exercice"
         self.debut_repos = None
         return True
@@ -357,12 +398,11 @@ class Circuit:
             duree=duree,
             completee=True,
         )
-        self._reinitialiser_etat_serie()
+        self.reinitialiser_etat_serie()
         self.terminer_serie()
         return True
 
     def terminer_serie(self):
-
         """
         Appelée lorsque le nombre de répétitions
         demandé pour la série est atteint.
@@ -371,17 +411,17 @@ class Circuit:
         # -----------------------------------------
         # Vérifier l'entrelacement
         # -----------------------------------------
-        
+
         # Cas 1 : On est en train d'exécuter un exercice avec un partenaire entrelacé
         if self._est_entrelace(self.index_exercice):
             partenaire_index = self._obtenir_partenaire_entrelace(self.index_exercice)
-            
+
             if self._exercice_precedent_entrelace is None:
                 # On n'a pas encore visité le partenaire pour cette série
                 # Aller au partenaire ET garder le même serie_actuelle
                 self._exercice_precedent_entrelace = {
                     "index": self.index_exercice,
-                    "serie": self.serie_actuelle
+                    "serie": self.serie_actuelle,
                 }
                 self.index_exercice = partenaire_index
                 # GARDER le même serie_actuelle pour que l'affichage reste cohérent
@@ -394,7 +434,7 @@ class Circuit:
                 self.index_exercice = self._exercice_precedent_entrelace["index"]
                 self.serie_actuelle = self._exercice_precedent_entrelace["serie"] + 1
                 self._exercice_precedent_entrelace = None
-                
+
                 # Vérifier si c'est la dernière série
                 if self.serie_actuelle > self.nombre_series:
                     # Toutes les séries de la paire sont complétées
@@ -409,14 +449,14 @@ class Circuit:
                     self.phase = "recuperation_serie"
                     self.debut_repos = time.time()
                 return
-        
+
         # Cas 2 : On revient du partenaire entrelacé (dans le cas où le partenaire est celui-ci)
         elif self._exercice_precedent_entrelace is not None:
             # Cela ne devrait pas arriver ici mais on gère juste au cas où
             self.index_exercice = self._exercice_precedent_entrelace["index"]
             self.serie_actuelle = self._exercice_precedent_entrelace["serie"] + 1
             self._exercice_precedent_entrelace = None
-            
+
             if self.serie_actuelle > self.nombre_series:
                 if self.bloc_actuel.repos_apres > 0:
                     self.phase = "repos_exercice"
@@ -438,7 +478,6 @@ class Circuit:
             self.debut_repos = time.time()
             return
 
-
         # -----------------------------------------
         # Toutes les séries de cet exercice
         # sont terminées
@@ -456,7 +495,6 @@ class Circuit:
     def passer_exercice_suivant(self):
         self.index_exercice = self._obtenir_vrai_prochain_exercice_index()
 
-
         # -----------------------------------------
         # Fin de la séance
         # -----------------------------------------
@@ -464,7 +502,6 @@ class Circuit:
         if self.index_exercice >= len(self.exercices):
             self.phase = "termine"
             return
-
 
         # -----------------------------------------
         # Nouvel exercice
@@ -474,7 +511,6 @@ class Circuit:
         self.phase = "exercice"
         self.debut_repos = None
         self._exercice_precedent_entrelace = None
-
 
     def update(self):
 
@@ -486,7 +522,6 @@ class Circuit:
             if self.temps_restant <= 0:
                 self.phase = "exercice"
                 self.debut_repos = None
-
 
         # -----------------------------------------
         # Repos entre deux exercices

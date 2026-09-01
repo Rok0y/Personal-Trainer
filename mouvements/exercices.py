@@ -1,4 +1,4 @@
-from mouvements.outils import calculer_angle,calculer_distance
+from mouvements.outils import calculer_angle, calculer_distance
 from session.circuit import Exercice
 
 
@@ -6,12 +6,13 @@ from session.circuit import Exercice
 # Curl biceps droit
 # ==================================
 def curl_biceps_droit_detection(corps):
-    angle = calculer_angle(corps.epaule_droite,corps.coude_droit,corps.poignet_droit)
+    angle = calculer_angle(corps.epaule_droite, corps.coude_droit, corps.poignet_droit)
     if angle < 30:
         return "fin"
     elif angle > 160:
         return "debut"
     return "milieu"
+
 
 def coude_trop_tendu_curl_droit(corps):
 
@@ -23,6 +24,7 @@ def coude_trop_tendu_curl_droit(corps):
 
     return False
 
+
 def epaule_trop_avancee_curl_droit(corps):
 
     # Calcul de ta position d'épaule
@@ -30,242 +32,229 @@ def epaule_trop_avancee_curl_droit(corps):
 
     return False
 
+
 curl_biceps_droit = Exercice(
     nom="Curl biceps droit",
-
     detection=curl_biceps_droit_detection,
-
     description="Curl biceps avec haltère du bras droit.",
-
     instructions=[
         "Garde le coude proche du corps.",
         "Contrôle la descente.",
-        "Ne balance pas le mouvement."
+        "Ne balance pas le mouvement.",
     ],
-
-    erreurs=[
-        coude_trop_tendu_curl_droit,
-        epaule_trop_avancee_curl_droit
-    ]
+    erreurs=[coude_trop_tendu_curl_droit, epaule_trop_avancee_curl_droit],
 )
 
 # ==================================
 # Curl biceps gauche
 # ==================================
 
+
 def curl_biceps_gauche_detection(corps):
-    angle = calculer_angle(corps.epaule_gauche,corps.coude_gauche,corps.poignet_gauche)
+    angle = calculer_angle(
+        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
+    )
     if angle < 35:
         return "fin"
     elif angle > 160:
         return "debut"
     return "milieu"
 
+
 curl_biceps_gauche = Exercice(
     nom="Curl biceps gauche",
-
     detection=curl_biceps_gauche_detection,
-
     description="Curl biceps avec haltère du bras gauche.",
-
     instructions=[
         "Garde le coude proche du corps.",
         "Contrôle la descente.",
-        "Ne balance pas le mouvement."
+        "Ne balance pas le mouvement.",
     ],
-
-    erreurs=[
-        
-    ]
+    erreurs=[],
 )
 
 # ==================================
 # Elevation latérale
 # ==================================
 
+
 def elevation_laterale_detection(corps):
-    angle_coude_droit = calculer_angle(corps.epaule_gauche,corps.coude_gauche,corps.poignet_gauche)
-    angle_coude_gauche = calculer_angle(corps.epaule_droite,corps.coude_droit,corps.poignet_droit)
-    if corps.poignet_droit.y > corps.epaule_droite.y and corps.poignet_gauche.y > corps.epaule_gauche.y:
+    angle_coude_droit = calculer_angle(
+        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
+    )
+    angle_coude_gauche = calculer_angle(
+        corps.epaule_droite, corps.coude_droit, corps.poignet_droit
+    )
+    if (
+        corps.poignet_droit.y > corps.epaule_droite.y
+        and corps.poignet_gauche.y > corps.epaule_gauche.y
+    ):
         return "debut"
     else:
-        return "fin" 
+        return "fin"
+
 
 elevation_laterale = Exercice(
     nom="Elevations latérales",
-
     detection=elevation_laterale_detection,
-
     description="Curl biceps avec haltère du bras gauche.",
-
-    instructions=[
-        "Contrôle la descente.",
-        "Ne balance pas le mouvement."
-    ],
-
-    erreurs=[
-        
-    ]
+    instructions=["Contrôle la descente.", "Ne balance pas le mouvement."],
+    erreurs=[],
 )
 
 # ==================================
 # Pompes
 # ==================================
 
+
 def pompe_detection(corps):
-    angle_coude_droit = calculer_angle(corps.epaule_gauche,corps.coude_gauche,corps.poignet_gauche)
-    angle_coude_gauche = calculer_angle(corps.epaule_droite,corps.coude_droit,corps.poignet_droit)
-    if angle_coude_droit and angle_coude_gauche < 100:
+    angle_coude_droit = calculer_angle(
+        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
+    )
+    angle_coude_gauche = calculer_angle(
+        corps.epaule_droite, corps.coude_droit, corps.poignet_droit
+    )
+    if angle_coude_droit < 100 and angle_coude_gauche < 100:
         return "fin"
-    elif angle_coude_droit and angle_coude_gauche > 160:
+    elif angle_coude_droit > 160 and angle_coude_gauche > 160:
         return "debut"
     return "milieu"
 
+
 pompe = Exercice(
     nom="Pompes",
-
     detection=pompe_detection,
-
     description="En position gainage, faire une pompe",
-
     instructions=[
         "laisse ta tête en position neutre",
-        "N'écarte pas trop les coudes"
-        "Garde les jambes et le dos alignés"
+        "N'écarte pas trop les coudes" "Garde les jambes et le dos alignés",
     ],
-
-    erreurs=[
-        
-    ]
+    erreurs=[],
 )
 
 # ==================================
 # Developpé couché altères
 # ==================================
 
+
 def developpe_couche_sol_detection(corps):
-    angle_coude_droit = calculer_angle(corps.epaule_gauche,corps.coude_gauche,corps.poignet_gauche)
-    angle_coude_gauche = calculer_angle(corps.epaule_droite,corps.coude_droit,corps.poignet_droit)
-    if angle_coude_droit and angle_coude_gauche < 100:
+    angle_coude_droit = calculer_angle(
+        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
+    )
+    angle_coude_gauche = calculer_angle(
+        corps.epaule_droite, corps.coude_droit, corps.poignet_droit
+    )
+    if angle_coude_droit < 100 and angle_coude_gauche < 100:
         return "fin"
-    elif angle_coude_droit and angle_coude_gauche > 160:
+    elif angle_coude_droit > 160 and angle_coude_gauche > 160:
         return "debut"
     return "milieu"
 
+
 developpe_couche_sol = Exercice(
     nom="Developpé couché altères",
-
     detection=developpe_couche_sol_detection,
-
     description="Allongé au sol, faire un développé couché avec des altères dans chaque main",
-
     instructions=[
         "laisse ta tête en position neutre",
-        "Garde les bras dans l'axe des pecs"
+        "Garde les bras dans l'axe des pecs",
     ],
-
-    erreurs=[
-        
-    ]
+    erreurs=[],
 )
 
 # ==================================
 # Extension triceps
 # ==================================
 
+
 def extension_triceps_au_dessus_de_la_tete_detection(corps):
-    angle_coude_droit = calculer_angle(corps.epaule_gauche,corps.coude_gauche,corps.poignet_gauche)
-    angle_coude_gauche = calculer_angle(corps.epaule_droite,corps.coude_droit,corps.poignet_droit)
-    if angle_coude_droit and angle_coude_gauche < 90:
+    angle_coude_droit = calculer_angle(
+        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
+    )
+    angle_coude_gauche = calculer_angle(
+        corps.epaule_droite, corps.coude_droit, corps.poignet_droit
+    )
+    if angle_coude_droit < 90 and angle_coude_gauche < 90:
         return "fin"
-    elif angle_coude_droit and angle_coude_gauche > 150:
+    elif angle_coude_droit > 150 and angle_coude_gauche > 150:
         return "debut"
     return "milieu"
 
+
 extension_triceps_au_dessus_de_la_tete = Exercice(
     nom="Extension Triceps",
-
     detection=extension_triceps_au_dessus_de_la_tete_detection,
-
     description="tenir une altère en haut de sa tête et faire la faire descendre dans le dos en utilisant les triceps",
-
-    instructions=[
-        "laisse ta tête en position neutre",
-        "n'écarte pas trops les coudes"
-    ],
-
-    erreurs=[
-        
-    ]
+    instructions=["laisse ta tête en position neutre", "n'écarte pas trops les coudes"],
+    erreurs=[],
 )
 
 # ==================================
 # Développé épaule
 # ==================================
 
+
 def developpe_epaule_detection(corps):
-    angle_coude_droit = calculer_angle(corps.epaule_gauche,corps.coude_gauche,corps.poignet_gauche)
-    angle_coude_gauche = calculer_angle(corps.epaule_droite,corps.coude_droit,corps.poignet_droit)
-    if angle_coude_droit and angle_coude_gauche < 40:
+    angle_coude_droit = calculer_angle(
+        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
+    )
+    angle_coude_gauche = calculer_angle(
+        corps.epaule_droite, corps.coude_droit, corps.poignet_droit
+    )
+    if angle_coude_droit < 40 and angle_coude_gauche < 40:
         return "fin"
-    elif angle_coude_droit and angle_coude_gauche > 150:
+    elif angle_coude_droit > 150 and angle_coude_gauche > 150:
         return "debut"
     return "milieu"
 
+
 developpe_epaule = Exercice(
     nom="Développé épaule",
-
     detection=developpe_epaule_detection,
-
     description="Tenir des altères dans chaque mains et pousser vers le haut",
-
-    instructions=[
-        "laisse ta tête en position neutre",
-        "n'écarte pas trops les coudes"
-    ],
-
-    erreurs=[
-        
-    ]
+    instructions=["laisse ta tête en position neutre", "n'écarte pas trops les coudes"],
+    erreurs=[],
 )
 
 # ==================================
 # Crunches
 # ==================================
 
+
 def crunches_detection(corps):
-    angle_hanche_droite = calculer_angle(corps.epaule_gauche,corps.hanche_gauche,corps.genou_gauche)
-    angle_hanche_gauche = calculer_angle(corps.epaule_droite,corps.hanche_droite,corps.genou_droit)
-    if angle_hanche_droite and angle_hanche_gauche < 70:
+    angle_hanche_droite = calculer_angle(
+        corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche
+    )
+    angle_hanche_gauche = calculer_angle(
+        corps.epaule_droite, corps.hanche_droite, corps.genou_droit
+    )
+    if angle_hanche_droite < 70 and angle_hanche_gauche < 70:
         return "fin"
-    elif angle_hanche_droite and angle_hanche_gauche > 95:
+    elif angle_hanche_droite > 95 and angle_hanche_gauche > 95:
         return "debut"
     return "milieu"
 
+
 crunches = Exercice(
     nom="Crunches",
-
     detection=crunches_detection,
-
     description="Alongé sur le coté pour que la caméra voit le coté",
-
-    instructions=[
-        "laisse ta tête en position neutre",
-        "n'écarte pas trops les coudes"
-    ],
-
-    erreurs=[
-        
-    ]
+    instructions=["laisse ta tête en position neutre", "n'écarte pas trops les coudes"],
+    erreurs=[],
 )
 
 # ==================================
 # Planche
 # ==================================
 
+
 def detection_gainage(corps):
-    angle_hanche_droite = calculer_angle(corps.epaule_gauche,corps.hanche_gauche,corps.genou_gauche)
-    angle_hanche_gauche = calculer_angle(corps.epaule_droite,corps.hanche_droite,corps.genou_droit)
+    angle_hanche_droite = calculer_angle(
+        corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche
+    )
+    angle_hanche_gauche = calculer_angle(
+        corps.epaule_droite, corps.hanche_droite, corps.genou_droit
+    )
     hanches_droites = angle_hanche_gauche > 145
 
     hanche_au_dessus_coude = corps.hanche_gauche.y < corps.coude_gauche.y
@@ -274,6 +263,7 @@ def detection_gainage(corps):
 
     return "repos"
 
+
 planche = Exercice(
     nom="Gainage planche",
     detection=detection_gainage,
@@ -281,14 +271,15 @@ planche = Exercice(
     instructions=[
         "Garde le dos droit",
         "Contracte les abdominaux",
-        "Ne laisse pas tomber les hanches"
+        "Ne laisse pas tomber les hanches",
     ],
-    erreurs=[]
+    erreurs=[],
 )
 
 # ==================================
 # Squat
 # ==================================
+
 
 def squat_detection(corps):
     distance_gauche = calculer_distance(corps.coude_gauche, corps.genou_gauche)
@@ -301,31 +292,29 @@ def squat_detection(corps):
         return "debut"
     return "milieu"
 
+
 squat = Exercice(
     nom="Squat",
-
     detection=squat_detection,
-
     description="Squat avec descente jusqu'à ce que les coudes se rapprochent des genoux.",
-
     instructions=[
         "Garde le dos droit.",
         "Descends les hanches vers l'arrière comme pour t'asseoir.",
         "Rapproche tes coudes de tes genoux en bas du mouvement.",
-        "Remonte en poussant sur les talons."
+        "Remonte en poussant sur les talons.",
     ],
-
-    erreurs=[
-        
-    ]
+    erreurs=[],
 )
 
 # ==================================
 # Fente droite
 # ==================================
 
+
 def fente_droite_detection(corps):
-    angle_genou_droit = calculer_angle(corps.hanche_droite, corps.genou_droit, corps.cheville_droite)
+    angle_genou_droit = calculer_angle(
+        corps.hanche_droite, corps.genou_droit, corps.cheville_droite
+    )
 
     if angle_genou_droit < 100:
         return "fin"
@@ -333,30 +322,28 @@ def fente_droite_detection(corps):
         return "debut"
     return "milieu"
 
+
 fente_droite = Exercice(
     nom="Fente droite",
-
     detection=fente_droite_detection,
-
     description="Fente avec la jambe droite vers l'avant, jusqu'à ce que le genou droit soit fléchi à environ 90 degrés.",
-
     instructions=[
         "Garde le buste droit.",
         "Descends le genou arrière vers le sol sans le toucher.",
         "Le genou avant ne doit pas dépasser la pointe du pied.",
-        "Remonte en poussant sur le talon avant."
+        "Remonte en poussant sur le talon avant.",
     ],
-
-    erreurs=[
-        
-    ]
+    erreurs=[],
 )
 # ==================================
 # Fente gauche
 # ==================================
 
+
 def fente_gauche_detection(corps):
-    angle_genou_gauche = calculer_angle(corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche)
+    angle_genou_gauche = calculer_angle(
+        corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche
+    )
 
     if angle_genou_gauche < 100:
         return "fin"
@@ -364,28 +351,24 @@ def fente_gauche_detection(corps):
         return "debut"
     return "milieu"
 
+
 fente_gauche = Exercice(
     nom="Fente gauche",
-
     detection=fente_gauche_detection,
-
     description="Fente avec la jambe gauche vers l'avant, jusqu'à ce que le genou gauche soit fléchi à environ 90 degrés.",
-
     instructions=[
         "Garde le buste droit.",
         "Descends le genou arrière vers le sol sans le toucher.",
         "Le genou avant ne doit pas dépasser la pointe du pied.",
-        "Remonte en poussant sur le talon avant."
+        "Remonte en poussant sur le talon avant.",
     ],
-
-    erreurs=[
-        
-    ]
+    erreurs=[],
 )
 
 # ==================================
 # Souleve de terre roumain
 # ==================================
+
 
 def souleve_de_terre_roumain_detection(corps):
     distance_gauche = calculer_distance(corps.poignet_gauche, corps.cheville_gauche)
@@ -398,32 +381,30 @@ def souleve_de_terre_roumain_detection(corps):
         return "debut"
     return "milieu"
 
+
 souleve_roumain = Exercice(
     nom="Souleve de terre roumain",
-
     detection=souleve_de_terre_roumain_detection,
-
     description="Souleve de terre roumain : descente des mains vers les pieds, jambes semi-tendues.",
-
     instructions=[
         "Garde le dos droit tout au long du mouvement.",
         "Pousse les hanches vers l'arrière.",
         "Garde une légère flexion des genoux, sans les plier davantage pendant la descente.",
         "Rapproche les mains des pieds sans arrondir le dos.",
-        "Remonte en contractant les fessiers."
+        "Remonte en contractant les fessiers.",
     ],
-
-    erreurs=[
-        
-    ]
+    erreurs=[],
 )
 
 # ==================================
 # Planche laterale gauche
 # ==================================
 
+
 def detection_gainage_laterale_gauche(corps):
-    angle_hanche_gauche = calculer_angle(corps.epaule_gauche, corps.hanche_gauche, corps.cheville_gauche)
+    angle_hanche_gauche = calculer_angle(
+        corps.epaule_gauche, corps.hanche_gauche, corps.cheville_gauche
+    )
     corps_aligne = angle_hanche_gauche > 150
 
     cote_gauche_au_sol = corps.epaule_gauche.y > corps.epaule_droite.y
@@ -435,6 +416,7 @@ def detection_gainage_laterale_gauche(corps):
 
     return "repos"
 
+
 planche_laterale_gauche = Exercice(
     nom="Gainage planche laterale gauche",
     detection=detection_gainage_laterale_gauche,
@@ -442,9 +424,9 @@ planche_laterale_gauche = Exercice(
     instructions=[
         "Garde le corps aligné de la tête aux pieds",
         "Contracte les abdominaux et les obliques",
-        "Ne laisse pas tomber les hanches"
+        "Ne laisse pas tomber les hanches",
     ],
-    erreurs=[]
+    erreurs=[],
 )
 
 
@@ -452,8 +434,11 @@ planche_laterale_gauche = Exercice(
 # Planche laterale droite
 # ==================================
 
+
 def detection_gainage_laterale_droite(corps):
-    angle_hanche_droite = calculer_angle(corps.epaule_droite, corps.hanche_droite, corps.cheville_droite)
+    angle_hanche_droite = calculer_angle(
+        corps.epaule_droite, corps.hanche_droite, corps.cheville_droite
+    )
     corps_aligne = angle_hanche_droite > 150
 
     cote_droit_au_sol = corps.epaule_droite.y > corps.epaule_gauche.y
@@ -465,6 +450,7 @@ def detection_gainage_laterale_droite(corps):
 
     return "repos"
 
+
 planche_laterale_droite = Exercice(
     nom="Gainage planche laterale droite",
     detection=detection_gainage_laterale_droite,
@@ -472,18 +458,23 @@ planche_laterale_droite = Exercice(
     instructions=[
         "Garde le corps aligné de la tête aux pieds",
         "Contracte les abdominaux et les obliques",
-        "Ne laisse pas tomber les hanches"
+        "Ne laisse pas tomber les hanches",
     ],
-    erreurs=[]
+    erreurs=[],
 )
 
 # ==================================
 # Rowing unilateral gauche
 # ==================================
 
+
 def rowing_unilateral_gauche_detection(corps):
-    angle_coude_gauche = calculer_angle(corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche)
-    angle_buste_gauche = calculer_angle(corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche)
+    angle_coude_gauche = calculer_angle(
+        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
+    )
+    angle_buste_gauche = calculer_angle(
+        corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche
+    )
 
     poignet_au_dessus_hanche = corps.poignet_gauche.y < corps.hanche_gauche.y
     buste_penche = angle_buste_gauche < 160
@@ -494,39 +485,42 @@ def rowing_unilateral_gauche_detection(corps):
         return "debut"
     return "milieu"
 
+
 def rowing_unilateral_gauche_erreur_buste(corps):
-    angle_buste_gauche = calculer_angle(corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche)
+    angle_buste_gauche = calculer_angle(
+        corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche
+    )
     if angle_buste_gauche >= 160:
         return "Penche-toi davantage vers l'avant"
     return None
 
+
 rowing_unilateral_gauche = Exercice(
     nom="Rowing unilateral gauche",
-
     detection=rowing_unilateral_gauche_detection,
-
     description="Rowing unilatéral bras gauche : tirer l'haltère vers la hanche en contractant le dos.",
-
     instructions=[
         "Garde le dos droit, buste penché en avant.",
         "Tire le coude vers l'arrière, proche du corps.",
         "Monte le poignet au-dessus de la hanche.",
         "Contracte l'omoplate en haut du mouvement.",
-        "Contrôle la descente."
+        "Contrôle la descente.",
     ],
-
-    erreurs=[
-        rowing_unilateral_gauche_erreur_buste
-    ]
+    erreurs=[rowing_unilateral_gauche_erreur_buste],
 )
 
 # ==================================
 # Rowing unilateral droit
 # ==================================
 
+
 def rowing_unilateral_droit_detection(corps):
-    angle_coude_droit = calculer_angle(corps.epaule_droite, corps.coude_droit, corps.poignet_droit)
-    angle_buste_droit = calculer_angle(corps.epaule_droite, corps.hanche_droite, corps.genou_droit)
+    angle_coude_droit = calculer_angle(
+        corps.epaule_droite, corps.coude_droit, corps.poignet_droit
+    )
+    angle_buste_droit = calculer_angle(
+        corps.epaule_droite, corps.hanche_droite, corps.genou_droit
+    )
 
     poignet_au_dessus_hanche = corps.poignet_droit.y < corps.hanche_droite.y
     buste_penche = angle_buste_droit < 160
@@ -537,39 +531,42 @@ def rowing_unilateral_droit_detection(corps):
         return "debut"
     return "milieu"
 
+
 def rowing_unilateral_droit_erreur_buste(corps):
-    angle_buste_droit = calculer_angle(corps.epaule_droite, corps.hanche_droite, corps.genou_droit)
+    angle_buste_droit = calculer_angle(
+        corps.epaule_droite, corps.hanche_droite, corps.genou_droit
+    )
     if angle_buste_droit >= 160:
         return "Penche-toi davantage vers l'avant"
     return None
 
+
 rowing_unilateral_droit = Exercice(
     nom="Rowing unilateral droit",
-
     detection=rowing_unilateral_droit_detection,
-
     description="Rowing unilatéral bras droit : tirer l'haltère vers la hanche en contractant le dos.",
-
     instructions=[
         "Garde le dos droit, buste penché en avant.",
         "Tire le coude vers l'arrière, proche du corps.",
         "Monte le poignet au-dessus de la hanche.",
         "Contracte l'omoplate en haut du mouvement.",
-        "Contrôle la descente."
+        "Contrôle la descente.",
     ],
-
-    erreurs=[
-        rowing_unilateral_droit_erreur_buste
-    ]
+    erreurs=[rowing_unilateral_droit_erreur_buste],
 )
 
 # ==================================
 # Rowing penche
 # ==================================
 
+
 def rowing_penche_detection(corps):
-    angle_coude_gauche = calculer_angle(corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche)
-    angle_buste_gauche = calculer_angle(corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche)
+    angle_coude_gauche = calculer_angle(
+        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
+    )
+    angle_buste_gauche = calculer_angle(
+        corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche
+    )
 
     poignet_au_dessus_hanche = corps.poignet_gauche.y < corps.hanche_gauche.y
     buste_penche = angle_buste_gauche < 165
@@ -580,25 +577,29 @@ def rowing_penche_detection(corps):
         return "debut"
     return "milieu"
 
+
 def rowing_penche_erreur_buste(corps):
-    angle_buste_gauche = calculer_angle(corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche)
+    angle_buste_gauche = calculer_angle(
+        corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche
+    )
     if angle_buste_gauche >= 165:
         return "Penche-toi davantage vers l'avant"
     return None
 
+
 def rowing_penche_erreur_genoux(corps):
-    angle_genou_gauche = calculer_angle(corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche)
+    angle_genou_gauche = calculer_angle(
+        corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche
+    )
     if angle_genou_gauche < 155:
         return "Garde les jambes presque tendues, plie moins les genoux"
     return None
 
+
 rowing_penche = Exercice(
     nom="Rowing penche",
-
     detection=rowing_penche_detection,
-
     description="Rowing penché à deux haltères en prise neutre : tirer les coudes le plus haut possible.",
-
     instructions=[
         "Penche le buste en avant, dos droit.",
         "Garde les jambes presque tendues, avec une légère flexion des genoux.",
@@ -606,22 +607,23 @@ rowing_penche = Exercice(
         "Tire les coudes le plus haut possible, le long du corps.",
         "Monte le poignet au-dessus de la hanche.",
         "Contracte les omoplates en haut du mouvement.",
-        "Contrôle la descente."
+        "Contrôle la descente.",
     ],
-
-    erreurs=[
-        rowing_penche_erreur_buste,
-        rowing_penche_erreur_genoux
-    ]
+    erreurs=[rowing_penche_erreur_buste, rowing_penche_erreur_genoux],
 )
 
 # ==================================
 # Oiseau
 # ==================================
 
+
 def oiseau_detection(corps):
-    angle_bras_gauche = calculer_angle(corps.hanche_gauche, corps.epaule_gauche, corps.coude_gauche)
-    angle_bras_droit = calculer_angle(corps.hanche_droite, corps.epaule_droite, corps.coude_droit)
+    angle_bras_gauche = calculer_angle(
+        corps.hanche_gauche, corps.epaule_gauche, corps.coude_gauche
+    )
+    angle_bras_droit = calculer_angle(
+        corps.hanche_droite, corps.epaule_droite, corps.coude_droit
+    )
     angle_bras_moyen = (angle_bras_gauche + angle_bras_droit) / 2
 
     if angle_bras_moyen > 80:
@@ -630,9 +632,14 @@ def oiseau_detection(corps):
         return "debut"
     return "milieu"
 
+
 def oiseau_erreur_coudes(corps):
-    angle_coude_gauche = calculer_angle(corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche)
-    angle_coude_droit = calculer_angle(corps.epaule_droite, corps.coude_droit, corps.poignet_droit)
+    angle_coude_gauche = calculer_angle(
+        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
+    )
+    angle_coude_droit = calculer_angle(
+        corps.epaule_droite, corps.coude_droit, corps.poignet_droit
+    )
     angle_coude_moyen = (angle_coude_gauche + angle_coude_droit) / 2
 
     if angle_coude_moyen > 170:
@@ -641,22 +648,17 @@ def oiseau_erreur_coudes(corps):
         return "Ne plie pas trop les coudes"
     return None
 
+
 oiseau = Exercice(
     nom="Oiseau",
-
     detection=oiseau_detection,
-
     description="Oiseau debout à deux haltères : écarter les bras sur les côtés, coudes légèrement fléchis.",
-
     instructions=[
         "Penche légèrement le buste en avant.",
         "Garde les coudes légèrement fléchis.",
         "Écarte les bras sur les côtés jusqu'à hauteur des épaules.",
         "Contracte les omoplates en haut du mouvement.",
-        "Contrôle la descente."
+        "Contrôle la descente.",
     ],
-
-    erreurs=[
-        oiseau_erreur_coudes
-    ]
+    erreurs=[oiseau_erreur_coudes],
 )
