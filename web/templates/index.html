@@ -503,6 +503,31 @@
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         }
 
+        .rest-next-name {
+            font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+            font-size: 64px;
+            line-height: 1;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            text-align: center;
+            color: #ffffff;
+            text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+            max-width: 90vw;
+        }
+
+        .rest-next-name.hidden-mode,
+        .rest-next-label.hidden-mode {
+            display: none;
+        }
+
+        .rest-next-label {
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
         .rest-next {
             font-size: 14px;
             color: var(--muted);
@@ -996,6 +1021,9 @@
             .rest-time {
                 font-size: 42px;
             }
+            .rest-next-name {
+                font-size: 40px;
+            }
             .prep-ring-wrap {
                 width: 140px;
                 height: 140px;
@@ -1071,6 +1099,9 @@
 
     <div class="rest-overlay" id="restOverlay">
         <span class="rest-title" id="restTitle">Récupération</span>
+
+        <span class="rest-next-label" id="restNextLabel">Prochain exercice</span>
+        <span class="rest-next-name" id="restNextName">—</span>
 
         <div class="breathe-circle" id="breatheCircle">
             <span class="rest-time" id="restTime">0:00</span>
@@ -1536,6 +1567,8 @@
         const prepPercent = document.getElementById("prepPercent");
         const temps = document.getElementById("restTime");
         const suivant = document.getElementById("restNext");
+        const suivantNom = document.getElementById("restNextName");
+        const suivantLabel = document.getElementById("restNextLabel");
         const {
             exercice: prochainExercice,
             poids: prochainPoids,
@@ -1584,14 +1617,19 @@
                     consigne = `${serieLabel} × ${prochainRepetitions} reps`;
             }
 
+            suivantNom.textContent = prochainExercice;
+            suivantNom.classList.remove("hidden-mode");
+            suivantLabel.classList.remove("hidden-mode");
+
             suivant.innerHTML = `
-                Prochain :
-                <strong>${prochainExercice}</strong><br>
                 ${consigne}
                 ${prochainPoids ? `<br>${prochainPoids} kg` : ""}
             `;
 
         } else {
+            suivantNom.textContent = "";
+            suivantNom.classList.add("hidden-mode");
+            suivantLabel.classList.add("hidden-mode");
             suivant.innerHTML = `Fin de séance`;
         }
 
