@@ -88,7 +88,7 @@ MATERIEL_EXERCICES = {
     "Gainage planche laterale droite": "Un tapis",
     "Rowing unilateral droit": "Un haltère et une chaise",
     "Rowing unilateral gauche": "Un haltère et une chaise",
-    "Rowing penché": "Deux haltères",
+    "Rowing penche": "Deux haltères",
     "Oiseau": "Deux haltères",
 }
 
