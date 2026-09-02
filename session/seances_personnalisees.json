@@ -1,6 +1,83 @@
 {
   "Upper Pull": [
     {
+      "exercice": "Jumping jacks",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 10,
+      "duree": 0,
+      "repos_entre_series": 30,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Rotation des épaules",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 10,
+      "duree": 0,
+      "repos_entre_series": 30,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Rotation des coudes",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 10,
+      "duree": 0,
+      "repos_entre_series": 30,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Rotation des poignets",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 10,
+      "duree": 0,
+      "repos_entre_series": 30,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Rotation du cou",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 10,
+      "duree": 0,
+      "repos_entre_series": 30,
+      "repos_apres": 35,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Pompes lentes",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 10,
+      "duree": 0,
+      "repos_entre_series": 30,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Élévations latérales à vide",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 10,
+      "duree": 0,
+      "repos_entre_series": 30,
+      "repos_apres": 60,
+      "commentaire": ""
+    },
+    {
       "exercice": "Rowing unilateral droit",
       "mode": "repetitions",
       "poids": 14,
@@ -8,7 +85,9 @@
       "repetitions": 8,
       "duree": 0,
       "repos_entre_series": 45,
-      "repos_apres": 45
+      "repos_apres": 45,
+      "commentaire": "",
+      "entrelace_avec": "Rowing unilateral gauche"
     },
     {
       "exercice": "Rowing unilateral gauche",
@@ -18,17 +97,19 @@
       "repetitions": 8,
       "duree": 0,
       "repos_entre_series": 45,
-      "repos_apres": 90
+      "repos_apres": 90,
+      "commentaire": ""
     },
     {
-      "exercice": "Rowing penche",
+      "exercice": "Rowing penché",
       "mode": "repetitions",
       "poids": 8,
       "series": 3,
       "repetitions": 8,
       "duree": 0,
       "repos_entre_series": 45,
-      "repos_apres": 90
+      "repos_apres": 90,
+      "commentaire": ""
     },
     {
       "exercice": "Curl biceps droit",
@@ -38,7 +119,9 @@
       "repetitions": 11,
       "duree": 0,
       "repos_entre_series": 45,
-      "repos_apres": 90
+      "repos_apres": 90,
+      "commentaire": "",
+      "entrelace_avec": "Curl biceps gauche"
     },
     {
       "exercice": "Curl biceps gauche",
@@ -48,7 +131,8 @@
       "repetitions": 11,
       "duree": 0,
       "repos_entre_series": 45,
-      "repos_apres": 90
+      "repos_apres": 90,
+      "commentaire": ""
     },
     {
       "exercice": "Oiseau",
@@ -58,7 +142,8 @@
       "repetitions": 12,
       "duree": 0,
       "repos_entre_series": 45,
-      "repos_apres": 0
+      "repos_apres": 0,
+      "commentaire": ""
     }
   ],
   "bras": [
@@ -169,11 +254,35 @@
   ],
   "testete": [
     {
+      "exercice": "Jumping jacks",
+      "poids": 0,
+      "mode": "echauffement",
+      "series": 1,
+      "repetitions": 0,
+      "duree": 30,
+      "repos_entre_series": 30,
+      "repos_apres": 5,
+      "commentaire": "",
+      "entrelace_avec": null
+    },
+    {
+      "exercice": "Rotation des poignets",
+      "poids": 0,
+      "mode": "echauffement",
+      "series": 1,
+      "repetitions": 0,
+      "duree": 30,
+      "repos_entre_series": 30,
+      "repos_apres": 30,
+      "commentaire": "",
+      "entrelace_avec": null
+    },
+    {
       "exercice": "Curl biceps droit",
       "poids": 0,
       "mode": "repetitions",
       "series": 2,
-      "repetitions": 9,
+      "repetitions": 6,
       "duree": 0,
       "repos_entre_series": 10,
       "repos_apres": 30,
@@ -185,7 +294,7 @@
       "poids": 0,
       "mode": "repetitions",
       "series": 2,
-      "repetitions": 8,
+      "repetitions": 6,
       "duree": 0,
       "repos_entre_series": 10,
       "repos_apres": 30,
@@ -197,7 +306,7 @@
       "poids": 0,
       "mode": "repetitions",
       "series": 1,
-      "repetitions": 12,
+      "repetitions": 6,
       "duree": 0,
       "repos_entre_series": 0,
       "repos_apres": 0,

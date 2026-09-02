@@ -82,7 +82,7 @@ MATERIEL_EXERCICES = {
     "Gainage planche": "Un tapis",
     "Squat": "Deux haltères et un tapis",
     "Fente droite": "Deux haltères et un tapis",
-    "Fente gauche": "Deux haltère et un tapis",
+    "Fente gauche": "Deux haltères et un tapis",
     "Souleve de terre roumain": "Deux haltères",
     "Gainage planche laterale gauche": "Un tapis",
     "Gainage planche laterale droite": "Un tapis",
@@ -130,49 +130,84 @@ def materiel_exercice(nom, poids):
     return materiel.replace("Un haltère", f"Un haltère de {poids} kg", 1)
 
 
-def formater_materiel(materiels):
-    """Regroupe le matériel d'une séance dans une phrase lisible."""
-    elements = set()
-    poids_deux_haltere = []
-    poids_un_haltere = []
+def _decomposer_materiel(materiel_brut):
+    """Décompose un descriptif brut de matériel (tel que déclaré dans
+    MATERIEL_EXERCICES, donc *sans* poids) en ses composants indépendants :
+    le nombre d'haltères et les accessoires fixes (tapis, chaise...).
 
-    for materiel in materiels:
-        if not materiel or materiel == "Aucun matériel":
+    Travailler sur le texte brut plutôt que sur la phrase déjà assemblée avec
+    le poids (ex: "Un haltère de 14 kg et une chaise") est ce qui évite
+    qu'un accessoire ne soit confondu avec la valeur du poids lors d'un
+    découpage par sous-chaîne — c'était la source du bug où "et une chaise"
+    se retrouvait absorbé dans la liste des poids affichés.
+    """
+    if not materiel_brut:
+        return 0, []
+    # "Deux haltère" (sans s) reste accepté : un ancien typo du catalogue,
+    # et de toute façon un préfixe de "Deux haltères".
+    if "Deux haltère" in materiel_brut:
+        nb_halteres = 2
+    elif "Un haltère" in materiel_brut:
+        nb_halteres = 1
+    else:
+        nb_halteres = 0
+    accessoires = []
+    if "tapis" in materiel_brut:
+        accessoires.append("Un tapis")
+    if "chaise" in materiel_brut:
+        accessoires.append("Une chaise")
+    return nb_halteres, accessoires
+
+
+def formater_materiel(exercices):
+    """Regroupe le matériel d'une séance dans une phrase lisible.
+
+    Reçoit les exercices (avec leur nom et leur poids), pas des phrases déjà
+    composées : voir `_decomposer_materiel` pour la raison.
+    """
+    elements = set()
+    poids_par_halteres = {1: [], 2: []}
+
+    for exercice in exercices:
+        nom = exercice["nom"] if isinstance(exercice, dict) else exercice[0]
+        poids = (exercice.get("poids") if isinstance(exercice, dict) else exercice[1]) or 0
+        materiel_brut = MATERIEL_EXERCICES.get(nom, "A préciser")
+        if materiel_brut in ("", "Aucun matériel", "A préciser"):
             continue
-        if "tapis" in materiel:
-            elements.add("Un tapis")
-        if "Deux haltères" in materiel:
-            poids = materiel.removeprefix("Deux haltères de ").split(" et un tapis")[0]
-            if poids != materiel:
-                if poids not in poids_deux_haltere:
-                    poids_deux_haltere.append(poids)
-            else:
-                elements.add("Deux haltères")
-        elif "Deux haltère" in materiel:
-            elements.add("Deux haltères")
-        if "Un haltère" in materiel:
-            poids = materiel.removeprefix("Un haltère de ").split(" et un tapis")[0]
-            if poids != materiel:
-                if poids not in poids_un_haltere:
-                    poids_un_haltere.append(poids)
-            else:
-                elements.add("Un haltère")
+
+        nb_halteres, accessoires = _decomposer_materiel(materiel_brut)
+        elements.update(accessoires)
+        if nb_halteres == 0:
+            continue
+        if poids:
+            if poids not in poids_par_halteres[nb_halteres]:
+                poids_par_halteres[nb_halteres].append(poids)
+        else:
+            elements.add("Un haltère" if nb_halteres == 1 else "Deux haltères")
 
     def poids_formates(poids):
-        return (
-            ", ".join(poids[:-1]) + " et " + poids[-1] if len(poids) > 1 else poids[0]
-        )
+        libelles = [f"{p} kg" for p in poids]
+        if len(libelles) == 1:
+            return libelles[0]
+        return ", ".join(libelles[:-1]) + " et " + libelles[-1]
 
-    if poids_deux_haltere:
-        elements.add(f"Deux haltères de {poids_formates(poids_deux_haltere)}")
-    if poids_un_haltere:
-        elements.add(f"Un haltère de {poids_formates(poids_un_haltere)}")
+    for nb_halteres, poids in poids_par_halteres.items():
+        if poids:
+            libelle = "Un haltère" if nb_halteres == 1 else "Deux haltères"
+            elements.add(f"{libelle} de {poids_formates(poids)}")
 
-    ordre = {"Un tapis": 0, "Deux haltères": 1, "Un haltère": 2}
-    elements_ordonnes = sorted(
-        elements,
-        key=lambda element: (ordre.get(element, 3), element),
-    )
+    def rang(element):
+        for prefixe, valeur in (
+            ("Un tapis", 0),
+            ("Deux haltères", 1),
+            ("Un haltère", 2),
+            ("Une chaise", 3),
+        ):
+            if element.startswith(prefixe):
+                return valeur
+        return 4
+
+    elements_ordonnes = sorted(elements, key=lambda element: (rang(element), element))
     elements_ordonnes = [
         element if index == 0 else element[0].lower() + element[1:]
         for index, element in enumerate(elements_ordonnes)
@@ -664,6 +699,6 @@ def catalogue():
                 exercice.get("poids", 0),
             )
         seance["materiel"] = formater_materiel(
-            exercice["materiel"] for exercice in seance["exercices"]
+            seance["exercices"]
         )
     return resultats
