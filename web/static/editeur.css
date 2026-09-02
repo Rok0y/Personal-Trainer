@@ -1,0 +1,158 @@
+/* ==========================================================================
+   Éditeur de séance — partagé par creer_seance.html et editer_seance.html.
+
+   Les deux pages avaient 78 lignes de CSS identiques. Ce qui les distingue
+   encore (largeur de `main`, nombre de colonnes de la grille `.bloc`) reste
+   dans le <style> de chaque page, parce que ça dépend du nombre de boutons
+   que chacune affiche.
+   ========================================================================== */
+
+label {
+    display: block;
+    margin: 28px 0 20px;
+    font-size: 13px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+#nom {
+    display: block;
+    margin-top: 10px;
+    width: 100%;
+    max-width: 420px;
+    padding: 13px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    background: var(--glass);
+    color: var(--text);
+    font: 15px 'Space Grotesk', sans-serif;
+}
+#nom:focus { outline: none; border-color: var(--teal); }
+
+/* ---------- Bloc exercice ---------- */
+
+.bloc {
+    display: grid;
+    gap: 8px;
+    align-items: end;
+    padding: 14px;
+    margin: 10px 0;
+    border: 1px solid var(--border);
+    /* La bordure gauche porte la couleur du mode : elle est posée ici pour
+       que sa largeur ne change pas quand la couleur change, sinon les blocs
+       sauteraient de quelques pixels à chaque changement de mode. */
+    border-left: 3px solid var(--mode-couleur, var(--border-strong));
+    border-radius: 14px;
+    background: var(--glass);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transition: border-color .2s ease, background .2s ease, opacity .2s ease;
+}
+
+.champ { min-width: 0; }
+.champ label {
+    display: block;
+    margin: 0 0 6px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+.champ label span { display: block; color: var(--text); font-size: 11px; text-transform: none; letter-spacing: 0; }
+
+.bloc select, .bloc input {
+    width: 100%;
+    min-width: 0;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: rgba(255, 255, 255, .04);
+    color: var(--text);
+    font: 13px 'Space Grotesk', sans-serif;
+}
+.bloc select:focus, .bloc input:focus { outline: none; border-color: var(--teal); }
+.bloc select option { background: #0f1420; color: var(--text); }
+
+/* ---------- Couleur par mode ----------
+   `--mode-couleur` est posée par le JS sur chaque bloc (data-mode), ce qui
+   évite d'écrire une règle par mode ici : ajouter un mode ne demande qu'une
+   variable --mode-xxx dans base.css. */
+
+.bloc[data-mode="repetitions"]  { --mode-couleur: var(--mode-repetitions); }
+.bloc[data-mode="maintien"]     { --mode-couleur: var(--mode-maintien); }
+.bloc[data-mode="chrono"]       { --mode-couleur: var(--mode-chrono); }
+.bloc[data-mode="amrap"]        { --mode-couleur: var(--mode-amrap); }
+.bloc[data-mode="echauffement"] { --mode-couleur: var(--mode-echauffement); }
+
+.bloc .mode { border-color: color-mix(in srgb, var(--mode-couleur, var(--border-strong)) 55%, transparent); }
+
+.mode-pastille {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--mode-couleur, var(--muted));
+}
+
+/* ---------- Boutons du bloc ---------- */
+
+.bloc > button {
+    padding: 8px;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--orange);
+    border-color: var(--border-strong);
+    font-size: 13px;
+}
+.bloc button:hover { border-color: var(--orange); color: var(--orange); }
+
+.bloc > .entrelace-btn { color: var(--teal); font-size: 16px; padding: 6px 8px; }
+.bloc .entrelace-btn:hover { border-color: var(--teal); }
+.bloc .entrelace-btn.active { background: rgba(27, 232, 196, 0.15); border-color: var(--teal); color: var(--teal); }
+/* L'entrelacement teinte les trois bordures « libres » et laisse la bordure
+   gauche au mode. Écrire `border-color` ici, en raccourci, écraserait aussi
+   border-left-color et ferait disparaître la couleur du mode : les deux
+   informations sont indépendantes, elles ne doivent pas se marcher dessus. */
+.bloc.entrelace {
+    border-top-color: rgba(27, 232, 196, .5);
+    border-right-color: rgba(27, 232, 196, .5);
+    border-bottom-color: rgba(27, 232, 196, .5);
+    background: linear-gradient(rgba(27, 232, 196, .05), rgba(27, 232, 196, .05)), var(--glass);
+}
+
+.paire { margin: -4px 0 10px 34px; color: var(--teal); font-size: 12px; }
+
+/* ---------- Glisser-déposer ----------
+   Le déplacement passe par une poignée dédiée plutôt que par le bloc entier :
+   rendre tout le bloc draggable empêcherait de sélectionner du texte dans les
+   champs. Les flèches ▲▼ restent le chemin clavier. */
+
+.drag-poignee {
+    padding: 8px 4px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1;
+    cursor: grab;
+    /* Empêche le navigateur d'interpréter un glissement vertical comme un
+       défilement de page sur écran tactile. */
+    touch-action: none;
+}
+.drag-poignee:hover { color: var(--text); border-color: var(--border-strong); }
+.drag-poignee:active { cursor: grabbing; }
+
+/* Le bloc en cours de déplacement s'efface : c'est l'emplacement libéré qui
+   doit se lire, pas le bloc lui-même. */
+.bloc.en-deplacement { opacity: .35; }
+
+/* Trait d'insertion sous le bloc survolé pendant un glissement. */
+.bloc.cible-apres { box-shadow: 0 3px 0 -1px var(--teal); }
+.bloc.cible-avant { box-shadow: 0 -3px 0 -1px var(--teal); }
+
+@media (max-width: 700px) {
+    .bloc { grid-template-columns: 1fr 1fr 1fr; }
+}

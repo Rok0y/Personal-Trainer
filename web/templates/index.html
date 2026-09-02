@@ -10,24 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <style>
-
-        :root {
-            --bg: #0a0d13;
-            --glass: rgba(15, 19, 28, 0.6);
-            --glass-strong: rgba(15, 19, 28, 0.82);
-            --border: rgba(255, 255, 255, 0.08);
-            --border-strong: rgba(255, 255, 255, 0.14);
-            --text: #f4f2ec;
-            --muted: #8d97ab;
-            --orange: #ff5a36;
-            --orange-glow: rgba(255, 90, 54, 0.45);
-            --teal: #1be8c4;
-            --teal-glow: rgba(27, 232, 196, 0.45);
-            --blue: #4da3ff;
-            --blue-glow: rgba(77, 163, 255, 0.45);
-        }
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<style>
         * {
             box-sizing: border-box;
         }

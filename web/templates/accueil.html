@@ -11,31 +11,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <style>
-        :root {
-            --bg: #0a0d13;
-            --glass: rgba(15, 19, 28, 0.6);
-            --glass-strong: rgba(15, 19, 28, 0.82);
-            --border: rgba(255, 255, 255, 0.08);
-            --border-strong: rgba(255, 255, 255, 0.14);
-            --text: #f4f2ec;
-            --muted: #8d97ab;
-            --orange: #ff5a36;
-            --orange-glow: rgba(255, 90, 54, 0.45);
-            --teal: #1be8c4;
-            --teal-glow: rgba(27, 232, 196, 0.45);
-        }
-
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Space Grotesk', Arial, sans-serif;
-        }
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<style>
         main { width: min(1080px, calc(100% - 40px)); margin: 0 auto; padding: 56px 0; }
 
         header {

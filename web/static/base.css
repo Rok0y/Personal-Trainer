@@ -1,0 +1,97 @@
+/* ==========================================================================
+   Socle commun à toutes les pages.
+
+   Ces règles étaient dupliquées à l'identique dans les 7 templates : la
+   palette, le reset, la typographie et les boutons. Chaque page ne garde
+   désormais dans son <style> que ce qui lui est propre.
+
+   Toute couleur ajoutée ici doit l'être en variable, jamais en dur dans un
+   template : c'est ce qui permet de la changer à un seul endroit.
+   ========================================================================== */
+
+:root {
+    --bg: #0a0d13;
+    --glass: rgba(15, 19, 28, 0.6);
+    --glass-strong: rgba(15, 19, 28, 0.82);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --text: #f4f2ec;
+    --muted: #8d97ab;
+    --orange: #ff5a36;
+    --orange-glow: rgba(255, 90, 54, 0.45);
+    --teal: #1be8c4;
+    --teal-glow: rgba(27, 232, 196, 0.45);
+    --blue: #4a9eff;
+    --blue-glow: rgba(74, 158, 255, 0.45);
+
+    /* Couleur d'identité de chaque mode d'exercice. Les trois premières
+       reprennent la palette existante ; violet et ambre sont propres aux
+       modes qui n'en avaient pas. L'ambre de l'échauffement est volontairement
+       chaud — c'est la seule distinction visuelle qui compte vraiment, entre
+       ce qui prépare et ce qui compte dans les statistiques. */
+    --mode-repetitions: var(--orange);
+    --mode-maintien: var(--teal);
+    --mode-chrono: var(--blue);
+    --mode-amrap: #a97bff;
+    --mode-echauffement: #ffb340;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', Arial, sans-serif;
+}
+
+main { width: min(900px, calc(100% - 40px)); margin: auto; padding: 44px 0; }
+
+h1 {
+    margin: 0 0 8px;
+    font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+    font-size: clamp(38px, 7vw, 72px);
+    font-weight: 400;
+    letter-spacing: .01em;
+}
+
+.kicker {
+    margin: 0 0 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--orange);
+    font: 700 12px 'Space Grotesk', sans-serif;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+}
+
+.kicker::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--orange);
+    box-shadow: 0 0 8px var(--orange-glow);
+}
+
+.hint { margin: 0 0 4px; color: var(--muted); font-size: 14px; }
+
+a { color: var(--teal); font: 700 13px 'Space Grotesk', sans-serif; text-decoration: none; letter-spacing: .02em; }
+a:hover { text-decoration: underline; }
+
+button, a.btn {
+    padding: 12px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text);
+    text-decoration: none;
+    cursor: pointer;
+    font: 700 13px 'Space Grotesk', sans-serif;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    transition: border-color .2s ease, color .2s ease;
+}
+button:hover, a.btn:hover { border-color: var(--teal); color: var(--teal); }

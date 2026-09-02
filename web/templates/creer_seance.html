@@ -8,90 +8,19 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+<link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='editeur.css') }}">
 <style>
-    :root {
-        --bg: #0a0d13;
-        --glass: rgba(15, 19, 28, 0.6);
-        --glass-strong: rgba(15, 19, 28, 0.82);
-        --border: rgba(255, 255, 255, 0.08);
-        --border-strong: rgba(255, 255, 255, 0.14);
-        --text: #f4f2ec;
-        --muted: #8d97ab;
-        --orange: #ff5a36;
-        --orange-glow: rgba(255, 90, 54, 0.45);
-        --teal: #1be8c4;
-        --teal-glow: rgba(27, 232, 196, 0.45);
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Space Grotesk', Arial, sans-serif; }
-    main { width: min(900px, calc(100% - 40px)); margin: auto; padding: 44px 0; }
-
-    h1 {
-        margin: 0 0 8px; font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
-        font-size: clamp(38px, 7vw, 72px); font-weight: 400; letter-spacing: .01em;
-    }
-    .kicker {
-        margin: 0 0 8px; display: inline-flex; align-items: center; gap: 8px;
-        color: var(--orange); font: 700 12px 'Space Grotesk', sans-serif;
-        letter-spacing: .16em; text-transform: uppercase;
-    }
-    .kicker::before {
-        content: ""; width: 8px; height: 8px; border-radius: 50%;
-        background: var(--orange); box-shadow: 0 0 8px var(--orange-glow);
-    }
-
-    label { display: block; margin: 28px 0 20px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
-    #nom {
-        display: block; margin-top: 10px; width: 100%; max-width: 420px;
-        padding: 13px 16px; border-radius: 10px; border: 1px solid var(--border-strong);
-        background: var(--glass); color: var(--text); font: 15px 'Space Grotesk', sans-serif;
-    }
-    #nom:focus { outline: none; border-color: var(--teal); }
-
-    .bloc {
-        display: grid; grid-template-columns: 40px 2fr repeat(8, 1fr) 40px; gap: 8px; align-items: end;
-        padding: 14px; margin: 10px 0; border: 1px solid var(--border); border-radius: 14px;
-        background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    }
-    .champ { min-width: 0; }
-    .champ label { display: block; margin: 0 0 6px; color: var(--muted); font-size: 10px; line-height: 1.2; text-transform: uppercase; letter-spacing: .05em; }
-    .champ label span { display: block; color: var(--text); font-size: 11px; text-transform: none; letter-spacing: 0; }
-    .bloc select, .bloc input {
-        width: 100%; min-width: 0; padding: 10px; border-radius: 8px; border: 1px solid var(--border-strong);
-        background: rgba(255,255,255,.04); color: var(--text); font: 13px 'Space Grotesk', sans-serif;
-    }
-    .bloc select:focus, .bloc input:focus { outline: none; border-color: var(--teal); }
-    .bloc select option { background: #0f1420; color: var(--text); }
+    /* Propre à cette page : la grille n'a qu'une poignée et un bouton
+       d'entrelacement en tête, là où l'éditeur ajoute deux flèches. */
+    .bloc { grid-template-columns: 28px 40px 2fr repeat(8, 1fr) 40px; }
 
     .actions { margin-top: 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-
-    button, a.btn {
-        padding: 12px 18px; border-radius: 999px; border: 1px solid var(--border-strong);
-        background: transparent; color: var(--text); text-decoration: none; cursor: pointer;
-        font: 700 13px 'Space Grotesk', sans-serif; letter-spacing: .03em; text-transform: uppercase;
-        transition: border-color .2s ease, color .2s ease;
-    }
-    button:hover, a.btn:hover { border-color: var(--teal); color: var(--teal); }
 
     #enregistrer { background: var(--orange); color: #0a0d13; border-color: var(--orange); box-shadow: 0 0 24px var(--orange-glow); }
     #enregistrer:hover { color: #0a0d13; border-color: var(--orange); opacity: .9; }
 
-    .bloc > button {
-        padding: 8px; border-radius: 8px; background: transparent; color: var(--orange);
-        border-color: var(--border-strong); font-size: 13px;
-    }
-    .bloc button:hover { border-color: var(--orange); color: var(--orange); }
-
-    .bloc > .entrelace-btn {
-        color: var(--teal);
-        font-size: 16px;
-        padding: 6px 8px;
-    }
-    .bloc .entrelace-btn:hover { border-color: var(--teal); }
-    .bloc .entrelace-btn.active { background: rgba(27, 232, 196, 0.15); border-color: var(--teal); color: var(--teal); }
-
     @media (max-width: 700px) {
-        .bloc { grid-template-columns: 1fr 1fr 1fr; }
         .champ:first-child, .champ:nth-child(2) { grid-column: span 3; }
     }
 </style>
@@ -107,6 +36,7 @@
     <button id="enregistrer" type="button">Enregistrer</button>
     <a class="btn" href="/">Annuler</a>
 </div>
+<script src="{{ url_for('static', filename='reordonner.js') }}"></script>
 <script>
 const exercices = {{ exercices|tojson }};
 const echauffements = {{ echauffements|tojson }};
@@ -134,13 +64,14 @@ function ajouterBloc() {
     const exercicesOptions = optionsExercices();
 
     ligne.innerHTML = `
+        <span class="drag-poignee" title="Glisser pour déplacer" aria-hidden="true">⠿</span>
         <button type="button" class="entrelace-btn" title="Entrelacer avec le suivant">⟷</button>
         <div class="champ">
             <label>Exercice</label>
             <select class="exercice">${exercicesOptions}</select>
         </div>
         <div class="champ">
-            <label>Mode</label>
+            <label><span class="mode-pastille"></span> Mode</label>
             <select class="mode">
                 <option value="repetitions">Repetitions</option>
                 <option value="maintien">Maintien</option>
@@ -183,26 +114,47 @@ function ajouterBloc() {
     entrelaceBtn.onclick = (e) => {
         e.preventDefault();
 
-        const suivant = ligne.nextElementSibling;
-        if (!suivant && !entrelaceBtn.classList.contains("active")) {
+        if (!entrelaceBtn.classList.contains("active") && !ligne.nextElementSibling) {
             alert("Aucun exercice suivant à entrelacer");
             return;
         }
 
         entrelaceBtn.classList.toggle("active");
-        entrelaceBtn.title = entrelaceBtn.classList.contains("active")
-            ? `Entrelacé avec : ${suivant.querySelector(".exercice").value}`
-            : "Entrelacer avec le suivant";
+        rafraichir();
     };
 
     // Gestion du bouton de suppression
-    ligne.querySelector(".sup-btn").onclick = () => ligne.remove();
-    
+    ligne.querySelector(".sup-btn").onclick = () => { ligne.remove(); rafraichir(); };
+    ligne.querySelector(".mode").onchange = rafraichir;
+    ligne.querySelector(".exercice").onchange = rafraichir;
+
     blocs.appendChild(ligne);
 }
 
-document.getElementById("ajouter").onclick = ajouterBloc;
+// Recalcule tout ce qui dépend de la POSITION des blocs. Indispensable après
+// un ajout, une suppression ou un déplacement : `entrelace_avec` désigne
+// « le bloc juste en dessous », donc réordonner change le partenaire, et le
+// dernier bloc ne peut être entrelacé avec rien.
+function rafraichir() {
+    const lignes = [...blocs.querySelectorAll(".bloc")];
+    lignes.forEach((ligne, index) => {
+        ligne.dataset.mode = ligne.querySelector(".mode").value;
+
+        const entrelaceBtn = ligne.querySelector(".entrelace-btn");
+        const suivant = lignes[index + 1];
+        if (!suivant) entrelaceBtn.classList.remove("active");
+        const actif = entrelaceBtn.classList.contains("active");
+        ligne.classList.toggle("entrelace", actif);
+        entrelaceBtn.title = actif
+            ? `Entrelacé avec : ${suivant.querySelector(".exercice").value}`
+            : "Entrelacer avec le suivant";
+    });
+}
+
+document.getElementById("ajouter").onclick = () => { ajouterBloc(); rafraichir(); };
 ajouterBloc();
+rafraichir();
+activerReordonnancement(blocs, rafraichir);
 
 document.getElementById("enregistrer").onclick = async () => {
     const nom = document.getElementById("nom").value.trim();
