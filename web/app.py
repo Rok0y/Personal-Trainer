@@ -14,7 +14,7 @@ from historique.database import (
     supprimer_seance,
 )
 from session.controleur import SessionManager
-from session.seances import catalogue_exercices
+from session.seances import catalogue_echauffements, catalogue_exercices
 
 
 class FiltreEtat(logging.Filter):
@@ -160,6 +160,8 @@ def etat():
             "duree_maintien": state.duree_maintien,
             "temps_chrono": state.temps_chrono,
             "chrono_termine": state.chrono_termine,
+            "temps_echauffement": state.temps_echauffement,
+            "duree_echauffement": state.duree_echauffement,
             "prochaine_etape": state.prochaine_etape,
             "statut_session": etat_session["statut"],
             "series_terminees": etat_session["series_terminees"],
@@ -177,7 +179,11 @@ def seances_disponibles():
 
 @app.route("/creer-seance")
 def creer_seance_page():
-    return render_template("creer_seance.html", exercices=catalogue_exercices())
+    return render_template(
+        "creer_seance.html",
+        exercices=catalogue_exercices(),
+        echauffements=catalogue_echauffements(),
+    )
 
 
 @app.route("/editer-seance/<nom>")
@@ -188,6 +194,7 @@ def editer_seance_page(nom):
     return render_template(
         "editer_seance.html",
         exercices=catalogue_exercices(),
+        echauffements=catalogue_echauffements(),
         seance_nom=nom,
         seance_exercices=seance["exercices"],
     )

@@ -1,7 +1,18 @@
 import time
 
 from audio.coach import annoncer_progression, annoncer_temps_restant
-from session.circuit import MODE_AMRAP, MODE_CHRONO, MODE_MAINTIEN, MODE_REPETITIONS
+from session.circuit import (
+    MODE_AMRAP,
+    MODE_CHRONO,
+    MODE_ECHAUFFEMENT,
+    MODE_MAINTIEN,
+    MODE_REPETITIONS,
+)
+
+#: Un écart plus long que ça entre deux images vient forcément d'une
+#: interruption du flux (utilisateur hors champ, pause web, frame lente) :
+#: on ne le comptabilise pas d'un bloc au retour de l'utilisateur.
+INTERVALLE_MAX_ECHAUFFEMENT = 0.5
 
 
 def executer_mode(seance, corps, compteur, state, coach, derniere_rep):
@@ -39,6 +50,11 @@ def executer_mode(seance, corps, compteur, state, coach, derniere_rep):
             state=state,
             coach=coach,
             derniere_rep=derniere_rep,
+        )
+    elif bloc.mode == MODE_ECHAUFFEMENT:
+
+        return gerer_mode_echauffement(
+            corps=corps, bloc=bloc, seance=seance, state=state
         )
 
     raise NotImplementedError(f"Mode inconnu : {bloc.mode}")
@@ -166,7 +182,7 @@ def gerer_mode_chrono(bloc, seance, state):
     state.temps_chrono = bloc.temps_chrono
     state.chrono_termine = False
 
-    return 0, 0
+    return 0, 0, False
 
 
 def gerer_mode_amrap(corps, bloc, compteur, seance, state, coach, derniere_rep):
@@ -210,6 +226,60 @@ def gerer_mode_amrap(corps, bloc, compteur, seance, state, coach, derniere_rep):
         return derniere_rep, repetitions, True
 
     return derniere_rep, repetitions, False
+
+
+def gerer_mode_echauffement(corps, bloc, seance, state):
+    """Mouvement d'échauffement : un chrono guidé, la détection est un bonus.
+
+    Deux différences volontaires avec `gerer_mode_chrono` :
+
+    * le temps est accumulé image par image (comme le mode maintien) plutôt que
+      mesuré depuis un `debut_chrono` mural. Comme `main.py` n'appelle les modes
+      que lorsqu'un corps est visible et hors pause, le chrono se met ainsi de
+      lui-même en pause quand l'utilisateur sort du champ — ce qu'un temps
+      mural ne fait pas, puisqu'il continue de courir sans nous ;
+    * `bloc.exercice.detection` peut être None. Quand elle existe, elle
+      n'alimente que l'affichage : elle ne conditionne jamais l'avancement du
+      chrono, un échauffement ne doit pas pouvoir se bloquer.
+    """
+    maintenant = time.monotonic()
+
+    if not hasattr(bloc, "temps_echauffement"):
+        bloc.temps_echauffement = 0
+        bloc.dernier_tick_echauffement = maintenant
+
+    delta = maintenant - bloc.dernier_tick_echauffement
+    bloc.dernier_tick_echauffement = maintenant
+    bloc.temps_echauffement += min(delta, INTERVALLE_MAX_ECHAUFFEMENT)
+
+    if bloc.exercice.detection is not None:
+        mettre_a_jour_erreur(bloc.exercice, corps, state)
+        state.stage = bloc.exercice.detection(corps)
+    else:
+        state.erreur = None
+        state.stage = "Échauffement"
+
+    annoncer_temps_restant(bloc, bloc.duree - bloc.temps_echauffement)
+
+    # affichage web
+    state.repetitions = 0
+    state.temps_echauffement = bloc.temps_echauffement
+    state.duree_echauffement = bloc.duree
+
+    # fin du mouvement
+    if bloc.temps_echauffement >= bloc.duree:
+
+        bloc.temps_echauffement = bloc.duree
+        state.temps_echauffement = bloc.duree
+
+        seance.enregistrer_resultat_serie(
+            duree=bloc.temps_echauffement,
+            completee=True,
+        )
+        _finaliser_serie(seance, state, bloc)
+        return 0, 0, True
+
+    return 0, 0, False
 
 
 def decrire_prochaine_etape(bloc, serie_actuelle, nombre_total_series=None):

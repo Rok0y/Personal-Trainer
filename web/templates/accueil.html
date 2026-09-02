@@ -1,3 +1,5 @@
+{#- Modes dont la cible est une durée et non un nombre de répétitions. -#}
+{%- set MODES_DUREE = ('maintien', 'chrono', 'echauffement') -%}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -9,31 +11,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <style>
-        :root {
-            --bg: #0a0d13;
-            --glass: rgba(15, 19, 28, 0.6);
-            --glass-strong: rgba(15, 19, 28, 0.82);
-            --border: rgba(255, 255, 255, 0.08);
-            --border-strong: rgba(255, 255, 255, 0.14);
-            --text: #f4f2ec;
-            --muted: #8d97ab;
-            --orange: #ff5a36;
-            --orange-glow: rgba(255, 90, 54, 0.45);
-            --teal: #1be8c4;
-            --teal-glow: rgba(27, 232, 196, 0.45);
-        }
-
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Space Grotesk', Arial, sans-serif;
-        }
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<style>
         main { width: min(1080px, calc(100% - 40px)); margin: 0 auto; padding: 56px 0; }
 
         header {
@@ -190,7 +169,7 @@
                 <summary>Voir le contenu</summary>
                 <ul>
                 {% for exercice in seance.exercices %}
-                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}</li>
+                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}</li>
                 {% endfor %}
                 </ul>
             </details>
@@ -205,7 +184,7 @@
                         <p class="editor-equipment">Matériel : {{ exercice.materiel or 'Aucun matériel' }}</p>
                         <span class="number-control" data-unit="Charge (kg)"><button type="button" data-delta="-1" aria-label="Diminuer la charge">−</button><input class="edit-weight" aria-label="Charge en kilogrammes" type="number" min="0" step="0.5" value="{{ exercice.poids|default(0) }}" title="Charge en kilogrammes"><button type="button" data-delta="1" aria-label="Augmenter la charge">+</button></span>
                         <span class="number-control" data-unit="Séries"><button type="button" data-delta="-1" aria-label="Retirer une série">−</button><input class="edit-series" aria-label="Séries" type="number" min="1" value="{{ exercice.series }}" title="Séries"><button type="button" data-delta="1" aria-label="Ajouter une série">+</button></span>
-                        {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}
+                        {% if exercice.mode in MODES_DUREE %}
                         <span class="number-control" data-unit="Secondes"><button type="button" data-delta="-1" aria-label="Retirer une seconde">−</button><input class="edit-target" aria-label="Secondes" type="number" min="1" value="{{ exercice.duree }}" title="Secondes"><button type="button" data-delta="1" aria-label="Ajouter une seconde">+</button></span>
                         {% else %}
                         <span class="number-control" data-unit="Répétitions"><button type="button" data-delta="-1" aria-label="Retirer une répétition">−</button><input class="edit-target" aria-label="Répétitions" type="number" min="0" value="{{ exercice.repetitions }}" title="Répétitions"><button type="button" data-delta="1" aria-label="Ajouter une répétition">+</button></span>
@@ -213,7 +192,7 @@
                         <textarea class="edit-comment" placeholder="Commentaire (optionnel)">{{ exercice.commentaire|default('') }}</textarea>
                         {% set derniere = dernieres_series.get(identifiant, {}).get(exercice.nom or exercice.exercice) %}
                         {% if derniere and derniere.series %}
-                        <div class="last-series"><strong>Dernière série · </strong>Séance du {{ derniere.date }} : {% for serie in derniere.series %}{% if derniere.mode == 'maintien' or derniere.mode == 'chrono' %}{{ serie.duree|round(1) }} s{% else %}{{ serie.repetitions }}{% if serie.poids %} x {{ serie.poids }} kg{% endif %}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</div>
+                        <div class="last-series"><strong>Dernière série · </strong>Séance du {{ derniere.date }} : {% for serie in derniere.series %}{% if derniere.mode in MODES_DUREE %}{{ serie.duree|round(1) }} s{% else %}{{ serie.repetitions }}{% if serie.poids %} x {{ serie.poids }} kg{% endif %}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</div>
                         {% endif %}
                     </div>
                     {% endfor %}
@@ -234,6 +213,10 @@
 </main>
 <script>
     let selection = {{ selection|tojson }};
+    // Modes dont la cible est une durée et non un nombre de répétitions.
+    // Cet éditeur réécrit TOUS les blocs de la séance : un mode absent de
+    // cette liste verrait sa durée remise à zéro à l'enregistrement.
+    const MODES_DUREE = ["maintien", "chrono", "echauffement"];
     const boutonDemarrer = document.getElementById("demarrer");
     const panneauPrecedent = document.getElementById("previous");
     function actualiserSelection() {
@@ -259,7 +242,7 @@
         panneauPrecedent.innerHTML = `<h2>Derniere execution · ${seance.date}</h2>` +
             seance.exercices.map((exercice) => {
                 const series = (exercice.series_detaillees || []).map((serie) => `${serie.repetitions || serie.duree}${serie.poids ? ` x ${serie.poids} kg` : ""}`).join(" · ");
-                const unite = exercice.mode === "maintien" || exercice.mode === "chrono" ? "secondes" : "repetitions";
+                const unite = MODES_DUREE.includes(exercice.mode) ? "secondes" : "repetitions";
                 return `<div class="previous-exercise"><strong>${exercice.nom}</strong> · ${exercice.repetitions || exercice.duree} ${unite}<div class="previous-series">${series || "Détail par série indisponible"}</div></div>`;
             }).join("") +
             `<a href="/historique/${seance.id}">Voir la seance dans l'historique</a>`;
@@ -320,8 +303,8 @@
                 return {
                     exercice: ligne.dataset.exercice, mode, poids: Math.max(0, Number(ligne.querySelector(".edit-weight").value) || 0),
                     series: Math.max(1, Number(ligne.querySelector(".edit-series").value) || 1),
-                    repetitions: mode === "maintien" || mode === "chrono" ? 0 : Math.max(0, cible || 0),
-                    duree: mode === "maintien" || mode === "chrono" ? Math.max(1, cible || 1) : 0,
+                    repetitions: MODES_DUREE.includes(mode) ? 0 : Math.max(0, cible || 0),
+                    duree: MODES_DUREE.includes(mode) ? Math.max(1, cible || 1) : 0,
                     repos_entre_series: Number(ligne.dataset.reposSeries) || 0,
                     repos_apres: Number(ligne.dataset.reposApres) || 0,
                     commentaire: ligne.querySelector(".edit-comment").value.trim(),

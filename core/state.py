@@ -13,6 +13,8 @@ temps_maintien = 0
 duree_maintien = 0
 temps_chrono = 0
 chrono_termine = False
+temps_echauffement = 0
+duree_echauffement = 0
 prochaine_etape = None
 # ==========================================
 # CIRCUIT

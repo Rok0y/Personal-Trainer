@@ -197,8 +197,12 @@ class SessionManager:
                 "series_terminees": (
                     self.seance.series_terminees if seance_active else 0
                 ),
+                # Sans échauffement : le front indexe ces blocs à plat avec
+                # `series_terminees`, qui n'en tient pas compte non plus.
                 "exercices": (
-                    self.seance.exporter_configuration() if seance_active else []
+                    self.seance.exporter_configuration(inclure_echauffement=False)
+                    if seance_active
+                    else []
                 ),
                 "commandes_autorisees": commandes,
             }
