@@ -177,7 +177,9 @@ try:
             if termine_x and seance.phase == "exercice":
                 seance.terminer_serie_manuellement(
                     repetitions=state.repetitions,
-                    duree=state.temps_maintien or state.temps_chrono,
+                    duree=state.temps_maintien
+                    or state.temps_chrono
+                    or state.temps_echauffement,
                 )
                 compteur.reset()
                 state.repetitions = 0
@@ -288,9 +290,6 @@ try:
 
                         # NOM DE L'EXERCICE
                         state.exercice_actuel = exercice.nom
-
-                        # DETECTION DU MOUVEMENT
-                        stage_detecte = exercice.detection(corps)
 
                         # Execution du moteur d'exo
                         derniere_rep, repetitions, serie_terminee = executer_mode(

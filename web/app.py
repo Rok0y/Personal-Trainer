@@ -160,6 +160,8 @@ def etat():
             "duree_maintien": state.duree_maintien,
             "temps_chrono": state.temps_chrono,
             "chrono_termine": state.chrono_termine,
+            "temps_echauffement": state.temps_echauffement,
+            "duree_echauffement": state.duree_echauffement,
             "prochaine_etape": state.prochaine_etape,
             "statut_session": etat_session["statut"],
             "series_terminees": etat_session["series_terminees"],

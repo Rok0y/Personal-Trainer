@@ -4,11 +4,45 @@ MODE_REPETITIONS = "repetitions"
 MODE_MAINTIEN = "maintien"
 MODE_CHRONO = "chrono"
 MODE_AMRAP = "amrap"
+MODE_ECHAUFFEMENT = "echauffement"
+
+MODES_CONNUS = (
+    MODE_REPETITIONS,
+    MODE_MAINTIEN,
+    MODE_CHRONO,
+    MODE_AMRAP,
+    MODE_ECHAUFFEMENT,
+)
+
+#: Modes dont le déroulement dépend d'une fonction de détection : pour eux,
+#: `Exercice.detection` ne peut pas être None. Le chrono et l'échauffement en
+#: sont absents parce qu'ils avancent au temps, sans analyser la pose.
+MODES_AVEC_DETECTION_OBLIGATOIRE = (
+    MODE_REPETITIONS,
+    MODE_MAINTIEN,
+    MODE_AMRAP,
+)
+
+
+def est_echauffement(bloc):
+    """Un bloc d'échauffement guide un mouvement sans compter nulle part.
+
+    Point d'entrée unique de la règle « invisible dans les stats » : progression
+    de la séance, progression automatique des objectifs et export vers
+    l'historique s'y réfèrent tous, pour qu'un seul endroit décide de ce qu'est
+    un échauffement.
+    """
+    return bloc.mode == MODE_ECHAUFFEMENT
 
 
 class Exercice:
 
-    def __init__(self, nom, detection, description="", instructions=None, erreurs=None):
+    def __init__(
+        self, nom, detection=None, description="", instructions=None, erreurs=None
+    ):
+        """`detection` à None décrit un mouvement guidé sans analyse de pose
+        (échauffement) : seuls les modes de `MODES_AVEC_DETECTION_OBLIGATOIRE`
+        l'exigent, et `construire_circuit` refuse les combinaisons invalides."""
         self.nom = nom
         self.detection = detection
         self.description = description
@@ -349,6 +383,8 @@ class Circuit:
             "temps_chrono",
             "debut_amrap",
             "temps_amrap",
+            "temps_echauffement",
+            "dernier_tick_echauffement",
         ):
             if hasattr(bloc, nom):
                 delattr(bloc, nom)
