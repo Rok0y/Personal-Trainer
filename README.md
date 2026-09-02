@@ -11,7 +11,7 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 - **Gestes de contrôle** sans clavier ni souris (ex. bras en X pour valider une série, deux bras levés pour réinitialiser) afin de piloter la séance depuis devant la caméra.
 - **Historique des séances et records** stockés en base SQLite, avec suivi de la progression (meilleur volume, dernières performances).
 - **Interface web locale** (Flask) pour démarrer/mettre en pause une séance, suivre l'état en direct via le flux caméra, consulter l'historique et les records.
-- **Création de séances personnalisées** : composez vos propres circuits d'exercices depuis l'interface web.
+- **Création de séances personnalisées** : composez vos propres circuits d'exercices depuis l'interface web, avec réorganisation des exercices par glisser-déposer.
 
 ## Architecture / organisation du code
 
