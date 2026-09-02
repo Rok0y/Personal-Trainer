@@ -2,34 +2,46 @@
 
 Contrairement à `mouvements/exercices.py`, la fonction de détection est ici
 facultative : le mode avance au chrono, et une détection ne sert qu'à alimenter
-l'affichage. Un mouvement trop diffus pour être analysé de façon fiable (des
-rotations d'épaules, un buste qui pivote) est déclaré sans détection plutôt
-qu'avec une heuristique bancale qui afficherait n'importe quoi à l'écran.
+l'affichage. Les rotations articulaires (cou, poignets, coudes) sont déclarées
+sans détection : ce sont des mouvements trop petits pour que l'estimation de
+pose les suive de façon fiable, et une heuristique bancale afficherait
+n'importe quoi à l'écran sans rien apporter.
+
+Les mouvements qui reprennent un exercice du catalogue en version échauffement
+réutilisent sa fonction de détection plutôt que d'en dupliquer une variante.
 """
 
-from mouvements.exercices import squat_detection
+from mouvements.exercices import elevation_laterale_detection, pompe_detection
 from session.circuit import Exercice
 
 
 # ==================================
-# Montées de genoux
+# Jumping jacks
 # ==================================
-def montees_genoux_detection(corps):
-    """Course sur place : renvoie "fin" quand un genou est monté, "debut" sinon.
+def jumping_jacks_detection(corps):
+    """Renvoie "fin" bras et jambes écartés, "debut" au repos, "milieu" entre.
 
-    Rappel du repère MediaPipe : `y` croît vers le BAS de l'image, donc un
-    genou plus haut que sa hanche vérifie `genou.y < hanche.y`.
-
-    Contrairement aux exercices bilatéraux (pompes, développé), on veut ici un
-    OU et non un ET : les genoux montent en alternance, jamais ensemble.
+    Rappel du repère MediaPipe : `y` croît vers le BAS de l'image, et `x` vers
+    la droite. Les coordonnées sont normalisées (0-1) sur la taille de l'image,
+    donc comparer des écarts entre points reste valable quelle que soit ta
+    distance à la caméra — mais pas des valeurs absolues.
     """
     # TODO(human)
-    return "debut"
+    return "milieu"
 
 
 # ==================================
 # Déclaration des mouvements
 # ==================================
+
+rotation_cou = Exercice(
+    nom="Rotation du cou",
+    description="Rotations lentes de la tête, d'une épaule à l'autre.",
+    instructions=[
+        "Va lentement, sans à-coup.",
+        "Ne force jamais en arrière.",
+    ],
+)
 
 rotation_epaules = Exercice(
     nom="Rotation des épaules",
@@ -40,49 +52,51 @@ rotation_epaules = Exercice(
     ],
 )
 
-rotations_buste = Exercice(
-    nom="Rotations du buste",
-    description="Bassin fixe, rotations lentes du buste de gauche à droite.",
+rotation_coudes = Exercice(
+    nom="Rotation des coudes",
+    description="Bras écartés, avant-bras qui décrivent des cercles.",
     instructions=[
-        "Garde les hanches face à la caméra.",
-        "Laisse les bras suivre le mouvement sans forcer.",
+        "Garde les bras à l'horizontale.",
+        "Change de sens à mi-parcours.",
     ],
 )
 
-cercles_bras = Exercice(
-    nom="Cercles de bras",
-    description="Bras tendus à l'horizontale, cercles vers l'avant puis l'arrière.",
+rotation_poignets = Exercice(
+    nom="Rotation des poignets",
+    description="Doigts entrelacés, rotations des poignets dans les deux sens.",
     instructions=[
-        "Garde les coudes tendus.",
-        "Commence petit, agrandis les cercles progressivement.",
+        "Amplitude complète, sans forcer.",
+        "Change de sens à mi-parcours.",
     ],
 )
 
-talons_fesses = Exercice(
-    nom="Talons-fesses",
-    description="Course sur place, talons ramenés vers les fesses.",
+elevations_laterales_a_vide = Exercice(
+    nom="Élévations latérales à vide",
+    detection=elevation_laterale_detection,
+    description="Élévations latérales sans charge, pour ouvrir les épaules.",
     instructions=[
-        "Reste sur l'avant des pieds.",
-        "Garde le buste droit, ne te penche pas en avant.",
+        "Monte jusqu'à l'horizontale, pas plus haut.",
+        "Descends lentement, sans relâcher d'un coup.",
     ],
 )
 
-montees_genoux = Exercice(
-    nom="Montées de genoux",
-    detection=montees_genoux_detection,
-    description="Course sur place, genoux montés à hauteur de hanches.",
+pompes_lentes = Exercice(
+    nom="Pompes lentes",
+    detection=pompe_detection,
+    description="Pompes très lentes, pour réveiller épaules et pectoraux.",
     instructions=[
-        "Monte les genoux au niveau des hanches.",
-        "Reste dans le champ de la caméra.",
+        "Trois secondes à la descente.",
+        "Garde le corps gainé, sans creuser le dos.",
     ],
 )
 
-squat_a_vide = Exercice(
-    nom="Squat à vide",
-    detection=squat_detection,
-    description="Squats lents et sans charge, pour ouvrir les hanches.",
+jumping_jacks = Exercice(
+    nom="Jumping jacks",
+    detection=jumping_jacks_detection,
+    description="Sauts avec écart des bras et des jambes.",
     instructions=[
-        "Descends lentement, plus bas à chaque répétition.",
-        "Garde le dos droit et les talons au sol.",
+        "Bras au-dessus de la tête en haut du mouvement.",
+        "Amortis la réception, reste souple sur les genoux.",
+        "Recule assez pour rester dans le champ de la caméra.",
     ],
 )

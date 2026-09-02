@@ -201,8 +201,18 @@ class Circuit:
         return int(time.time() - self.debut)
 
     @property
+    def blocs_comptabilises(self):
+        """Blocs qui comptent dans la progression, les objectifs et l'historique."""
+        return [bloc for bloc in self.exercices if not est_echauffement(bloc)]
+
+    def _est_comptabilise(self, index):
+        return 0 <= index < len(self.exercices) and not est_echauffement(
+            self.exercices[index]
+        )
+
+    @property
     def nombre_series_total(self):
-        return sum(bloc.nombre_series for bloc in self.exercices)
+        return sum(bloc.nombre_series for bloc in self.blocs_comptabilises)
 
     @property
     def series_terminees(self):
@@ -210,12 +220,24 @@ class Circuit:
         # Si on a entrelacement, utiliser les résultats pour compter correctement
         if self.paires_entrelacees:
             # Compter les séries complètes de tous les indices entrelacés
-            return len(self.resultats_series)
+            return sum(
+                1
+                for resultat in self.resultats_series
+                if self._est_comptabilise(resultat["index_exercice"])
+            )
 
-        # Cas normal : pas d'entrelacement
+        # Cas normal : pas d'entrelacement. Le second terme est neutralisé
+        # pendant un échauffement, sinon la barre avancerait avant même que le
+        # premier exercice comptabilisé ait commencé.
         return sum(
-            bloc.nombre_series for bloc in self.exercices[: self.index_exercice]
-        ) + max(0, self.serie_actuelle - 1)
+            bloc.nombre_series
+            for bloc in self.exercices[: self.index_exercice]
+            if not est_echauffement(bloc)
+        ) + (
+            max(0, self.serie_actuelle - 1)
+            if self._est_comptabilise(self.index_exercice)
+            else 0
+        )
 
     def passer_pause(self):
         if self.phase not in ("recuperation_serie", "repos_exercice"):
@@ -227,7 +249,14 @@ class Circuit:
             self.passer_exercice_suivant()
         return True
 
-    def exporter_configuration(self):
+    def exporter_configuration(self, inclure_echauffement=True):
+        """Décrit les blocs configurés.
+
+        `inclure_echauffement=False` sert à la barre de progression du front,
+        qui indexe les segments à plat avec `series_terminees` : garder les
+        échauffements dans la liste alors qu'ils sortent du compteur décalerait
+        tous les segments.
+        """
         return [
             {
                 "nom": bloc.exercice.nom,
@@ -242,11 +271,17 @@ class Circuit:
                 "entrelace_avec": bloc.entrelace_avec,
             }
             for bloc in self.exercices
+            if inclure_echauffement or not est_echauffement(bloc)
         ]
 
     def exporter_resultats(self):
         exercices = []
         for index, bloc in enumerate(self.exercices):
+            # Filtré à la source : ainsi aucune ligne d'échauffement n'atteint
+            # jamais SQLite, et ni l'historique ni les records n'ont à les
+            # exclure de leur côté.
+            if est_echauffement(bloc):
+                continue
             resultats = [
                 resultat
                 for resultat in self.resultats_series
@@ -295,7 +330,13 @@ class Circuit:
         return exercices
 
     def a_des_resultats(self):
-        return bool(self.resultats_series)
+        """Un échauffement seul ne fait pas une séance : sans ce filtre, un
+        abandon pendant l'échauffement insérerait en base une séance dont la
+        liste d'exercices est vide."""
+        return any(
+            self._est_comptabilise(resultat["index_exercice"])
+            for resultat in self.resultats_series
+        )
 
     def objectifs_reussis(self, index=None):
         """Indique si un bloc précis (ou tous, si index=None) a validé
@@ -303,6 +344,12 @@ class Circuit:
         indices = range(len(self.exercices)) if index is None else [index]
         for i in indices:
             bloc = self.exercices[i]
+            if est_echauffement(bloc):
+                # Un échauffement n'a pas d'objectif : il ne peut ni faire
+                # échouer la séance, ni déclencher de progression.
+                if index is None:
+                    continue
+                return False
             series = [
                 resultat
                 for resultat in self.resultats_series
@@ -319,13 +366,18 @@ class Circuit:
             elif bloc.mode in (MODE_MAINTIEN, MODE_CHRONO):
                 if any(resultat.get("duree", 0) < bloc.duree for resultat in series):
                     return False
-        return bool(self.exercices)
+        return bool(self.blocs_comptabilises)
 
     def appliquer_progression(self):
         """Augmente la cible exercice par exercice, uniquement pour
         ceux ayant individuellement réussi toutes leurs séries."""
         progression_appliquee = False
         for index, bloc in enumerate(self.exercices):
+            # Ceinture et bretelles : sans ce filtre explicite, un échauffement
+            # traverserait les deux branches sans rien changer mais mettrait
+            # `progression_appliquee` à True, faisant réécrire le JSON pour rien.
+            if est_echauffement(bloc):
+                continue
             if not self.objectifs_reussis(index):
                 continue
             if bloc.mode in (MODE_REPETITIONS, MODE_AMRAP):

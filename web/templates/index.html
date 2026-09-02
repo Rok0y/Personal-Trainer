@@ -869,7 +869,8 @@
         #workoutCard[data-mode="repetitions"] .workout-block--repetitions,
         #workoutCard[data-mode="maintien"] .workout-block--maintien,
         #workoutCard[data-mode="chrono"] .workout-block--chrono,
-        #workoutCard[data-mode="amrap"] .workout-block--amrap {
+        #workoutCard[data-mode="amrap"] .workout-block--amrap,
+        #workoutCard[data-mode="echauffement"] .workout-block--echauffement {
             display: flex;
         }
 
@@ -1208,6 +1209,18 @@
                 <span class="reps-target"><strong id="amrapTempsRestant">60</strong> secondes restantes</span>
             </div>
 
+            <!-- MODE_ECHAUFFEMENT : "18 / 30 secondes" -->
+            <div class="workout-block workout-block--echauffement">
+                <span class="label">Échauffement</span>
+                <span class="chrono-value" id="echauffementTemps">0</span>
+                <span class="reps-target">
+                    <strong id="echauffementTempsTexte">0</strong> / <span id="echauffementDureeTexte">0</span> secondes
+                </span>
+                <div class="reps-progress-track">
+                    <div class="reps-progress-fill" id="echauffementProgressFill"></div>
+                </div>
+            </div>
+
         </div>
 
     </div>
@@ -1239,7 +1252,7 @@
             options.headers = { "Content-Type": "application/json" };
             options.body = JSON.stringify({
                 repetitions: Number(window.dernierEtat?.repetitions) || 0,
-                duree: Number(window.dernierEtat?.temps_maintien || window.dernierEtat?.temps_chrono) || 0,
+                duree: Number(window.dernierEtat?.temps_maintien || window.dernierEtat?.temps_chrono || window.dernierEtat?.temps_echauffement) || 0,
             });
         }
         const reponse = await fetch(url, options);
@@ -1346,6 +1359,11 @@
                 afficherModeAmrap(etat);
                 break;
 
+            case "echauffement":
+                carte.dataset.mode = "echauffement";
+                afficherModeEchauffement(etat);
+                break;
+
             default:
                 // Mode inconnu : on retombe sur l'affichage répétitions
                 // plutôt que de laisser l'interface vide/cassée.
@@ -1434,6 +1452,22 @@
         document.getElementById("amrapReps").textContent = Number(etat.repetitions) || 0;
         document.getElementById("amrapTempsRestant").textContent =
             Math.max(0, Math.round(Number(etat.temps_amrap_restant) || 0));
+    }
+
+    // ---------- MODE_ECHAUFFEMENT : "18 / 30 secondes" ----------
+    function afficherModeEchauffement(etat) {
+        const actuel = Number(etat.temps_echauffement) || 0;
+        const cible = Number(etat.duree_echauffement) || 0;
+
+        // Le gros chiffre décompte le restant : pendant un échauffement on
+        // veut savoir quand ça s'arrête, pas depuis combien de temps ça dure.
+        document.getElementById("echauffementTemps").textContent =
+            Math.max(0, Math.ceil(cible - actuel));
+        document.getElementById("echauffementTempsTexte").textContent = Math.floor(actuel);
+        document.getElementById("echauffementDureeTexte").textContent = cible;
+
+        const pct = cible > 0 ? Math.max(0, Math.min(100, (actuel / cible) * 100)) : 0;
+        document.getElementById("echauffementProgressFill").style.width = `${pct}%`;
     }
 
     // Met à jour un champ texte avec un petit fondu si la valeur a changé
@@ -1611,6 +1645,9 @@
                     break;
                 case "amrap":
                     consigne = `${serieLabel} × AMRAP ${prochainDuree} s`;
+                    break;
+                case "echauffement":
+                    consigne = `Échauffement · ${prochainDuree} s`;
                     break;
                 case "repetitions":
                 default:

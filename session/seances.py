@@ -2,6 +2,15 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
+from mouvements.echauffements import (
+    elevations_laterales_a_vide,
+    jumping_jacks,
+    pompes_lentes,
+    rotation_cou,
+    rotation_coudes,
+    rotation_epaules,
+    rotation_poignets,
+)
 from mouvements.exercices import (
     crunches,
     curl_biceps_droit,
@@ -26,8 +35,11 @@ from mouvements.exercices import (
 from session.circuit import (
     MODE_AMRAP,
     MODE_CHRONO,
+    MODE_ECHAUFFEMENT,
     MODE_MAINTIEN,
     MODE_REPETITIONS,
+    MODES_AVEC_DETECTION_OBLIGATOIRE,
+    MODES_CONNUS,
     BlocExercice,
     Circuit,
 )
@@ -79,6 +91,34 @@ MATERIEL_EXERCICES = {
     "Rowing penché": "Deux haltères",
     "Oiseau": "Deux haltères",
 }
+
+CATALOGUE_ECHAUFFEMENTS = {
+    mouvement.nom: mouvement
+    for mouvement in (
+        rotation_cou,
+        rotation_epaules,
+        rotation_coudes,
+        rotation_poignets,
+        elevations_laterales_a_vide,
+        pompes_lentes,
+        jumping_jacks,
+    )
+}
+
+# Un échauffement se fait à mains nues : l'entrée vide évite le « A préciser »
+# que materiel_exercice colle aux noms absents, et qui se retrouverait dans la
+# phrase de matériel de l'accueil.
+MATERIEL_EXERCICES.update({nom: "" for nom in CATALOGUE_ECHAUFFEMENTS})
+
+
+def catalogue_mouvements():
+    """Exercices + échauffements : la table de validation des séances.
+
+    Volontairement distincte de CATALOGUE_EXERCICES, qui reste la liste des
+    exercices comptabilisés (records, matériel, statistiques) : les deux
+    catalogues sont fusionnés pour valider une séance, jamais pour l'afficher.
+    """
+    return {**CATALOGUE_EXERCICES, **CATALOGUE_ECHAUFFEMENTS}
 
 
 def materiel_exercice(nom, poids):
@@ -439,6 +479,18 @@ def catalogue_exercices():
     }
 
 
+def catalogue_echauffements():
+    """Mouvements d'échauffement, pour l'optgroup dédié des éditeurs de séance."""
+    return {
+        nom: {
+            "nom": mouvement.nom,
+            "description": mouvement.description,
+            "materiel": "",
+        }
+        for nom, mouvement in CATALOGUE_ECHAUFFEMENTS.items()
+    }
+
+
 def _lire_seances_personnalisees():
     if not FICHIER_SEANCES_PERSONNALISEES.exists():
         return {}
@@ -491,17 +543,40 @@ def construire_circuit(blocs):
     """Construit un circuit à partir d'une définition JSON, en validant les noms."""
     if not blocs:
         raise ValueError("Au moins un exercice est requis")
+    mouvements = catalogue_mouvements()
     inconnus = [
-        bloc.get("exercice")
-        for bloc in blocs
-        if bloc.get("exercice") not in CATALOGUE_EXERCICES
+        bloc.get("exercice") for bloc in blocs if bloc.get("exercice") not in mouvements
     ]
     if inconnus:
         raise KeyError(f"Exercice inconnu : {inconnus[0]}")
+
+    modes_inconnus = [
+        bloc.get("mode")
+        for bloc in blocs
+        if bloc.get("mode", MODE_REPETITIONS) not in MODES_CONNUS
+    ]
+    if modes_inconnus:
+        raise ValueError(f"Mode inconnu : {modes_inconnus[0]}")
+
+    # `Exercice.detection` est facultative depuis l'ajout de l'échauffement :
+    # on refuse ici les combinaisons qui planteraient devant la caméra, plutôt
+    # que de laisser un TypeError surgir en pleine séance.
+    sans_detection = [
+        bloc["exercice"]
+        for bloc in blocs
+        if bloc.get("mode", MODE_REPETITIONS) in MODES_AVEC_DETECTION_OBLIGATOIRE
+        and mouvements[bloc["exercice"]].detection is None
+    ]
+    if sans_detection:
+        raise ValueError(
+            f"{sans_detection[0]} n'analyse pas la pose : "
+            f"choisissez le mode {MODE_ECHAUFFEMENT} ou {MODE_CHRONO}"
+        )
+
     return Circuit(
         [
             BlocExercice(
-                exercice=CATALOGUE_EXERCICES[bloc["exercice"]],
+                exercice=mouvements[bloc["exercice"]],
                 poids=bloc.get("poids", 0),
                 mode=bloc.get("mode", MODE_REPETITIONS),
                 nombre_series=bloc.get("series", 1),
@@ -532,13 +607,19 @@ def creer_seance(nom):
 
 
 def creer_seance_test(nom_exercice, mode):
-    if nom_exercice not in CATALOGUE_EXERCICES:
+    mouvements = catalogue_mouvements()
+    if nom_exercice not in mouvements:
         raise KeyError("Exercice inconnu")
-    if mode not in (MODE_REPETITIONS, MODE_MAINTIEN, MODE_CHRONO, MODE_AMRAP):
+    if mode not in MODES_CONNUS:
         raise ValueError("Mode inconnu")
+    if (
+        mode in MODES_AVEC_DETECTION_OBLIGATOIRE
+        and mouvements[nom_exercice].detection is None
+    ):
+        raise ValueError(f"{nom_exercice} n'analyse pas la pose")
 
     bloc = deepcopy(Test_exercice.exercices[0])
-    bloc.exercice = CATALOGUE_EXERCICES[nom_exercice]
+    bloc.exercice = mouvements[nom_exercice]
     bloc.mode = mode
     if mode == MODE_REPETITIONS:
         bloc.repetitions_par_serie = 10

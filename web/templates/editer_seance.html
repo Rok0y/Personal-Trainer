@@ -111,9 +111,13 @@
 
 <script>
 const exercices = {{ exercices|tojson }};
+const echauffements = {{ echauffements|tojson }};
 const seanceNom = {{ seance_nom|tojson }};
 const seanceExercices = {{ seance_exercices|tojson }};
 const blocs = document.getElementById("blocs");
+
+// Modes dont la cible est une durée et non un nombre de répétitions.
+const MODES_DUREE = ["maintien", "chrono", "echauffement"];
 
 document.getElementById("nom").value = seanceNom;
 
@@ -121,15 +125,37 @@ function nomExercice(data) {
     return data.exercice || data.nom || "";
 }
 
+// Les deux catalogues sont séparés côté serveur : un échauffement n'a ni
+// matériel, ni objectif, ni record. On les regroupe ici pour que la liste
+// dise clairement lesquels attendent le mode « Échauffement ».
+function optionsExercices(choisi = "") {
+    const groupe = (titre, noms) =>
+        `<optgroup label="${titre}">${noms
+            .map((n) => `<option ${n === choisi ? "selected" : ""}>${n}</option>`)
+            .join("")}</optgroup>`;
+
+    const connus = [...Object.keys(exercices), ...Object.keys(echauffements)];
+    // Un nom absent des deux catalogues (exercice retiré depuis) ferait
+    // sélectionner la première option par le navigateur : enregistrer
+    // remplacerait alors silencieusement l'exercice du bloc.
+    const orphelin = choisi && !connus.includes(choisi)
+        ? groupe("Inconnu", [choisi])
+        : "";
+
+    return (
+        orphelin +
+        groupe("Exercices", Object.keys(exercices)) +
+        groupe("Échauffement", Object.keys(echauffements))
+    );
+}
+
 function creerBloc(data = {}) {
     const ligne = document.createElement("div");
     ligne.className = "bloc";
 
     const choisi = nomExercice(data);
-    const options = Object.keys(exercices)
-        .map((n) => `<option ${n === choisi ? "selected" : ""}>${n}</option>`)
-        .join("");
-    const estDuree = data.mode === "maintien" || data.mode === "chrono";
+    const options = optionsExercices(choisi);
+    const estDuree = MODES_DUREE.includes(data.mode);
 
     ligne.innerHTML = `
         <button type="button" class="move-btn" data-sens="-1" title="Monter">▲</button>
@@ -146,6 +172,7 @@ function creerBloc(data = {}) {
                 <option value="maintien" ${data.mode === "maintien" ? "selected" : ""}>Maintien</option>
                 <option value="chrono" ${data.mode === "chrono" ? "selected" : ""}>Chrono</option>
                 <option value="amrap" ${data.mode === "amrap" ? "selected" : ""}>AMRAP</option>
+                <option value="echauffement" ${data.mode === "echauffement" ? "selected" : ""}>Échauffement</option>
             </select>
         </div>
         <div class="champ">

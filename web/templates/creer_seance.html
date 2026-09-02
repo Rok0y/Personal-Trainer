@@ -109,16 +109,30 @@
 </div>
 <script>
 const exercices = {{ exercices|tojson }};
+const echauffements = {{ echauffements|tojson }};
 const blocs = document.getElementById("blocs");
+
+// Les deux catalogues sont séparés côté serveur : un échauffement n'a ni
+// matériel, ni objectif, ni record. On les regroupe ici pour que la liste
+// dise clairement lesquels attendent le mode « Échauffement ».
+function optionsExercices(choisi = "") {
+    const groupe = (titre, noms) =>
+        `<optgroup label="${titre}">${noms
+            .map((n) => `<option ${n === choisi ? "selected" : ""}>${n}</option>`)
+            .join("")}</optgroup>`;
+
+    return (
+        groupe("Exercices", Object.keys(exercices)) +
+        groupe("Échauffement", Object.keys(echauffements))
+    );
+}
 
 function ajouterBloc() {
     const ligne = document.createElement("div");
     ligne.className = "bloc";
-    
-    const exercicesOptions = Object.keys(exercices)
-        .map(n => `<option>${n}</option>`)
-        .join("");
-    
+
+    const exercicesOptions = optionsExercices();
+
     ligne.innerHTML = `
         <button type="button" class="entrelace-btn" title="Entrelacer avec le suivant">⟷</button>
         <div class="champ">
@@ -132,6 +146,7 @@ function ajouterBloc() {
                 <option value="maintien">Maintien</option>
                 <option value="chrono">Chrono</option>
                 <option value="amrap">AMRAP</option>
+                <option value="echauffement">Échauffement</option>
             </select>
         </div>
         <div class="champ">
