@@ -71,6 +71,12 @@
             font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
         }
         .best::before { content: "★"; font-size: 11px; }
+        .levelup {
+            display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 5px 12px; border-radius: 999px;
+            background: rgba(27,232,196,.1); border: 1px solid rgba(27,232,196,.28); color: var(--teal);
+            font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+        }
+        .levelup::before { content: "▲"; font-size: 9px; }
         .empty { color: var(--muted); }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 28px; }
         .stat-card { background: var(--glass); border: 1px solid var(--border-strong); border-radius: 12px; padding: 18px; }
@@ -109,7 +115,7 @@
         <h1>Historique</h1>
         <a class="back" href="/">Accueil</a>
     </header>
-    <nav class="tabs" aria-label="Suivi"><a class="tab active" href="/historique">Historique</a><a class="tab" href="/records">Records</a></nav>
+    <nav class="tabs" aria-label="Suivi"><a class="tab active" href="/historique">Historique</a><a class="tab" href="/records">Records</a><a class="tab" href="/programmes">Programmes</a></nav>
     {% if not seances %}<p class="empty">Aucune séance enregistrée.</p>{% endif %}
     {% for seance in seances %}
     {% set duree_totale = seance.duree|int %}
@@ -136,7 +142,9 @@
             {% if exercice.series_detaillees %}
             <ul class="series">{% for serie in exercice.series_detaillees %}<li>Série {{ serie.serie }} · {{ serie.repetitions }} rep.{% if serie.poids %} · {{ serie.poids }} kg{% endif %}{% if serie.duree %} · {{ serie.duree|round(1) }} s{% endif %}</li>{% endfor %}</ul>
             {% else %}<p class="empty">Détail par série indisponible pour cette ancienne séance.</p>{% endif %}
-            {% if exercice.mode == 'repetitions' and exercice.poids %}<div class="best">Previous best : {{ meilleurs.get(exercice.nom, 0)|round(1) }} kg·répétitions</div>{% endif %}
+            {% if record_seance_id.get(exercice.nom) == seance.id %}<div class="best">Nouveau record : {{ meilleurs.get(exercice.nom, 0)|round(1) }} kg·répétitions</div>{% endif %}
+            {% set montee = montees.get(seance.id, {}).get(exercice.nom) %}
+            {% if montee %}<div class="levelup">Niveau {{ montee.vers }} atteint : {{ montee.palier.resume() }}</div>{% endif %}
         </section>
         {% endfor %}
         </div>

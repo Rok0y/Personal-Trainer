@@ -1,0 +1,235 @@
+"""Déduction du niveau d'un exercice à partir de l'historique.
+
+Le niveau n'est jamais stocké : il est recalculé depuis les séances déjà
+enregistrées, selon une règle unique — **le plus haut palier jamais validé**.
+Cette règle est idempotente (recalculable de zéro à tout moment), insensible à
+l'ordre des séances, et applique d'elle-même la règle « pas de recul ».
+
+Le jugement se fait **par exercice**, pas par séance : une séance abandonnée
+après avoir bouclé ses quatre séries de développé couché prouve tout de même
+quelque chose. Le statut `abandoned` est donc volontairement ignoré ici, à la
+différence de `historique.database.statistiques_exercices`.
+"""
+
+from historique.database import recuperer_ancrages, recuperer_historique
+from progression.paliers import (
+    UNITE_REPETITIONS,
+    UNITE_SECONDES,
+    est_suivi_par_le_moteur,
+    exercices_suivis,
+    niveau_pour,
+    palier,
+    unite,
+)
+from session.circuit import (
+    MODE_AMRAP,
+    MODE_CHRONO,
+    MODE_MAINTIEN,
+    MODE_REPETITIONS,
+)
+
+#: Ce qu'un mode mesure. Un exercice enregistré en `maintien` ne peut pas
+#: valider un barème en répétitions : les deux ne parlent pas de la même chose.
+UNITE_PAR_MODE = {
+    MODE_REPETITIONS: UNITE_REPETITIONS,
+    MODE_AMRAP: UNITE_REPETITIONS,
+    MODE_MAINTIEN: UNITE_SECONDES,
+    MODE_CHRONO: UNITE_SECONDES,
+}
+
+
+def performance_realisee(exercice, unite_attendue):
+    """Réduit un exercice de l'historique à ce qu'il *prouve* : (poids, séries, cible).
+
+    `exercice` est une entrée de `recuperer_historique()` :
+        {"nom", "mode", "poids", "series", "repetitions", "duree",
+         "series_detaillees": [
+             {"serie", "repetitions", "poids", "duree", "completee"}, ...
+         ]}
+
+    `unite_attendue` vaut UNITE_REPETITIONS ou UNITE_SECONDES et indique quel
+    champ d'une série porte la performance (`repetitions` ou `duree`).
+
+    Retourne un triplet `(poids, nombre_de_series, cible)` exploitable par
+    `niveau_pour`, ou None si la ligne ne prouve rien.
+
+    Deux règles gouvernent la lecture :
+
+    - seules les séries menées au bout comptent (`completee`) — une série
+      interrompue par un abandon ou par la navigation web ne prouve rien ;
+    - c'est le **maillon faible** qui commande, pas la moyenne ni le maximum.
+      « Objectif atteint sur TOUTES les séries » se traduit par un minimum sur
+      les séries retenues, pour la cible comme pour le poids : 12, 12, 10, 12
+      répétitions prouve 10, pas 12.
+
+    Une ligne sans série détaillée retourne None plutôt que de se rabattre sur
+    les colonnes agrégées : `exercices.repetitions` est une *somme* sur toutes
+    les séries, dont la performance de la plus faible ne se déduit pas.
+    """
+    champ = "duree" if unite_attendue == UNITE_SECONDES else "repetitions"
+
+    series = [
+        serie
+        for serie in exercice.get("series_detaillees", [])
+        if serie.get("completee")
+    ]
+    if not series:
+        return None
+
+    poids = min((serie.get("poids") or 0) for serie in series)
+    cible = min((serie.get(champ) or 0) for serie in series)
+    return poids, len(series), cible
+
+
+def niveau_prouve_par(exercice):
+    """Le plus haut niveau qu'un exercice de l'historique valide, ou None."""
+    nom = exercice.get("nom")
+    if not est_suivi_par_le_moteur(nom):
+        return None
+
+    unite_attendue = unite(nom)
+    if UNITE_PAR_MODE.get(exercice.get("mode")) != unite_attendue:
+        return None
+
+    performance = performance_realisee(exercice, unite_attendue)
+    if performance is None:
+        return None
+
+    poids, series, cible = performance
+    return niveau_pour(nom, poids, series, cible)
+
+
+def niveaux_par_exercice(seances=None, ancrages=None):
+    """Niveau actuel de chaque exercice suivi, avec ce qui l'a établi.
+
+    Un même exercice peut apparaître deux fois dans une séance (`jambes_abdos`
+    enchaîne deux fois la planche latérale) : chaque ligne est jugée pour
+    elle-même et c'est la meilleure qui l'emporte, jamais leur somme.
+
+    Un **ancrage** (`historique.database.corrections_niveaux`) recale le niveau
+    d'un exercice que l'historique ne peut pas prouver. Il agit de deux façons
+    à la fois : il fait table rase de l'historique antérieur, et il sert de
+    plancher. C'est cette table rase qui lui permet de corriger un niveau vers
+    le bas — un simple plancher ne saurait que le relever.
+    """
+    seances = recuperer_historique() if seances is None else seances
+    ancrages = recuperer_ancrages() if ancrages is None else ancrages
+    niveaux = {}
+
+    for seance in seances:
+        for exercice in seance.get("exercices", []):
+            nom = exercice["nom"]
+            ancrage = ancrages.get(nom)
+            if ancrage and (seance.get("id") or 0) <= ancrage["apres_seance_id"]:
+                continue  # antérieur à l'ancrage : ne compte plus
+            niveau = niveau_prouve_par(exercice)
+            if niveau is None:
+                continue
+            meilleur = niveaux.get(nom)
+            if meilleur is None or niveau > meilleur["niveau"]:
+                niveaux[nom] = {
+                    "niveau": niveau,
+                    "palier": palier(nom, niveau),
+                    "seance_id": seance.get("id"),
+                    "date": seance.get("date"),
+                    "ancre": False,
+                }
+
+    for nom, ancrage in ancrages.items():
+        if not est_suivi_par_le_moteur(nom):
+            continue
+        meilleur = niveaux.get(nom)
+        if meilleur is None or ancrage["niveau"] > meilleur["niveau"]:
+            niveaux[nom] = {
+                "niveau": ancrage["niveau"],
+                "palier": palier(nom, ancrage["niveau"]),
+                "seance_id": None,
+                "date": ancrage["date"],
+                "ancre": True,
+            }
+
+    return niveaux
+
+
+def niveau_actuel(nom_exercice, seances=None):
+    """Niveau d'un exercice, ou None s'il est hors barème ou non suivi."""
+    entree = niveaux_par_exercice(seances).get(nom_exercice)
+    return entree["niveau"] if entree else None
+
+
+def etat_niveau(nom_exercice, seances=None, niveaux=None):
+    """Tout ce qu'un écran a besoin de savoir sur le niveau d'un exercice.
+
+    Trois situations distinctes, qu'un affichage ne doit pas confondre :
+    `niveau` à None = **hors barème** (aucune performance n'atteint le premier
+    palier, ce qui n'est pas « niveau 0 ») ; `maximum_atteint` = le barème est
+    épuisé, il n'y a plus de palier au-dessus ; sinon `suivant` décrit le
+    palier suivant.
+
+    Volontairement sans notion de « pourcentage d'avancement » : un niveau dit
+    où l'on en est, pas ce qu'il reste à faire. La part de barème parcourue
+    n'aurait de sens que face à un objectif, ce qui relève de la couche
+    programme.
+    """
+    if not est_suivi_par_le_moteur(nom_exercice):
+        return None
+
+    niveaux = niveaux_par_exercice(seances) if niveaux is None else niveaux
+    entree = niveaux.get(nom_exercice)
+    niveau = entree["niveau"] if entree else None
+    suivant = palier(nom_exercice, (niveau or 0) + 1)
+
+    return {
+        "niveau": niveau,
+        "actuel": palier(nom_exercice, niveau) if niveau else None,
+        "suivant": suivant,
+        "premier": palier(nom_exercice, 1),
+        "maximum_atteint": niveau is not None and suivant is None,
+        "date": entree["date"] if entree else None,
+        "seance_id": entree["seance_id"] if entree else None,
+        "ancre": bool(entree and entree.get("ancre")),
+    }
+
+
+def montees_de_niveau(seances=None, ancrages=None):
+    """Pour chaque séance, les exercices dont le niveau vient de monter grâce à elle.
+
+    Rejoue l'historique dans l'ordre chronologique (`recuperer_historique`
+    le renvoie le plus récent en tête) pour repérer l'instant précis où
+    chaque niveau apparaît, avec la même règle que `niveaux_par_exercice` :
+    seul un niveau strictement supérieur au meilleur déjà vu compte comme une
+    montée, et un ancrage fait table rase de ce qui le précède.
+    """
+    seances = recuperer_historique() if seances is None else seances
+    ancrages = recuperer_ancrages() if ancrages is None else ancrages
+    chronologique = sorted(seances, key=lambda s: s.get("id") or 0)
+
+    niveaux = {}
+    montees = {}
+    for seance in chronologique:
+        for exercice in seance.get("exercices", []):
+            nom = exercice["nom"]
+            ancrage = ancrages.get(nom)
+            if ancrage and (seance.get("id") or 0) <= ancrage["apres_seance_id"]:
+                continue
+            niveau = niveau_prouve_par(exercice)
+            if niveau is None:
+                continue
+            avant = niveaux.get(nom)
+            if avant is None or niveau > avant:
+                montees.setdefault(seance["id"], {})[nom] = {
+                    "depuis": avant,
+                    "vers": niveau,
+                    "palier": palier(nom, niveau),
+                }
+                niveaux[nom] = niveau
+
+    return montees
+
+
+def etats_niveaux(seances=None):
+    """État de niveau de tous les exercices suivis, en une seule lecture."""
+    niveaux = niveaux_par_exercice(seances)
+    return {
+        nom: etat_niveau(nom, niveaux=niveaux) for nom in exercices_suivis()
+    }

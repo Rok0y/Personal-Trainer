@@ -1,5 +1,7 @@
 import logging
+import re
 import time
+import unicodedata
 import webbrowser
 
 from flask import Flask, Response, jsonify, redirect, render_template, request
@@ -7,14 +9,40 @@ from flask import Flask, Response, jsonify, redirect, render_template, request
 from core import state
 from historique.database import (
     derniere_performance,
+    enregistrer_ancrage,
     recuperer_historique,
+    recuperer_historique_ancrages,
     renommer_seance,
     statistiques_exercices,
+    supprimer_ancrage,
+    supprimer_ancrages,
     supprimer_exercice_de_seance,
     supprimer_seance,
 )
+from progression.niveaux import etats_niveaux, montees_de_niveau
+from progression.paliers import (
+    est_suivi_par_le_moteur,
+    exercices_suivis,
+    niveau_pour,
+    palier,
+    unite,
+)
+from progression.programmes import (
+    CHARGE_TOTALE,
+    enregistrer_programme,
+    est_personnalise,
+    etats_programmes,
+    libelle_charge,
+    prochaine_seance,
+    supprimer_programme,
+    tous_les_programmes,
+)
 from session.controleur import SessionManager
-from session.seances import catalogue_echauffements, catalogue_exercices
+from session.seances import (
+    catalogue_echauffements,
+    catalogue_exercices,
+    nombre_halteres,
+)
 
 
 class FiltreEtat(logging.Filter):
@@ -32,6 +60,19 @@ controleur = SessionManager()
 def meilleurs_volumes(seances):
     return {
         nom: stat["meilleur_volume"]["valeur"]
+        for nom, stat in statistiques_exercices(seances).items()
+        if stat["meilleur_volume"]["valeur"]
+    }
+
+
+def seances_du_record(seances):
+    """Id de la séance qui détient le record de volume, par exercice.
+
+    Sert à n'afficher le badge « nouveau record » que sur la séance qui l'a
+    réellement établi, plutôt que sur toutes celles qui manient du poids.
+    """
+    return {
+        nom: stat["meilleur_volume"]["seance_id"]
         for nom, stat in statistiques_exercices(seances).items()
         if stat["meilleur_volume"]["valeur"]
     }
@@ -82,8 +123,14 @@ def index():
 
     if controleur.statut in ("idle", "ready"):
         seances = controleur.catalogue()
+        historique = recuperer_historique()
+        # Résumé des programmes pour l'accueil : où j'en suis, et surtout
+        # quelle séance enchaîner maintenant.
+        programmes = etats_programmes(historique)
+        for cle, programme in programmes.items():
+            programme["prochaine"] = prochaine_seance(cle, historique, seances)
         dernieres_series = {}
-        for seance in recuperer_historique():
+        for seance in historique:
             nom = seance.get("nom")
             if (
                 nom in seances
@@ -108,6 +155,7 @@ def index():
             selection=controleur.nom_selectionne,
             exercices=catalogue_exercices(),
             dernieres_series=dernieres_series,
+            programmes=programmes,
         )
 
     if controleur.statut in ("finished", "abandoned"):
@@ -238,6 +286,15 @@ def modifier_seance_api(nom):
         return jsonify({"ok": True, "nom": nouveau_nom})
     except (KeyError, ValueError, RuntimeError) as erreur:
         return jsonify({"ok": False, "erreur": str(erreur)}), 400
+
+
+@app.route("/api/seances/<nom>/cible-manuelle/<exercice>", methods=["DELETE"])
+def retirer_cible_manuelle_api(nom, exercice):
+    try:
+        controleur.retirer_cible_manuelle(nom, exercice)
+        return jsonify({"ok": True})
+    except KeyError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 404
 
 
 @app.route("/api/seance/selectionner", methods=["POST"])
@@ -393,6 +450,8 @@ def historique():
         "historique.html",
         seances=seances_entrainement(donnees),
         meilleurs=meilleurs_volumes(donnees),
+        record_seance_id=seances_du_record(donnees),
+        montees=montees_de_niveau(donnees),
         detail=False,
     )
 
@@ -403,7 +462,169 @@ def records():
     return render_template(
         "records.html",
         statistiques=statistiques_exercices(donnees),
+        niveaux=etats_niveaux(donnees),
     )
+
+
+@app.route("/programmes")
+def programmes():
+    return render_template(
+        "programmes.html",
+        programmes=etats_programmes(recuperer_historique()),
+    )
+
+
+def exercices_avec_bareme():
+    """Exercices proposables dans un programme, avec l'unité de leur barème.
+
+    L'éditeur s'en sert pour intituler la colonne « cible » — répétitions ou
+    secondes — selon l'exercice choisi.
+    """
+    return {
+        nom: {
+            "nom": nom,
+            "unite": unite(nom),
+            # Sert à l'éditeur pour afficher l'équivalent par haltère : la
+            # division ne s'applique qu'aux mouvements bilatéraux.
+            "halteres": nombre_halteres(nom),
+        }
+        for nom in sorted(exercices_suivis())
+    }
+
+
+def _cle_programme(nom):
+    """Transforme un nom en clé d'URL stable (« Road to TKT » -> road-to-tkt)."""
+    sans_accents = unicodedata.normalize("NFKD", nom or "")
+    sans_accents = "".join(c for c in sans_accents if not unicodedata.combining(c))
+    cle = re.sub(r"[^a-z0-9]+", "-", sans_accents.lower()).strip("-")
+    return cle or "programme"
+
+
+@app.route("/creer-programme")
+def creer_programme_page():
+    return render_template(
+        "editer_programme.html",
+        exercices=exercices_avec_bareme(),
+        programme_cle="",
+        programme={"nom": "", "description": "", "exigences": []},
+        libelle_charge=libelle_charge(),
+        charge_totale=CHARGE_TOTALE,
+        supprimable=False,
+    )
+
+
+@app.route("/editer-programme/<cle>")
+def editer_programme_page(cle):
+    programme = tous_les_programmes().get(cle)
+    if programme is None:
+        return redirect("/programmes")
+    return render_template(
+        "editer_programme.html",
+        exercices=exercices_avec_bareme(),
+        programme_cle=cle,
+        programme=programme,
+        libelle_charge=libelle_charge(),
+        charge_totale=CHARGE_TOTALE,
+        # Un programme livré dans le code et jamais modifié n'a rien sur le
+        # disque : proposer de le supprimer mènerait à une erreur.
+        supprimable=est_personnalise(cle),
+    )
+
+
+@app.route("/api/programmes", methods=["POST"])
+def creer_programme_api():
+    donnees = request.get_json(silent=True) or {}
+    try:
+        cle = enregistrer_programme(
+            donnees.get("cle") or _cle_programme(donnees.get("nom")), donnees
+        )
+        return jsonify({"ok": True, "cle": cle}), 201
+    except (KeyError, ValueError) as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
+
+
+@app.route("/api/programmes/<cle>", methods=["PUT"])
+def modifier_programme_api(cle):
+    donnees = request.get_json(silent=True) or {}
+    try:
+        enregistrer_programme(cle, donnees)
+        return jsonify({"ok": True, "cle": cle})
+    except (KeyError, ValueError) as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
+
+
+@app.route("/api/programmes/<cle>", methods=["DELETE"])
+def supprimer_programme_api(cle):
+    try:
+        supprimer_programme(cle)
+        return jsonify({"ok": True})
+    except KeyError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 404
+
+
+@app.route("/api/niveaux/<nom>/ancrage", methods=["POST"])
+def ancrer_niveau(nom):
+    """Recale le niveau d'un exercice à partir d'une performance réalisée.
+
+    On ne demande pas un numéro de niveau — personne ne sait ce que vaut
+    « niveau 27 ». On demande une performance (séries, cible, charge), et le
+    barème en déduit le niveau : c'est aussi la forme que prendra le test de
+    calibration d'un nouvel utilisateur.
+    """
+    donnees = request.get_json(silent=True) or {}
+    if not est_suivi_par_le_moteur(nom):
+        return jsonify({"ok": False, "erreur": f"{nom} n'a pas de barème"}), 404
+
+    try:
+        series = int(donnees.get("series") or 0)
+        cible = float(donnees.get("cible") or 0)
+        poids = float(donnees.get("poids") or 0)
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "erreur": "Valeurs invalides"}), 400
+
+    niveau = niveau_pour(nom, poids, series, cible)
+    if niveau is None:
+        premier = palier(nom, 1)
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "erreur": (
+                        "Cette performance n'atteint pas le premier palier "
+                        f"({premier.resume()})."
+                    ),
+                }
+            ),
+            400,
+        )
+
+    enregistrer_ancrage(nom, niveau, donnees.get("raison", ""))
+    return jsonify({"ok": True, "niveau": niveau, "palier": palier(nom, niveau).resume()})
+
+
+@app.route("/api/niveaux/<nom>/ancrage", methods=["DELETE"])
+def supprimer_ancrage_niveau(nom):
+    supprimes = supprimer_ancrages(nom)
+    if not supprimes:
+        return jsonify({"ok": False, "erreur": "Aucun ancrage à supprimer"}), 404
+    return jsonify({"ok": True})
+
+
+@app.route("/api/niveaux/<nom>/ancrages")
+def lister_ancrages_niveau(nom):
+    """Journal complet des ancrages posés sur un exercice, le plus récent en tête."""
+    ancrages = recuperer_historique_ancrages(nom)
+    for ancrage in ancrages:
+        ancrage["palier"] = palier(nom, ancrage["niveau"]).resume()
+    return jsonify({"ok": True, "ancrages": ancrages})
+
+
+@app.route("/api/niveaux/<nom>/ancrage/<int:id_ancrage>", methods=["DELETE"])
+def supprimer_un_ancrage_niveau(nom, id_ancrage):
+    supprimes = supprimer_ancrage(id_ancrage)
+    if not supprimes:
+        return jsonify({"ok": False, "erreur": "Ancrage introuvable"}), 404
+    return jsonify({"ok": True})
 
 
 @app.route("/historique/<int:seance_id>")
@@ -419,6 +640,8 @@ def detail_historique(seance_id):
         "historique.html",
         seances=[seance],
         meilleurs=meilleurs_volumes(donnees),
+        record_seance_id=seances_du_record(donnees),
+        montees=montees_de_niveau(donnees),
         detail=True,
     )
 

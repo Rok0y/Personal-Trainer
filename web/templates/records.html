@@ -50,6 +50,31 @@
         .card p { margin:7px 0; color:var(--muted); font-size:13px; }
         .card strong { color:var(--text); }
         .pb { color:var(--orange) !important; font-size:15px !important; }
+        .niveau-resume { margin:6px 0 0 !important; color:var(--teal) !important; font-size:13px !important; font-weight:600; }
+        .niveau-resume.absent { color:var(--muted) !important; font-weight:400; }
+        .niveau { margin-top:18px; border-top:1px solid var(--border); padding-top:16px; }
+        .niveau > strong { display:block; margin-bottom:10px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+        .niveau-note { font-size:12px !important; font-style:italic; }
+        .recalage { margin-top:12px; }
+        .recalage summary { cursor:pointer; color:var(--teal); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+        .form-ancrage { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-top:10px; }
+        .champ { display:flex; flex-direction:column; gap:4px; }
+        .champ-large { flex:1 1 180px; }
+        .champ label { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
+        .champ input { width:100%; min-width:70px; padding:7px 9px; border-radius:8px; border:1px solid var(--border-strong); background:rgba(0,0,0,.25); color:var(--text); font-family:inherit; font-size:13px; }
+        .form-ancrage button { padding:8px 14px; border-radius:8px; border:1px solid var(--teal); background:transparent; color:var(--teal); font-family:inherit; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; }
+        .form-ancrage button:hover { background:rgba(27,232,196,.12); }
+        .form-ancrage .bouton-secondaire { border-color:var(--border-strong); color:var(--muted); }
+        .retour-ancrage { font-size:12px; color:var(--muted); align-self:center; }
+        .retour-ancrage.erreur { color:var(--orange); }
+        .journal-ancrages { margin-top:10px; }
+        .journal-ancrages summary { cursor:pointer; color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+        .journal-ancrages summary:hover { color:var(--teal); }
+        .liste-ancrages { list-style:none; margin:8px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; }
+        .liste-ancrages li { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:7px 10px; border-radius:8px; background:rgba(0,0,0,.2); border:1px solid var(--border); font-size:12px; color:var(--muted); }
+        .liste-ancrages strong { color:var(--text); }
+        .liste-ancrages button { flex:0 0 auto; padding:4px 9px; border-radius:6px; border:1px solid var(--border-strong); background:transparent; color:var(--muted); font-family:inherit; font-size:11px; cursor:pointer; }
+        .liste-ancrages button:hover { border-color:var(--orange); color:var(--orange); }
         .progression { margin-top:18px; border-top:1px solid var(--border); padding-top:16px; }
         .progression > strong { display:block; margin-bottom:10px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
         .chart-container { width:100%; }
@@ -68,17 +93,25 @@
 <body>
 <main>
     <header><h1>Records</h1><a class="back" href="/">Accueil</a></header>
-    <nav class="tabs" aria-label="Suivi"><a class="tab" href="/historique">Historique</a><a class="tab active" href="/records">Records</a></nav>
+    <nav class="tabs" aria-label="Suivi"><a class="tab" href="/historique">Historique</a><a class="tab active" href="/records">Records</a><a class="tab" href="/programmes">Programmes</a></nav>
     {% if not statistiques %}<p class="empty">Aucun record détaillé pour le moment.</p>{% endif %}
     <section class="grid">
         {% for nom, stat in statistiques.items() %}
         {% set valeur_pb = stat.pb.valeur or 0 %}
         {% if stat.mode in ('maintien', 'chrono') %}{% set unite = 'secondes' %}{% elif stat.meilleur_volume.valeur > 0 %}{% set unite = 'kg de volume' %}{% else %}{% set unite = 'repetitions' %}{% endif %}
+        {% set etat = niveaux.get(nom) %}
         <details class="card">
             <summary>
                 <div class="summary-info">
                     <h2>{{ nom }}</h2>
                     <p class="pb"><strong>PB :</strong> {{ valeur_pb|round(1) }} {{ unite }}</p>
+                    {% if etat %}
+                        {% if etat.niveau %}
+                        <p class="niveau-resume">Niveau {{ etat.niveau }} · {{ etat.actuel.resume() }}</p>
+                        {% else %}
+                        <p class="niveau-resume absent">Pas encore de niveau</p>
+                        {% endif %}
+                    {% endif %}
                 </div>
                 <span class="chevron" aria-hidden="true">+</span>
             </summary>
@@ -89,6 +122,41 @@
                 {% if stat.volume > 0 %}<p>Volume total : <strong>{{ stat.volume|round(1) }} kg</strong></p>{% endif %}
                 {% if stat.duree > 0 %}<p>Duree totale : <strong>{{ stat.duree|round(1) }} secondes</strong></p>{% endif %}
                 <p>PB du {{ stat.pb.date }}</p>
+                {% if etat %}
+                <div class="niveau">
+                    <strong>Progression par paliers</strong>
+                    {% if etat.niveau %}
+                    <p>Niveau <strong>{{ etat.niveau }}</strong> : <strong>{{ etat.actuel.resume() }}</strong>{% if etat.ancre %}, recalé à la main le {{ etat.date }}{% elif etat.date %}, validé le {{ etat.date }}{% endif %}</p>
+                    {% if etat.maximum_atteint %}
+                    <p class="niveau-note">Barème épuisé, il n'y a plus de palier au-dessus. La suite passe par une variante plus difficile du mouvement.</p>
+                    {% else %}
+                    <p>Palier suivant : <strong>{{ etat.suivant.resume() }}</strong></p>
+                    {% if etat.suivant.cible < etat.actuel.cible %}
+                    <p class="niveau-note">Moins de répétitions, mais plus lourd : le volume progresse quand même ({{ etat.actuel.volume|round|int }} → {{ etat.suivant.volume|round|int }}).</p>
+                    {% endif %}
+                    {% endif %}
+                    {% else %}
+                    <p>Aucune performance n'atteint encore le premier palier : <strong>{{ etat.premier.resume() }}</strong>.</p>
+                    {% endif %}
+                    <details class="recalage">
+                        <summary>Recaler mon niveau</summary>
+                        <p class="niveau-note">Indique une performance que tu sais tenir sur toutes les séries. Le barème en déduit ton niveau, et l'historique antérieur cesse de compter pour cet exercice.</p>
+                        <form class="form-ancrage" data-exercice="{{ nom }}">
+                            <span class="champ"><label>Séries</label><input type="number" min="1" class="champ-series" value="{{ etat.premier.series }}"></span>
+                            <span class="champ"><label>{% if etat.premier.unite == 'secondes' %}Secondes{% else %}Répétitions{% endif %}</label><input type="number" min="1" step="any" class="champ-cible" value="{{ etat.premier.cible }}"></span>
+                            <span class="champ"><label>Charge (kg)</label><input type="number" min="0" step="0.5" class="champ-poids" value="{{ etat.premier.poids }}"></span>
+                            <span class="champ champ-large"><label>Pourquoi ?</label><input type="text" class="champ-raison" placeholder="Séance faite sans l'app, reprise..."></span>
+                            <button type="submit">Recaler</button>
+                            {% if etat.ancre %}<button type="button" class="bouton-secondaire" data-supprimer>Supprimer l'ancrage</button>{% endif %}
+                            <span class="retour-ancrage"></span>
+                        </form>
+                        <details class="journal-ancrages" data-exercice="{{ nom }}">
+                            <summary>Historique des ancrages ▾</summary>
+                            <p class="empty">Chargement…</p>
+                        </details>
+                    </details>
+                </div>
+                {% endif %}
                 <div class="progression" data-progression='{{ stat.progression|tojson }}' data-mode="{{ stat.mode }}" data-cle="{% if stat.mode in ('maintien', 'chrono') %}duree{% elif stat.meilleur_volume.valeur > 0 %}volume{% else %}repetitions{% endif %}" data-unite="{{ unite }}">
                     <strong>Progression</strong>
                     <div class="chart-container"></div>
@@ -159,6 +227,87 @@ function dessinerGraphique(conteneur) {
     svg += `</svg>`;
     cible.innerHTML = svg;
 }
+async function envoyerAncrage(formulaire, methode, corps) {
+    const retour = formulaire.querySelector(".retour-ancrage");
+    const url = `/api/niveaux/${encodeURIComponent(formulaire.dataset.exercice)}/ancrage`;
+    retour.textContent = "…";
+    retour.classList.remove("erreur");
+    try {
+        const reponse = await fetch(url, {
+            method: methode,
+            headers: { "Content-Type": "application/json" },
+            body: corps ? JSON.stringify(corps) : undefined,
+        });
+        const donnees = await reponse.json();
+        if (!reponse.ok || !donnees.ok) {
+            retour.textContent = donnees.erreur || "Échec du recalage";
+            retour.classList.add("erreur");
+            return;
+        }
+        // Le niveau conditionne l'objectif des séances : on recharge plutôt que
+        // de rafraîchir cette carte seule, pour que tout l'écran reste cohérent.
+        window.location.reload();
+    } catch (erreur) {
+        retour.textContent = "Erreur réseau";
+        retour.classList.add("erreur");
+    }
+}
+
+function formatDateAncrage(valeur) {
+    const str = String(valeur || "").trim();
+    const indexEspace = str.indexOf(" ");
+    return indexEspace === -1 ? str : str.slice(0, indexEspace);
+}
+
+async function chargerJournalAncrages(details) {
+    const nom = details.dataset.exercice;
+    const conteneur = details.querySelector(".liste-ancrages") || details.querySelector("p");
+    const reponse = await fetch(`/api/niveaux/${encodeURIComponent(nom)}/ancrages`);
+    const donnees = await reponse.json();
+    if (!donnees.ok || !donnees.ancrages.length) {
+        conteneur.outerHTML = '<p class="empty">Aucun ancrage posé sur cet exercice.</p>';
+        return;
+    }
+    const items = donnees.ancrages.map((ancrage) => `
+        <li>
+            <span>${formatDateAncrage(ancrage.date)} · <strong>${ancrage.palier}</strong>${ancrage.raison ? " · " + ancrage.raison : ""}</span>
+            <button type="button" data-annuler="${ancrage.id}">Annuler</button>
+        </li>
+    `).join("");
+    conteneur.outerHTML = `<ul class="liste-ancrages">${items}</ul>`;
+    details.querySelectorAll("[data-annuler]").forEach((bouton) => bouton.addEventListener("click", async () => {
+        const reponseSuppression = await fetch(`/api/niveaux/${encodeURIComponent(nom)}/ancrage/${bouton.dataset.annuler}`, { method: "DELETE" });
+        const resultat = await reponseSuppression.json();
+        if (resultat.ok) window.location.reload();
+        else window.alert(resultat.erreur || "Impossible d'annuler cet ancrage.");
+    }));
+}
+
+document.querySelectorAll(".journal-ancrages").forEach((details) => {
+    details.addEventListener("toggle", () => {
+        if (details.open && !details.dataset.charge) {
+            details.dataset.charge = "1";
+            chargerJournalAncrages(details);
+        }
+    }, { once: false });
+});
+
+document.querySelectorAll(".form-ancrage").forEach((formulaire) => {
+    formulaire.addEventListener("submit", (evenement) => {
+        evenement.preventDefault();
+        envoyerAncrage(formulaire, "POST", {
+            series: Number(formulaire.querySelector(".champ-series").value) || 0,
+            cible: Number(formulaire.querySelector(".champ-cible").value) || 0,
+            poids: Number(formulaire.querySelector(".champ-poids").value) || 0,
+            raison: formulaire.querySelector(".champ-raison").value,
+        });
+    });
+    const suppression = formulaire.querySelector("[data-supprimer]");
+    if (suppression) {
+        suppression.addEventListener("click", () => envoyerAncrage(formulaire, "DELETE", null));
+    }
+});
+
 document.querySelectorAll("details.card").forEach((details) => {
     details.addEventListener("toggle", () => {
         if (!details.open) return;

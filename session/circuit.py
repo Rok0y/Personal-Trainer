@@ -1,5 +1,7 @@
 import time
 
+from progression.paliers import est_suivi_par_le_moteur
+
 MODE_REPETITIONS = "repetitions"
 MODE_MAINTIEN = "maintien"
 MODE_CHRONO = "chrono"
@@ -64,7 +66,11 @@ class BlocExercice:
         repos_apres,
         commentaire="",
         entrelace_avec=None,
+        cible_manuelle=False,
     ):
+        #: Cible saisie à la main : le moteur de progression ne la touche plus,
+        #: et elle reste collante jusqu'à ce qu'elle soit resynchronisée.
+        self.cible_manuelle = bool(cible_manuelle)
         self.exercice = exercice
         self.poids = poids
         self.mode = mode
@@ -269,6 +275,7 @@ class Circuit:
                 "repos_entre_series": bloc.repos_entre_series,
                 "repos_apres": bloc.repos_apres,
                 "entrelace_avec": bloc.entrelace_avec,
+                "cible_manuelle": bloc.cible_manuelle,
             }
             for bloc in self.exercices
             if inclure_echauffement or not est_echauffement(bloc)
@@ -369,14 +376,25 @@ class Circuit:
         return bool(self.blocs_comptabilises)
 
     def appliquer_progression(self):
-        """Augmente la cible exercice par exercice, uniquement pour
-        ceux ayant individuellement réussi toutes leurs séries."""
+        """Augmente la cible des seuls exercices que le moteur ne pilote pas.
+
+        Un exercice doté d'un barème progresse tout seul : sa cible est le
+        premier palier non validé, et valider ce palier fait monter le niveau
+        à la lecture suivante de l'historique. Lui appliquer en plus un `+1`
+        ici le ferait sauter un cran à chaque séance réussie.
+
+        Ne subsistent donc que les exercices sans barème, pour lesquels la
+        vieille règle « +1 répétition, +2 secondes » reste la seule
+        progression disponible.
+        """
         progression_appliquee = False
         for index, bloc in enumerate(self.exercices):
             # Ceinture et bretelles : sans ce filtre explicite, un échauffement
             # traverserait les deux branches sans rien changer mais mettrait
             # `progression_appliquee` à True, faisant réécrire le JSON pour rien.
             if est_echauffement(bloc):
+                continue
+            if est_suivi_par_le_moteur(bloc.exercice.nom):
                 continue
             if not self.objectifs_reussis(index):
                 continue

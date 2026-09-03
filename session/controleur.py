@@ -1,5 +1,6 @@
 import threading
 
+from progression.objectifs import marquer_cibles_manuelles
 from session.seances import (
     catalogue,
     construire_circuit,
@@ -7,6 +8,7 @@ from session.seances import (
     creer_seance_test,
     enregistrer_configuration_seance,
     enregistrer_seance_personnalisee,
+    retirer_cible_manuelle,
     supprimer_seance_personnalisee,
 )
 
@@ -29,11 +31,16 @@ class SessionManager:
         if not nom or not blocs:
             raise ValueError("Nom et exercices requis")
         construire_circuit(blocs)  # valide avant d'écrire sur le disque
+        marquer_cibles_manuelles(blocs)
         enregistrer_seance_personnalisee(nom, blocs)
 
     def supprimer_seance_personnalisee(self, nom):
         with self._verrou:
             supprimer_seance_personnalisee(nom)
+
+    def retirer_cible_manuelle(self, nom, nom_exercice):
+        with self._verrou:
+            retirer_cible_manuelle(nom, nom_exercice)
 
     def definir_reset_progression(self, callback):
         with self._verrou:
@@ -158,6 +165,9 @@ class SessionManager:
                 raise ValueError("Le nom de la séance est requis")
             # Validate through the normal session construction path before saving.
             construire_circuit(blocs)
+            # Une cible qui s'écarte de ce que le moteur propose est une saisie
+            # manuelle : l'utilisateur n'a pas à le déclarer, l'écart le dit.
+            marquer_cibles_manuelles(blocs)
             enregistrer_seance_personnalisee(nom, blocs)
 
     def nouvelle_seance(self):

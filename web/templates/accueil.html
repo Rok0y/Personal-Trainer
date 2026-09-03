@@ -113,6 +113,55 @@
         .number-control button { width: 34px; height: 30px; padding: 0; border: 1px solid var(--border-strong); border-radius: 5px; background: transparent; color: var(--teal); cursor: pointer; }
         .save-session { margin-top: 12px; padding: 8px 12px; border: 1px solid var(--teal); border-radius: 999px; background: transparent; color: var(--teal); cursor: pointer; font: 700 11px 'Space Grotesk', sans-serif; text-transform: uppercase; }
         .editor-equipment { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+        .tabs { display: flex; gap: 8px; margin: -22px 0 26px; flex-wrap: wrap; }
+        .tab {
+            padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border-strong);
+            color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 700;
+        }
+        .tab:hover { color: var(--teal); border-color: var(--teal); }
+
+        .section-titre {
+            margin: 0 0 12px; color: var(--muted); font-size: 12px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .12em;
+        }
+
+        /* Le programme n'est pas une séance : il chapeaute celles d'en dessous.
+           Bordure turquoise, fond légèrement teinté et séparateur en pied pour
+           qu'on ne le lise pas comme une carte de plus dans la liste. */
+        .programme-resume {
+            background: linear-gradient(180deg, rgba(27, 232, 196, .07), rgba(27, 232, 196, .02));
+            border: 1px solid var(--teal); border-radius: 14px;
+            padding: 22px 24px; margin-bottom: 34px;
+            box-shadow: 0 0 32px rgba(27, 232, 196, .08);
+        }
+        .programme-resume + .section-titre {
+            padding-top: 26px; border-top: 1px solid var(--border);
+        }
+        .resume-detail { margin: -6px 0 16px; color: var(--muted); font-size: 12px; }
+        .resume-entete { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+        .resume-entete h2 { margin: 0; font-family: 'Bebas Neue', 'Space Grotesk', sans-serif; font-weight: 400; font-size: 24px; }
+        .resume-compte { color: var(--teal); font-size: 13px; font-weight: 700; }
+        .resume-jauge { height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; margin: 12px 0 16px; }
+        .resume-jauge span { display: block; height: 100%; background: var(--teal); border-radius: 999px; }
+        .resume-prochaine {
+            display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+            padding: 12px 14px; border-radius: 10px; border-left: 3px solid var(--orange);
+            background: rgba(255, 138, 76, .07);
+        }
+        .resume-etiquette { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+        .resume-prochaine strong { font-size: 17px; }
+        .resume-liee { color: var(--muted); font-size: 12px; margin-left: 6px; }
+        .resume-demarrer {
+            padding: 9px 16px; border-radius: 999px; border: 1px solid var(--orange);
+            background: var(--orange); color: #0a0d13; font-family: inherit; font-size: 12px;
+            font-weight: 700; text-transform: uppercase; letter-spacing: .05em; cursor: pointer;
+        }
+        .resume-demarrer:hover { opacity: .9; }
+        .resume-lien { display: inline-block; margin-top: 12px; color: var(--teal); font-size: 12px; font-weight: 700; }
+
+        .badge-manuelle { display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--orange); color: var(--orange); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
+        .badge-manuelle-retirer { border: none; background: none; padding: 0; color: inherit; font-size: 13px; line-height: 1; cursor: pointer; font-family: inherit; }
+        .badge-manuelle-retirer:hover { color: var(--text); }
         .last-series { margin-top: 4px; padding: 8px 10px; border-left: 2px solid var(--teal); background: rgba(27, 232, 196, .07); color: var(--muted); font-size: 12px; }
         .last-series strong { color: var(--text); }
 
@@ -130,6 +179,38 @@
         <div><p class="kicker">Personal Trainer</p><h1>Choisis ton<br>entrainement.</h1></div>
         <p class="hint">Selectionne une seance, puis demarre quand tu es pret.</p>
     </header>
+
+    <nav class="tabs" aria-label="Suivi">
+        <a class="tab" href="/historique">Historique</a>
+        <a class="tab" href="/records">Records</a>
+        <a class="tab" href="/programmes">Programmes</a>
+    </nav>
+
+    {% if programmes %}<p class="section-titre">Programme en cours</p>{% endif %}
+    {% for cle, programme in programmes.items() %}
+    <section class="programme-resume">
+        <div class="resume-entete">
+            <h2>{{ programme.nom }}</h2>
+            <span class="resume-compte">{% if programme.battu %}Programme battu !{% else %}{{ programme.pourcentage }} % de progression{% endif %}</span>
+        </div>
+        <div class="resume-jauge"><span style="width: {{ programme.pourcentage }}%"></span></div>
+        <p class="resume-detail">{{ programme.atteintes }} exigence{{ 's' if programme.atteintes > 1 }} sur {{ programme.total }} entièrement remplie{{ 's' if programme.atteintes > 1 }}</p>
+        {% if programme.prochaine %}
+        <div class="resume-prochaine">
+            <div>
+                <span class="resume-etiquette">Prochaine séance ({{ programme.prochaine.position }}/{{ programme.prochaine.total }})</span>
+                <strong>{{ programme.prochaine.libelle }}</strong>
+                {% if programme.prochaine.seance %}<span class="resume-liee">via « {{ programme.prochaine.seance }} »</span>{% endif %}
+            </div>
+            {% if programme.prochaine.seance and programme.prochaine.seance in seances %}
+            <button type="button" class="resume-demarrer" data-seance="{{ programme.prochaine.seance }}">Choisir cette séance</button>
+            {% endif %}
+        </div>
+        {% endif %}
+        <a class="resume-lien" href="/programmes">Voir le détail du programme</a>
+    </section>
+    {% endfor %}
+    <p class="section-titre">Tes séances</p>
     <section class="grid" aria-label="Seances disponibles">
         {% for identifiant, seance in seances.items() %}
         <div class="session{% if identifiant == selection %} selected{% endif %}" data-seance="{{ identifiant }}" role="button" tabindex="0">
@@ -169,7 +250,7 @@
                 <summary>Voir le contenu</summary>
                 <ul>
                 {% for exercice in seance.exercices %}
-                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}</li>
+                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}{% if exercice.cible_manuelle %} <span class="badge-manuelle" title="Cible saisie à la main : le moteur de progression ne la fait plus évoluer.">cible manuelle</span>{% endif %}</li>
                 {% endfor %}
                 </ul>
             </details>
@@ -180,8 +261,9 @@
                 <form class="session-editor" data-editor="{{ identifiant }}">
                     {% for exercice in seance.exercices %}
                     <div class="edit-exercise" data-exercice="{{ exercice.nom or exercice.exercice }}" data-mode="{{ exercice.mode }}" data-poids="{{ exercice.poids|default(0) }}" data-repos-series="{{ exercice.repos_entre_series|default(0) }}" data-repos-apres="{{ exercice.repos_apres|default(0) }}" data-entrelace="{{ exercice.entrelace_avec or '' }}">
-                        <label>{{ exercice.nom or exercice.exercice }}</label>
+                        <label>{{ exercice.nom or exercice.exercice }}{% if exercice.cible_manuelle %} <span class="badge-manuelle">cible manuelle<button type="button" class="badge-manuelle-retirer" data-retirer-cible-manuelle="{{ exercice.nom or exercice.exercice }}" title="Revenir à la cible proposée par le moteur de progression" aria-label="Retirer la cible manuelle">×</button></span>{% endif %}</label>
                         <p class="editor-equipment">Matériel : {{ exercice.materiel or 'Aucun matériel' }}</p>
+                        {% if exercice.cible_manuelle %}<p class="editor-equipment">Cible figée à la main : le moteur de progression ne la fait plus évoluer. Remets les valeurs qu'il propose pour la rebrancher.</p>{% endif %}
                         <span class="number-control" data-unit="Charge (kg)"><button type="button" data-delta="-1" aria-label="Diminuer la charge">−</button><input class="edit-weight" aria-label="Charge en kilogrammes" type="number" min="0" step="0.5" value="{{ exercice.poids|default(0) }}" title="Charge en kilogrammes"><button type="button" data-delta="1" aria-label="Augmenter la charge">+</button></span>
                         <span class="number-control" data-unit="Séries"><button type="button" data-delta="-1" aria-label="Retirer une série">−</button><input class="edit-series" aria-label="Séries" type="number" min="1" value="{{ exercice.series }}" title="Séries"><button type="button" data-delta="1" aria-label="Ajouter une série">+</button></span>
                         {% if exercice.mode in MODES_DUREE %}
@@ -261,6 +343,15 @@
             }
         });
     });
+    // Le bouton du résumé de programme est déjà pris en charge par le
+    // gestionnaire [data-seance] ci-dessus : il ne reste qu'à amener la carte
+    // sélectionnée sous les yeux, elle peut être loin dans la liste.
+    document.querySelectorAll(".resume-demarrer").forEach((bouton) => {
+        bouton.addEventListener("click", () => {
+            const carte = document.querySelector(`.session[data-seance="${CSS.escape(bouton.dataset.seance)}"]`);
+            if (carte) carte.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+    });
     document.querySelectorAll(".session details").forEach((details) => {
         details.addEventListener("click", (evenement) => evenement.stopPropagation());
     });
@@ -290,6 +381,13 @@
     });
     document.querySelectorAll(".session-editor").forEach((formulaire) => {
         formulaire.addEventListener("click", (evenement) => evenement.stopPropagation());
+        formulaire.querySelectorAll("[data-retirer-cible-manuelle]").forEach((bouton) => bouton.addEventListener("click", async () => {
+            const exercice = bouton.dataset.retirerCibleManuelle;
+            const reponse = await fetch(`/api/seances/${encodeURIComponent(formulaire.dataset.editor)}/cible-manuelle/${encodeURIComponent(exercice)}`, { method: "DELETE" });
+            const donnees = await reponse.json();
+            if (donnees.ok) window.location.reload();
+            else window.alert(donnees.erreur || "Impossible de retirer la cible manuelle.");
+        }));
         formulaire.querySelectorAll("[data-delta]").forEach((bouton) => bouton.addEventListener("click", () => {
             const champ = bouton.parentElement.querySelector("input");
             const minimum = Number(champ.min) || 0;

@@ -1,0 +1,428 @@
+"""Programmes sportifs : une liste d'exigences par-dessus le moteur de niveaux.
+
+Un programme ne stocke **aucune donnée de progression**. Il déclare, pour
+chaque exercice, la performance à atteindre ; le niveau requis en est déduit,
+le niveau acquis vient de l'historique, et l'écart se recalcule à chaque
+lecture. Rien à migrer, rien à tenir à jour : supprimer un programme
+n'efface aucune progression, en ajouter un n'en crée aucune.
+
+**La conversion des prescriptions.** Un programme est écrit avec le matériel
+de son auteur, pas avec le tien : « développé 4x12 à 28 kg » n'a pas de palier
+correspondant si tes haltères s'arrêtent à 10 kg. C'est le **volume** qui sert
+de traduction — une répétition à 20 kg en vaut deux à 10 kg —, exactement
+l'invariant sur lequel le barème est construit. L'exigence devient donc « le
+premier palier qui atteint ce volume », atteignable avec le matériel dont on
+dispose réellement.
+
+Deux conventions de charge cohabitent, et c'est délibéré. Un programme se
+**transcrit** — on y recopie un tableau écrit ailleurs, qui annonce en général
+la charge totale — tandis que le reste de l'application **affiche** ce qu'il
+faut soulever, donc la charge d'un seul haltère. `CHARGE_TOTALE` dit laquelle
+s'applique à la saisie, `charge_par_haltere` fait la traduction, et
+`libelle_charge` garantit que l'étiquette du champ suit la convention.
+
+Quand même le sommet du barème n'atteint pas ce volume, l'exigence est
+déclarée **hors d'atteinte** plutôt que silencieusement plafonnée : cela veut
+dire qu'il faut du matériel en plus, et c'est une information, pas une erreur.
+"""
+
+import json
+from pathlib import Path
+
+from progression.niveaux import etats_niveaux
+from progression.paliers import (
+    UNITE_SECONDES,
+    est_suivi_par_le_moteur,
+    niveau_pour_volume,
+    palier,
+    unite,
+    volume,
+)
+
+#: Comment lire les charges écrites dans un programme : `True` = la valeur est
+#: la charge **totale**, les deux haltères réunis (elle est donc divisée par
+#: deux sur les mouvements bilatéraux), `False` = la charge d'un seul haltère.
+#:
+#: L'éditeur de programme est une surface de **transcription** : on y recopie
+#: un tableau écrit par quelqu'un d'autre, et ces tableaux annoncent
+#: généralement la charge totale. Le reste de l'application, lui, parle en
+#: charge par haltère — c'est ce qu'on prend dans une main. Les deux
+#: conventions cohabitent parce qu'elles ne servent pas au même moment : on
+#: saisit ce qui est écrit, l'app affiche ce qu'il faut soulever.
+#:
+#: Cette constante décide de la moitié des volumes exigés, donc de ce qui est
+#: atteignable. Le libellé du champ de saisie en découle (`libelle_charge`) :
+#: la changer ne doit jamais laisser une étiquette mensongère à l'écran.
+CHARGE_TOTALE = True
+
+
+def libelle_charge():
+    """Intitulé du champ de charge dans l'éditeur, dérivé de la convention."""
+    return "Charge totale (kg)" if CHARGE_TOTALE else "Charge par haltère (kg)"
+
+
+FICHIER_PROGRAMMES_PERSONNALISES = Path(__file__).with_name(
+    "programmes_personnalises.json"
+)
+
+
+def _exigence(seance, exercice, series, cible, poids=0):
+    """Une ligne de programme, telle qu'elle est prescrite sur le papier.
+
+    Les exigences sont une **liste plate** : chacune porte le libellé de la
+    séance à laquelle elle appartient, et le regroupement se fait à
+    l'affichage. Une structure imbriquée serait plus jolie à lire ici, mais
+    beaucoup plus lourde à éditer depuis un formulaire — or un programme se
+    modifie depuis le site.
+    """
+    return {
+        "seance": seance,
+        "exercice": exercice,
+        "series": series,
+        "cible": cible,
+        "poids": poids,
+    }
+
+
+#: Les mouvements unilatéraux sont deux exercices dans le catalogue : une
+#: prescription « 4x12 par côté » devient donc deux exigences.
+PROGRAMMES = {
+    "road_to_tkt": {
+        "nom": "Road to TKT",
+        "description": (
+            "Trois séances à boucler intégralement : chaque exercice doit "
+            "atteindre le volume prescrit."
+        ),
+        "exigences": [
+            _exigence("Push", "Developpé couché altères", 4, 12, 28),
+            _exigence("Push", "Pompes", 3, 35),
+            _exigence("Push", "Développé épaule", 3, 12, 20),
+            _exigence("Push", "Elevations latérales", 3, 15, 10),
+            _exigence("Push", "Extension Triceps", 3, 12, 20),
+            _exigence("Jambes et abdos", "Squat", 4, 15, 26),
+            _exigence("Jambes et abdos", "Fente droite", 3, 10, 20),
+            _exigence("Jambes et abdos", "Fente gauche", 3, 10, 20),
+            _exigence("Jambes et abdos", "Souleve de terre roumain", 3, 12, 28),
+            _exigence("Jambes et abdos", "Gainage planche", 3, 100),
+            _exigence("Jambes et abdos", "Gainage planche laterale droite", 2, 60),
+            _exigence("Jambes et abdos", "Gainage planche laterale gauche", 2, 60),
+            _exigence("Jambes et abdos", "Crunches", 3, 20),
+            _exigence("Pull", "Rowing unilateral droit", 4, 12, 32),
+            _exigence("Pull", "Rowing unilateral gauche", 4, 12, 32),
+            _exigence("Pull", "Rowing penche", 3, 12, 24),
+            _exigence("Pull", "Curl biceps droit", 3, 12, 16),
+            _exigence("Pull", "Curl biceps gauche", 3, 12, 16),
+            _exigence("Pull", "Oiseau", 3, 15, 8),
+        ],
+    },
+}
+
+
+def _lire_programmes_personnalises():
+    if not FICHIER_PROGRAMMES_PERSONNALISES.exists():
+        return {}
+    with FICHIER_PROGRAMMES_PERSONNALISES.open(encoding="utf-8") as fichier:
+        return json.load(fichier)
+
+
+def _ecrire_programmes_personnalises(donnees):
+    with FICHIER_PROGRAMMES_PERSONNALISES.open("w", encoding="utf-8") as fichier:
+        json.dump(donnees, fichier, ensure_ascii=False, indent=2)
+
+
+def tous_les_programmes():
+    """Programmes du code, écrasés par ceux du disque quand la clé existe.
+
+    Même convention que `seances_personnalisees.json` : le fichier **masque**
+    le catalogue Python, ce qui permet de modifier un programme livré avec
+    l'app sans toucher au code.
+    """
+    return {**PROGRAMMES, **_lire_programmes_personnalises()}
+
+
+def est_personnalise(cle):
+    """Ce programme existe-t-il sur le disque ?
+
+    Point d'entrée unique de la règle « ce programme est-il supprimable ? » :
+    un programme livré dans le code et jamais modifié n'a rien à supprimer, et
+    proposer de le faire mènerait à une erreur.
+    """
+    return cle in _lire_programmes_personnalises()
+
+
+def valider_programme(donnees):
+    """Refuse un programme incohérent avant qu'il n'atteigne le disque.
+
+    Mieux vaut un refus à l'enregistrement qu'une page de programme qui
+    plante ou qui affiche des exigences impossibles à évaluer.
+    """
+    nom = (donnees.get("nom") or "").strip()
+    if not nom:
+        raise ValueError("Le nom du programme est requis")
+
+    exigences = donnees.get("exigences") or []
+    if not exigences:
+        raise ValueError("Au moins une exigence est requise")
+
+    propres = []
+    for ligne in exigences:
+        exercice = ligne.get("exercice")
+        if not est_suivi_par_le_moteur(exercice):
+            raise ValueError(f"{exercice or 'Exercice vide'} n'a pas de barème")
+        try:
+            series = int(ligne.get("series") or 0)
+            cible = float(ligne.get("cible") or 0)
+            poids = float(ligne.get("poids") or 0)
+        except (TypeError, ValueError):
+            raise ValueError(f"Valeurs invalides pour {exercice}")
+        if series < 1 or cible <= 0:
+            raise ValueError(f"Séries et cible doivent être positives ({exercice})")
+        propres.append(
+            _exigence(
+                (ligne.get("seance") or "Séance").strip(),
+                exercice,
+                series,
+                cible,
+                poids,
+            )
+        )
+
+    return {
+        "nom": nom,
+        "description": (donnees.get("description") or "").strip(),
+        "exigences": propres,
+    }
+
+
+def enregistrer_programme(cle, donnees):
+    """Crée ou remplace un programme personnalisé."""
+    cle = (cle or "").strip()
+    if not cle:
+        raise ValueError("La clé du programme est requise")
+    programmes = _lire_programmes_personnalises()
+    programmes[cle] = valider_programme(donnees)
+    _ecrire_programmes_personnalises(programmes)
+    return cle
+
+
+def supprimer_programme(cle):
+    """Supprime un programme personnalisé.
+
+    Un programme livré dans le code et jamais modifié n'a rien sur le disque :
+    il n'est donc pas supprimable, et c'est voulu — le supprimer reviendrait à
+    éditer le code.
+    """
+    programmes = _lire_programmes_personnalises()
+    if cle not in programmes:
+        raise KeyError(f"Programme inconnu : {cle}")
+    del programmes[cle]
+    _ecrire_programmes_personnalises(programmes)
+
+
+def charge_par_haltere(nom_exercice, poids):
+    """Charge réellement portée par *un* haltère, selon la convention du programme.
+
+    C'est la seule traduction entre ce que l'utilisateur saisit et ce que le
+    barème manipule : un mouvement unilatéral n'est jamais divisé, quelle que
+    soit la convention, puisqu'il n'y a qu'un haltère à porter.
+    """
+    if not CHARGE_TOTALE or not poids:
+        return poids
+    # Import différé : `session.seances` importe déjà le moteur de progression.
+    from session.seances import nombre_halteres
+
+    return poids / 2 if nombre_halteres(nom_exercice) >= 2 else poids
+
+
+def volume_exige(exigence):
+    """Volume que la prescription représente, dans l'unité du barème."""
+    return volume(
+        exigence["series"],
+        exigence["cible"],
+        charge_par_haltere(exigence["exercice"], exigence["poids"]),
+    )
+
+
+def prescription(exigence):
+    """La ligne telle qu'elle est écrite dans le programme, pour l'affichage."""
+    nom = exigence["exercice"]
+    suffixe = " s" if unite(nom) == UNITE_SECONDES else ""
+    charge = f" à {exigence['poids']:g} kg" if exigence["poids"] else ""
+    return f"{exigence['series']}x{exigence['cible']:g}{suffixe}{charge}"
+
+
+def etat_exigence(exigence, niveaux):
+    """Confronte une exigence au niveau acquis."""
+    nom = exigence["exercice"]
+    etat = niveaux.get(nom)
+    acquis = etat["niveau"] if etat else None
+    requis = niveau_pour_volume(nom, volume_exige(exigence))
+
+    return {
+        "exercice": nom,
+        "seance": exigence.get("seance") or "Séance",
+        "series": exigence["series"],
+        "cible": exigence["cible"],
+        "poids": exigence["poids"],
+        "charge_haltere": charge_par_haltere(nom, exigence["poids"]),
+        "prescription": prescription(exigence),
+        "volume": volume_exige(exigence),
+        "niveau_requis": requis,
+        "palier_requis": palier(nom, requis) if requis else None,
+        "niveau_actuel": acquis,
+        "actuel_resume": (
+            etat["actuel"].resume() if etat and etat.get("actuel") else None
+        ),
+        # Hors d'atteinte : même le sommet du barème n'atteint pas ce volume.
+        # Il faut du matériel en plus, aucun entraînement n'y suffira.
+        "hors_atteinte": requis is None,
+        "atteint": bool(requis and acquis and acquis >= requis),
+        # Avancement vers l'exigence, borné à 100 %. Un niveau au-dessus du
+        # requis ne « dépasse » pas la barre : l'exigence est simplement
+        # remplie.
+        "avancement": (
+            min(100, round(100 * (acquis or 0) / requis)) if requis else 0
+        ),
+        "restant": max(0, requis - (acquis or 0)) if requis else None,
+    }
+
+
+def etat_programme(cle, seances=None, niveaux=None):
+    """Avancement d'un programme, entièrement recalculé à la lecture."""
+    programme = tous_les_programmes().get(cle)
+    if programme is None:
+        return None
+
+    niveaux = etats_niveaux(seances) if niveaux is None else niveaux
+    par_seance = {}
+    exigences = []
+
+    for ligne in programme.get("exigences", []):
+        if not est_suivi_par_le_moteur(ligne.get("exercice")):
+            continue
+        etat = etat_exigence(ligne, niveaux)
+        # Regroupement à l'affichage seulement : l'ordre des séances suit
+        # l'ordre d'apparition des exigences, donc celui de l'éditeur.
+        par_seance.setdefault(etat["seance"], []).append(etat)
+        exigences.append(etat)
+
+    atteintes = [etat for etat in exigences if etat["atteint"]]
+    return {
+        "cle": cle,
+        "nom": programme["nom"],
+        "description": programme.get("description", ""),
+        "personnalise": est_personnalise(cle),
+        "exigences_brutes": programme.get("exigences", []),
+        "seances": par_seance,
+        "total": len(exigences),
+        "atteintes": len(atteintes),
+        "hors_atteinte": len([e for e in exigences if e["hors_atteinte"]]),
+        # Moyenne des avancements, et non part des exigences remplies : le
+        # second reste à zéro tant qu'aucune n'est *entièrement* atteinte, ce
+        # qui donne une barre vide alors que tout a avancé. Les deux chiffres
+        # sont affichés côte à côte, ils ne disent pas la même chose.
+        "pourcentage": (
+            round(sum(etat["avancement"] for etat in exigences) / len(exigences))
+            if exigences
+            else 0
+        ),
+        "battu": bool(exigences) and len(atteintes) == len(exigences),
+    }
+
+
+def libelles_seances(programme):
+    """Libellés de séance du programme, dans leur ordre d'apparition."""
+    ordre = []
+    for exigence in programme.get("exigences", []):
+        libelle = exigence.get("seance") or "Séance"
+        if libelle not in ordre:
+            ordre.append(libelle)
+    return ordre
+
+
+def liaison_seances(cle, catalogue_seances=None):
+    """Associe chaque libellé de séance du programme à une séance de l'app.
+
+    Rien ne relie formellement les deux : un programme nomme ses séances
+    librement (« Push »), l'app les siennes autrement (« upper_push »). Plutôt
+    qu'un formulaire d'appariement de plus, on déduit le lien par
+    **recouvrement d'exercices** — la séance qui partage le plus d'exercices
+    avec le groupe l'emporte. Heuristique assumée, donc toujours affichée à
+    l'écran pour rester vérifiable ; None quand aucun exercice ne correspond.
+    """
+    programme = tous_les_programmes().get(cle)
+    if programme is None:
+        return {}
+
+    if catalogue_seances is None:
+        # Import différé : `session.seances` consomme déjà le moteur.
+        from session.seances import catalogue
+
+        catalogue_seances = catalogue()
+
+    contenus = {
+        nom: {exercice["nom"] for exercice in seance.get("exercices", [])}
+        for nom, seance in catalogue_seances.items()
+    }
+
+    liaison = {}
+    for libelle in libelles_seances(programme):
+        attendus = {
+            exigence["exercice"]
+            for exigence in programme["exigences"]
+            if (exigence.get("seance") or "Séance") == libelle
+        }
+        meilleur, recouvrement = None, 0
+        for nom, exercices in contenus.items():
+            commun = len(attendus & exercices)
+            if commun > recouvrement:
+                meilleur, recouvrement = nom, commun
+        liaison[libelle] = meilleur
+    return liaison
+
+
+def prochaine_seance(cle, historique, catalogue_seances=None):
+    """Séance du programme à enchaîner maintenant.
+
+    Le programme se parcourt en boucle : la prochaine est celle qui suit la
+    dernière effectivement réalisée. Une séance abandonnée ne compte pas — on
+    la repropose plutôt que de la considérer faite.
+    """
+    programme = tous_les_programmes().get(cle)
+    if programme is None:
+        return None
+
+    ordre = libelles_seances(programme)
+    if not ordre:
+        return None
+
+    liaison = liaison_seances(cle, catalogue_seances)
+    par_seance = {nom: libelle for libelle, nom in liaison.items() if nom}
+
+    # `recuperer_historique` rend les séances de la plus récente à la plus
+    # ancienne : la première qui appartient au programme est donc la dernière
+    # faite.
+    index = 0
+    for seance in historique:
+        if seance.get("statut") == "abandoned":
+            continue
+        libelle = par_seance.get(seance.get("nom"))
+        if libelle in ordre:
+            index = (ordre.index(libelle) + 1) % len(ordre)
+            break
+
+    libelle = ordre[index]
+    return {
+        "libelle": libelle,
+        "seance": liaison.get(libelle),
+        "position": index + 1,
+        "total": len(ordre),
+    }
+
+
+def etats_programmes(seances=None):
+    """Tous les programmes, en une seule lecture de l'historique."""
+    niveaux = etats_niveaux(seances)
+    return {
+        cle: etat_programme(cle, niveaux=niveaux) for cle in tous_les_programmes()
+    }
