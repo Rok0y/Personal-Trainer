@@ -407,6 +407,51 @@ def supprimer_ancrages(nom_exercice):
     return supprimes
 
 
+def recuperer_historique_ancrages(nom_exercice):
+    """Tous les ancrages posés sur un exercice, du plus récent au plus ancien.
+
+    Contrairement à `recuperer_ancrages`, qui ne garde que le dernier de
+    chaque exercice pour le calcul du niveau, cette fonction sert à afficher
+    le journal complet.
+    """
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        """
+        SELECT id, niveau, date, apres_seance_id, raison
+        FROM corrections_niveaux
+        WHERE nom_exercice = ?
+        ORDER BY id DESC
+        """,
+        (nom_exercice,),
+    )
+    ancrages = [
+        {
+            "id": ligne[0],
+            "niveau": ligne[1],
+            "date": ligne[2],
+            "apres_seance_id": ligne[3] or 0,
+            "raison": ligne[4] or "",
+        }
+        for ligne in curseur.fetchall()
+    ]
+    conn.close()
+    return ancrages
+
+
+def supprimer_ancrage(id_ancrage):
+    """Efface un seul ancrage du journal, par id."""
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute("DELETE FROM corrections_niveaux WHERE id = ?", (id_ancrage,))
+    supprimes = curseur.rowcount
+    conn.commit()
+    conn.close()
+    return supprimes
+
+
 def statistiques_exercices(seances=None):
     """Calcule les records uniquement sur les séances détaillées terminées."""
     seances = recuperer_historique() if seances is None else seances

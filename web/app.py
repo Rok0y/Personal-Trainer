@@ -11,8 +11,10 @@ from historique.database import (
     derniere_performance,
     enregistrer_ancrage,
     recuperer_historique,
+    recuperer_historique_ancrages,
     renommer_seance,
     statistiques_exercices,
+    supprimer_ancrage,
     supprimer_ancrages,
     supprimer_exercice_de_seance,
     supprimer_seance,
@@ -590,6 +592,23 @@ def supprimer_ancrage_niveau(nom):
     supprimes = supprimer_ancrages(nom)
     if not supprimes:
         return jsonify({"ok": False, "erreur": "Aucun ancrage à supprimer"}), 404
+    return jsonify({"ok": True})
+
+
+@app.route("/api/niveaux/<nom>/ancrages")
+def lister_ancrages_niveau(nom):
+    """Journal complet des ancrages posés sur un exercice, le plus récent en tête."""
+    ancrages = recuperer_historique_ancrages(nom)
+    for ancrage in ancrages:
+        ancrage["palier"] = palier(nom, ancrage["niveau"]).resume()
+    return jsonify({"ok": True, "ancrages": ancrages})
+
+
+@app.route("/api/niveaux/<nom>/ancrage/<int:id_ancrage>", methods=["DELETE"])
+def supprimer_un_ancrage_niveau(nom, id_ancrage):
+    supprimes = supprimer_ancrage(id_ancrage)
+    if not supprimes:
+        return jsonify({"ok": False, "erreur": "Ancrage introuvable"}), 404
     return jsonify({"ok": True})
 
 
