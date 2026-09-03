@@ -26,14 +26,20 @@ from progression.paliers import (
     unite,
 )
 from progression.programmes import (
+    CHARGE_TOTALE,
     enregistrer_programme,
     est_personnalise,
     etats_programmes,
+    libelle_charge,
     supprimer_programme,
     tous_les_programmes,
 )
 from session.controleur import SessionManager
-from session.seances import catalogue_echauffements, catalogue_exercices
+from session.seances import (
+    catalogue_echauffements,
+    catalogue_exercices,
+    nombre_halteres,
+)
 
 
 class FiltreEtat(logging.Filter):
@@ -441,7 +447,14 @@ def exercices_avec_bareme():
     secondes — selon l'exercice choisi.
     """
     return {
-        nom: {"nom": nom, "unite": unite(nom)} for nom in sorted(exercices_suivis())
+        nom: {
+            "nom": nom,
+            "unite": unite(nom),
+            # Sert à l'éditeur pour afficher l'équivalent par haltère : la
+            # division ne s'applique qu'aux mouvements bilatéraux.
+            "halteres": nombre_halteres(nom),
+        }
+        for nom in sorted(exercices_suivis())
     }
 
 
@@ -460,6 +473,9 @@ def creer_programme_page():
         exercices=exercices_avec_bareme(),
         programme_cle="",
         programme={"nom": "", "description": "", "exigences": []},
+        libelle_charge=libelle_charge(),
+        charge_totale=CHARGE_TOTALE,
+        supprimable=False,
     )
 
 
@@ -473,6 +489,8 @@ def editer_programme_page(cle):
         exercices=exercices_avec_bareme(),
         programme_cle=cle,
         programme=programme,
+        libelle_charge=libelle_charge(),
+        charge_totale=CHARGE_TOTALE,
         # Un programme livré dans le code et jamais modifié n'a rien sur le
         # disque : proposer de le supprimer mènerait à une erreur.
         supprimable=est_personnalise(cle),

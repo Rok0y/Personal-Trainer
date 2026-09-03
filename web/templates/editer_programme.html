@@ -20,6 +20,7 @@
     #supprimer { margin-left: auto; border-color: var(--border-strong); color: var(--muted); }
     #supprimer:hover { border-color: var(--orange); color: var(--orange); }
     textarea { width: 100%; min-height: 60px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: rgba(0,0,0,.25); color: var(--text); font-family: inherit; font-size: 14px; resize: vertical; }
+    .par-haltere { display: block; margin-top: 4px; color: var(--teal); font-size: 11px; }
     .retour { font-size: 13px; color: var(--muted); }
     .retour.erreur { color: var(--orange); }
     @media (max-width: 700px) { .bloc { grid-template-columns: 1fr 1fr 1fr; } }
@@ -28,7 +29,7 @@
 <body><main>
 <p class="kicker">Personal Trainer</p>
 <h1>Éditer le programme</h1>
-<p class="hint">Chaque ligne est une exigence : l'exercice, et la performance à atteindre. Le libellé de séance ne sert qu'à regrouper les lignes à l'affichage — écris le même texte pour deux exercices et ils apparaîtront ensemble. Les charges sont converties en volume, donc une prescription plus lourde que ton matériel reste atteignable en faisant plus de répétitions.</p>
+<p class="hint">Chaque ligne est une exigence : l'exercice, et la performance à atteindre. Le libellé de séance ne sert qu'à regrouper les lignes à l'affichage — écris le même texte pour deux exercices et ils apparaîtront ensemble. La charge se saisit <strong>telle qu'elle est écrite dans le programme</strong> — {% if charge_totale %}les deux haltères réunis, l'équivalent par haltère s'affiche sous le champ{% else %}pour un seul haltère{% endif %}. Les charges sont converties en volume, donc une prescription plus lourde que ton matériel reste atteignable en faisant plus de répétitions.</p>
 
 <label for="nom">Nom du programme <input id="nom" required></label>
 <label for="description">Description <textarea id="description"></textarea></label>
@@ -47,6 +48,10 @@
 const exercices = {{ exercices|tojson }};
 const programmeCle = {{ programme_cle|tojson }};
 const programme = {{ programme|tojson }};
+// Libellé et convention viennent du serveur : changer CHARGE_TOTALE ne doit
+// jamais laisser une étiquette mensongère à l'écran.
+const libelleCharge = {{ libelle_charge|tojson }};
+const chargeTotale = {{ charge_totale|tojson }};
 const conteneur = document.getElementById("exigences");
 const retour = document.getElementById("retour");
 
@@ -72,6 +77,12 @@ function libelleCible(nom) {
     return uniteDe(nom) === "secondes" ? "Secondes" : "Répétitions";
 }
 
+function chargeParHaltere(nom, poids) {
+    const halteres = exercices[nom] ? exercices[nom].halteres : 0;
+    // Un mouvement unilatéral n'est jamais divisé : il n'y a qu'un haltère.
+    return chargeTotale && halteres >= 2 ? poids / 2 : poids;
+}
+
 function creerLigne(donnees = {}) {
     const ligne = document.createElement("div");
     ligne.className = "bloc";
@@ -81,12 +92,26 @@ function creerLigne(donnees = {}) {
         <div class="champ"><label>Exercice<select class="champ-exercice">${optionsExercices(exercice)}</select></label></div>
         <div class="champ"><label>Séries<input class="champ-series" type="number" min="1" value="${donnees.series || 3}"></label></div>
         <div class="champ"><label><span class="libelle-cible">${libelleCible(exercice)}</span><input class="champ-cible" type="number" min="1" step="any" value="${donnees.cible || 10}"></label></div>
-        <div class="champ"><label>Charge (kg)<input class="champ-poids" type="number" min="0" step="0.5" value="${donnees.poids || 0}"></label></div>
+        <div class="champ"><label>${libelleCharge}<input class="champ-poids" type="number" min="0" step="0.5" value="${donnees.poids || 0}"></label><span class="par-haltere"></span></div>
         <button type="button" class="supprimer-ligne" aria-label="Retirer cette exigence">✕</button>
     `;
+
+    // Équivalent par haltère : c'est ce que le barème compare, et ce que
+    // l'utilisateur prendra réellement dans une main.
+    function rafraichirEquivalent() {
+        const nom = ligne.querySelector(".champ-exercice").value;
+        const saisi = Number(ligne.querySelector(".champ-poids").value) || 0;
+        const indice = ligne.querySelector(".par-haltere");
+        const parMain = chargeParHaltere(nom, saisi);
+        indice.textContent = saisi && parMain !== saisi ? `soit ${parMain} kg par haltère` : "";
+    }
+
     ligne.querySelector(".champ-exercice").addEventListener("change", (evenement) => {
         ligne.querySelector(".libelle-cible").textContent = libelleCible(evenement.target.value);
+        rafraichirEquivalent();
     });
+    ligne.querySelector(".champ-poids").addEventListener("input", rafraichirEquivalent);
+    setTimeout(rafraichirEquivalent, 0);
     ligne.querySelector(".supprimer-ligne").addEventListener("click", () => ligne.remove());
     return ligne;
 }

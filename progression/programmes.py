@@ -14,6 +14,13 @@ l'invariant sur lequel le barème est construit. L'exigence devient donc « le
 premier palier qui atteint ce volume », atteignable avec le matériel dont on
 dispose réellement.
 
+Deux conventions de charge cohabitent, et c'est délibéré. Un programme se
+**transcrit** — on y recopie un tableau écrit ailleurs, qui annonce en général
+la charge totale — tandis que le reste de l'application **affiche** ce qu'il
+faut soulever, donc la charge d'un seul haltère. `CHARGE_TOTALE` dit laquelle
+s'applique à la saisie, `charge_par_haltere` fait la traduction, et
+`libelle_charge` garantit que l'étiquette du champ suit la convention.
+
 Quand même le sommet du barème n'atteint pas ce volume, l'exigence est
 déclarée **hors d'atteinte** plutôt que silencieusement plafonnée : cela veut
 dire qu'il faut du matériel en plus, et c'est une information, pas une erreur.
@@ -33,11 +40,25 @@ from progression.paliers import (
 )
 
 #: Comment lire les charges écrites dans un programme : `True` = la valeur est
-#: la charge d'un seul haltère, `False` = la charge totale des deux réunis.
-#: Bascule cette constante si un programme annonce ses charges autrement — elle
-#: divise par deux tous les volumes exigés sur les exercices à deux haltères,
-#: et décide donc de ce qui est atteignable.
-CHARGE_PAR_HALTERE = True
+#: la charge **totale**, les deux haltères réunis (elle est donc divisée par
+#: deux sur les mouvements bilatéraux), `False` = la charge d'un seul haltère.
+#:
+#: L'éditeur de programme est une surface de **transcription** : on y recopie
+#: un tableau écrit par quelqu'un d'autre, et ces tableaux annoncent
+#: généralement la charge totale. Le reste de l'application, lui, parle en
+#: charge par haltère — c'est ce qu'on prend dans une main. Les deux
+#: conventions cohabitent parce qu'elles ne servent pas au même moment : on
+#: saisit ce qui est écrit, l'app affiche ce qu'il faut soulever.
+#:
+#: Cette constante décide de la moitié des volumes exigés, donc de ce qui est
+#: atteignable. Le libellé du champ de saisie en découle (`libelle_charge`) :
+#: la changer ne doit jamais laisser une étiquette mensongère à l'écran.
+CHARGE_TOTALE = True
+
+
+def libelle_charge():
+    """Intitulé du champ de charge dans l'éditeur, dérivé de la convention."""
+    return "Charge totale (kg)" if CHARGE_TOTALE else "Charge par haltère (kg)"
 
 
 FICHIER_PROGRAMMES_PERSONNALISES = Path(__file__).with_name(
@@ -198,9 +219,14 @@ def supprimer_programme(cle):
     _ecrire_programmes_personnalises(programmes)
 
 
-def _charge_par_halteres(nom_exercice, poids):
-    """Charge réellement portée par un haltère, selon la convention du programme."""
-    if CHARGE_PAR_HALTERE or not poids:
+def charge_par_haltere(nom_exercice, poids):
+    """Charge réellement portée par *un* haltère, selon la convention du programme.
+
+    C'est la seule traduction entre ce que l'utilisateur saisit et ce que le
+    barème manipule : un mouvement unilatéral n'est jamais divisé, quelle que
+    soit la convention, puisqu'il n'y a qu'un haltère à porter.
+    """
+    if not CHARGE_TOTALE or not poids:
         return poids
     # Import différé : `session.seances` importe déjà le moteur de progression.
     from session.seances import nombre_halteres
@@ -213,7 +239,7 @@ def volume_exige(exigence):
     return volume(
         exigence["series"],
         exigence["cible"],
-        _charge_par_halteres(exigence["exercice"], exigence["poids"]),
+        charge_par_haltere(exigence["exercice"], exigence["poids"]),
     )
 
 
@@ -238,6 +264,7 @@ def etat_exigence(exigence, niveaux):
         "series": exigence["series"],
         "cible": exigence["cible"],
         "poids": exigence["poids"],
+        "charge_haltere": charge_par_haltere(nom, exigence["poids"]),
         "prescription": prescription(exigence),
         "volume": volume_exige(exigence),
         "niveau_requis": requis,
