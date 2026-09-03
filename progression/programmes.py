@@ -19,6 +19,9 @@ déclarée **hors d'atteinte** plutôt que silencieusement plafonnée : cela veu
 dire qu'il faut du matériel en plus, et c'est une information, pas une erreur.
 """
 
+import json
+from pathlib import Path
+
 from progression.niveaux import etats_niveaux
 from progression.paliers import (
     UNITE_SECONDES,
@@ -37,14 +40,26 @@ from progression.paliers import (
 CHARGE_PAR_HALTERE = True
 
 
-def _exigence(exercice, series, cible, poids=0, libelle=None):
-    """Une ligne de programme, telle qu'elle est prescrite sur le papier."""
+FICHIER_PROGRAMMES_PERSONNALISES = Path(__file__).with_name(
+    "programmes_personnalises.json"
+)
+
+
+def _exigence(seance, exercice, series, cible, poids=0):
+    """Une ligne de programme, telle qu'elle est prescrite sur le papier.
+
+    Les exigences sont une **liste plate** : chacune porte le libellé de la
+    séance à laquelle elle appartient, et le regroupement se fait à
+    l'affichage. Une structure imbriquée serait plus jolie à lire ici, mais
+    beaucoup plus lourde à éditer depuis un formulaire — or un programme se
+    modifie depuis le site.
+    """
     return {
+        "seance": seance,
         "exercice": exercice,
         "series": series,
         "cible": cible,
         "poids": poids,
-        "libelle": libelle,
     }
 
 
@@ -57,35 +72,120 @@ PROGRAMMES = {
             "Trois séances à boucler intégralement : chaque exercice doit "
             "atteindre le volume prescrit."
         ),
-        "seances": {
-            "Push": [
-                _exigence("Developpé couché altères", 4, 12, 28),
-                _exigence("Pompes", 3, 35),
-                _exigence("Développé épaule", 3, 12, 20),
-                _exigence("Elevations latérales", 3, 15, 10),
-                _exigence("Extension Triceps", 3, 12, 20),
-            ],
-            "Jambes et abdos": [
-                _exigence("Squat", 4, 15, 26),
-                _exigence("Fente droite", 3, 10, 20),
-                _exigence("Fente gauche", 3, 10, 20),
-                _exigence("Souleve de terre roumain", 3, 12, 28),
-                _exigence("Gainage planche", 3, 100),
-                _exigence("Gainage planche laterale droite", 2, 60),
-                _exigence("Gainage planche laterale gauche", 2, 60),
-                _exigence("Crunches", 3, 20),
-            ],
-            "Pull": [
-                _exigence("Rowing unilateral droit", 4, 12, 32),
-                _exigence("Rowing unilateral gauche", 4, 12, 32),
-                _exigence("Rowing penche", 3, 12, 24),
-                _exigence("Curl biceps droit", 3, 12, 16),
-                _exigence("Curl biceps gauche", 3, 12, 16),
-                _exigence("Oiseau", 3, 15, 8),
-            ],
-        },
+        "exigences": [
+            _exigence("Push", "Developpé couché altères", 4, 12, 28),
+            _exigence("Push", "Pompes", 3, 35),
+            _exigence("Push", "Développé épaule", 3, 12, 20),
+            _exigence("Push", "Elevations latérales", 3, 15, 10),
+            _exigence("Push", "Extension Triceps", 3, 12, 20),
+            _exigence("Jambes et abdos", "Squat", 4, 15, 26),
+            _exigence("Jambes et abdos", "Fente droite", 3, 10, 20),
+            _exigence("Jambes et abdos", "Fente gauche", 3, 10, 20),
+            _exigence("Jambes et abdos", "Souleve de terre roumain", 3, 12, 28),
+            _exigence("Jambes et abdos", "Gainage planche", 3, 100),
+            _exigence("Jambes et abdos", "Gainage planche laterale droite", 2, 60),
+            _exigence("Jambes et abdos", "Gainage planche laterale gauche", 2, 60),
+            _exigence("Jambes et abdos", "Crunches", 3, 20),
+            _exigence("Pull", "Rowing unilateral droit", 4, 12, 32),
+            _exigence("Pull", "Rowing unilateral gauche", 4, 12, 32),
+            _exigence("Pull", "Rowing penche", 3, 12, 24),
+            _exigence("Pull", "Curl biceps droit", 3, 12, 16),
+            _exigence("Pull", "Curl biceps gauche", 3, 12, 16),
+            _exigence("Pull", "Oiseau", 3, 15, 8),
+        ],
     },
 }
+
+
+def _lire_programmes_personnalises():
+    if not FICHIER_PROGRAMMES_PERSONNALISES.exists():
+        return {}
+    with FICHIER_PROGRAMMES_PERSONNALISES.open(encoding="utf-8") as fichier:
+        return json.load(fichier)
+
+
+def _ecrire_programmes_personnalises(donnees):
+    with FICHIER_PROGRAMMES_PERSONNALISES.open("w", encoding="utf-8") as fichier:
+        json.dump(donnees, fichier, ensure_ascii=False, indent=2)
+
+
+def tous_les_programmes():
+    """Programmes du code, écrasés par ceux du disque quand la clé existe.
+
+    Même convention que `seances_personnalisees.json` : le fichier **masque**
+    le catalogue Python, ce qui permet de modifier un programme livré avec
+    l'app sans toucher au code.
+    """
+    return {**PROGRAMMES, **_lire_programmes_personnalises()}
+
+
+def valider_programme(donnees):
+    """Refuse un programme incohérent avant qu'il n'atteigne le disque.
+
+    Mieux vaut un refus à l'enregistrement qu'une page de programme qui
+    plante ou qui affiche des exigences impossibles à évaluer.
+    """
+    nom = (donnees.get("nom") or "").strip()
+    if not nom:
+        raise ValueError("Le nom du programme est requis")
+
+    exigences = donnees.get("exigences") or []
+    if not exigences:
+        raise ValueError("Au moins une exigence est requise")
+
+    propres = []
+    for ligne in exigences:
+        exercice = ligne.get("exercice")
+        if not est_suivi_par_le_moteur(exercice):
+            raise ValueError(f"{exercice or 'Exercice vide'} n'a pas de barème")
+        try:
+            series = int(ligne.get("series") or 0)
+            cible = float(ligne.get("cible") or 0)
+            poids = float(ligne.get("poids") or 0)
+        except (TypeError, ValueError):
+            raise ValueError(f"Valeurs invalides pour {exercice}")
+        if series < 1 or cible <= 0:
+            raise ValueError(f"Séries et cible doivent être positives ({exercice})")
+        propres.append(
+            _exigence(
+                (ligne.get("seance") or "Séance").strip(),
+                exercice,
+                series,
+                cible,
+                poids,
+            )
+        )
+
+    return {
+        "nom": nom,
+        "description": (donnees.get("description") or "").strip(),
+        "exigences": propres,
+    }
+
+
+def enregistrer_programme(cle, donnees):
+    """Crée ou remplace un programme personnalisé."""
+    cle = (cle or "").strip()
+    if not cle:
+        raise ValueError("La clé du programme est requise")
+    programmes = _lire_programmes_personnalises()
+    programmes[cle] = valider_programme(donnees)
+    _ecrire_programmes_personnalises(programmes)
+    return cle
+
+
+def supprimer_programme(cle):
+    """Supprime un programme personnalisé.
+
+    Un programme livré dans le code et jamais modifié n'a rien sur le disque :
+    il n'est donc pas supprimable, et c'est voulu — le supprimer reviendrait à
+    éditer le code.
+    """
+    programmes = _lire_programmes_personnalises()
+    if cle not in programmes:
+        raise KeyError(f"Programme inconnu : {cle}")
+    del programmes[cle]
+    _ecrire_programmes_personnalises(programmes)
 
 
 def _charge_par_halteres(nom_exercice, poids):
@@ -124,7 +224,10 @@ def etat_exigence(exigence, niveaux):
 
     return {
         "exercice": nom,
-        "libelle": exigence["libelle"] or nom,
+        "seance": exigence.get("seance") or "Séance",
+        "series": exigence["series"],
+        "cible": exigence["cible"],
+        "poids": exigence["poids"],
         "prescription": prescription(exigence),
         "volume": volume_exige(exigence),
         "niveau_requis": requis,
@@ -139,7 +242,7 @@ def etat_exigence(exigence, niveaux):
 
 def etat_programme(cle, seances=None, niveaux=None):
     """Avancement d'un programme, entièrement recalculé à la lecture."""
-    programme = PROGRAMMES.get(cle)
+    programme = tous_les_programmes().get(cle)
     if programme is None:
         return None
 
@@ -147,20 +250,22 @@ def etat_programme(cle, seances=None, niveaux=None):
     par_seance = {}
     exigences = []
 
-    for nom_seance, lignes in programme["seances"].items():
-        etats = [
-            etat_exigence(ligne, niveaux)
-            for ligne in lignes
-            if est_suivi_par_le_moteur(ligne["exercice"])
-        ]
-        par_seance[nom_seance] = etats
-        exigences.extend(etats)
+    for ligne in programme.get("exigences", []):
+        if not est_suivi_par_le_moteur(ligne.get("exercice")):
+            continue
+        etat = etat_exigence(ligne, niveaux)
+        # Regroupement à l'affichage seulement : l'ordre des séances suit
+        # l'ordre d'apparition des exigences, donc celui de l'éditeur.
+        par_seance.setdefault(etat["seance"], []).append(etat)
+        exigences.append(etat)
 
     atteintes = [etat for etat in exigences if etat["atteint"]]
     return {
         "cle": cle,
         "nom": programme["nom"],
-        "description": programme["description"],
+        "description": programme.get("description", ""),
+        "personnalise": cle in _lire_programmes_personnalises(),
+        "exigences_brutes": programme.get("exigences", []),
         "seances": par_seance,
         "total": len(exigences),
         "atteintes": len(atteintes),
@@ -176,5 +281,5 @@ def etats_programmes(seances=None):
     """Tous les programmes, en une seule lecture de l'historique."""
     niveaux = etats_niveaux(seances)
     return {
-        cle: etat_programme(cle, niveaux=niveaux) for cle in PROGRAMMES
+        cle: etat_programme(cle, niveaux=niveaux) for cle in tous_les_programmes()
     }

@@ -54,13 +54,15 @@
         <a class="tab active" href="/programmes">Programmes</a>
     </nav>
 
+    <p><a class="tab" href="/creer-programme">+ Nouveau programme</a></p>
+
     {% if not programmes %}<p class="empty">Aucun programme défini.</p>{% endif %}
 
     {% for cle, programme in programmes.items() %}
     <section class="programme{% if programme.battu %} battu{% endif %}">
         <div class="entete">
             <h2>{{ programme.nom }}</h2>
-            <span class="compte">{% if programme.battu %}Programme battu !{% else %}{{ programme.atteintes }} / {{ programme.total }} exigences{% endif %}</span>
+            <span class="compte">{% if programme.battu %}Programme battu !{% else %}{{ programme.atteintes }} / {{ programme.total }} exigences{% endif %} · <a href="/editer-programme/{{ cle }}">Modifier</a></span>
         </div>
         <p class="description">{{ programme.description }}</p>
         <div class="jauge"><span style="width:{{ programme.pourcentage }}%"></span></div>

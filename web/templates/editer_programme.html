@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Éditer un programme</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='editeur.css') }}">
+<style>
+    main { width: min(1000px, calc(100% - 40px)); }
+    /* séance · exercice · séries · cible · poids · supprimer */
+    .bloc { grid-template-columns: 1.1fr 2fr .7fr .8fr .8fr 40px; }
+    .actions { margin-top: 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    #enregistrer { background: var(--orange); color: #0a0d13; border-color: var(--orange); box-shadow: 0 0 24px var(--orange-glow); }
+    #enregistrer:hover { color: #0a0d13; border-color: var(--orange); opacity: .9; }
+    #supprimer { margin-left: auto; border-color: var(--border-strong); color: var(--muted); }
+    #supprimer:hover { border-color: var(--orange); color: var(--orange); }
+    textarea { width: 100%; min-height: 60px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: rgba(0,0,0,.25); color: var(--text); font-family: inherit; font-size: 14px; resize: vertical; }
+    .retour { font-size: 13px; color: var(--muted); }
+    .retour.erreur { color: var(--orange); }
+    @media (max-width: 700px) { .bloc { grid-template-columns: 1fr 1fr 1fr; } }
+</style>
+</head>
+<body><main>
+<p class="kicker">Personal Trainer</p>
+<h1>Éditer le programme</h1>
+<p class="hint">Chaque ligne est une exigence : l'exercice, et la performance à atteindre. Le libellé de séance ne sert qu'à regrouper les lignes à l'affichage — écris le même texte pour deux exercices et ils apparaîtront ensemble. Les charges sont converties en volume, donc une prescription plus lourde que ton matériel reste atteignable en faisant plus de répétitions.</p>
+
+<label for="nom">Nom du programme <input id="nom" required></label>
+<label for="description">Description <textarea id="description"></textarea></label>
+
+<div id="exigences"></div>
+
+<div class="actions">
+    <button id="ajouter" type="button">Ajouter une exigence</button>
+    <button id="enregistrer" type="button">Enregistrer</button>
+    <a class="btn" href="/programmes">Annuler</a>
+    <span class="retour" id="retour"></span>
+    {% if programme_cle %}<button id="supprimer" type="button">Supprimer</button>{% endif %}
+</div>
+
+<script>
+const exercices = {{ exercices|tojson }};
+const programmeCle = {{ programme_cle|tojson }};
+const programme = {{ programme|tojson }};
+const conteneur = document.getElementById("exigences");
+const retour = document.getElementById("retour");
+
+document.getElementById("nom").value = programme.nom || "";
+document.getElementById("description").value = programme.description || "";
+
+function optionsExercices(choisi = "") {
+    const noms = Object.keys(exercices);
+    // Un exercice retiré du catalogue laisserait la ligne se recaler
+    // silencieusement sur la première option : on le réinjecte pour que
+    // l'enregistrement ne remplace pas l'exercice à l'insu de l'utilisateur.
+    if (choisi && !noms.includes(choisi)) noms.unshift(choisi);
+    return noms
+        .map((nom) => `<option value="${nom}"${nom === choisi ? " selected" : ""}>${nom}</option>`)
+        .join("");
+}
+
+function uniteDe(nom) {
+    return exercices[nom] ? exercices[nom].unite : "repetitions";
+}
+
+function libelleCible(nom) {
+    return uniteDe(nom) === "secondes" ? "Secondes" : "Répétitions";
+}
+
+function creerLigne(donnees = {}) {
+    const ligne = document.createElement("div");
+    ligne.className = "bloc";
+    const exercice = donnees.exercice || Object.keys(exercices)[0];
+    ligne.innerHTML = `
+        <div class="champ"><label>Séance<input class="champ-seance" value="${donnees.seance || "Séance"}"></label></div>
+        <div class="champ"><label>Exercice<select class="champ-exercice">${optionsExercices(exercice)}</select></label></div>
+        <div class="champ"><label>Séries<input class="champ-series" type="number" min="1" value="${donnees.series || 3}"></label></div>
+        <div class="champ"><label><span class="libelle-cible">${libelleCible(exercice)}</span><input class="champ-cible" type="number" min="1" step="any" value="${donnees.cible || 10}"></label></div>
+        <div class="champ"><label>Charge (kg)<input class="champ-poids" type="number" min="0" step="0.5" value="${donnees.poids || 0}"></label></div>
+        <button type="button" class="supprimer-ligne" aria-label="Retirer cette exigence">✕</button>
+    `;
+    ligne.querySelector(".champ-exercice").addEventListener("change", (evenement) => {
+        ligne.querySelector(".libelle-cible").textContent = libelleCible(evenement.target.value);
+    });
+    ligne.querySelector(".supprimer-ligne").addEventListener("click", () => ligne.remove());
+    return ligne;
+}
+
+(programme.exigences || []).forEach((exigence) => conteneur.appendChild(creerLigne(exigence)));
+if (!(programme.exigences || []).length) conteneur.appendChild(creerLigne());
+
+document.getElementById("ajouter").addEventListener("click", () => {
+    // On reprend le libellé de séance de la dernière ligne : on ajoute
+    // presque toujours plusieurs exercices d'affilée à la même séance.
+    const lignes = conteneur.querySelectorAll(".bloc");
+    const derniere = lignes[lignes.length - 1];
+    const seance = derniere ? derniere.querySelector(".champ-seance").value : "Séance";
+    conteneur.appendChild(creerLigne({ seance }));
+});
+
+function collecter() {
+    return [...conteneur.querySelectorAll(".bloc")].map((ligne) => ({
+        seance: ligne.querySelector(".champ-seance").value,
+        exercice: ligne.querySelector(".champ-exercice").value,
+        series: Number(ligne.querySelector(".champ-series").value) || 0,
+        cible: Number(ligne.querySelector(".champ-cible").value) || 0,
+        poids: Number(ligne.querySelector(".champ-poids").value) || 0,
+    }));
+}
+
+async function appeler(url, methode, corps) {
+    retour.textContent = "…";
+    retour.classList.remove("erreur");
+    try {
+        const reponse = await fetch(url, {
+            method: methode,
+            headers: { "Content-Type": "application/json" },
+            body: corps ? JSON.stringify(corps) : undefined,
+        });
+        const donnees = await reponse.json();
+        if (!reponse.ok || !donnees.ok) {
+            retour.textContent = donnees.erreur || "Échec de l'enregistrement";
+            retour.classList.add("erreur");
+            return;
+        }
+        window.location.href = "/programmes";
+    } catch (erreur) {
+        retour.textContent = "Erreur réseau";
+        retour.classList.add("erreur");
+    }
+}
+
+document.getElementById("enregistrer").addEventListener("click", () => {
+    const corps = {
+        nom: document.getElementById("nom").value.trim(),
+        description: document.getElementById("description").value.trim(),
+        exigences: collecter(),
+    };
+    if (programmeCle) {
+        appeler(`/api/programmes/${encodeURIComponent(programmeCle)}`, "PUT", corps);
+    } else {
+        appeler("/api/programmes", "POST", corps);
+    }
+});
+
+const boutonSupprimer = document.getElementById("supprimer");
+if (boutonSupprimer) {
+    boutonSupprimer.addEventListener("click", () => {
+        if (!window.confirm("Supprimer définitivement ce programme ?")) return;
+        appeler(`/api/programmes/${encodeURIComponent(programmeCle)}`, "DELETE", null);
+    });
+}
+</script>
+</main></body>
+</html>

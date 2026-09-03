@@ -1,5 +1,7 @@
 import logging
+import re
 import time
+import unicodedata
 import webbrowser
 
 from flask import Flask, Response, jsonify, redirect, render_template, request
@@ -16,8 +18,19 @@ from historique.database import (
     supprimer_seance,
 )
 from progression.niveaux import etats_niveaux
-from progression.paliers import est_suivi_par_le_moteur, niveau_pour, palier
-from progression.programmes import etats_programmes
+from progression.paliers import (
+    est_suivi_par_le_moteur,
+    exercices_suivis,
+    niveau_pour,
+    palier,
+    unite,
+)
+from progression.programmes import (
+    enregistrer_programme,
+    etats_programmes,
+    supprimer_programme,
+    tous_les_programmes,
+)
 from session.controleur import SessionManager
 from session.seances import catalogue_echauffements, catalogue_exercices
 
@@ -418,6 +431,79 @@ def programmes():
         "programmes.html",
         programmes=etats_programmes(recuperer_historique()),
     )
+
+
+def exercices_avec_bareme():
+    """Exercices proposables dans un programme, avec l'unité de leur barème.
+
+    L'éditeur s'en sert pour intituler la colonne « cible » — répétitions ou
+    secondes — selon l'exercice choisi.
+    """
+    return {
+        nom: {"nom": nom, "unite": unite(nom)} for nom in sorted(exercices_suivis())
+    }
+
+
+def _cle_programme(nom):
+    """Transforme un nom en clé d'URL stable (« Road to TKT » -> road-to-tkt)."""
+    sans_accents = unicodedata.normalize("NFKD", nom or "")
+    sans_accents = "".join(c for c in sans_accents if not unicodedata.combining(c))
+    cle = re.sub(r"[^a-z0-9]+", "-", sans_accents.lower()).strip("-")
+    return cle or "programme"
+
+
+@app.route("/creer-programme")
+def creer_programme_page():
+    return render_template(
+        "editer_programme.html",
+        exercices=exercices_avec_bareme(),
+        programme_cle="",
+        programme={"nom": "", "description": "", "exigences": []},
+    )
+
+
+@app.route("/editer-programme/<cle>")
+def editer_programme_page(cle):
+    programme = tous_les_programmes().get(cle)
+    if programme is None:
+        return redirect("/programmes")
+    return render_template(
+        "editer_programme.html",
+        exercices=exercices_avec_bareme(),
+        programme_cle=cle,
+        programme=programme,
+    )
+
+
+@app.route("/api/programmes", methods=["POST"])
+def creer_programme_api():
+    donnees = request.get_json(silent=True) or {}
+    try:
+        cle = enregistrer_programme(
+            donnees.get("cle") or _cle_programme(donnees.get("nom")), donnees
+        )
+        return jsonify({"ok": True, "cle": cle}), 201
+    except (KeyError, ValueError) as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
+
+
+@app.route("/api/programmes/<cle>", methods=["PUT"])
+def modifier_programme_api(cle):
+    donnees = request.get_json(silent=True) or {}
+    try:
+        enregistrer_programme(cle, donnees)
+        return jsonify({"ok": True, "cle": cle})
+    except (KeyError, ValueError) as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
+
+
+@app.route("/api/programmes/<cle>", methods=["DELETE"])
+def supprimer_programme_api(cle):
+    try:
+        supprimer_programme(cle)
+        return jsonify({"ok": True})
+    except KeyError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 404
 
 
 @app.route("/api/niveaux/<nom>/ancrage", methods=["POST"])
