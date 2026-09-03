@@ -11,7 +11,7 @@ quelque chose. Le statut `abandoned` est donc volontairement ignoré ici, à la
 différence de `historique.database.statistiques_exercices`.
 """
 
-from historique.database import recuperer_historique
+from historique.database import recuperer_ancrages, recuperer_historique
 from progression.paliers import (
     UNITE_REPETITIONS,
     UNITE_SECONDES,
@@ -99,29 +99,54 @@ def niveau_prouve_par(exercice):
     return niveau_pour(nom, poids, series, cible)
 
 
-def niveaux_par_exercice(seances=None):
-    """Niveau actuel de chaque exercice suivi, avec la séance qui l'a établi.
+def niveaux_par_exercice(seances=None, ancrages=None):
+    """Niveau actuel de chaque exercice suivi, avec ce qui l'a établi.
 
     Un même exercice peut apparaître deux fois dans une séance (`jambes_abdos`
     enchaîne deux fois la planche latérale) : chaque ligne est jugée pour
     elle-même et c'est la meilleure qui l'emporte, jamais leur somme.
+
+    Un **ancrage** (`historique.database.corrections_niveaux`) recale le niveau
+    d'un exercice que l'historique ne peut pas prouver. Il agit de deux façons
+    à la fois : il fait table rase de l'historique antérieur, et il sert de
+    plancher. C'est cette table rase qui lui permet de corriger un niveau vers
+    le bas — un simple plancher ne saurait que le relever.
     """
     seances = recuperer_historique() if seances is None else seances
+    ancrages = recuperer_ancrages() if ancrages is None else ancrages
     niveaux = {}
 
     for seance in seances:
         for exercice in seance.get("exercices", []):
+            nom = exercice["nom"]
+            ancrage = ancrages.get(nom)
+            if ancrage and (seance.get("id") or 0) <= ancrage["apres_seance_id"]:
+                continue  # antérieur à l'ancrage : ne compte plus
             niveau = niveau_prouve_par(exercice)
             if niveau is None:
                 continue
-            meilleur = niveaux.get(exercice["nom"])
+            meilleur = niveaux.get(nom)
             if meilleur is None or niveau > meilleur["niveau"]:
-                niveaux[exercice["nom"]] = {
+                niveaux[nom] = {
                     "niveau": niveau,
-                    "palier": palier(exercice["nom"], niveau),
+                    "palier": palier(nom, niveau),
                     "seance_id": seance.get("id"),
                     "date": seance.get("date"),
+                    "ancre": False,
                 }
+
+    for nom, ancrage in ancrages.items():
+        if not est_suivi_par_le_moteur(nom):
+            continue
+        meilleur = niveaux.get(nom)
+        if meilleur is None or ancrage["niveau"] > meilleur["niveau"]:
+            niveaux[nom] = {
+                "niveau": ancrage["niveau"],
+                "palier": palier(nom, ancrage["niveau"]),
+                "seance_id": None,
+                "date": ancrage["date"],
+                "ancre": True,
+            }
 
     return niveaux
 
@@ -162,6 +187,7 @@ def etat_niveau(nom_exercice, seances=None, niveaux=None):
         "maximum_atteint": niveau is not None and suivant is None,
         "date": entree["date"] if entree else None,
         "seance_id": entree["seance_id"] if entree else None,
+        "ancre": bool(entree and entree.get("ancre")),
     }
 
 

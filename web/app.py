@@ -7,13 +7,16 @@ from flask import Flask, Response, jsonify, redirect, render_template, request
 from core import state
 from historique.database import (
     derniere_performance,
+    enregistrer_ancrage,
     recuperer_historique,
     renommer_seance,
     statistiques_exercices,
+    supprimer_ancrages,
     supprimer_exercice_de_seance,
     supprimer_seance,
 )
 from progression.niveaux import etats_niveaux
+from progression.paliers import est_suivi_par_le_moteur, niveau_pour, palier
 from session.controleur import SessionManager
 from session.seances import catalogue_echauffements, catalogue_exercices
 
@@ -406,6 +409,54 @@ def records():
         statistiques=statistiques_exercices(donnees),
         niveaux=etats_niveaux(donnees),
     )
+
+
+@app.route("/api/niveaux/<nom>/ancrage", methods=["POST"])
+def ancrer_niveau(nom):
+    """Recale le niveau d'un exercice à partir d'une performance réalisée.
+
+    On ne demande pas un numéro de niveau — personne ne sait ce que vaut
+    « niveau 27 ». On demande une performance (séries, cible, charge), et le
+    barème en déduit le niveau : c'est aussi la forme que prendra le test de
+    calibration d'un nouvel utilisateur.
+    """
+    donnees = request.get_json(silent=True) or {}
+    if not est_suivi_par_le_moteur(nom):
+        return jsonify({"ok": False, "erreur": f"{nom} n'a pas de barème"}), 404
+
+    try:
+        series = int(donnees.get("series") or 0)
+        cible = float(donnees.get("cible") or 0)
+        poids = float(donnees.get("poids") or 0)
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "erreur": "Valeurs invalides"}), 400
+
+    niveau = niveau_pour(nom, poids, series, cible)
+    if niveau is None:
+        premier = palier(nom, 1)
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "erreur": (
+                        "Cette performance n'atteint pas le premier palier "
+                        f"({premier.resume()})."
+                    ),
+                }
+            ),
+            400,
+        )
+
+    enregistrer_ancrage(nom, niveau, donnees.get("raison", ""))
+    return jsonify({"ok": True, "niveau": niveau, "palier": palier(nom, niveau).resume()})
+
+
+@app.route("/api/niveaux/<nom>/ancrage", methods=["DELETE"])
+def supprimer_ancrage_niveau(nom):
+    supprimes = supprimer_ancrages(nom)
+    if not supprimes:
+        return jsonify({"ok": False, "erreur": "Aucun ancrage à supprimer"}), 404
+    return jsonify({"ok": True})
 
 
 @app.route("/historique/<int:seance_id>")

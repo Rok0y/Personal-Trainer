@@ -55,6 +55,18 @@
         .niveau { margin-top:18px; border-top:1px solid var(--border); padding-top:16px; }
         .niveau > strong { display:block; margin-bottom:10px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
         .niveau-note { font-size:12px !important; font-style:italic; }
+        .recalage { margin-top:12px; }
+        .recalage summary { cursor:pointer; color:var(--teal); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+        .form-ancrage { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-top:10px; }
+        .champ { display:flex; flex-direction:column; gap:4px; }
+        .champ-large { flex:1 1 180px; }
+        .champ label { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
+        .champ input { width:100%; min-width:70px; padding:7px 9px; border-radius:8px; border:1px solid var(--border-strong); background:rgba(0,0,0,.25); color:var(--text); font-family:inherit; font-size:13px; }
+        .form-ancrage button { padding:8px 14px; border-radius:8px; border:1px solid var(--teal); background:transparent; color:var(--teal); font-family:inherit; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; }
+        .form-ancrage button:hover { background:rgba(27,232,196,.12); }
+        .form-ancrage .bouton-secondaire { border-color:var(--border-strong); color:var(--muted); }
+        .retour-ancrage { font-size:12px; color:var(--muted); align-self:center; }
+        .retour-ancrage.erreur { color:var(--orange); }
         .progression { margin-top:18px; border-top:1px solid var(--border); padding-top:16px; }
         .progression > strong { display:block; margin-bottom:10px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
         .chart-container { width:100%; }
@@ -106,7 +118,7 @@
                 <div class="niveau">
                     <strong>Progression par paliers</strong>
                     {% if etat.niveau %}
-                    <p>Niveau <strong>{{ etat.niveau }}</strong> : <strong>{{ etat.actuel.resume() }}</strong>{% if etat.date %}, validé le {{ etat.date }}{% endif %}</p>
+                    <p>Niveau <strong>{{ etat.niveau }}</strong> : <strong>{{ etat.actuel.resume() }}</strong>{% if etat.ancre %}, recalé à la main le {{ etat.date }}{% elif etat.date %}, validé le {{ etat.date }}{% endif %}</p>
                     {% if etat.maximum_atteint %}
                     <p class="niveau-note">Barème épuisé, il n'y a plus de palier au-dessus. La suite passe par une variante plus difficile du mouvement.</p>
                     {% else %}
@@ -118,6 +130,19 @@
                     {% else %}
                     <p>Aucune performance n'atteint encore le premier palier : <strong>{{ etat.premier.resume() }}</strong>.</p>
                     {% endif %}
+                    <details class="recalage">
+                        <summary>Recaler mon niveau</summary>
+                        <p class="niveau-note">Indique une performance que tu sais tenir sur toutes les séries. Le barème en déduit ton niveau, et l'historique antérieur cesse de compter pour cet exercice.</p>
+                        <form class="form-ancrage" data-exercice="{{ nom }}">
+                            <span class="champ"><label>Séries</label><input type="number" min="1" class="champ-series" value="{{ etat.premier.series }}"></span>
+                            <span class="champ"><label>{% if etat.premier.unite == 'secondes' %}Secondes{% else %}Répétitions{% endif %}</label><input type="number" min="1" step="any" class="champ-cible" value="{{ etat.premier.cible }}"></span>
+                            <span class="champ"><label>Charge (kg)</label><input type="number" min="0" step="0.5" class="champ-poids" value="{{ etat.premier.poids }}"></span>
+                            <span class="champ champ-large"><label>Pourquoi ?</label><input type="text" class="champ-raison" placeholder="Séance faite sans l'app, reprise..."></span>
+                            <button type="submit">Recaler</button>
+                            {% if etat.ancre %}<button type="button" class="bouton-secondaire" data-supprimer>Supprimer l'ancrage</button>{% endif %}
+                            <span class="retour-ancrage"></span>
+                        </form>
+                    </details>
                 </div>
                 {% endif %}
                 <div class="progression" data-progression='{{ stat.progression|tojson }}' data-mode="{{ stat.mode }}" data-cle="{% if stat.mode in ('maintien', 'chrono') %}duree{% elif stat.meilleur_volume.valeur > 0 %}volume{% else %}repetitions{% endif %}" data-unite="{{ unite }}">
@@ -190,6 +215,48 @@ function dessinerGraphique(conteneur) {
     svg += `</svg>`;
     cible.innerHTML = svg;
 }
+async function envoyerAncrage(formulaire, methode, corps) {
+    const retour = formulaire.querySelector(".retour-ancrage");
+    const url = `/api/niveaux/${encodeURIComponent(formulaire.dataset.exercice)}/ancrage`;
+    retour.textContent = "…";
+    retour.classList.remove("erreur");
+    try {
+        const reponse = await fetch(url, {
+            method: methode,
+            headers: { "Content-Type": "application/json" },
+            body: corps ? JSON.stringify(corps) : undefined,
+        });
+        const donnees = await reponse.json();
+        if (!reponse.ok || !donnees.ok) {
+            retour.textContent = donnees.erreur || "Échec du recalage";
+            retour.classList.add("erreur");
+            return;
+        }
+        // Le niveau conditionne l'objectif des séances : on recharge plutôt que
+        // de rafraîchir cette carte seule, pour que tout l'écran reste cohérent.
+        window.location.reload();
+    } catch (erreur) {
+        retour.textContent = "Erreur réseau";
+        retour.classList.add("erreur");
+    }
+}
+
+document.querySelectorAll(".form-ancrage").forEach((formulaire) => {
+    formulaire.addEventListener("submit", (evenement) => {
+        evenement.preventDefault();
+        envoyerAncrage(formulaire, "POST", {
+            series: Number(formulaire.querySelector(".champ-series").value) || 0,
+            cible: Number(formulaire.querySelector(".champ-cible").value) || 0,
+            poids: Number(formulaire.querySelector(".champ-poids").value) || 0,
+            raison: formulaire.querySelector(".champ-raison").value,
+        });
+    });
+    const suppression = formulaire.querySelector("[data-supprimer]");
+    if (suppression) {
+        suppression.addEventListener("click", () => envoyerAncrage(formulaire, "DELETE", null));
+    }
+});
+
 document.querySelectorAll("details.card").forEach((details) => {
     details.addEventListener("toggle", () => {
         if (!details.open) return;

@@ -102,6 +102,26 @@ def initialiser():
         ON series_realisees(exercice_id)
     """)
 
+    # Ancrages de niveau : « à partir d'ici, je suis niveau N sur cet
+    # exercice ». Sert à recaler un niveau que l'historique ne peut pas
+    # prouver (séance faite sans l'app, reprise après blessure, démarrage d'un
+    # nouvel utilisateur). C'est un journal : on ajoute, on n'écrase pas.
+    #
+    # `apres_seance_id` est le repère chronologique, et non la date : les dates
+    # de séance sont stockées en JJ/MM/AAAA, format dans lequel une comparaison
+    # de chaînes est fausse. Les identifiants, eux, sont AUTOINCREMENT, donc
+    # strictement croissants dans l'ordre d'enregistrement.
+    curseur.execute("""
+        CREATE TABLE IF NOT EXISTS corrections_niveaux (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nom_exercice TEXT NOT NULL,
+            niveau INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            apres_seance_id INTEGER DEFAULT 0,
+            raison TEXT DEFAULT ''
+        )
+    """)
+
     conn.commit()
 
     conn.close()
@@ -308,6 +328,83 @@ def recuperer_series(curseur, exercice_id):
         }
         for ligne in curseur.fetchall()
     ]
+
+
+def enregistrer_ancrage(nom_exercice, niveau, raison=""):
+    """Pose un ancrage de niveau, valable à partir de maintenant.
+
+    L'historique antérieur cesse de compter pour cet exercice : c'est ce qui
+    permet à un ancrage de corriger un niveau *vers le bas*, et pas seulement
+    de le relever.
+    """
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+
+    curseur.execute("SELECT COALESCE(MAX(id), 0) FROM seances")
+    derniere_seance = curseur.fetchone()[0]
+
+    curseur.execute(
+        """
+        INSERT INTO corrections_niveaux
+        (nom_exercice, niveau, date, apres_seance_id, raison)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            nom_exercice,
+            int(niveau),
+            datetime.now().strftime("%d/%m/%Y %H:%M"),
+            derniere_seance,
+            raison or "",
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def recuperer_ancrages():
+    """Dernier ancrage de chaque exercice, indexé par nom d'exercice.
+
+    Seul le plus récent compte : les précédents restent en base comme trace,
+    mais un ancrage plus récent les remplace entièrement.
+    """
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+
+    curseur.execute("""
+        SELECT nom_exercice, niveau, date, apres_seance_id, raison, id
+        FROM corrections_niveaux
+        ORDER BY id
+    """)
+
+    ancrages = {}
+    for ligne in curseur.fetchall():
+        ancrages[ligne[0]] = {
+            "niveau": ligne[1],
+            "date": ligne[2],
+            "apres_seance_id": ligne[3] or 0,
+            "raison": ligne[4] or "",
+            "id": ligne[5],
+        }
+
+    conn.close()
+    return ancrages
+
+
+def supprimer_ancrages(nom_exercice):
+    """Efface les ancrages d'un exercice : son niveau redevient purement déduit."""
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "DELETE FROM corrections_niveaux WHERE nom_exercice = ?", (nom_exercice,)
+    )
+    supprimes = curseur.rowcount
+    conn.commit()
+    conn.close()
+    return supprimes
 
 
 def statistiques_exercices(seances=None):
