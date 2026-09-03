@@ -8,6 +8,7 @@ from session.seances import (
     creer_seance_test,
     enregistrer_configuration_seance,
     enregistrer_seance_personnalisee,
+    retirer_cible_manuelle,
     supprimer_seance_personnalisee,
 )
 
@@ -36,6 +37,10 @@ class SessionManager:
     def supprimer_seance_personnalisee(self, nom):
         with self._verrou:
             supprimer_seance_personnalisee(nom)
+
+    def retirer_cible_manuelle(self, nom, nom_exercice):
+        with self._verrou:
+            retirer_cible_manuelle(nom, nom_exercice)
 
     def definir_reset_progression(self, callback):
         with self._verrou:

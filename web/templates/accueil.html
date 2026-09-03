@@ -159,7 +159,9 @@
         .resume-demarrer:hover { opacity: .9; }
         .resume-lien { display: inline-block; margin-top: 12px; color: var(--teal); font-size: 12px; font-weight: 700; }
 
-        .badge-manuelle { display: inline-block; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--orange); color: var(--orange); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
+        .badge-manuelle { display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--orange); color: var(--orange); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
+        .badge-manuelle-retirer { border: none; background: none; padding: 0; color: inherit; font-size: 13px; line-height: 1; cursor: pointer; font-family: inherit; }
+        .badge-manuelle-retirer:hover { color: var(--text); }
         .last-series { margin-top: 4px; padding: 8px 10px; border-left: 2px solid var(--teal); background: rgba(27, 232, 196, .07); color: var(--muted); font-size: 12px; }
         .last-series strong { color: var(--text); }
 
@@ -259,7 +261,7 @@
                 <form class="session-editor" data-editor="{{ identifiant }}">
                     {% for exercice in seance.exercices %}
                     <div class="edit-exercise" data-exercice="{{ exercice.nom or exercice.exercice }}" data-mode="{{ exercice.mode }}" data-poids="{{ exercice.poids|default(0) }}" data-repos-series="{{ exercice.repos_entre_series|default(0) }}" data-repos-apres="{{ exercice.repos_apres|default(0) }}" data-entrelace="{{ exercice.entrelace_avec or '' }}">
-                        <label>{{ exercice.nom or exercice.exercice }}{% if exercice.cible_manuelle %} <span class="badge-manuelle">cible manuelle</span>{% endif %}</label>
+                        <label>{{ exercice.nom or exercice.exercice }}{% if exercice.cible_manuelle %} <span class="badge-manuelle">cible manuelle<button type="button" class="badge-manuelle-retirer" data-retirer-cible-manuelle="{{ exercice.nom or exercice.exercice }}" title="Revenir à la cible proposée par le moteur de progression" aria-label="Retirer la cible manuelle">×</button></span>{% endif %}</label>
                         <p class="editor-equipment">Matériel : {{ exercice.materiel or 'Aucun matériel' }}</p>
                         {% if exercice.cible_manuelle %}<p class="editor-equipment">Cible figée à la main : le moteur de progression ne la fait plus évoluer. Remets les valeurs qu'il propose pour la rebrancher.</p>{% endif %}
                         <span class="number-control" data-unit="Charge (kg)"><button type="button" data-delta="-1" aria-label="Diminuer la charge">−</button><input class="edit-weight" aria-label="Charge en kilogrammes" type="number" min="0" step="0.5" value="{{ exercice.poids|default(0) }}" title="Charge en kilogrammes"><button type="button" data-delta="1" aria-label="Augmenter la charge">+</button></span>
@@ -379,6 +381,13 @@
     });
     document.querySelectorAll(".session-editor").forEach((formulaire) => {
         formulaire.addEventListener("click", (evenement) => evenement.stopPropagation());
+        formulaire.querySelectorAll("[data-retirer-cible-manuelle]").forEach((bouton) => bouton.addEventListener("click", async () => {
+            const exercice = bouton.dataset.retirerCibleManuelle;
+            const reponse = await fetch(`/api/seances/${encodeURIComponent(formulaire.dataset.editor)}/cible-manuelle/${encodeURIComponent(exercice)}`, { method: "DELETE" });
+            const donnees = await reponse.json();
+            if (donnees.ok) window.location.reload();
+            else window.alert(donnees.erreur || "Impossible de retirer la cible manuelle.");
+        }));
         formulaire.querySelectorAll("[data-delta]").forEach((bouton) => bouton.addEventListener("click", () => {
             const champ = bouton.parentElement.querySelector("input");
             const minimum = Number(champ.min) || 0;

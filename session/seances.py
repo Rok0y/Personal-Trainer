@@ -581,6 +581,22 @@ def enregistrer_configuration_seance(nom, circuit):
         enregistrer_seance_personnalisee(nom, exporter_blocs(circuit))
 
 
+def retirer_cible_manuelle(nom_seance, nom_exercice):
+    """Débranche un bloc de sa cible figée : le moteur reprend la main au prochain chargement."""
+    donnees = _lire_seances_personnalisees()
+    blocs = donnees.get(nom_seance)
+    if blocs is None:
+        raise KeyError(f"Séance inconnue : {nom_seance}")
+    trouve = False
+    for bloc in blocs:
+        if bloc.get("exercice") == nom_exercice:
+            bloc.pop("cible_manuelle", None)
+            trouve = True
+    if not trouve:
+        raise KeyError(f"Exercice inconnu dans cette séance : {nom_exercice}")
+    enregistrer_seance_personnalisee(nom_seance, blocs)
+
+
 def supprimer_seance_personnalisee(nom):
     donnees = _lire_seances_personnalisees()
     if nom not in donnees:

@@ -273,6 +273,15 @@ def modifier_seance_api(nom):
         return jsonify({"ok": False, "erreur": str(erreur)}), 400
 
 
+@app.route("/api/seances/<nom>/cible-manuelle/<exercice>", methods=["DELETE"])
+def retirer_cible_manuelle_api(nom, exercice):
+    try:
+        controleur.retirer_cible_manuelle(nom, exercice)
+        return jsonify({"ok": True})
+    except KeyError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 404
+
+
 @app.route("/api/seance/selectionner", methods=["POST"])
 def selectionner_seance():
     donnees = request.get_json(silent=True) or {}
