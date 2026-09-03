@@ -109,6 +109,11 @@
                     <p>Niveau <strong>{{ etat.niveau }}</strong> : <strong>{{ etat.actuel.resume() }}</strong>{% if etat.date %}, validé le {{ etat.date }}{% endif %}</p>
                     {% if etat.maximum_atteint %}
                     <p class="niveau-note">Barème épuisé, il n'y a plus de palier au-dessus. La suite passe par une variante plus difficile du mouvement.</p>
+                    {% else %}
+                    <p>Palier suivant : <strong>{{ etat.suivant.resume() }}</strong></p>
+                    {% if etat.suivant.cible < etat.actuel.cible %}
+                    <p class="niveau-note">Moins de répétitions, mais plus lourd : le volume progresse quand même ({{ etat.actuel.volume|round|int }} → {{ etat.suivant.volume|round|int }}).</p>
+                    {% endif %}
                     {% endif %}
                     {% else %}
                     <p>Aucune performance n'atteint encore le premier palier : <strong>{{ etat.premier.resume() }}</strong>.</p>
