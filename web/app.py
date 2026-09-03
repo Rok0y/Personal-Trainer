@@ -19,7 +19,7 @@ from historique.database import (
     supprimer_exercice_de_seance,
     supprimer_seance,
 )
-from progression.niveaux import etats_niveaux
+from progression.niveaux import etats_niveaux, montees_de_niveau
 from progression.paliers import (
     est_suivi_par_le_moteur,
     exercices_suivis,
@@ -451,6 +451,7 @@ def historique():
         seances=seances_entrainement(donnees),
         meilleurs=meilleurs_volumes(donnees),
         record_seance_id=seances_du_record(donnees),
+        montees=montees_de_niveau(donnees),
         detail=False,
     )
 
@@ -640,6 +641,7 @@ def detail_historique(seance_id):
         seances=[seance],
         meilleurs=meilleurs_volumes(donnees),
         record_seance_id=seances_du_record(donnees),
+        montees=montees_de_niveau(donnees),
         detail=True,
     )
 

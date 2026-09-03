@@ -191,6 +191,42 @@ def etat_niveau(nom_exercice, seances=None, niveaux=None):
     }
 
 
+def montees_de_niveau(seances=None, ancrages=None):
+    """Pour chaque séance, les exercices dont le niveau vient de monter grâce à elle.
+
+    Rejoue l'historique dans l'ordre chronologique (`recuperer_historique`
+    le renvoie le plus récent en tête) pour repérer l'instant précis où
+    chaque niveau apparaît, avec la même règle que `niveaux_par_exercice` :
+    seul un niveau strictement supérieur au meilleur déjà vu compte comme une
+    montée, et un ancrage fait table rase de ce qui le précède.
+    """
+    seances = recuperer_historique() if seances is None else seances
+    ancrages = recuperer_ancrages() if ancrages is None else ancrages
+    chronologique = sorted(seances, key=lambda s: s.get("id") or 0)
+
+    niveaux = {}
+    montees = {}
+    for seance in chronologique:
+        for exercice in seance.get("exercices", []):
+            nom = exercice["nom"]
+            ancrage = ancrages.get(nom)
+            if ancrage and (seance.get("id") or 0) <= ancrage["apres_seance_id"]:
+                continue
+            niveau = niveau_prouve_par(exercice)
+            if niveau is None:
+                continue
+            avant = niveaux.get(nom)
+            if avant is None or niveau > avant:
+                montees.setdefault(seance["id"], {})[nom] = {
+                    "depuis": avant,
+                    "vers": niveau,
+                    "palier": palier(nom, niveau),
+                }
+                niveaux[nom] = niveau
+
+    return montees
+
+
 def etats_niveaux(seances=None):
     """État de niveau de tous les exercices suivis, en une seule lecture."""
     niveaux = niveaux_par_exercice(seances)
