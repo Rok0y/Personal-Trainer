@@ -27,6 +27,7 @@ from progression.paliers import (
 )
 from progression.programmes import (
     enregistrer_programme,
+    est_personnalise,
     etats_programmes,
     supprimer_programme,
     tous_les_programmes,
@@ -472,6 +473,9 @@ def editer_programme_page(cle):
         exercices=exercices_avec_bareme(),
         programme_cle=cle,
         programme=programme,
+        # Un programme livré dans le code et jamais modifié n'a rien sur le
+        # disque : proposer de le supprimer mènerait à une erreur.
+        supprimable=est_personnalise(cle),
     )
 
 

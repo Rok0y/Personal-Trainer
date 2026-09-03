@@ -119,6 +119,16 @@ def tous_les_programmes():
     return {**PROGRAMMES, **_lire_programmes_personnalises()}
 
 
+def est_personnalise(cle):
+    """Ce programme existe-t-il sur le disque ?
+
+    Point d'entrée unique de la règle « ce programme est-il supprimable ? » :
+    un programme livré dans le code et jamais modifié n'a rien à supprimer, et
+    proposer de le faire mènerait à une erreur.
+    """
+    return cle in _lire_programmes_personnalises()
+
+
 def valider_programme(donnees):
     """Refuse un programme incohérent avant qu'il n'atteigne le disque.
 
@@ -264,7 +274,7 @@ def etat_programme(cle, seances=None, niveaux=None):
         "cle": cle,
         "nom": programme["nom"],
         "description": programme.get("description", ""),
-        "personnalise": cle in _lire_programmes_personnalises(),
+        "personnalise": est_personnalise(cle),
         "exigences_brutes": programme.get("exigences", []),
         "seances": par_seance,
         "total": len(exigences),
