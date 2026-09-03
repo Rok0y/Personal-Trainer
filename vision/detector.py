@@ -10,10 +10,10 @@ from mediapipe.tasks.python import vision
 from vision.body import Body, LandmarkPoint
 from vision.landmarks import LANDMARKS
 
-MODEL_PATH = "pose_landmarker_lite.task"
+MODEL_PATH = "pose_landmarker_full.task"
 MODEL_URL = (
     "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
-    "pose_landmarker_lite/float16/latest/pose_landmarker_lite.task"
+    "pose_landmarker_full/float16/latest/pose_landmarker_full.task"
 )
 
 if not os.path.exists(MODEL_PATH):
