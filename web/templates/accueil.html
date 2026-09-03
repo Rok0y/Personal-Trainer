@@ -120,10 +120,24 @@
         }
         .tab:hover { color: var(--teal); border-color: var(--teal); }
 
-        .programme-resume {
-            background: var(--glass); border: 1px solid var(--border-strong); border-radius: 14px;
-            padding: 20px 22px; margin-bottom: 26px;
+        .section-titre {
+            margin: 0 0 12px; color: var(--muted); font-size: 12px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .12em;
         }
+
+        /* Le programme n'est pas une séance : il chapeaute celles d'en dessous.
+           Bordure turquoise, fond légèrement teinté et séparateur en pied pour
+           qu'on ne le lise pas comme une carte de plus dans la liste. */
+        .programme-resume {
+            background: linear-gradient(180deg, rgba(27, 232, 196, .07), rgba(27, 232, 196, .02));
+            border: 1px solid var(--teal); border-radius: 14px;
+            padding: 22px 24px; margin-bottom: 34px;
+            box-shadow: 0 0 32px rgba(27, 232, 196, .08);
+        }
+        .programme-resume + .section-titre {
+            padding-top: 26px; border-top: 1px solid var(--border);
+        }
+        .resume-detail { margin: -6px 0 16px; color: var(--muted); font-size: 12px; }
         .resume-entete { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; flex-wrap: wrap; }
         .resume-entete h2 { margin: 0; font-family: 'Bebas Neue', 'Space Grotesk', sans-serif; font-weight: 400; font-size: 24px; }
         .resume-compte { color: var(--teal); font-size: 13px; font-weight: 700; }
@@ -170,13 +184,15 @@
         <a class="tab" href="/programmes">Programmes</a>
     </nav>
 
+    {% if programmes %}<p class="section-titre">Programme en cours</p>{% endif %}
     {% for cle, programme in programmes.items() %}
     <section class="programme-resume">
         <div class="resume-entete">
             <h2>{{ programme.nom }}</h2>
-            <span class="resume-compte">{% if programme.battu %}Programme battu !{% else %}{{ programme.atteintes }} / {{ programme.total }} exigences{% endif %}</span>
+            <span class="resume-compte">{% if programme.battu %}Programme battu !{% else %}{{ programme.pourcentage }} % de progression{% endif %}</span>
         </div>
         <div class="resume-jauge"><span style="width: {{ programme.pourcentage }}%"></span></div>
+        <p class="resume-detail">{{ programme.atteintes }} exigence{{ 's' if programme.atteintes > 1 }} sur {{ programme.total }} entièrement remplie{{ 's' if programme.atteintes > 1 }}</p>
         {% if programme.prochaine %}
         <div class="resume-prochaine">
             <div>
@@ -192,6 +208,7 @@
         <a class="resume-lien" href="/programmes">Voir le détail du programme</a>
     </section>
     {% endfor %}
+    <p class="section-titre">Tes séances</p>
     <section class="grid" aria-label="Seances disponibles">
         {% for identifiant, seance in seances.items() %}
         <div class="session{% if identifiant == selection %} selected{% endif %}" data-seance="{{ identifiant }}" role="button" tabindex="0">

@@ -317,8 +317,14 @@ def etat_programme(cle, seances=None, niveaux=None):
         "total": len(exigences),
         "atteintes": len(atteintes),
         "hors_atteinte": len([e for e in exigences if e["hors_atteinte"]]),
+        # Moyenne des avancements, et non part des exigences remplies : le
+        # second reste à zéro tant qu'aucune n'est *entièrement* atteinte, ce
+        # qui donne une barre vide alors que tout a avancé. Les deux chiffres
+        # sont affichés côte à côte, ils ne disent pas la même chose.
         "pourcentage": (
-            round(100 * len(atteintes) / len(exigences)) if exigences else 0
+            round(sum(etat["avancement"] for etat in exigences) / len(exigences))
+            if exigences
+            else 0
         ),
         "battu": bool(exigences) and len(atteintes) == len(exigences),
     }

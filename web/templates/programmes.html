@@ -68,11 +68,11 @@
     <section class="programme{% if programme.battu %} battu{% endif %}">
         <div class="entete">
             <h2>{{ programme.nom }}</h2>
-            <span class="compte">{% if programme.battu %}Programme battu !{% else %}{{ programme.atteintes }} / {{ programme.total }} exigences{% endif %} · <a href="/editer-programme/{{ cle }}">Modifier</a></span>
+            <span class="compte">{% if programme.battu %}Programme battu !{% else %}{{ programme.pourcentage }} % de progression{% endif %} · <a href="/editer-programme/{{ cle }}">Modifier</a></span>
         </div>
         <p class="description">{{ programme.description }}</p>
         <div class="jauge"><span style="width:{{ programme.pourcentage }}%"></span></div>
-        <p class="description">{{ programme.pourcentage }} % du programme</p>
+        <p class="description">Moyenne de l'avancement sur les {{ programme.total }} exigences · <strong>{{ programme.atteintes }}</strong> entièrement remplie{{ 's' if programme.atteintes > 1 }}</p>
 
         {% if programme.hors_atteinte %}
         <p class="alerte">{{ programme.hors_atteinte }} exigence(s) dépassent le sommet de ton barème : aucune combinaison de poids, de séries et de répétitions disponible n'atteint le volume demandé. Il faut des haltères plus lourds — ce n'est pas une question d'entraînement.</p>
