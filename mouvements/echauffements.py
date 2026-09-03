@@ -26,7 +26,8 @@ def jumping_jacks_detection(corps):
     donc comparer des écarts entre points reste valable quelle que soit ta
     distance à la caméra — mais pas des valeurs absolues.
     """
-    # TODO(human)
+    # TODO : détection jamais écrite. Sans conséquence pour l'instant — un
+    # échauffement avance au temps et n'utilise la détection que pour l'affichage.
     return "milieu"
 
 

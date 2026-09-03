@@ -159,6 +159,16 @@ def _decomposer_materiel(materiel_brut):
     return nb_halteres, accessoires
 
 
+def nombre_halteres(nom_exercice):
+    """Nombre d'haltères qu'un exercice demande (0 s'il se fait à mains nues).
+
+    Exposé pour le moteur de progression, qui en déduit l'échelle de poids
+    applicable : le matériel reste déclaré une seule fois, ici.
+    """
+    nb_halteres, _ = _decomposer_materiel(MATERIEL_EXERCICES.get(nom_exercice, ""))
+    return nb_halteres
+
+
 def formater_materiel(exercices):
     """Regroupe le matériel d'une séance dans une phrase lisible.
 
