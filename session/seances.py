@@ -32,6 +32,11 @@ from mouvements.exercices import (
     souleve_roumain,
     squat,
 )
+from progression.objectifs import (
+    appliquer_a_blocs,
+    appliquer_a_circuit,
+    objectifs_par_exercice,
+)
 from session.circuit import (
     MODE_AMRAP,
     MODE_CHRONO,
@@ -564,6 +569,7 @@ def exporter_blocs(circuit):
             "repos_apres": bloc.repos_apres,
             "commentaire": bloc.commentaire,
             "entrelace_avec": bloc.entrelace_avec,
+            "cible_manuelle": bloc.cible_manuelle,
         }
         for bloc in circuit.exercices
     ]
@@ -631,6 +637,7 @@ def construire_circuit(blocs):
                 repos_apres=bloc.get("repos_apres", 0),
                 commentaire=bloc.get("commentaire", ""),
                 entrelace_avec=bloc.get("entrelace_avec"),
+                cible_manuelle=bloc.get("cible_manuelle", False),
             )
             for bloc in blocs
         ]
@@ -645,10 +652,19 @@ def creer_seance_personnalisee(nom):
 
 
 def creer_seance(nom):
-    """Retourne un circuit neuf, indépendant des séances déjà utilisées."""
+    """Retourne un circuit neuf, indépendant des séances déjà utilisées.
+
+    Les cibles des exercices dotés d'un barème sont posées ici par le moteur de
+    progression, et non lues du disque : c'est lui la source de vérité. Le
+    passage par `appliquer_a_circuit` couvre les deux origines possibles d'un
+    circuit — le JSON des séances personnalisées et le catalogue Python, dont
+    les `Circuit` écrits à la main ne passent jamais par `construire_circuit`.
+    """
     if nom not in CATALOGUE_SEANCES or nom in _lire_seances_personnalisees():
-        return creer_seance_personnalisee(nom)
-    return deepcopy(CATALOGUE_SEANCES[nom])
+        circuit = creer_seance_personnalisee(nom)
+    else:
+        circuit = deepcopy(CATALOGUE_SEANCES[nom])
+    return appliquer_a_circuit(circuit)
 
 
 def creer_seance_test(nom_exercice, mode):
@@ -676,6 +692,7 @@ def creer_seance_test(nom_exercice, mode):
 
 
 def catalogue():
+    objectifs = objectifs_par_exercice()
     resultats = {
         nom: {
             "nom": nom,
@@ -703,6 +720,10 @@ def catalogue():
             "materiel": sorted({exercice["materiel"] for exercice in exercices}),
         }
     for seance in resultats.values():
+        # Les cibles affichées doivent être celles que la séance jouera :
+        # sans ce passage, l'accueil annoncerait les valeurs du disque pendant
+        # que `creer_seance` en applique d'autres.
+        appliquer_a_blocs(seance["exercices"], objectifs)
         for exercice in seance["exercices"]:
             exercice["materiel"] = materiel_exercice(
                 exercice["nom"],

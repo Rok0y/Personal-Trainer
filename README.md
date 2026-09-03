@@ -11,6 +11,7 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 - **Gestes de contrôle** sans clavier ni souris (ex. bras en X pour valider une série, deux bras levés pour réinitialiser) afin de piloter la séance depuis devant la caméra.
 - **Historique des séances et records** stockés en base SQLite, avec suivi de la progression (meilleur volume, dernières performances).
 - **Niveaux par exercice** : chaque exercice possède un barème de paliers (poids, séries, répétitions) dont le volume ne redescend jamais, et votre niveau est déduit de votre historique — le plus haut palier jamais validé. La page Records affiche le niveau atteint, le palier correspondant et le palier suivant.
+- **Progression automatique des séances** : une séance vise le premier palier que vous n'avez pas encore validé. Réussi sur toutes les séries, le niveau monte et la séance suivante propose le palier d'après ; manqué, la même cible revient — sans recul. Vous pouvez toujours saisir une cible à la main : elle est alors figée (badge « cible manuelle » sur l'accueil) jusqu'à ce que vous la remettiez sur la valeur proposée.
 - **Interface web locale** (Flask) pour démarrer/mettre en pause une séance, suivre l'état en direct via le flux caméra, consulter l'historique et les records.
 - **Création de séances personnalisées** : composez vos propres circuits d'exercices depuis l'interface web, avec réorganisation des exercices par glisser-déposer.
 
@@ -22,7 +23,7 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 - `audio/` — Coach vocal : sélection et déclenchement des annonces (`coach.py`), lecture des fichiers son (`lecteur.py`), banque de fichiers audio (`Fichiers/`) et outils de génération/nettoyage des sons (`nettoyer_sons.py`, `generer_annonces_manquantes.py`).
 - `historique/` — Persistance SQLite des séances, statistiques et records (`database.py`, base `personaltrainer.db`).
 - `web/` — Serveur Flask (`app.py`) exposant l'API et les pages (démarrage/pause de séance, historique, records, création/édition de séances) et les templates HTML associés (`templates/`).
-- `progression/` — Moteur de progression : le barème de paliers de chaque exercice (`paliers.py`) et la déduction du niveau atteint à partir de l'historique (`niveaux.py`).
+- `progression/` — Moteur de progression : le barème de paliers de chaque exercice (`paliers.py`), la déduction du niveau atteint à partir de l'historique (`niveaux.py`) et l'application des objectifs aux séances (`objectifs.py`).
 - `core/` — État partagé entre la boucle caméra et le site web (`state.py`).
 - `scripts/` — Outils de développement manuels, hors du chemin critique de l'application (`script_verification_positions.py`, `script_niveaux.py`).
 

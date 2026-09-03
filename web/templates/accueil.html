@@ -113,6 +113,7 @@
         .number-control button { width: 34px; height: 30px; padding: 0; border: 1px solid var(--border-strong); border-radius: 5px; background: transparent; color: var(--teal); cursor: pointer; }
         .save-session { margin-top: 12px; padding: 8px 12px; border: 1px solid var(--teal); border-radius: 999px; background: transparent; color: var(--teal); cursor: pointer; font: 700 11px 'Space Grotesk', sans-serif; text-transform: uppercase; }
         .editor-equipment { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+        .badge-manuelle { display: inline-block; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--orange); color: var(--orange); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
         .last-series { margin-top: 4px; padding: 8px 10px; border-left: 2px solid var(--teal); background: rgba(27, 232, 196, .07); color: var(--muted); font-size: 12px; }
         .last-series strong { color: var(--text); }
 
@@ -169,7 +170,7 @@
                 <summary>Voir le contenu</summary>
                 <ul>
                 {% for exercice in seance.exercices %}
-                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}</li>
+                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}{% if exercice.cible_manuelle %} <span class="badge-manuelle" title="Cible saisie à la main : le moteur de progression ne la fait plus évoluer.">cible manuelle</span>{% endif %}</li>
                 {% endfor %}
                 </ul>
             </details>
@@ -180,8 +181,9 @@
                 <form class="session-editor" data-editor="{{ identifiant }}">
                     {% for exercice in seance.exercices %}
                     <div class="edit-exercise" data-exercice="{{ exercice.nom or exercice.exercice }}" data-mode="{{ exercice.mode }}" data-poids="{{ exercice.poids|default(0) }}" data-repos-series="{{ exercice.repos_entre_series|default(0) }}" data-repos-apres="{{ exercice.repos_apres|default(0) }}" data-entrelace="{{ exercice.entrelace_avec or '' }}">
-                        <label>{{ exercice.nom or exercice.exercice }}</label>
+                        <label>{{ exercice.nom or exercice.exercice }}{% if exercice.cible_manuelle %} <span class="badge-manuelle">cible manuelle</span>{% endif %}</label>
                         <p class="editor-equipment">Matériel : {{ exercice.materiel or 'Aucun matériel' }}</p>
+                        {% if exercice.cible_manuelle %}<p class="editor-equipment">Cible figée à la main : le moteur de progression ne la fait plus évoluer. Remets les valeurs qu'il propose pour la rebrancher.</p>{% endif %}
                         <span class="number-control" data-unit="Charge (kg)"><button type="button" data-delta="-1" aria-label="Diminuer la charge">−</button><input class="edit-weight" aria-label="Charge en kilogrammes" type="number" min="0" step="0.5" value="{{ exercice.poids|default(0) }}" title="Charge en kilogrammes"><button type="button" data-delta="1" aria-label="Augmenter la charge">+</button></span>
                         <span class="number-control" data-unit="Séries"><button type="button" data-delta="-1" aria-label="Retirer une série">−</button><input class="edit-series" aria-label="Séries" type="number" min="1" value="{{ exercice.series }}" title="Séries"><button type="button" data-delta="1" aria-label="Ajouter une série">+</button></span>
                         {% if exercice.mode in MODES_DUREE %}
