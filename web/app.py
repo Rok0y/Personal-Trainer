@@ -17,6 +17,7 @@ from historique.database import (
 )
 from progression.niveaux import etats_niveaux
 from progression.paliers import est_suivi_par_le_moteur, niveau_pour, palier
+from progression.programmes import etats_programmes
 from session.controleur import SessionManager
 from session.seances import catalogue_echauffements, catalogue_exercices
 
@@ -408,6 +409,14 @@ def records():
         "records.html",
         statistiques=statistiques_exercices(donnees),
         niveaux=etats_niveaux(donnees),
+    )
+
+
+@app.route("/programmes")
+def programmes():
+    return render_template(
+        "programmes.html",
+        programmes=etats_programmes(recuperer_historique()),
     )
 
 

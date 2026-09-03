@@ -334,6 +334,28 @@ def nombre_paliers(nom_exercice):
     return decoupage[-1]["niveau_max"] if decoupage else None
 
 
+def niveau_pour_volume(nom_exercice, volume_cible):
+    """Premier niveau dont le palier atteint ce volume, ou None s'il est hors
+    d'atteinte du barème.
+
+    Sert à traduire une prescription écrite avec un autre matériel que le sien
+    (« 4x12 à 28 kg ») en un niveau atteignable avec le sien : c'est le volume
+    qui fait foi, pas la charge, donc une répétition à 20 kg en vaut deux à
+    10 kg. Retourner None est une information utile — cela signifie qu'aucune
+    combinaison poids/séries/répétitions disponible n'y parvient.
+    """
+    total = nombre_paliers(nom_exercice)
+    if total is None:
+        return None
+    # Le volume est croissant le long du barème (c'est son invariant), donc le
+    # premier palier qui atteint la cible est le bon. Balayage linéaire : les
+    # barèmes tiennent en quelques dizaines à quelques centaines de paliers.
+    for niveau in range(1, total + 1):
+        if palier(nom_exercice, niveau).volume >= volume_cible:
+            return niveau
+    return None
+
+
 def _palier_genere(spec, echelle, niveau):
     if spec.cible_max is None:
         return Palier(

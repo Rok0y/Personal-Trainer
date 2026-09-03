@@ -85,7 +85,7 @@
 <body>
 <main>
     <header><h1>Records</h1><a class="back" href="/">Accueil</a></header>
-    <nav class="tabs" aria-label="Suivi"><a class="tab" href="/historique">Historique</a><a class="tab active" href="/records">Records</a></nav>
+    <nav class="tabs" aria-label="Suivi"><a class="tab" href="/historique">Historique</a><a class="tab active" href="/records">Records</a><a class="tab" href="/programmes">Programmes</a></nav>
     {% if not statistiques %}<p class="empty">Aucun record détaillé pour le moment.</p>{% endif %}
     <section class="grid">
         {% for nom, stat in statistiques.items() %}
