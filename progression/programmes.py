@@ -270,10 +270,20 @@ def etat_exigence(exigence, niveaux):
         "niveau_requis": requis,
         "palier_requis": palier(nom, requis) if requis else None,
         "niveau_actuel": acquis,
+        "actuel_resume": (
+            etat["actuel"].resume() if etat and etat.get("actuel") else None
+        ),
         # Hors d'atteinte : même le sommet du barème n'atteint pas ce volume.
         # Il faut du matériel en plus, aucun entraînement n'y suffira.
         "hors_atteinte": requis is None,
         "atteint": bool(requis and acquis and acquis >= requis),
+        # Avancement vers l'exigence, borné à 100 %. Un niveau au-dessus du
+        # requis ne « dépasse » pas la barre : l'exigence est simplement
+        # remplie.
+        "avancement": (
+            min(100, round(100 * (acquis or 0) / requis)) if requis else 0
+        ),
+        "restant": max(0, requis - (acquis or 0)) if requis else None,
     }
 
 
@@ -311,6 +321,96 @@ def etat_programme(cle, seances=None, niveaux=None):
             round(100 * len(atteintes) / len(exigences)) if exigences else 0
         ),
         "battu": bool(exigences) and len(atteintes) == len(exigences),
+    }
+
+
+def libelles_seances(programme):
+    """Libellés de séance du programme, dans leur ordre d'apparition."""
+    ordre = []
+    for exigence in programme.get("exigences", []):
+        libelle = exigence.get("seance") or "Séance"
+        if libelle not in ordre:
+            ordre.append(libelle)
+    return ordre
+
+
+def liaison_seances(cle, catalogue_seances=None):
+    """Associe chaque libellé de séance du programme à une séance de l'app.
+
+    Rien ne relie formellement les deux : un programme nomme ses séances
+    librement (« Push »), l'app les siennes autrement (« upper_push »). Plutôt
+    qu'un formulaire d'appariement de plus, on déduit le lien par
+    **recouvrement d'exercices** — la séance qui partage le plus d'exercices
+    avec le groupe l'emporte. Heuristique assumée, donc toujours affichée à
+    l'écran pour rester vérifiable ; None quand aucun exercice ne correspond.
+    """
+    programme = tous_les_programmes().get(cle)
+    if programme is None:
+        return {}
+
+    if catalogue_seances is None:
+        # Import différé : `session.seances` consomme déjà le moteur.
+        from session.seances import catalogue
+
+        catalogue_seances = catalogue()
+
+    contenus = {
+        nom: {exercice["nom"] for exercice in seance.get("exercices", [])}
+        for nom, seance in catalogue_seances.items()
+    }
+
+    liaison = {}
+    for libelle in libelles_seances(programme):
+        attendus = {
+            exigence["exercice"]
+            for exigence in programme["exigences"]
+            if (exigence.get("seance") or "Séance") == libelle
+        }
+        meilleur, recouvrement = None, 0
+        for nom, exercices in contenus.items():
+            commun = len(attendus & exercices)
+            if commun > recouvrement:
+                meilleur, recouvrement = nom, commun
+        liaison[libelle] = meilleur
+    return liaison
+
+
+def prochaine_seance(cle, historique, catalogue_seances=None):
+    """Séance du programme à enchaîner maintenant.
+
+    Le programme se parcourt en boucle : la prochaine est celle qui suit la
+    dernière effectivement réalisée. Une séance abandonnée ne compte pas — on
+    la repropose plutôt que de la considérer faite.
+    """
+    programme = tous_les_programmes().get(cle)
+    if programme is None:
+        return None
+
+    ordre = libelles_seances(programme)
+    if not ordre:
+        return None
+
+    liaison = liaison_seances(cle, catalogue_seances)
+    par_seance = {nom: libelle for libelle, nom in liaison.items() if nom}
+
+    # `recuperer_historique` rend les séances de la plus récente à la plus
+    # ancienne : la première qui appartient au programme est donc la dernière
+    # faite.
+    index = 0
+    for seance in historique:
+        if seance.get("statut") == "abandoned":
+            continue
+        libelle = par_seance.get(seance.get("nom"))
+        if libelle in ordre:
+            index = (ordre.index(libelle) + 1) % len(ordre)
+            break
+
+    libelle = ordre[index]
+    return {
+        "libelle": libelle,
+        "seance": liaison.get(libelle),
+        "position": index + 1,
+        "total": len(ordre),
     }
 
 

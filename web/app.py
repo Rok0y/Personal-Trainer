@@ -31,6 +31,7 @@ from progression.programmes import (
     est_personnalise,
     etats_programmes,
     libelle_charge,
+    prochaine_seance,
     supprimer_programme,
     tous_les_programmes,
 )
@@ -107,8 +108,14 @@ def index():
 
     if controleur.statut in ("idle", "ready"):
         seances = controleur.catalogue()
+        historique = recuperer_historique()
+        # Résumé des programmes pour l'accueil : où j'en suis, et surtout
+        # quelle séance enchaîner maintenant.
+        programmes = etats_programmes(historique)
+        for cle, programme in programmes.items():
+            programme["prochaine"] = prochaine_seance(cle, historique, seances)
         dernieres_series = {}
-        for seance in recuperer_historique():
+        for seance in historique:
             nom = seance.get("nom")
             if (
                 nom in seances
@@ -133,6 +140,7 @@ def index():
             selection=controleur.nom_selectionne,
             exercices=catalogue_exercices(),
             dernieres_series=dernieres_series,
+            programmes=programmes,
         )
 
     if controleur.statut in ("finished", "abandoned"):

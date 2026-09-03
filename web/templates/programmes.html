@@ -31,11 +31,17 @@
         .jauge { height:8px; border-radius:999px; background:var(--border); overflow:hidden; margin-bottom:6px; }
         .jauge span { display:block; height:100%; background:var(--teal); border-radius:999px; }
         .alerte { margin:14px 0 0; padding:10px 12px; border-left:2px solid var(--orange); background:rgba(255,138,76,.08); color:var(--muted); font-size:12px; }
-        table { width:100%; border-collapse:collapse; font-size:13px; }
-        th { text-align:left; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:600; padding:6px 10px 6px 0; border-bottom:1px solid var(--border); }
-        td { padding:9px 10px 9px 0; border-bottom:1px solid var(--border); color:var(--muted); vertical-align:top; }
-        td.exercice { color:var(--text); font-weight:600; }
-        .etat { font-weight:700; white-space:nowrap; }
+        .exigences { list-style:none; margin:0; padding:0; }
+        .exigence { padding:12px 0; border-bottom:1px solid var(--border); }
+        .exigence:last-child { border-bottom:none; }
+        .exigence-titre { display:flex; justify-content:space-between; align-items:baseline; gap:14px; }
+        .exigence-nom { color:var(--text); font-weight:600; font-size:14px; }
+        .exigence-barre { height:5px; border-radius:999px; background:var(--border); overflow:hidden; margin:8px 0 7px; }
+        .exigence-barre span { display:block; height:100%; background:var(--teal); border-radius:999px; }
+        .exigence.faite .exigence-barre span { background:var(--orange); }
+        .exigence-detail { margin:0; color:var(--muted); font-size:12.5px; }
+        .exigence-detail strong { color:var(--text); }
+        .etat { font-weight:700; white-space:nowrap; font-size:13px; }
         .etat.ok { color:var(--teal); }
         .etat.attente { color:var(--muted); }
         .etat.bloque { color:var(--orange); }
@@ -74,31 +80,32 @@
 
         {% for nom_seance, lignes in programme.seances.items() %}
         <h3>{{ nom_seance }}</h3>
-        <div class="table-defilante">
-        <table>
-            <thead>
-                <tr><th>Exercice</th><th>Prescrit</th><th>Volume</th><th>À atteindre</th><th>Acquis</th><th>État</th></tr>
-            </thead>
-            <tbody>
-                {% for ligne in lignes %}
-                <tr>
-                    <td class="exercice">{{ ligne.libelle }}</td>
-                    <td>{{ ligne.prescription }}</td>
-                    <td>{{ ligne.volume|round|int }}</td>
-                    <td>{% if ligne.palier_requis %}niveau {{ ligne.niveau_requis }} · {{ ligne.palier_requis.resume() }}{% else %}—{% endif %}</td>
-                    <td>{% if ligne.niveau_actuel %}niveau {{ ligne.niveau_actuel }}{% else %}—{% endif %}</td>
+        <ul class="exigences">
+            {% for ligne in lignes %}
+            <li class="exigence{% if ligne.atteint %} faite{% endif %}">
+                <div class="exigence-titre">
+                    <span class="exigence-nom">{{ ligne.exercice }}</span>
                     {% if ligne.hors_atteinte %}
-                    <td class="etat bloque">Matériel insuffisant</td>
+                    <span class="etat bloque">Matériel insuffisant</span>
                     {% elif ligne.atteint %}
-                    <td class="etat ok">Atteint</td>
+                    <span class="etat ok">Atteint</span>
                     {% else %}
-                    <td class="etat attente">{% if ligne.niveau_actuel %}<span class="ecart">{{ ligne.niveau_requis - ligne.niveau_actuel }}</span> niveaux{% else %}À commencer{% endif %}</td>
+                    <span class="etat attente">{{ ligne.avancement }} %</span>
                     {% endif %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        </div>
+                </div>
+                <div class="exigence-barre"><span style="width: {{ ligne.avancement }}%"></span></div>
+                <p class="exigence-detail">
+                    {% if ligne.palier_requis %}
+                    Objectif <strong>{{ ligne.palier_requis.resume() }}</strong>
+                    · actuellement {% if ligne.actuel_resume %}<strong>{{ ligne.actuel_resume }}</strong>{% else %}rien de validé{% endif %}
+                    {% if ligne.restant %}· encore {{ ligne.restant }} niveau{{ 's' if ligne.restant > 1 }}{% endif %}
+                    {% else %}
+                    Prescrit {{ ligne.prescription }}, hors de portée du matériel disponible.
+                    {% endif %}
+                </p>
+            </li>
+            {% endfor %}
+        </ul>
         {% endfor %}
     </section>
     {% endfor %}
