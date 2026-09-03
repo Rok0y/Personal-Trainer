@@ -14,7 +14,7 @@ from progression.paliers import (
     SPECS,
     est_suivi_par_le_moteur,
     niveau_pour,
-    nombre_paliers,
+    dernier_palier_borne,
     palier,
     tranches,
     unite,
@@ -38,13 +38,25 @@ def afficher_bareme():
         if spec.cible_max is None:
             print(f"  {nom:<34} {palier(nom, 1).resume()} puis sans fin, par {spec.pas}")
             continue
+        def decrire(tranche):
+            if tranche["niveau_max"] is None:
+                # Tranche ouverte : plus de plafond de répétitions.
+                return (
+                    f"{tranche['series']}x{tranche['cible_min']}+ à"
+                    f" {tranche['poids']:g}kg (n{tranche['niveau_min']} et au-delà)"
+                )
+            return (
+                f"{tranche['series']}x{tranche['cible_min']}-{tranche['cible_max']}"
+                f" à {tranche['poids']:g}kg"
+                f" (n{tranche['niveau_min']}-{tranche['niveau_max']},"
+                f" vol {tranche['volume_max']:g})"
+            )
+
         decoupage = " | ".join(
-            f"{tranche['poids']:g}kg {tranche['cible_min']}-{tranche['cible_max']}"
-            f" (n{tranche['niveau_min']}-{tranche['niveau_max']},"
-            f" vol {tranche['volume_max']:g})"
-            for tranche in tranches(nom)
+            decrire(tranche)
+            for tranche in tranches(nom, series_max=spec.series_max)
         )
-        print(f"  {nom}  ({nombre_paliers(nom)} paliers)")
+        print(f"  {nom}  ({dernier_palier_borne(nom)} paliers bornés, puis sans fin)")
         print(f"      {decoupage}")
 
 
@@ -52,14 +64,10 @@ def verifier_monotonie_volume():
     """Le volume ne doit jamais redescendre d'un palier au suivant."""
     titre("VÉRIFICATION : LE VOLUME NE REDESCEND JAMAIS")
     for nom, spec in SPECS.items():
-        # Tout le barème quand il est borné, sinon deux séries de plus que la
-        # base : assez pour couvrir les bascules.
-        plafond = spec.series_max if spec.series_max is not None else spec.series + 2
-        dernier = (
-            tranches(nom, series_max=plafond)[-1]["niveau_max"]
-            if spec.cible_max is not None
-            else 40
-        )
+        # Tout le barème borné, plus quelques paliers de la tranche ouverte
+        # pour vérifier que le raccord ne fait pas redescendre le volume.
+        borne = dernier_palier_borne(nom)
+        dernier = (borne + 5) if borne else 40
         precedent = None
         regressions = []
         for niveau in range(1, dernier + 1):

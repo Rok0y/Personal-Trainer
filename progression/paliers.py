@@ -26,6 +26,14 @@ fois l'haltère le plus lourd épuisé. Un exercice au poids du corps n'a qu'une
 valeur de poids possible : sa deuxième roue ne tourne jamais et le barème se
 réduit de lui-même à « cible puis séries », sans cas particulier dans le code.
 
+**Le barème n'a pas de fin.** Une fois l'haltère le plus lourd et le plafond de
+séries atteints, il ne reste qu'un axe : les répétitions, qui montent alors
+sans plafond (la *tranche ouverte*, `longueur` à None dans `_iterer_tranches`).
+Conséquence importante — aucun objectif n'est jamais « hors d'atteinte » : il
+peut demander beaucoup de répétitions, mais son palier existe toujours. C'est
+pourquoi il n'existe pas de « nombre total de paliers », seulement un
+`dernier_palier_borne` qui repère où commence cette dernière tranche.
+
 Le niveau d'un exercice n'est *pas* stocké : il se déduit de l'historique
 (voir `progression/niveaux.py`). Ce module ne connaît que le barème.
 """
@@ -244,16 +252,18 @@ def echelle_exercice(nom_exercice):
     return retenue or echelle[:1]
 
 
-def _premiere_cible(spec, volume_a_egaler, series, poids):
+def _premiere_cible(spec, volume_a_egaler, series, poids, plafonnee=True):
     """Plus petite cible du barème qui tient le volume déjà atteint.
 
     Retourne None si même `cible_max` n'y suffit pas : ce cran de poids est
-    alors inatteignable sans régresser, et le barème l'ignore.
+    alors inatteignable sans régresser, et le barème l'ignore. `plafonnee` à
+    False lève cette limite, pour la tranche ouverte où les répétitions ne sont
+    plus bornées.
     """
     cible = spec.cible_min
     while volume(series, cible, poids) < volume_a_egaler:
         cible += spec.pas
-        if cible > spec.cible_max:
+        if plafonnee and cible > spec.cible_max:
             return None
     return cible
 
@@ -261,8 +271,11 @@ def _premiere_cible(spec, volume_a_egaler, series, poids):
 def _iterer_tranches(spec, echelle):
     """Tranches successives du barème : (séries, poids, cible de départ, longueur).
 
-    Générateur **potentiellement infini** : sans `series_max`, on peut toujours
-    ajouter une série. Tout appelant doit donc s'arrêter par lui-même.
+    Une `longueur` à None marque la **tranche ouverte** : la dernière, celle où
+    tout est épuisé sauf les répétitions, qui montent alors sans plafond.
+
+    Générateur **infini** : il se termine toujours par cette tranche ouverte, à
+    laquelle tout appelant doit s'arrêter par lui-même.
     """
     volume_atteint = 0
 
@@ -284,10 +297,16 @@ def _iterer_tranches(spec, echelle):
         series += 1
         depart = _premiere_cible(spec, volume_atteint, series, poids)
         if depart is None:
-            return
+            break
         longueur = (spec.cible_max - depart) // spec.pas + 1
         yield series, poids, depart, longueur
         volume_atteint = volume(series, spec.cible_max, poids)
+
+    # Tout est épuisé : le plafond de répétitions saute, et elles montent
+    # indéfiniment. C'est ce qui garantit qu'aucun objectif n'est jamais hors
+    # d'atteinte — il demandera beaucoup de répétitions, mais il existe.
+    depart = _premiere_cible(spec, volume_atteint, series, poids, plafonnee=False)
+    yield series, poids, depart, None
 
 
 def tranches(nom_exercice, series_max=None):
@@ -310,6 +329,21 @@ def tranches(nom_exercice, series_max=None):
     ):
         if series > plafond:
             break
+        if longueur is None:
+            # Tranche ouverte : ni fin, ni volume maximum. On la décrit quand
+            # même, c'est là que le barème se termine réellement.
+            resultat.append(
+                {
+                    "series": series,
+                    "poids": poids,
+                    "cible_min": depart,
+                    "cible_max": None,
+                    "niveau_min": premier_niveau,
+                    "niveau_max": None,
+                    "volume_max": None,
+                }
+            )
+            break
         resultat.append(
             {
                 "series": series,
@@ -325,34 +359,61 @@ def tranches(nom_exercice, series_max=None):
     return resultat
 
 
-def nombre_paliers(nom_exercice):
-    """Nombre total de paliers d'un exercice, ou None si le barème est sans fin."""
+def dernier_palier_borne(nom_exercice):
+    """Dernier niveau avant la tranche ouverte, où les répétitions s'envolent.
+
+    Le barème n'a pas de fin — passé le poids maximum et le plafond de séries,
+    les répétitions montent indéfiniment —, donc « nombre total de paliers »
+    n'a pas de sens. Ce repère sert seulement à l'affichage et à l'outillage.
+    """
     spec = SPECS.get(nom_exercice)
-    if spec is None or spec.cible_max is None or spec.series_max is None:
+    if spec is None or spec.cible_max is None:
         return None
-    decoupage = tranches(nom_exercice, series_max=spec.series_max)
-    return decoupage[-1]["niveau_max"] if decoupage else None
+    bornees = [
+        tranche
+        for tranche in tranches(nom_exercice, series_max=spec.series_max)
+        if tranche["niveau_max"] is not None
+    ]
+    return bornees[-1]["niveau_max"] if bornees else None
 
 
 def niveau_pour_volume(nom_exercice, volume_cible):
-    """Premier niveau dont le palier atteint ce volume, ou None s'il est hors
-    d'atteinte du barème.
+    """Premier niveau dont le palier atteint ce volume.
 
     Sert à traduire une prescription écrite avec un autre matériel que le sien
     (« 4x12 à 28 kg ») en un niveau atteignable avec le sien : c'est le volume
     qui fait foi, pas la charge, donc une répétition à 20 kg en vaut deux à
-    10 kg. Retourner None est une information utile — cela signifie qu'aucune
-    combinaison poids/séries/répétitions disponible n'y parvient.
+    10 kg. Grâce à la tranche ouverte, un volume est **toujours** atteignable —
+    il demandera peut-être beaucoup de répétitions, mais le palier existe.
     """
-    total = nombre_paliers(nom_exercice)
-    if total is None:
+    spec = SPECS.get(nom_exercice)
+    if spec is None:
         return None
-    # Le volume est croissant le long du barème (c'est son invariant), donc le
-    # premier palier qui atteint la cible est le bon. Balayage linéaire : les
-    # barèmes tiennent en quelques dizaines à quelques centaines de paliers.
-    for niveau in range(1, total + 1):
-        if palier(nom_exercice, niveau).volume >= volume_cible:
-            return niveau
+
+    if spec.cible_max is None:
+        # Barème déjà linéaire et sans fin : pas de tranches à parcourir.
+        # `_iterer_tranches` planterait sur son `cible_max` absent.
+        echelle = echelle_exercice(nom_exercice)
+        cible = spec.cible_min
+        while volume(spec.series, cible, echelle[0]) < volume_cible:
+            cible += spec.pas
+        return (cible - spec.cible_min) // spec.pas + 1
+
+    premier_niveau = 1
+    for series, poids, depart, longueur in _iterer_tranches(
+        spec, echelle_exercice(nom_exercice)
+    ):
+        dernier = (
+            None if longueur is None else depart + (longueur - 1) * spec.pas
+        )
+        # Le volume croît le long du barème : la bonne tranche est la première
+        # dont la cible haute suffit — et la tranche ouverte suffit toujours.
+        if dernier is None or volume(series, dernier, poids) >= volume_cible:
+            cible = depart
+            while volume(series, cible, poids) < volume_cible:
+                cible += spec.pas
+            return premier_niveau + (cible - depart) // spec.pas
+        premier_niveau += longueur
     return None
 
 
@@ -368,7 +429,9 @@ def _palier_genere(spec, echelle, niveau):
 
     restant = niveau
     for series, poids, depart, longueur in _iterer_tranches(spec, echelle):
-        if restant <= longueur:
+        # `longueur` à None : tranche ouverte, elle contient tous les niveaux
+        # restants quels qu'ils soient.
+        if longueur is None or restant <= longueur:
             return Palier(
                 niveau=niveau,
                 poids=poids,
@@ -452,16 +515,20 @@ def _niveaux_candidats(spec, echelle, poids, series, cible):
             break
 
         if poids_tranche <= poids:
-            # Plus haute cible de la tranche que le volume réalisé couvre.
+            # Plus haute cible de la tranche que le volume réalisé couvre. La
+            # tranche ouverte n'a pas de plafond de cible, mais la boucle reste
+            # bornée par le volume réalisé.
             atteinte = depart
             while (
-                atteinte + spec.pas <= spec.cible_max
-                and volume(series_tranche, atteinte + spec.pas, poids_tranche)
-                <= volume_realise
-            ):
+                longueur is None or atteinte + spec.pas <= spec.cible_max
+            ) and volume(
+                series_tranche, atteinte + spec.pas, poids_tranche
+            ) <= volume_realise:
                 atteinte += spec.pas
             candidats.append(premier_niveau + (atteinte - depart) // spec.pas)
 
+        if longueur is None:
+            break
         premier_niveau += longueur
 
     return candidats
