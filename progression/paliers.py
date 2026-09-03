@@ -1,9 +1,11 @@
 """Table de paliers d'un exercice : la brique de base du moteur de progression.
 
 Un palier est un triplet (poids, séries, cible) et un *niveau* en est l'index,
-à partir de 1. La liste des paliers n'est jamais matérialisée : le gainage
-progresse indéfiniment (`cible_max` à None), donc le barème est une fonction du
-niveau, pas un tableau que l'on pourrait parcourir.
+à partir de 1. La liste des paliers n'est jamais matérialisée : une spec peut
+décrire un barème sans fin (`cible_max` à None), donc le barème est une
+fonction du niveau, pas un tableau que l'on pourrait parcourir. Aucune spec
+n'use de cette liberté aujourd'hui — le gainage a fini par recevoir un plafond
+à deux minutes — mais le mécanisme la préserve.
 
 **L'invariant du barème est le volume** (séries x cible x poids), qui ne
 redescend jamais d'un palier au suivant. C'est ce qui décide où repart la cible
@@ -45,6 +47,12 @@ ECHELLE_DEUX_HALTERES = (2, 3, 4, 5, 6, 8, 10)
 #: Poids du corps : une seule valeur, donc la roue du poids ne tourne jamais.
 SANS_CHARGE = (0,)
 
+#: Plafond de séries commun à tous les exercices. Un barème qui monterait à
+#: huit séries de pompes proposerait une séance que personne ne fait : passé ce
+#: point, la progression relève d'une variante plus dure du mouvement, pas
+#: d'une série de plus.
+SERIES_MAX_PAR_DEFAUT = 6
+
 #: Seules ces clés peuvent être surchargées sur un palier. Une surcharge
 #: corrige un palier existant, elle n'en insère ni n'en supprime jamais :
 #: sinon tous les niveaux au-dessus se décaleraient et l'historique déjà
@@ -76,9 +84,10 @@ class Palier:
 class SpecProgression:
     """Règle de progression d'un exercice, d'où découlent tous ses paliers.
 
-    `cible_max` à None décrit un barème sans fin (le gainage) : ni le poids ni
-    les séries n'entrent alors jamais en jeu, et la question du volume ne se
-    pose pas puisque la cible ne redescend jamais.
+    `cible_max` à None décrit un barème sans fin : ni le poids ni les séries
+    n'entrent alors jamais en jeu, puisque la fourchette de cible n'est jamais
+    épuisée, et la question du volume ne se pose pas — la cible ne redescend
+    jamais.
     """
 
     series: int
@@ -86,7 +95,10 @@ class SpecProgression:
     cible_max: int | None = None
     pas: int = 1
     unite: str = UNITE_REPETITIONS
-    series_max: int | None = None
+    #: Au-delà de six séries dures, chaque série supplémentaire coûte du temps
+    #: et de la fatigue pour un rendement qui s'effondre : le barème s'arrête
+    #: là plutôt que de proposer des séances interminables.
+    series_max: int | None = SERIES_MAX_PAR_DEFAUT
     #: Fourchette d'haltères réellement pertinente pour cet exercice. Sans
     #: elle, tout partirait de 2 kg — un curl à 2 kg n'est pas un niveau 1,
     #: c'est un échauffement, et le barème gaspillerait ses premiers paliers.
@@ -149,16 +161,17 @@ SPECS = {
     ),
     # --- Abdos et gainage ---
     "Crunches": SpecProgression(series=3, cible_min=12, cible_max=25),
-    # Le gainage monte indéfiniment : pas de plafond, donc pas de bascule vers
-    # le poids ni vers les séries — il y aura bien un moment où ça ne passe plus.
+    # Le gainage plafonne à deux minutes par série : au-delà, tenir plus
+    # longtemps ne teste plus grand-chose, et c'est le nombre de séries qui
+    # prend le relais.
     "Gainage planche": SpecProgression(
-        series=3, cible_min=30, cible_max=None, pas=2, unite=UNITE_SECONDES
+        series=3, cible_min=30, cible_max=120, pas=2, unite=UNITE_SECONDES
     ),
     "Gainage planche laterale droite": SpecProgression(
-        series=1, cible_min=20, cible_max=None, pas=2, unite=UNITE_SECONDES
+        series=1, cible_min=20, cible_max=120, pas=2, unite=UNITE_SECONDES
     ),
     "Gainage planche laterale gauche": SpecProgression(
-        series=1, cible_min=20, cible_max=None, pas=2, unite=UNITE_SECONDES
+        series=1, cible_min=20, cible_max=120, pas=2, unite=UNITE_SECONDES
     ),
 }
 

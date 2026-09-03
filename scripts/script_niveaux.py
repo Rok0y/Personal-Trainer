@@ -51,9 +51,11 @@ def verifier_monotonie_volume():
     """Le volume ne doit jamais redescendre d'un palier au suivant."""
     titre("VÉRIFICATION : LE VOLUME NE REDESCEND JAMAIS")
     for nom, spec in SPECS.items():
-        # Deux séries de plus que la base : assez pour couvrir les bascules.
+        # Tout le barème quand il est borné, sinon deux séries de plus que la
+        # base : assez pour couvrir les bascules.
+        plafond = spec.series_max if spec.series_max is not None else spec.series + 2
         dernier = (
-            tranches(nom, series_max=spec.series + 2)[-1]["niveau_max"]
+            tranches(nom, series_max=plafond)[-1]["niveau_max"]
             if spec.cible_max is not None
             else 40
         )
