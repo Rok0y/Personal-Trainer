@@ -12,6 +12,9 @@ __pycache__/
 *.pyo
 *.pyd
 
+# Modèles MediaPipe (téléchargés au premier lancement, voir vision/detector.py)
+*.task
+
 # Environnements virtuels
 .venv/
 venv/
