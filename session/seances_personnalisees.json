@@ -173,8 +173,8 @@
   "upper_push": [
     {
       "exercice": "Developpé couché altères",
-      "poids": 10,
       "mode": "repetitions",
+      "poids": 10,
       "series": 4,
       "repetitions": 14,
       "duree": 0,
@@ -184,8 +184,8 @@
     },
     {
       "exercice": "Pompes",
-      "poids": 0,
       "mode": "repetitions",
+      "poids": 0,
       "series": 4,
       "repetitions": 11,
       "duree": 0,
@@ -195,10 +195,10 @@
     },
     {
       "exercice": "Développé épaule",
-      "poids": 8,
       "mode": "repetitions",
+      "poids": 5,
       "series": 3,
-      "repetitions": 12,
+      "repetitions": 15,
       "duree": 0,
       "repos_entre_series": 45,
       "repos_apres": 90,
@@ -206,21 +206,22 @@
     },
     {
       "exercice": "Elevations latérales",
-      "poids": 5,
       "mode": "repetitions",
+      "poids": 5,
       "series": 3,
-      "repetitions": 13,
+      "repetitions": 16,
       "duree": 0,
       "repos_entre_series": 45,
       "repos_apres": 90,
-      "commentaire": ""
+      "commentaire": "",
+      "cible_manuelle": true
     },
     {
       "exercice": "Extension Triceps",
-      "poids": 14,
       "mode": "repetitions",
+      "poids": 12,
       "series": 3,
-      "repetitions": 11,
+      "repetitions": 12,
       "duree": 0,
       "repos_entre_series": 60,
       "repos_apres": 0,
