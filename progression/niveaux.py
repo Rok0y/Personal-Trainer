@@ -16,6 +16,7 @@ from progression.paliers import (
     UNITE_REPETITIONS,
     UNITE_SECONDES,
     est_suivi_par_le_moteur,
+    exercices_suivis,
     niveau_pour,
     palier,
     unite,
@@ -129,3 +130,44 @@ def niveau_actuel(nom_exercice, seances=None):
     """Niveau d'un exercice, ou None s'il est hors barème ou non suivi."""
     entree = niveaux_par_exercice(seances).get(nom_exercice)
     return entree["niveau"] if entree else None
+
+
+def etat_niveau(nom_exercice, seances=None, niveaux=None):
+    """Tout ce qu'un écran a besoin de savoir sur le niveau d'un exercice.
+
+    Trois situations distinctes, qu'un affichage ne doit pas confondre :
+    `niveau` à None = **hors barème** (aucune performance n'atteint le premier
+    palier, ce qui n'est pas « niveau 0 ») ; `maximum_atteint` = le barème est
+    épuisé, il n'y a plus de palier au-dessus ; sinon `suivant` décrit le
+    palier suivant.
+
+    Volontairement sans notion de « pourcentage d'avancement » : un niveau dit
+    où l'on en est, pas ce qu'il reste à faire. La part de barème parcourue
+    n'aurait de sens que face à un objectif, ce qui relève de la couche
+    programme.
+    """
+    if not est_suivi_par_le_moteur(nom_exercice):
+        return None
+
+    niveaux = niveaux_par_exercice(seances) if niveaux is None else niveaux
+    entree = niveaux.get(nom_exercice)
+    niveau = entree["niveau"] if entree else None
+    suivant = palier(nom_exercice, (niveau or 0) + 1)
+
+    return {
+        "niveau": niveau,
+        "actuel": palier(nom_exercice, niveau) if niveau else None,
+        "suivant": suivant,
+        "premier": palier(nom_exercice, 1),
+        "maximum_atteint": niveau is not None and suivant is None,
+        "date": entree["date"] if entree else None,
+        "seance_id": entree["seance_id"] if entree else None,
+    }
+
+
+def etats_niveaux(seances=None):
+    """État de niveau de tous les exercices suivis, en une seule lecture."""
+    niveaux = niveaux_par_exercice(seances)
+    return {
+        nom: etat_niveau(nom, niveaux=niveaux) for nom in exercices_suivis()
+    }

@@ -14,6 +14,7 @@ from progression.paliers import (
     SPECS,
     est_suivi_par_le_moteur,
     niveau_pour,
+    nombre_paliers,
     palier,
     tranches,
     unite,
@@ -43,7 +44,7 @@ def afficher_bareme():
             f" vol {tranche['volume_max']:g})"
             for tranche in tranches(nom)
         )
-        print(f"  {nom}")
+        print(f"  {nom}  ({nombre_paliers(nom)} paliers)")
         print(f"      {decoupage}")
 
 

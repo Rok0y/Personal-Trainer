@@ -195,6 +195,11 @@ def est_suivi_par_le_moteur(nom_exercice):
     return nom_exercice in SPECS
 
 
+def exercices_suivis():
+    """Noms des exercices dotés d'un barème."""
+    return tuple(SPECS)
+
+
 def specification(nom_exercice):
     return SPECS.get(nom_exercice)
 
@@ -318,6 +323,15 @@ def tranches(nom_exercice, series_max=None):
         )
         premier_niveau += longueur
     return resultat
+
+
+def nombre_paliers(nom_exercice):
+    """Nombre total de paliers d'un exercice, ou None si le barème est sans fin."""
+    spec = SPECS.get(nom_exercice)
+    if spec is None or spec.cible_max is None or spec.series_max is None:
+        return None
+    decoupage = tranches(nom_exercice, series_max=spec.series_max)
+    return decoupage[-1]["niveau_max"] if decoupage else None
 
 
 def _palier_genere(spec, echelle, niveau):

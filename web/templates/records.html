@@ -50,6 +50,11 @@
         .card p { margin:7px 0; color:var(--muted); font-size:13px; }
         .card strong { color:var(--text); }
         .pb { color:var(--orange) !important; font-size:15px !important; }
+        .niveau-resume { margin:6px 0 0 !important; color:var(--teal) !important; font-size:13px !important; font-weight:600; }
+        .niveau-resume.absent { color:var(--muted) !important; font-weight:400; }
+        .niveau { margin-top:18px; border-top:1px solid var(--border); padding-top:16px; }
+        .niveau > strong { display:block; margin-bottom:10px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+        .niveau-note { font-size:12px !important; font-style:italic; }
         .progression { margin-top:18px; border-top:1px solid var(--border); padding-top:16px; }
         .progression > strong { display:block; margin-bottom:10px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
         .chart-container { width:100%; }
@@ -74,11 +79,19 @@
         {% for nom, stat in statistiques.items() %}
         {% set valeur_pb = stat.pb.valeur or 0 %}
         {% if stat.mode in ('maintien', 'chrono') %}{% set unite = 'secondes' %}{% elif stat.meilleur_volume.valeur > 0 %}{% set unite = 'kg de volume' %}{% else %}{% set unite = 'repetitions' %}{% endif %}
+        {% set etat = niveaux.get(nom) %}
         <details class="card">
             <summary>
                 <div class="summary-info">
                     <h2>{{ nom }}</h2>
                     <p class="pb"><strong>PB :</strong> {{ valeur_pb|round(1) }} {{ unite }}</p>
+                    {% if etat %}
+                        {% if etat.niveau %}
+                        <p class="niveau-resume">Niveau {{ etat.niveau }} · {{ etat.actuel.resume() }}</p>
+                        {% else %}
+                        <p class="niveau-resume absent">Pas encore de niveau</p>
+                        {% endif %}
+                    {% endif %}
                 </div>
                 <span class="chevron" aria-hidden="true">+</span>
             </summary>
@@ -89,6 +102,19 @@
                 {% if stat.volume > 0 %}<p>Volume total : <strong>{{ stat.volume|round(1) }} kg</strong></p>{% endif %}
                 {% if stat.duree > 0 %}<p>Duree totale : <strong>{{ stat.duree|round(1) }} secondes</strong></p>{% endif %}
                 <p>PB du {{ stat.pb.date }}</p>
+                {% if etat %}
+                <div class="niveau">
+                    <strong>Progression par paliers</strong>
+                    {% if etat.niveau %}
+                    <p>Niveau <strong>{{ etat.niveau }}</strong> : <strong>{{ etat.actuel.resume() }}</strong>{% if etat.date %}, validé le {{ etat.date }}{% endif %}</p>
+                    {% if etat.maximum_atteint %}
+                    <p class="niveau-note">Barème épuisé, il n'y a plus de palier au-dessus. La suite passe par une variante plus difficile du mouvement.</p>
+                    {% endif %}
+                    {% else %}
+                    <p>Aucune performance n'atteint encore le premier palier : <strong>{{ etat.premier.resume() }}</strong>.</p>
+                    {% endif %}
+                </div>
+                {% endif %}
                 <div class="progression" data-progression='{{ stat.progression|tojson }}' data-mode="{{ stat.mode }}" data-cle="{% if stat.mode in ('maintien', 'chrono') %}duree{% elif stat.meilleur_volume.valeur > 0 %}volume{% else %}repetitions{% endif %}" data-unite="{{ unite }}">
                     <strong>Progression</strong>
                     <div class="chart-container"></div>

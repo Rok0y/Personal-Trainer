@@ -13,6 +13,7 @@ from historique.database import (
     supprimer_exercice_de_seance,
     supprimer_seance,
 )
+from progression.niveaux import etats_niveaux
 from session.controleur import SessionManager
 from session.seances import catalogue_echauffements, catalogue_exercices
 
@@ -403,6 +404,7 @@ def records():
     return render_template(
         "records.html",
         statistiques=statistiques_exercices(donnees),
+        niveaux=etats_niveaux(donnees),
     )
 
 
