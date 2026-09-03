@@ -65,6 +65,19 @@ def meilleurs_volumes(seances):
     }
 
 
+def seances_du_record(seances):
+    """Id de la séance qui détient le record de volume, par exercice.
+
+    Sert à n'afficher le badge « nouveau record » que sur la séance qui l'a
+    réellement établi, plutôt que sur toutes celles qui manient du poids.
+    """
+    return {
+        nom: stat["meilleur_volume"]["seance_id"]
+        for nom, stat in statistiques_exercices(seances).items()
+        if stat["meilleur_volume"]["valeur"]
+    }
+
+
 def noms_exercices_individuels():
     """Noms d'affichage des exercices du catalogue (utilisés par le mode "test")."""
     return {
@@ -437,6 +450,7 @@ def historique():
         "historique.html",
         seances=seances_entrainement(donnees),
         meilleurs=meilleurs_volumes(donnees),
+        record_seance_id=seances_du_record(donnees),
         detail=False,
     )
 
@@ -625,6 +639,7 @@ def detail_historique(seance_id):
         "historique.html",
         seances=[seance],
         meilleurs=meilleurs_volumes(donnees),
+        record_seance_id=seances_du_record(donnees),
         detail=True,
     )
 

@@ -136,7 +136,7 @@
             {% if exercice.series_detaillees %}
             <ul class="series">{% for serie in exercice.series_detaillees %}<li>Série {{ serie.serie }} · {{ serie.repetitions }} rep.{% if serie.poids %} · {{ serie.poids }} kg{% endif %}{% if serie.duree %} · {{ serie.duree|round(1) }} s{% endif %}</li>{% endfor %}</ul>
             {% else %}<p class="empty">Détail par série indisponible pour cette ancienne séance.</p>{% endif %}
-            {% if exercice.mode == 'repetitions' and exercice.poids %}<div class="best">Previous best : {{ meilleurs.get(exercice.nom, 0)|round(1) }} kg·répétitions</div>{% endif %}
+            {% if record_seance_id.get(exercice.nom) == seance.id %}<div class="best">Nouveau record : {{ meilleurs.get(exercice.nom, 0)|round(1) }} kg·répétitions</div>{% endif %}
         </section>
         {% endfor %}
         </div>
