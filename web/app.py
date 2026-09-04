@@ -7,13 +7,17 @@ import webbrowser
 from flask import Flask, Response, jsonify, redirect, render_template, request
 
 from core import state
+from core.utilisateur import connecter, deconnecter, utilisateur_connecte
 from historique.database import (
+    creer_utilisateur,
     derniere_performance,
     enregistrer_ancrage,
     enregistrer_ressentis,
+    lister_utilisateurs,
     recuperer_historique,
     recuperer_historique_ancrages,
     renommer_seance,
+    renommer_utilisateur,
     statistiques_exercices,
     supprimer_ancrage,
     supprimer_ancrages,
@@ -58,6 +62,40 @@ logging.getLogger("werkzeug").addFilter(FiltreEtat())
 
 app = Flask(__name__)
 controleur = SessionManager()
+
+#: Points d'entrée accessibles sans profil connecté : l'écran de connexion
+#: lui-même et ce qu'il appelle. Tout le reste passe par `_exiger_un_profil`.
+ROUTES_SANS_PROFIL = {
+    "static",
+    "page_connexion",
+    "lister_utilisateurs_api",
+    "creer_utilisateur_api",
+    "renommer_utilisateur_api",
+    "connecter_profil_api",
+    "deconnecter_profil_api",
+}
+
+
+@app.before_request
+def _exiger_un_profil():
+    """Aucune page ne s'affiche tant qu'un profil n'est pas choisi.
+
+    Un garde global plutôt qu'un test dans chaque vue : la couche données
+    lève déjà quand personne n'est connecté (`_profil_courant`), et il y a
+    trente routes — en oublier une donnerait une page d'erreur brute au lieu
+    de l'écran de connexion.
+    """
+    if request.endpoint in ROUTES_SANS_PROFIL or utilisateur_connecte():
+        return None
+    if request.path.startswith("/api/"):
+        return jsonify({"ok": False, "erreur": "Aucun profil connecté"}), 401
+    return redirect("/connexion")
+
+
+@app.context_processor
+def _profil_dans_les_templates():
+    """Rend le profil connecté disponible partout, sans le passer route par route."""
+    return {"profil": utilisateur_connecte()}
 
 
 def meilleurs_volumes(seances):
@@ -114,6 +152,97 @@ def executer_commande(fonction):
         )
     except (KeyError, RuntimeError) as erreur:
         return jsonify({"ok": False, "erreur": str(erreur)}), 409
+
+
+# ==========================================
+# PROFILS
+# ==========================================
+
+
+@app.route("/connexion")
+def page_connexion():
+    """Écran de sélection de profil, affiché à chaque lancement.
+
+    On la sert même si quelqu'un est déjà connecté : c'est aussi par ici que
+    passe le bouton « changer de profil ».
+    """
+    return render_template("connexion.html", profils=lister_utilisateurs())
+
+
+@app.route("/api/utilisateurs")
+def lister_utilisateurs_api():
+    return jsonify({"ok": True, "utilisateurs": lister_utilisateurs()})
+
+
+@app.route("/api/utilisateurs", methods=["POST"])
+def creer_utilisateur_api():
+    """Crée un profil et l'ouvre dans la foulée.
+
+    Créer sans connecter obligerait à recliquer sur la carte qu'on vient de
+    faire apparaître ; c'est la même intention en deux gestes.
+    """
+    donnees = request.get_json(silent=True) or {}
+    try:
+        profil = creer_utilisateur(donnees.get("nom"))
+    except ValueError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
+    try:
+        _ouvrir_session(profil["id"])
+    except RuntimeError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 409
+    return jsonify({"ok": True, "utilisateur": profil})
+
+
+@app.route("/api/utilisateurs/<int:utilisateur_id>", methods=["PUT"])
+def renommer_utilisateur_api(utilisateur_id):
+    """Renomme un profil. Purement cosmétique : rien ne le référence par son nom."""
+    donnees = request.get_json(silent=True) or {}
+    try:
+        profil = renommer_utilisateur(utilisateur_id, donnees.get("nom"))
+    except ValueError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
+    except KeyError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 404
+    connecte = utilisateur_connecte()
+    if connecte and connecte["id"] == profil["id"]:
+        connecter(profil["id"])
+    return jsonify({"ok": True, "utilisateur": profil})
+
+
+def _ouvrir_session(utilisateur_id):
+    """Bascule la session sur un profil, après avoir vidé la séance en mémoire.
+
+    `nouvelle_seance` lève si une séance tourne : on ne change pas de profil
+    au milieu d'un effort, sinon les séries déjà faites finiraient dans
+    l'historique de quelqu'un d'autre. Rien d'autre à invalider — il n'existe
+    aucun cache dans l'application, tout est recalculé à chaque lecture.
+    """
+    controleur.nouvelle_seance()
+    return connecter(utilisateur_id)
+
+
+@app.route("/api/session/connexion", methods=["POST"])
+def connecter_profil_api():
+    donnees = request.get_json(silent=True) or {}
+    try:
+        profil = _ouvrir_session(int(donnees.get("id") or 0))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "erreur": "Identifiant invalide"}), 400
+    except KeyError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 404
+    except RuntimeError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 409
+    return jsonify({"ok": True, "utilisateur": profil})
+
+
+@app.route("/api/session/deconnexion", methods=["POST"])
+def deconnecter_profil_api():
+    try:
+        controleur.nouvelle_seance()
+    except RuntimeError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 409
+    deconnecter()
+    return jsonify({"ok": True})
 
 
 # ==========================================

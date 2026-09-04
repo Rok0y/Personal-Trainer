@@ -95,3 +95,32 @@ button, a.btn {
     transition: border-color .2s ease, color .2s ease;
 }
 button:hover, a.btn:hover { border-color: var(--teal); color: var(--teal); }
+
+/* --------------------------------------------------------------------------
+   Onglets de suivi et pastille de profil.
+
+   Ces règles vivaient à l'identique dans les quatre pages qui portent la
+   navigation. Elles sont ici parce que le balisage, lui, est passé dans
+   `templates/_navigation.html` : une seule définition pour un seul include.
+   Chaque page ne garde de `.tabs` que sa marge, qui lui est propre.
+   -------------------------------------------------------------------------- */
+
+.tabs { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; align-items: center; }
+
+.tab {
+    padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border-strong);
+    color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 700;
+}
+.tab.active, .tab:hover { color: var(--teal); border-color: var(--teal); text-decoration: none; }
+
+/* Le profil se pose à l'autre bout de la barre : c'est une information sur
+   « qui écrit », pas une quatrième destination. */
+.tab-profil { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; color: var(--text); }
+.tab-profil:hover { color: var(--teal); }
+
+.profil-pastille {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--orange); color: var(--bg);
+    font: 700 11px 'Space Grotesk', sans-serif;
+}

@@ -117,12 +117,9 @@
         .number-control button { width: 34px; height: 30px; padding: 0; border: 1px solid var(--border-strong); border-radius: 5px; background: transparent; color: var(--teal); cursor: pointer; }
         .save-session { margin-top: 12px; padding: 8px 12px; border: 1px solid var(--teal); border-radius: 999px; background: transparent; color: var(--teal); cursor: pointer; font: 700 11px 'Space Grotesk', sans-serif; text-transform: uppercase; }
         .editor-equipment { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
-        .tabs { display: flex; gap: 8px; margin: -22px 0 26px; flex-wrap: wrap; }
-        .tab {
-            padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border-strong);
-            color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 700;
-        }
-        .tab:hover { color: var(--teal); border-color: var(--teal); }
+        /* Onglets et profil : styles communs dans base.css, seule la marge
+           est propre à cette page. */
+        .tabs { margin: -22px 0 26px; }
 
         .section-titre {
             margin: 0 0 12px; color: var(--muted); font-size: 12px; font-weight: 700;
@@ -187,11 +184,7 @@
         <p class="hint">Selectionne une seance, puis demarre quand tu es pret.</p>
     </header>
 
-    <nav class="tabs" aria-label="Suivi">
-        <a class="tab" href="/historique">Historique</a>
-        <a class="tab" href="/records">Records</a>
-        <a class="tab" href="/programmes">Programmes</a>
-    </nav>
+    {% include '_navigation.html' %}
 
     {% if programmes %}<p class="section-titre">Programme en cours</p>{% endif %}
     {% for cle, programme in programmes.items() %}

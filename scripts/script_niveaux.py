@@ -4,7 +4,11 @@ Outil de vérification manuelle, hors chemin critique de l'application : il ne
 touche à rien, il lit. Il sert à recaler les specs de `progression/paliers.py`
 avant que le moteur ne pilote quoi que ce soit.
 
-    python -m scripts.script_niveaux
+    python -m scripts.script_niveaux            # premier profil
+    python -m scripts.script_niveaux Sophie     # un profil précis (nom ou id)
+
+Le profil compte : niveaux, objectifs et historique sont cloisonnés, et il n'y
+a pas d'écran de connexion en ligne de commande.
 """
 
 import sys
@@ -19,8 +23,9 @@ from progression.paliers import (
     tranches,
     unite,
 )
+from core.utilisateur import connecter
 from progression.ressenti import evaluation
-from historique.database import recuperer_historique
+from historique.database import lister_utilisateurs, recuperer_historique
 from session.seances import CATALOGUE_EXERCICES, catalogue
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -206,8 +211,36 @@ def afficher_decision_objectifs(seances):
         )
 
 
-def principal():
+def choisir_profil(argument=None):
+    """Connecte un profil : celui demandé, sinon le premier."""
+    profils = lister_utilisateurs()
+    if not profils:
+        raise SystemExit(
+            "Aucun profil : lance l'application une fois pour en créer un."
+        )
+    if argument is None:
+        profil = profils[0]
+    else:
+        profil = next(
+            (
+                candidat
+                for candidat in profils
+                if str(candidat["id"]) == argument
+                or candidat["nom"].lower() == argument.lower()
+            ),
+            None,
+        )
+        if profil is None:
+            noms = ", ".join(candidat["nom"] for candidat in profils)
+            raise SystemExit(f"Profil inconnu : {argument}. Disponibles : {noms}")
+    connecter(profil["id"])
+    return profil
+
+
+def principal(argument=None):
+    profil = choisir_profil(argument)
     seances = recuperer_historique()
+    print(f"Profil : {profil['nom']}")
     print(f"{len(seances)} séance(s) dans l'historique.")
     afficher_bareme()
     verifier_monotonie_volume()
@@ -218,4 +251,4 @@ def principal():
 
 
 if __name__ == "__main__":
-    principal()
+    principal(sys.argv[1] if len(sys.argv) > 1 else None)

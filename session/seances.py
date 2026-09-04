@@ -44,6 +44,9 @@ from mouvements.exercices import (
 from progression.objectifs import (
     appliquer_a_blocs,
     appliquer_a_circuit,
+    definir_cible_manuelle,
+    est_cible_manuelle,
+    fusionner_cible_manuelle,
     objectifs_par_exercice,
 )
 from session.circuit import (
@@ -567,10 +570,38 @@ def _lire_seances_personnalisees():
 
 
 def enregistrer_seance_personnalisee(nom, blocs):
+    """Écrit une séance sur le disque, en préservant les marques des autres profils.
+
+    Point de passage unique vers le fichier : c'est donc ici que se recolle ce
+    qu'un enregistrement fait perdre. Une séance est partagée, mais le
+    formulaire qui la réécrit ne connaît que le profil connecté — sans cette
+    fusion, sauvegarder effacerait les cibles figées de tous les autres.
+
+    Seule exception connue : un renommage écrit sous une clé neuve, sans rien
+    à retrouver, et les marques des autres profils sur cette séance sont
+    perdues. On l'accepte — un renommage est rare et volontaire.
+    """
     donnees = _lire_seances_personnalisees()
+    _fusionner_cibles_manuelles(blocs, donnees.get(nom) or [])
     donnees[nom] = blocs
     with FICHIER_SEANCES_PERSONNALISEES.open("w", encoding="utf-8") as fichier:
         json.dump(donnees, fichier, ensure_ascii=False, indent=2)
+
+
+def _fusionner_cibles_manuelles(blocs, blocs_stockes):
+    """Recolle sur chaque bloc les marques des profils absents de la sauvegarde."""
+    stockees = {
+        bloc.get("exercice"): bloc.get("cible_manuelle") for bloc in blocs_stockes
+    }
+    for bloc in blocs:
+        valeur = fusionner_cible_manuelle(
+            bloc.get("cible_manuelle"), stockees.get(bloc.get("exercice"))
+        )
+        if valeur is None:
+            bloc.pop("cible_manuelle", None)
+        else:
+            bloc["cible_manuelle"] = valeur
+    return blocs
 
 
 def exporter_blocs(circuit):
@@ -608,7 +639,13 @@ def retirer_cible_manuelle(nom_seance, nom_exercice):
     trouve = False
     for bloc in blocs:
         if bloc.get("exercice") == nom_exercice:
-            bloc.pop("cible_manuelle", None)
+            # Seule *ma* marque saute : la séance est partagée, celle d'un
+            # autre profil sur le même bloc n'a pas à disparaître avec.
+            valeur = definir_cible_manuelle(bloc.get("cible_manuelle"), False)
+            if valeur is None:
+                bloc.pop("cible_manuelle", None)
+            else:
+                bloc["cible_manuelle"] = valeur
             trouve = True
     if not trouve:
         raise KeyError(f"Exercice inconnu dans cette séance : {nom_exercice}")
@@ -740,6 +777,10 @@ def catalogue():
             {
                 **bloc,
                 "nom": bloc["exercice"],
+                # Les blocs viennent du disque, où la marque est une liste de
+                # profils. L'affichage, lui, ne pose qu'une question :
+                # « est-ce figé pour moi ? »
+                "cible_manuelle": est_cible_manuelle(bloc),
                 "materiel": MATERIEL_EXERCICES.get(
                     bloc["exercice"],
                     "A préciser",

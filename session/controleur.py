@@ -1,5 +1,6 @@
 import threading
 
+from core.utilisateur import identifiant_connecte
 from progression.objectifs import marquer_cibles_manuelles
 from session.seances import (
     catalogue,
@@ -51,6 +52,7 @@ class SessionManager:
             if self.statut in ("running", "paused"):
                 raise RuntimeError("Une séance est déjà en cours")
             self.seance = creer_seance(nom)
+            self.seance.utilisateur_id = identifiant_connecte()
             self.nom_selectionne = nom
             self.statut = "ready"
             if self._reset_progression is not None:
@@ -62,6 +64,7 @@ class SessionManager:
             if self.statut in ("running", "paused"):
                 raise RuntimeError("Une séance est déjà en cours")
             self.seance = creer_seance_test(nom_exercice, mode)
+            self.seance.utilisateur_id = identifiant_connecte()
             self.nom_selectionne = "test"
             self.statut = "ready"
             if self._reset_progression is not None:
