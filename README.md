@@ -4,6 +4,30 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 
 ## Fonctionnalités principales
 
+- **Prise en main guidée pour un nouveau profil** : à sa création, un profil est
+  accueilli par un parcours qui présente, un par un, les exercices de la séance
+  qu'il a choisie. Pour chacun : une fiche qui explique comment s'installer et
+  comment exécuter le mouvement, puis un petit test devant la caméra — une seule
+  série, autant de répétitions que possible. L'application en déduit le point de
+  départ, l'affiche en clair (« 3x12 à 4 kg ») et laisse le corriger d'un cran
+  vers le haut ou vers le bas avant de le valider. Rien à réussir : chaque
+  exercice peut être passé, et le parcours reprend là où il s'est arrêté si on
+  quitte en cours de route.
+- **Fiches d'exercice** : chaque mouvement explique comment se placer (cadrage
+  caméra compris), comment l'exécuter et ce qu'il faut éviter. Consultables à
+  tout moment depuis l'onglet **Exercices**, et rappelées pendant la séance.
+- **Variantes assistées** : pompes inclinées, pompes et gainage sur les genoux,
+  squat sur chaise. Ce sont des exercices à part entière — ils ont leur barème,
+  leurs records et leur progression — et le test de calibration y renvoie quand
+  le mouvement complet est encore hors de portée. Les premiers paliers des
+  mouvements au poids du corps sont par ailleurs délibérément bas, pour que
+  quelqu'un qui débute ait toujours un objectif à sa mesure.
+- **Messages écrits pendant la séance** : en plus des corrections de forme, une
+  bande d'aide indique quoi faire — sortir du champ de la caméra le signale
+  désormais explicitement au lieu de figer l'écran en silence — et les consignes
+  du mouvement en cours restent affichées sur le côté. Ces messages sont
+  identifiés par une clé, de la même façon que les annonces vocales, en vue de
+  les faire dire par le coach.
 - **Détection de pose en temps réel** via la webcam et MediaPipe (squelette dessiné à l'écran).
 - **Comptage automatique des répétitions** et gestion des séries/circuits (répétitions, maintien, chrono, AMRAP).
 - **Échauffement guidé** : une séance peut commencer par des mouvements d'échauffement minutés (rotations articulaires, jumping jacks, pompes lentes...), annoncés à la voix et décomptés à l'écran. Le chrono se met en pause si vous sortez du champ de la caméra, et l'échauffement n'est comptabilisé ni dans les records ni dans l'historique.
@@ -18,7 +42,7 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 - **Recalage du niveau** : si votre historique ne reflète pas votre niveau réel (séance faite sans l'application, reprise après une interruption, premier usage), la page Records permet de le recaler. Vous n'entrez pas un numéro de niveau mais une performance que vous savez tenir — séries, répétitions ou secondes, charge — et le barème en déduit le niveau. L'historique antérieur cesse alors de compter pour cet exercice, ce qui permet aussi bien de monter que de descendre.
 - **Interface web locale** (Flask) pour démarrer/mettre en pause une séance, suivre l'état en direct via le flux caméra, consulter l'historique, les records et les programmes — accessibles par des onglets en haut de chaque page.
 - **Résumé de programme sur l'accueil** : avancement global — la moyenne de votre progression sur chaque exigence, pas seulement celles déjà bouclées — et, surtout, la prochaine séance à enchaîner, sélectionnable d'un clic. Les trois séances d'un programme se suivent en boucle ; une séance abandonnée est reproposée.
-- **Profils** : l'application demande à chaque lancement qui s'entraîne. Chaque profil garde son propre historique, ses records, ses niveaux et ses recalages ; les séances et les programmes, eux, sont communs à tout le monde. Un nouveau profil démarre sans historique — ses niveaux se construisent à partir de ses séances, ou d'un recalage depuis la page Records. Le profil connecté s'affiche à droite des onglets, et ce bouton ramène à l'écran de sélection. On ne change pas de profil pendant une séance en cours.
+- **Profils** : l'application demande à chaque lancement qui s'entraîne. Chaque profil garde son propre historique, ses records, ses niveaux et ses recalages ; les séances et les programmes, eux, sont communs à tout le monde. Un nouveau profil commence par la prise en main décrite plus haut, qui pose ses niveaux de départ ; ils évoluent ensuite au fil de ses séances, et restent recalables à tout moment depuis la page Records. Le profil connecté s'affiche à droite des onglets, et ce bouton ramène à l'écran de sélection. On ne change pas de profil pendant une séance en cours.
 - **Création de séances personnalisées** : composez vos propres circuits d'exercices depuis l'interface web, avec réorganisation des exercices par glisser-déposer.
 
 ## Architecture / organisation du code
@@ -29,8 +53,8 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 - `audio/` — Coach vocal : sélection et déclenchement des annonces (`coach.py`), lecture des fichiers son (`lecteur.py`), banque de fichiers audio (`Fichiers/`) et outils de génération/nettoyage des sons (`nettoyer_sons.py`, `generer_annonces_manquantes.py`).
 - `historique/` — Persistance SQLite des séances, statistiques et records (`database.py`, base `personaltrainer.db`).
 - `web/` — Serveur Flask (`app.py`) exposant l'API et les pages (démarrage/pause de séance, historique, records, création/édition de séances) et les templates HTML associés (`templates/`).
-- `progression/` — Moteur de progression : le barème de paliers de chaque exercice (`paliers.py`), la déduction du niveau atteint à partir de l'historique (`niveaux.py`), l'application des objectifs aux séances (`objectifs.py`), l'ajustement par le ressenti déclaré en fin de séance (`ressenti.py`) et les programmes sportifs (`programmes.py`).
-- `core/` — État partagé entre la boucle caméra et le site web (`state.py`) et identité du profil connecté (`utilisateur.py`).
+- `progression/` — Moteur de progression : le barème de paliers de chaque exercice (`paliers.py`), la déduction du niveau atteint à partir de l'historique (`niveaux.py`), l'application des objectifs aux séances (`objectifs.py`), l'ajustement par le ressenti déclaré en fin de séance (`ressenti.py`), les programmes sportifs (`programmes.py`) et le test de niveau d'un nouveau profil (`calibration.py`).
+- `core/` — État partagé entre la boucle caméra et le site web (`state.py`), identité du profil connecté (`utilisateur.py`) et catalogue des messages affichés à l'utilisateur (`messages.py`).
 - `scripts/` — Outils de développement manuels, hors du chemin critique de l'application (`script_verification_positions.py`, `script_niveaux.py`).
 
 Le point d'entrée de l'application est `main.py`, qui orchestre la boucle caméra, la machine à séances, le coach vocal et le serveur web. L'état partagé entre la boucle caméra et le site web transite par `core/state.py`.
@@ -49,7 +73,7 @@ Le point d'entrée de l'application est `main.py`, qui orchestre la boucle camé
 python main.py
 ```
 
-Au lancement, l'application initialise la base de données d'historique, ouvre la caméra, démarre le serveur Flask en arrière-plan et ouvre automatiquement le navigateur sur `http://127.0.0.1:5000`. La première page est l'**écran de sélection de profil** : rien ne s'affiche ni ne s'enregistre tant qu'un profil n'est pas choisi. Une base d'avant les profils est reprise telle quelle dans un profil nommé « Moi », renommable depuis cet écran. C'est ensuite depuis cette interface web que l'on choisit et pilote la séance ; le coach vocal et le comptage de répétitions se déclenchent en fonction des mouvements détectés devant la caméra.
+Au lancement, l'application initialise la base de données d'historique, ouvre la caméra, démarre le serveur Flask en arrière-plan et ouvre automatiquement le navigateur sur `http://127.0.0.1:5000`. La première page est l'**écran de sélection de profil** : rien ne s'affiche ni ne s'enregistre tant qu'un profil n'est pas choisi. Une base d'avant les profils est reprise telle quelle dans un profil nommé « Moi », renommable depuis cet écran. Un profil créé pour la première fois est dirigé vers la prise en main : l'application reste sur ce parcours tant qu'il n'est pas terminé. C'est ensuite depuis cette interface web que l'on choisit et pilote la séance ; le coach vocal et le comptage de répétitions se déclenchent en fonction des mouvements détectés devant la caméra.
 
 ## Tests
 
