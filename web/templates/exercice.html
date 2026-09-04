@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ fiche.nom }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<style>
+        main { width:min(880px,calc(100% - 40px)); }
+        header { display:flex; justify-content:space-between; align-items:center; gap:20px; border-bottom:1px solid var(--border); padding-bottom:22px; margin-bottom:22px; }
+        h1 { color:var(--teal); font-size:clamp(30px,5vw,52px); }
+        .back { color:var(--text); border:1px solid var(--border-strong); border-radius:999px; padding:9px 18px; text-transform:uppercase; letter-spacing:.06em; }
+        .bloc {
+            background:var(--glass); border:1px solid var(--border-strong); border-radius:12px;
+            padding:20px 22px; margin-bottom:14px; backdrop-filter:blur(18px);
+        }
+        .bloc h2 {
+            margin:0 0 12px; font:700 12px 'Space Grotesk',sans-serif;
+            letter-spacing:.16em; text-transform:uppercase; color:var(--muted);
+        }
+        .bloc.attention { border-color:var(--orange); }
+        .bloc.attention h2 { color:var(--orange); }
+        ol, ul { margin:0; padding-left:20px; line-height:1.75; font-size:15px; }
+        li { margin-bottom:4px; }
+        .resume { font-size:16px; line-height:1.6; margin:0 0 18px; color:var(--text); }
+        .niveau { display:flex; flex-wrap:wrap; gap:22px; }
+        .niveau div { min-width:120px; }
+        .niveau span { display:block; color:var(--muted); font:700 11px 'Space Grotesk',sans-serif; letter-spacing:.12em; text-transform:uppercase; margin-bottom:4px; }
+        .niveau strong { font:400 26px 'Bebas Neue','Space Grotesk',sans-serif; letter-spacing:.02em; }
+        .variantes { display:flex; flex-wrap:wrap; gap:10px; }
+        .variantes a.btn { text-transform:none; letter-spacing:0; }
+        .meta { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+        .etiquette {
+            padding:4px 10px; border-radius:999px; border:1px solid var(--border-strong);
+            color:var(--muted); font:700 11px 'Space Grotesk',sans-serif; letter-spacing:.04em;
+        }
+</style>
+</head>
+<body>
+<main>
+    <header>
+        <div>
+            <p class="kicker">{% if fiche.est_echauffement %}Échauffement{% else %}Exercice{% endif %}</p>
+            <h1>{{ fiche.nom }}</h1>
+        </div>
+        <a class="back" href="/exercices">Tous les exercices</a>
+    </header>
+
+    {% include "_navigation.html" %}
+
+    <p class="resume">{{ fiche.description }}</p>
+
+    <div class="meta">
+        {%- if fiche.materiel %}<span class="etiquette">{{ fiche.materiel }}</span>{% endif %}
+        {%- if not fiche.analyse_la_pose %}
+        <span class="etiquette">La caméra ne compte pas ce mouvement : suis le chrono</span>
+        {%- endif %}
+    </div>
+
+    {%- if etat %}
+    <div class="bloc">
+        <h2>Où j'en suis</h2>
+        <div class="niveau">
+            <div>
+                <span>Niveau</span>
+                <strong>{% if etat.niveau %}{{ etat.niveau }}{% else %}—{% endif %}</strong>
+            </div>
+            <div>
+                <span>{% if etat.niveau %}Palier acquis{% else %}Premier palier{% endif %}</span>
+                <strong>{{ (etat.actuel or etat.premier).resume() }}</strong>
+            </div>
+            {%- if etat.suivant %}
+            <div>
+                <span>Palier suivant</span>
+                <strong>{{ etat.suivant.resume() }}</strong>
+            </div>
+            {%- endif %}
+        </div>
+        {%- if not etat.niveau %}
+        <p class="hint" style="margin-top:14px;">
+            Rien dans l'historique n'atteint encore le premier palier. Le test de
+            calibration, ou simplement une première séance, posera le niveau.
+        </p>
+        {%- endif %}
+    </div>
+    {%- endif %}
+
+    {%- if fiche.mise_en_place %}
+    <div class="bloc">
+        <h2>Se mettre en place</h2>
+        <ol>
+            {% for etape in fiche.mise_en_place %}<li>{{ etape }}</li>{% endfor %}
+        </ol>
+    </div>
+    {%- endif %}
+
+    {%- if fiche.instructions %}
+    <div class="bloc">
+        <h2>Exécution</h2>
+        <ol>
+            {% for consigne in fiche.instructions %}<li>{{ consigne }}</li>{% endfor %}
+        </ol>
+    </div>
+    {%- endif %}
+
+    {%- if fiche.erreurs_frequentes %}
+    <div class="bloc attention">
+        <h2>À éviter</h2>
+        <ul>
+            {% for erreur in fiche.erreurs_frequentes %}<li>{{ erreur }}</li>{% endfor %}
+        </ul>
+    </div>
+    {%- endif %}
+
+    {%- if fiche.variante_facile or fiche.variante_difficile %}
+    <div class="bloc">
+        <h2>Adapter la difficulté</h2>
+        <div class="variantes">
+            {%- if fiche.variante_facile %}
+            <a class="btn" href="/exercice/{{ fiche.variante_facile|urlencode }}">Plus facile : {{ fiche.variante_facile }}</a>
+            {%- endif %}
+            {%- if fiche.variante_difficile %}
+            <a class="btn" href="/exercice/{{ fiche.variante_difficile|urlencode }}">Plus dur : {{ fiche.variante_difficile }}</a>
+            {%- endif %}
+        </div>
+    </div>
+    {%- endif %}
+</main>
+</body>
+</html>

@@ -38,9 +38,37 @@ def est_echauffement(bloc):
 
 
 class Exercice:
+    """Un mouvement : comment le détecter, et comment l'expliquer.
+
+    Les champs pédagogiques ne se recouvrent pas, et les confondre appauvrit la
+    fiche :
+
+    - `description` — une phrase, ce qu'est le mouvement ;
+    - `mise_en_place` — comment s'installer *avant* de commencer, cadrage
+      caméra compris : c'est ce qui manque le plus à quelqu'un qui découvre, et
+      ce qu'aucune détection ne saura jamais dire ;
+    - `instructions` — l'exécution, geste par geste ;
+    - `erreurs_frequentes` — de la pédagogie écrite, lue au calme avant l'effort ;
+    - `erreurs` — des **fonctions** de vérification temps réel, qui retournent
+      une clé de `core.messages`. Rien à voir avec la liste précédente : l'une
+      se lit, l'autre s'exécute trente fois par seconde.
+
+    `variante_facile` / `variante_difficile` nomment un autre exercice du
+    catalogue. C'est ce qui permet au test de calibration de rediriger quelqu'un
+    qui ne tient pas le premier palier, au lieu de le laisser « hors barème ».
+    """
 
     def __init__(
-        self, nom, detection=None, description="", instructions=None, erreurs=None
+        self,
+        nom,
+        detection=None,
+        description="",
+        instructions=None,
+        erreurs=None,
+        mise_en_place=None,
+        erreurs_frequentes=None,
+        variante_facile=None,
+        variante_difficile=None,
     ):
         """`detection` à None décrit un mouvement guidé sans analyse de pose
         (échauffement) : seuls les modes de `MODES_AVEC_DETECTION_OBLIGATOIRE`
@@ -50,6 +78,29 @@ class Exercice:
         self.description = description
         self.instructions = instructions or []
         self.erreurs = erreurs or []
+        self.mise_en_place = mise_en_place or []
+        self.erreurs_frequentes = erreurs_frequentes or []
+        self.variante_facile = variante_facile
+        self.variante_difficile = variante_difficile
+
+    def fiche(self):
+        """Ce que l'exercice a à dire, sous une forme sérialisable.
+
+        Point d'entrée unique de « qu'affiche-t-on d'un exercice ? » : la page
+        catalogue, la fiche détaillée, l'overlay de préparation et le tunnel
+        d'onboarding lisent tous ceci, donc enrichir la fiche se fait ici et
+        nulle part ailleurs.
+        """
+        return {
+            "nom": self.nom,
+            "description": self.description,
+            "mise_en_place": list(self.mise_en_place),
+            "instructions": list(self.instructions),
+            "erreurs_frequentes": list(self.erreurs_frequentes),
+            "variante_facile": self.variante_facile,
+            "variante_difficile": self.variante_difficile,
+            "analyse_la_pose": self.detection is not None,
+        }
 
 
 class BlocExercice:

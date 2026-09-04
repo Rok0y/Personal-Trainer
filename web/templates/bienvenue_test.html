@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test — {{ fiche.nom }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<style>
+        main { width:min(1150px,calc(100% - 40px)); }
+        h1 { color:var(--teal); font-size:clamp(30px,4.5vw,48px); }
+        .colonnes { display:grid; grid-template-columns:minmax(280px,1fr) minmax(320px,1.2fr); gap:16px; align-items:start; }
+        @media (max-width: 820px) { .colonnes { grid-template-columns:1fr; } }
+        .bloc {
+            background:var(--glass); border:1px solid var(--border-strong); border-radius:12px;
+            padding:20px 22px; margin-bottom:14px; backdrop-filter:blur(18px);
+        }
+        .sous-titre {
+            margin:0 0 10px; color:var(--muted);
+            font:700 12px 'Space Grotesk',sans-serif; letter-spacing:.16em; text-transform:uppercase;
+        }
+        ol, ul { margin:0; padding-left:20px; line-height:1.7; font-size:15px; }
+        li { margin-bottom:4px; }
+        .video { width:100%; border-radius:12px; border:1px solid var(--border-strong); display:block; background:#000; aspect-ratio:16/9; object-fit:cover; }
+        .compteur { text-align:center; padding:14px 0 4px; }
+        .compteur strong { display:block; font:400 84px/1 'Bebas Neue','Space Grotesk',sans-serif; color:var(--teal); }
+        .compteur span { color:var(--muted); font:700 12px 'Space Grotesk',sans-serif; letter-spacing:.16em; text-transform:uppercase; }
+        .consigne { margin:0; padding:12px 14px; border-radius:10px; border:1px solid var(--blue); color:var(--blue); font-size:14px; }
+        .consigne:empty { display:none; }
+        .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; align-items:center; }
+        .principal { border-color:var(--teal); color:var(--teal); }
+        .erreur { color:var(--orange); font-size:13px; min-height:18px; margin:10px 0 0; }
+        .resultat strong { font:400 34px 'Bebas Neue','Space Grotesk',sans-serif; color:var(--teal); display:block; margin:4px 0 12px; }
+        .champ-poids { display:flex; align-items:center; gap:10px; margin-top:12px; }
+        .champ-poids input {
+            width:90px; padding:10px 12px; border-radius:8px; border:1px solid var(--border-strong);
+            background:transparent; color:var(--text); font:700 14px 'Space Grotesk',sans-serif;
+        }
+        .champ-poids label { color:var(--muted); font-size:13px; }
+        [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+    <p class="kicker">Test de départ</p>
+    <h1>{{ fiche.nom }}</h1>
+    <p class="hint" id="pitch">
+        {%- if unite == 'secondes' -%}
+        Tiens la position aussi longtemps que tu peux, en gardant une forme correcte. Arrête-toi dès que la position se casse.
+        {%- else -%}
+        Fais autant de répétitions que tu peux, en gardant une forme correcte. Arrête-toi dès que la forme se dégrade — il n'y a rien à gagner à forcer.
+        {%- endif -%}
+    </p>
+
+    <div class="colonnes">
+        <div>
+            <div class="bloc">
+                {%- if fiche.mise_en_place %}
+                <p class="sous-titre">Se mettre en place</p>
+                <ol>{% for etape in fiche.mise_en_place %}<li>{{ etape }}</li>{% endfor %}</ol>
+                {%- endif %}
+                {%- if fiche.instructions %}
+                <p class="sous-titre" style="margin-top:16px;">Exécution</p>
+                <ol>{% for consigne in fiche.instructions %}<li>{{ consigne }}</li>{% endfor %}</ol>
+                {%- endif %}
+                {%- if fiche.erreurs_frequentes %}
+                <p class="sous-titre" style="margin-top:16px;">À éviter</p>
+                <ul>{% for erreur in fiche.erreurs_frequentes %}<li>{{ erreur }}</li>{% endfor %}</ul>
+                {%- endif %}
+            </div>
+        </div>
+
+        <div>
+            <!-- Avant le lancement -->
+            <div class="bloc" id="etape-preparation">
+                <p class="sous-titre">Avant de commencer</p>
+                <p style="margin:0 0 4px; line-height:1.6;">
+                    Installe-toi comme décrit à gauche, puis lance le test. La caméra
+                    compte toute seule ; pour arrêter, croise les bras en X devant toi
+                    ou clique sur le bouton.
+                </p>
+                <div class="champ-poids">
+                    <label for="poids">Charge utilisée (kg, 0 si aucune)</label>
+                    <input type="number" id="poids" value="0" min="0" step="0.5">
+                </div>
+                <div class="actions">
+                    <button type="button" class="principal" id="lancer">Lancer le test</button>
+                    <a class="btn" href="/bienvenue">Retour</a>
+                </div>
+                <p class="erreur" id="erreur" role="status"></p>
+            </div>
+
+            <!-- Pendant l'effort -->
+            <div class="bloc" id="etape-effort" hidden>
+                <img class="video" id="video" alt="Flux de la caméra">
+                <div class="compteur">
+                    <strong id="valeur">0</strong>
+                    <span id="unite">{{ 'secondes tenues' if unite == 'secondes' else 'répétitions' }}</span>
+                </div>
+                <p class="consigne" id="consigne" role="status"></p>
+                <div class="actions">
+                    <button type="button" class="principal" id="arreter">J'ai terminé</button>
+                </div>
+            </div>
+
+            <!-- Après l'effort -->
+            <div class="bloc resultat" id="etape-resultat" hidden>
+                <p class="sous-titre">Ton point de départ</p>
+                <p id="resume-max" style="margin:0;"></p>
+                <strong id="palier-propose"></strong>
+                <p class="hint" id="explication"></p>
+                <div class="actions" id="voisins"></div>
+                <div class="actions">
+                    <button type="button" class="principal" id="valider">C'est bon pour moi</button>
+                    <button type="button" id="recommencer">Refaire le test</button>
+                </div>
+                <p class="erreur" id="erreur-resultat" role="status"></p>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    const EXERCICE = {{ fiche.nom|tojson }};
+    const MODE = {{ mode|tojson }};
+    const UNITE = {{ unite|tojson }};
+    const VARIANTE_FACILE = {{ fiche.variante_facile|tojson }};
+
+    // Le compteur de `state` est remis à zéro dès que la série se termine :
+    // on retient donc le maximum vu pendant l'effort, et non la dernière
+    // valeur lue, qui vaudrait toujours 0 au moment de conclure.
+    let maximumObserve = 0;
+    let sondage = null;
+    let niveauRetenu = null;
+    // Le geste bras en X et le bouton mènent tous deux ici : sans ce drapeau,
+    // les deux chemins se déclenchent et l'estimation part deux fois.
+    let conclu = false;
+
+    const el = (id) => document.getElementById(id);
+
+    function afficherEtape(nom) {
+        el("etape-preparation").hidden = nom !== "preparation";
+        el("etape-effort").hidden = nom !== "effort";
+        el("etape-resultat").hidden = nom !== "resultat";
+    }
+
+    async function envoyer(url, corps, cibleErreur) {
+        const champ = el(cibleErreur || "erreur");
+        champ.textContent = "";
+        try {
+            const reponse = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(corps || {}),
+            });
+            const donnees = await reponse.json();
+            if (!donnees.ok) {
+                champ.textContent = donnees.erreur || "Une erreur est survenue.";
+                return null;
+            }
+            return donnees;
+        } catch (erreur) {
+            champ.textContent = "Le serveur ne répond pas.";
+            return null;
+        }
+    }
+
+    function mesure(etat) {
+        return UNITE === "secondes" ? (etat.temps_maintien || 0) : (etat.repetitions || 0);
+    }
+
+    async function sonder() {
+        let etat;
+        try {
+            etat = await (await fetch("/etat")).json();
+        } catch (erreur) {
+            return;
+        }
+        maximumObserve = Math.max(maximumObserve, mesure(etat));
+        el("valeur").textContent = Math.round(maximumObserve);
+        el("consigne").textContent = etat.erreur || etat.consigne || "";
+
+        // Fin de la série, quelle qu'en soit la cause : geste bras en X,
+        // bouton, ou fin de la séance de test.
+        const fini = ["finished", "abandoned", "idle", "ready"].includes(etat.statut_session)
+            || (etat.series_terminees || 0) > 0;
+        if (fini) {
+            conclure();
+        }
+    }
+
+    function demarrerSondage() {
+        if (sondage === null) sondage = setInterval(sonder, 200);
+    }
+
+    function arreterSondage() {
+        if (sondage !== null) { clearInterval(sondage); sondage = null; }
+    }
+
+    el("lancer").addEventListener("click", async () => {
+        maximumObserve = 0;
+        const reponse = await envoyer("/api/bienvenue/test", { exercice: EXERCICE });
+        if (!reponse) return;
+        // La source n'est posée qu'ici : un <img> vers /video ouvert dès le
+        // chargement retiendrait une connexion MJPEG pour rien.
+        el("video").src = "/video?t=" + Date.now();
+        el("valeur").textContent = "0";
+        afficherEtape("effort");
+        demarrerSondage();
+    });
+
+    el("arreter").addEventListener("click", async () => {
+        // La série peut déjà s'être terminée d'elle-même (geste bras en X) :
+        // l'abandon répondrait alors 409, qu'on ignore volontairement — ce qui
+        // compte est de conclure, pas l'état de la séance.
+        if (!conclu) await envoyer("/api/seance/abandonner", {}, "erreur-resultat");
+        el("erreur-resultat").textContent = "";
+        conclure();
+    });
+
+    async function conclure() {
+        if (conclu) return;
+        conclu = true;
+        arreterSondage();
+        el("video").removeAttribute("src");
+        const poids = Number(el("poids").value) || 0;
+        const reponse = await envoyer("/api/bienvenue/estimer", {
+            exercice: EXERCICE,
+            maximum: maximumObserve,
+            poids: poids,
+        }, "erreur-resultat");
+        if (!reponse) { afficherEtape("resultat"); return; }
+        afficherProposition(reponse.proposition);
+        afficherEtape("resultat");
+    }
+
+    function afficherProposition(proposition) {
+        const suffixe = UNITE === "secondes" ? " s tenues" : " répétitions";
+        el("resume-max").textContent = "Test réalisé : " + Math.round(proposition.maximum) + suffixe + ".";
+        el("voisins").innerHTML = "";
+
+        if (proposition.hors_bareme) {
+            niveauRetenu = null;
+            el("palier-propose").textContent = "Ce mouvement est encore trop dur";
+            el("explication").textContent = VARIANTE_FACILE
+                ? "C'est très bien de l'avoir essayé. Passons à une version plus accessible : " + VARIANTE_FACILE + "."
+                : "Passe cet exercice pour l'instant : le logiciel repartira du niveau le plus bas.";
+            el("valider").textContent = VARIANTE_FACILE ? "Essayer " + VARIANTE_FACILE : "Passer cet exercice";
+            return;
+        }
+
+        niveauRetenu = proposition.niveau;
+        el("valider").textContent = "C'est bon pour moi";
+        el("palier-propose").textContent = proposition.palier;
+        el("explication").textContent =
+            "C'est ce que tes séances demanderont au départ. Si ça te paraît à côté, choisis un autre cran — ça reste modifiable ensuite depuis la page Records.";
+
+        proposition.voisins.forEach((voisin) => {
+            const bouton = document.createElement("button");
+            bouton.type = "button";
+            bouton.textContent = (voisin.niveau < proposition.niveau ? "Plus facile : " : "Plus dur : ") + voisin.resume;
+            bouton.addEventListener("click", () => {
+                niveauRetenu = voisin.niveau;
+                el("palier-propose").textContent = voisin.resume;
+                el("explication").textContent = "Cran choisi à la main.";
+            });
+            el("voisins").appendChild(bouton);
+        });
+    }
+
+    el("valider").addEventListener("click", async () => {
+        if (niveauRetenu === null) {
+            // Hors barème : on ancre au plus bas et on redirige vers la
+            // variante si elle existe, plutôt que de laisser sans objectif.
+            const reponse = await envoyer("/api/bienvenue/passer", { exercice: EXERCICE }, "erreur-resultat");
+            if (!reponse) return;
+            window.location.href = VARIANTE_FACILE
+                ? "/bienvenue/test/" + encodeURIComponent(VARIANTE_FACILE)
+                : "/bienvenue";
+            return;
+        }
+        const reponse = await envoyer("/api/bienvenue/valider", {
+            exercice: EXERCICE,
+            niveau: niveauRetenu,
+        }, "erreur-resultat");
+        if (reponse) window.location.href = "/bienvenue";
+    });
+
+    el("recommencer").addEventListener("click", () => {
+        maximumObserve = 0;
+        conclu = false;
+        afficherEtape("preparation");
+    });
+</script>
+</body>
+</html>

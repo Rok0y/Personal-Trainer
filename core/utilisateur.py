@@ -17,7 +17,13 @@ employé dans `progression/paliers.py`.
 """
 
 _connecte = None
-"""Profil courant : `{"id": int, "nom": str}`, ou None si personne."""
+"""Profil courant, ou None si personne.
+
+Porte l'état du tunnel d'accueil (`onboarding_termine`, `seance_initiale`) en
+plus de l'identité, pour que le garde de `web/app.py` n'ait pas à interroger la
+base à chaque requête. Toute écriture sur ces colonnes doit donc appeler
+`rafraichir()`, sinon la session garde une vue périmée et le tunnel se rouvre.
+"""
 
 
 def utilisateur_connecte():
@@ -48,7 +54,7 @@ def connecter(utilisateur_id):
         raise KeyError(f"Profil {utilisateur_id} introuvable")
 
     global _connecte
-    _connecte = {"id": profil["id"], "nom": profil["nom"]}
+    _connecte = profil
     return _connecte
 
 
@@ -57,8 +63,20 @@ def deconnecter():
     _connecte = None
 
 
+def onboarding_a_faire():
+    """Le profil connecté doit-il encore passer le tunnel d'accueil ?
+
+    False sans personne de connecté : c'est le garde de profil qui traite ce
+    cas-là, et répondre True ici enverrait un visiteur anonyme vers /bienvenue
+    au lieu de /connexion.
+    """
+    if _connecte is None:
+        return False
+    return not _connecte.get("onboarding_termine", True)
+
+
 def rafraichir():
-    """Recharge le nom du profil connecté depuis la base (après un renommage)."""
+    """Recharge le profil connecté depuis la base (renommage, fin du tunnel)."""
     if _connecte is None:
         return None
     return connecter(_connecte["id"])

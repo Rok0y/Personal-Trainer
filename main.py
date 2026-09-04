@@ -9,6 +9,7 @@ import session.seances
 from audio.coach import annoncer_prochaine_etape, annoncer_temps_repos, coach
 from audio.lecteur import jouer
 from core import state
+from core.messages import texte
 from historique.database import enregistrer_seance, initialiser
 from mouvements.compteur import CompteurMouvement
 from mouvements.outils import HoldPosition
@@ -23,6 +24,7 @@ from session.moteur import (
     executer_mode,
     mettre_a_jour_prochain_exercice,
     oublier_durees,
+    poser_etape,
 )
 from vision.dessin import dessiner_squelette
 from vision.detector import PoseDetector
@@ -72,7 +74,9 @@ def publier_fin_de_seance(seance):
     state.temps_repos_restant = 0
     state.poids = 0
     state.exercice_actuel = "Séance terminée"
-    state.stage = "Terminé"
+    poser_etape(state, "termine")
+    state.consigne = None
+    state.fiche = None
 
     if seance.historique_enregistre or not seance.a_des_resultats():
         return
@@ -146,6 +150,14 @@ try:
         corps = detection.detect(frame) if controleur.statut == "running" else None
         if corps is None:
             state.erreur = None
+            # Sans ce message, une sortie du champ fige l'affichage sans rien
+            # dire : compteurs gelés, dernière étape figée, indistinguable de
+            # quelqu'un qui ne bouge simplement plus.
+            state.consigne = (
+                texte("corps_absent") if controleur.statut == "running" else None
+            )
+        else:
+            state.consigne = None
         """cette variable dit si il y a un corps à l'écran ou non"""
 
         if seance is not None and controleur.statut == "running" and corps is None:
@@ -154,7 +166,8 @@ try:
 
         if controleur.statut == "paused":
             state.phase = "pause"
-            state.stage = "En pause"
+            poser_etape(state, "pause")
+            state.consigne = texte("pause")
             corps = None
         if corps is not None:
             """soit si il détecte un corps à l'écran"""
@@ -269,7 +282,8 @@ try:
                         # Étape 1 : on attend que le maintien bras en X soit validé
                         progression, termine = preparation.update(corps)
                         state.progression_preparation = progression
-                        state.stage = "Préparation"
+                        poser_etape(state, "preparation")
+                        state.consigne = texte("preparation_bras_en_x")
 
                         if termine:
                             annoncer_prochaine_etape(
@@ -281,7 +295,8 @@ try:
                         # Étape 2 : compte à rebours avant de vraiment démarrer
                         temps_ecoule = time.time() - fin_preparation
                         state.progression_preparation = 100
-                        state.stage = "Prêt ! Redescendez les bras..."
+                        poser_etape(state, "preparation_prete")
+                        state.consigne = texte("preparation_decompte")
 
                         if temps_ecoule >= DELAI_AVANT_EXERCICE:
                             coach("debut_serie")
@@ -298,6 +313,10 @@ try:
 
                         # NOM DE L'EXERCICE
                         state.exercice_actuel = exercice.nom
+                        # Les consignes du mouvement existent depuis toujours
+                        # dans le catalogue ; c'est ici qu'elles atteignent
+                        # enfin l'écran.
+                        state.fiche = exercice.fiche()
 
                         # Execution du moteur d'exo
                         derniere_rep, repetitions, serie_terminee = executer_mode(
@@ -319,7 +338,7 @@ try:
 
                 elif seance.phase == "recuperation_serie":
                     state.exercice_actuel = "Récupération"
-                    state.stage = "Récupération"
+                    poser_etape(state, "recuperation")
 
                 # ----------------------------------
                 # REPOS ENTRE EXERCICES
@@ -327,7 +346,7 @@ try:
 
                 elif seance.phase == "repos_exercice":
                     state.exercice_actuel = "Repos"
-                    state.stage = "Repos"
+                    poser_etape(state, "repos")
 
             # ==================================
             # DESSIN DU SQUELETTE

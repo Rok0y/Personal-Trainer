@@ -12,6 +12,7 @@
     <a class="tab{% if onglet == 'historique' %} active{% endif %}" href="/historique">Historique</a>
     <a class="tab{% if onglet == 'records' %} active{% endif %}" href="/records">Records</a>
     <a class="tab{% if onglet == 'programmes' %} active{% endif %}" href="/programmes">Programmes</a>
+    <a class="tab{% if onglet == 'exercices' %} active{% endif %}" href="/exercices">Exercices</a>
     {%- if profil %}
     <a class="tab tab-profil" href="/connexion" title="Changer de profil">
         <span class="profil-pastille" aria-hidden="true">{{ profil.nom[:1]|upper }}</span>{{ profil.nom }}

@@ -30,16 +30,20 @@ from mouvements.exercices import (
     extension_triceps_au_dessus_de_la_tete,
     fente_droite,
     fente_gauche,
+    gainage_sur_les_genoux,
     oiseau,
     planche,
     planche_laterale_droite,
     planche_laterale_gauche,
     pompe,
+    pompes_inclinees,
+    pompes_sur_les_genoux,
     rowing_penche,
     rowing_unilateral_droit,
     rowing_unilateral_gauche,
     souleve_roumain,
     squat,
+    squat_sur_chaise,
 )
 from progression.objectifs import (
     appliquer_a_blocs,
@@ -84,6 +88,13 @@ CATALOGUE_EXERCICES = {
         rowing_unilateral_gauche,
         rowing_penche,
         oiseau,
+        # Variantes assistées : elles ouvrent le bas du barème, et sont donc
+        # des exercices comptabilisés à part entière (records, progression),
+        # pas des échauffements.
+        pompes_inclinees,
+        pompes_sur_les_genoux,
+        gainage_sur_les_genoux,
+        squat_sur_chaise,
     )
 }
 
@@ -107,6 +118,10 @@ MATERIEL_EXERCICES = {
     "Rowing unilateral gauche": "Un haltère et une chaise",
     "Rowing penche": "Deux haltères",
     "Oiseau": "Deux haltères",
+    "Pompes inclinées": "Une chaise",
+    "Pompes sur les genoux": "Un tapis",
+    "Gainage sur les genoux": "Un tapis",
+    "Squat sur chaise": "Une chaise",
 }
 
 CATALOGUE_ECHAUFFEMENTS = {
@@ -540,13 +555,36 @@ CATALOGUE_SEANCES = {
 
 
 def catalogue_exercices():
+    """Fiche complète de chaque exercice comptabilisé, matériel compris.
+
+    Les éditeurs de séance n'en lisent que `nom`, `description` et `materiel` ;
+    les pages de fiches lisent le reste. Un seul catalogue pour les deux, parce
+    que la fiche vient d'`Exercice.fiche()` — un seul endroit décide de ce qu'un
+    exercice a à dire.
+    """
     return {
         nom: {
-            "nom": exercice.nom,
-            "description": exercice.description,
+            **exercice.fiche(),
             "materiel": materiel_exercice(nom, 0),
         }
         for nom, exercice in CATALOGUE_EXERCICES.items()
+    }
+
+
+def fiche_mouvement(nom):
+    """Fiche d'un mouvement, exercice ou échauffement, ou None s'il est inconnu.
+
+    Passe par `catalogue_mouvements()` : une fiche doit pouvoir s'afficher pour
+    un échauffement comme pour un exercice, alors que le reste de l'application
+    tient les deux catalogues séparés.
+    """
+    mouvement = catalogue_mouvements().get(nom)
+    if mouvement is None:
+        return None
+    return {
+        **mouvement.fiche(),
+        "materiel": materiel_exercice(nom, 0),
+        "est_echauffement": nom in CATALOGUE_ECHAUFFEMENTS,
     }
 
 
@@ -554,8 +592,7 @@ def catalogue_echauffements():
     """Mouvements d'échauffement, pour l'optgroup dédié des éditeurs de séance."""
     return {
         nom: {
-            "nom": mouvement.nom,
-            "description": mouvement.description,
+            **mouvement.fiche(),
             "materiel": "",
         }
         for nom, mouvement in CATALOGUE_ECHAUFFEMENTS.items()
@@ -738,7 +775,21 @@ def creer_seance(nom):
     return appliquer_a_circuit(circuit)
 
 
-def creer_seance_test(nom_exercice, mode):
+#: Cible qu'aucun effort n'atteindra. Sert au test de calibration : la série
+#: ne se termine alors que par le geste bras en X ou le bouton, ce qui est
+#: exactement ce qu'on veut mesurer — un maximum, pas l'atteinte d'un objectif.
+#: Un mode « série illimitée » dans le moteur ferait la même chose au prix d'un
+#: cinquième mode à maintenir partout.
+CIBLE_SANS_LIMITE = 9999
+
+
+def creer_seance_test(nom_exercice, mode, cible=None):
+    """Circuit d'un seul exercice, d'une seule série.
+
+    `cible` à None demande une série **sans limite** : c'est la forme du test de
+    calibration. Sinon la valeur est la cible de la série, en répétitions ou en
+    secondes selon le mode.
+    """
     mouvements = catalogue_mouvements()
     if nom_exercice not in mouvements:
         raise KeyError("Exercice inconnu")
@@ -753,12 +804,14 @@ def creer_seance_test(nom_exercice, mode):
     bloc = deepcopy(Test_exercice.exercices[0])
     bloc.exercice = mouvements[nom_exercice]
     bloc.mode = mode
+    bloc.nombre_series = 1
+    valeur = CIBLE_SANS_LIMITE if cible is None else cible
     if mode == MODE_REPETITIONS:
-        bloc.repetitions_par_serie = 10
+        bloc.repetitions_par_serie = valeur
         bloc.duree = 0
     else:
         bloc.repetitions_par_serie = 0
-        bloc.duree = 10
+        bloc.duree = valeur
     return Circuit([bloc])
 
 

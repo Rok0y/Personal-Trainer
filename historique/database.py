@@ -185,6 +185,19 @@ def initialiser():
         )
     """)
 
+    # Tunnel d'accueil. `DEFAULT 1` remplit rétroactivement : les profils déjà
+    # créés sont considérés comme passés, et personne n'est renvoyé dans un
+    # tunnel qu'il n'a pas demandé. `creer_utilisateur` pose explicitement 0.
+    colonnes_utilisateurs = {
+        ligne[1] for ligne in curseur.execute("PRAGMA table_info(utilisateurs)")
+    }
+    if "onboarding_termine" not in colonnes_utilisateurs:
+        curseur.execute(
+            "ALTER TABLE utilisateurs ADD COLUMN onboarding_termine INTEGER DEFAULT 1"
+        )
+    if "seance_initiale" not in colonnes_utilisateurs:
+        curseur.execute("ALTER TABLE utilisateurs ADD COLUMN seance_initiale TEXT")
+
     # À l'échelle visée, toute requête filtre par profil : ces index ne sont
     # pas optionnels.
     curseur.execute("""
@@ -219,16 +232,31 @@ def initialiser():
     conn.close()
 
 
+def _profil_depuis_ligne(ligne):
+    """Un profil sous sa forme dictionnaire, depuis une ligne SQL.
+
+    Un seul endroit pour la forme d'un profil : ajouter une colonne au tunnel
+    d'accueil ne doit pas obliger à modifier chaque lecture.
+    """
+    return {
+        "id": ligne[0],
+        "nom": ligne[1],
+        "cree_le": ligne[2],
+        "onboarding_termine": bool(ligne[3]),
+        "seance_initiale": ligne[4],
+    }
+
+
 def lister_utilisateurs():
     """Tous les profils, du plus ancien au plus récent."""
     initialiser()
     conn = connexion()
     curseur = conn.cursor()
-    curseur.execute("SELECT id, nom, cree_le FROM utilisateurs ORDER BY id")
-    profils = [
-        {"id": ligne[0], "nom": ligne[1], "cree_le": ligne[2]}
-        for ligne in curseur.fetchall()
-    ]
+    curseur.execute(
+        "SELECT id, nom, cree_le, onboarding_termine, seance_initiale "
+        "FROM utilisateurs ORDER BY id"
+    )
+    profils = [_profil_depuis_ligne(ligne) for ligne in curseur.fetchall()]
     conn.close()
     return profils
 
@@ -239,13 +267,15 @@ def recuperer_utilisateur(utilisateur_id):
     conn = connexion()
     curseur = conn.cursor()
     curseur.execute(
-        "SELECT id, nom, cree_le FROM utilisateurs WHERE id = ?", (utilisateur_id,)
+        "SELECT id, nom, cree_le, onboarding_termine, seance_initiale "
+        "FROM utilisateurs WHERE id = ?",
+        (utilisateur_id,),
     )
     ligne = curseur.fetchone()
     conn.close()
     if ligne is None:
         return None
-    return {"id": ligne[0], "nom": ligne[1], "cree_le": ligne[2]}
+    return _profil_depuis_ligne(ligne)
 
 
 def creer_utilisateur(nom):
@@ -268,14 +298,50 @@ def creer_utilisateur(nom):
         conn.close()
         raise ValueError(f"Un profil nommé « {nom} » existe déjà.")
 
+    # `onboarding_termine = 0` explicitement, contre le DEFAULT 1 de la
+    # migration : celui-ci existe pour les profils *déjà là*, pas pour les
+    # nouveaux, qui sont précisément ceux qui ont besoin du tunnel.
     curseur.execute(
-        "INSERT INTO utilisateurs (nom, cree_le) VALUES (?, ?)",
+        "INSERT INTO utilisateurs (nom, cree_le, onboarding_termine) "
+        "VALUES (?, ?, 0)",
         (nom, datetime.now().strftime("%d/%m/%Y %H:%M")),
     )
     utilisateur_id = curseur.lastrowid
     conn.commit()
     conn.close()
-    return {"id": utilisateur_id, "nom": nom}
+    return {"id": utilisateur_id, "nom": nom, "onboarding_termine": False}
+
+
+def definir_onboarding(utilisateur_id, termine=None, seance_initiale=None):
+    """Met à jour l'état du tunnel d'accueil d'un profil.
+
+    Les deux champs sont indépendants et chacun facultatif : le choix de la
+    première séance se pose au début du tunnel, la fin se pose à sa sortie, et
+    aucun des deux appels ne doit écraser l'autre.
+    """
+    champs = []
+    valeurs = []
+    if termine is not None:
+        champs.append("onboarding_termine = ?")
+        valeurs.append(1 if termine else 0)
+    if seance_initiale is not None:
+        champs.append("seance_initiale = ?")
+        valeurs.append(seance_initiale)
+    if not champs:
+        return
+
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        f"UPDATE utilisateurs SET {', '.join(champs)} WHERE id = ?",
+        (*valeurs, utilisateur_id),
+    )
+    if curseur.rowcount == 0:
+        conn.close()
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
+    conn.commit()
+    conn.close()
 
 
 def renommer_utilisateur(utilisateur_id, nouveau_nom):

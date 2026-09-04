@@ -1,6 +1,7 @@
 import time
 
 from audio.coach import annoncer_progression, annoncer_temps_restant
+from core.messages import libelle_etape, texte
 from session.circuit import (
     MODE_AMRAP,
     MODE_CHRONO,
@@ -115,10 +116,29 @@ def _finaliser_serie(seance, state, bloc):
 
 
 def mettre_a_jour_erreur(exercice, corps, state):
-    state.erreur = next(
-        (message for verifier in exercice.erreurs if (message := verifier(corps))),
+    """Publie la première faute de forme détectée, ou efface le bandeau.
+
+    Les fonctions de vérification retournent une **clé** de `core.messages`, pas
+    une phrase : c'est ici qu'elle est résolue. Une clé inconnue rend None, donc
+    n'affiche rien — un détecteur inachevé qui retournerait `True` reste ainsi
+    silencieux, là où il écrivait auparavant « true » en gros dans le bandeau.
+    """
+    cle = next(
+        (cle for verifier in exercice.erreurs if (cle := verifier(corps))),
         None,
     )
+    state.erreur = texte(cle) if cle else None
+
+
+def poser_etape(state, jeton):
+    """Publie l'étape du mouvement, sous sa forme brute et sous sa forme lisible.
+
+    Les deux, parce qu'elles ne servent pas au même public : le jeton reste la
+    donnée du détecteur (et les modes s'en servent), le libellé est ce que lit
+    l'utilisateur.
+    """
+    state.stage = jeton
+    state.etape_libelle = libelle_etape(jeton)
 
 
 def gerer_mode_repetitions(
@@ -137,7 +157,7 @@ def gerer_mode_repetitions(
 
         derniere_rep = repetitions
 
-    state.stage = stage
+    poser_etape(state, stage)
     state.repetitions = repetitions
 
     if repetitions >= bloc.repetitions_par_serie:
@@ -183,7 +203,7 @@ def gerer_mode_maintien(corps, bloc, seance, state, coach):
 
     annoncer_temps_restant(bloc, bloc.duree - bloc.temps_maintien)
     state.repetitions = 0
-    state.stage = position
+    poser_etape(state, position)
     state.temps_maintien = bloc.temps_maintien
     state.duree_maintien = bloc.duree
 
@@ -200,6 +220,10 @@ def gerer_mode_maintien(corps, bloc, seance, state, coach):
 
 
 def gerer_mode_chrono(bloc, seance, state):
+    # Un chrono ne juge pas la forme : il n'a aucune faute à signaler, mais il
+    # doit effacer celle du bloc précédent, sinon le bandeau reste affiché
+    # pendant toute la durée du mouvement.
+    state.erreur = None
     maintenant = time.monotonic()
 
     if not hasattr(bloc, "debut_chrono"):
@@ -249,7 +273,7 @@ def gerer_mode_amrap(corps, bloc, compteur, seance, state, coach, derniere_rep):
         derniere_rep = repetitions
 
     # affichage web
-    state.stage = stage
+    poser_etape(state, stage)
     state.repetitions = repetitions
 
     state.temps_amrap_restant = max(0, bloc.duree - bloc.temps_amrap)
@@ -295,10 +319,10 @@ def gerer_mode_echauffement(corps, bloc, seance, state):
 
     if bloc.exercice.detection is not None:
         mettre_a_jour_erreur(bloc.exercice, corps, state)
-        state.stage = bloc.exercice.detection(corps)
+        poser_etape(state, bloc.exercice.detection(corps))
     else:
         state.erreur = None
-        state.stage = "Échauffement"
+        poser_etape(state, "echauffement")
 
     annoncer_temps_restant(bloc, bloc.duree - bloc.temps_echauffement)
 

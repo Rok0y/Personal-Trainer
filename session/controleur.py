@@ -59,13 +59,17 @@ class SessionManager:
                 self._reset_progression()
             return self.seance
 
-    def selectionner_test(self, nom_exercice, mode):
+    def selectionner_test(self, nom_exercice, mode, cible=None):
         with self._verrou:
             if self.statut in ("running", "paused"):
                 raise RuntimeError("Une séance est déjà en cours")
-            self.seance = creer_seance_test(nom_exercice, mode)
+            self.seance = creer_seance_test(nom_exercice, mode, cible)
             self.seance.utilisateur_id = identifiant_connecte()
-            self.nom_selectionne = "test"
+            # Le nom de l'exercice, et non « test » : c'est à ce nom que
+            # `web.app.est_seance_de_test` reconnaît une séance d'un seul
+            # mouvement pour la tenir hors de l'historique d'entraînement.
+            # Avec « test », ce filtre ne se déclenchait jamais.
+            self.nom_selectionne = nom_exercice
             self.statut = "ready"
             if self._reset_progression is not None:
                 self._reset_progression()

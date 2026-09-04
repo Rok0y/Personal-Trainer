@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Les exercices</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<style>
+        main { width:min(1100px,calc(100% - 40px)); }
+        header { display:flex; justify-content:space-between; align-items:center; gap:20px; border-bottom:1px solid var(--border); padding-bottom:22px; margin-bottom:22px; }
+        h1 { color:var(--teal); font-size:clamp(34px,5vw,56px); }
+        h2 { margin:32px 0 12px; font-family:'Bebas Neue','Space Grotesk',sans-serif; font-weight:400; font-size:26px; }
+        .back { color:var(--text); border:1px solid var(--border-strong); border-radius:999px; padding:9px 18px; text-transform:uppercase; letter-spacing:.06em; }
+        .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+        a.carte {
+            display:block; padding:18px; border-radius:12px; font-size:inherit; font-weight:inherit;
+            background:var(--glass); border:1px solid var(--border-strong); color:var(--text);
+            backdrop-filter:blur(18px); transition:border-color .2s ease, transform .2s ease;
+        }
+        a.carte:hover { border-color:var(--teal); text-decoration:none; transform:translateY(-2px); }
+        .carte h3 { margin:0 0 6px; font:700 16px 'Space Grotesk',sans-serif; }
+        .carte p { margin:0; color:var(--muted); font-size:13px; line-height:1.5; }
+        .etiquettes { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+        .etiquette {
+            padding:3px 9px; border-radius:999px; border:1px solid var(--border-strong);
+            color:var(--muted); font:700 11px 'Space Grotesk',sans-serif; letter-spacing:.04em;
+        }
+        .etiquette.niveau { color:var(--teal); border-color:var(--teal); }
+        .etiquette.debut { color:var(--mode-echauffement); border-color:var(--mode-echauffement); }
+        .etiquette.sans-pose { color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+    <header>
+        <div>
+            <p class="kicker">Comment ça se fait</p>
+            <h1>Les exercices</h1>
+        </div>
+        <a class="back" href="/">Accueil</a>
+    </header>
+
+    {% include "_navigation.html" %}
+
+    <p class="hint">
+        Chaque fiche explique comment se placer, comment exécuter le mouvement et
+        ce qu'il faut éviter. Les variantes assistées sont là pour commencer :
+        elles comptent et progressent comme les autres.
+    </p>
+
+    <h2>Exercices</h2>
+    <div class="grid">
+        {% for nom, exercice in exercices|dictsort %}
+        {% set etat = niveaux.get(nom) %}
+        <a class="carte" href="/exercice/{{ nom|urlencode }}">
+            <h3>{{ nom }}</h3>
+            <p>{{ exercice.description }}</p>
+            <div class="etiquettes">
+                {%- if etat and etat.niveau %}
+                <span class="etiquette niveau">Niveau {{ etat.niveau }} · {{ etat.actuel.resume() }}</span>
+                {%- else %}
+                <span class="etiquette debut">À découvrir · {{ etat.premier.resume() if etat else '' }}</span>
+                {%- endif %}
+                {%- if exercice.materiel %}
+                <span class="etiquette">{{ exercice.materiel }}</span>
+                {%- endif %}
+                {%- if exercice.variante_facile %}
+                <span class="etiquette">Version plus facile disponible</span>
+                {%- endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <h2>Échauffements</h2>
+    <p class="hint">
+        Ils préparent la séance sans compter nulle part : ni niveau, ni record,
+        ni historique.
+    </p>
+    <div class="grid">
+        {% for nom, mouvement in echauffements|dictsort %}
+        <a class="carte" href="/exercice/{{ nom|urlencode }}">
+            <h3>{{ nom }}</h3>
+            <p>{{ mouvement.description }}</p>
+            {%- if not mouvement.analyse_la_pose %}
+            <div class="etiquettes">
+                <span class="etiquette sans-pose">Sans analyse de la caméra</span>
+            </div>
+            {%- endif %}
+        </a>
+        {% endfor %}
+    </div>
+</main>
+</body>
+</html>

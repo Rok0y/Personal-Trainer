@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenue</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<style>
+        main { width:min(860px,calc(100% - 40px)); }
+        h1 { color:var(--teal); }
+        h2 { margin:0 0 12px; font-family:'Bebas Neue','Space Grotesk',sans-serif; font-weight:400; font-size:26px; }
+        .bloc {
+            background:var(--glass); border:1px solid var(--border-strong); border-radius:12px;
+            padding:22px; margin-bottom:14px; backdrop-filter:blur(18px);
+        }
+        .bloc.courant { border-color:var(--teal); }
+        ol, ul { margin:0; padding-left:20px; line-height:1.7; font-size:15px; }
+        li { margin-bottom:4px; }
+        .sous-titre {
+            margin:0 0 10px; color:var(--muted);
+            font:700 12px 'Space Grotesk',sans-serif; letter-spacing:.16em; text-transform:uppercase;
+        }
+        .jauge { height:6px; border-radius:999px; background:var(--border); overflow:hidden; margin:6px 0 18px; }
+        .jauge span { display:block; height:100%; background:var(--teal); border-radius:999px; transition:width .3s ease; }
+        .seances { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; }
+        .seances button {
+            text-align:left; text-transform:none; letter-spacing:0; padding:16px 18px;
+            border-radius:12px; background:var(--glass); line-height:1.5;
+        }
+        .seances button strong { display:block; font-size:16px; margin-bottom:4px; }
+        .seances button em { font-style:normal; color:var(--muted); font-size:13px; font-weight:400; }
+        .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; align-items:center; }
+        .actions .principal { border-color:var(--teal); color:var(--teal); }
+        .lien-discret { color:var(--muted); font-size:12px; }
+        .liste-faits li { color:var(--muted); }
+        .erreur { color:var(--orange); font-size:13px; min-height:18px; margin:10px 0 0; }
+</style>
+</head>
+<body>
+<main>
+    <p class="kicker">Premiers pas</p>
+
+    {%- if deja_fait %}
+    <h1>Tout est prêt</h1>
+    <p class="hint">Ce profil a déjà fait le tour du propriétaire.</p>
+    <div class="actions"><a class="btn principal" href="/">Aller à l'accueil</a></div>
+
+    {%- elif not tunnel %}
+    <h1>Bienvenue {{ profil.nom }}</h1>
+    <p class="hint" style="max-width:60ch; line-height:1.7;">
+        Avant la première séance, on va faire connaissance : pour chaque exercice,
+        tu auras une fiche qui explique comment le faire, puis un petit test devant
+        la caméra. Ce test sert à trouver ton point de départ — il n'y a rien à
+        réussir, et tu peux en passer autant que tu veux.
+    </p>
+    <p class="hint">Commence par choisir la séance que tu voudrais faire en premier.</p>
+
+    <div class="bloc">
+        <h2>Ta première séance</h2>
+        <div class="seances">
+            {% for nom, seance in seances.items() if nom != 'test' %}
+            <button type="button" data-seance="{{ nom }}">
+                <strong>{{ nom }}</strong>
+                <em>{{ seance.nombre_exercices }} exercice{{ 's' if seance.nombre_exercices > 1 }}{% if seance.materiel %} · {{ seance.materiel }}{% endif %}</em>
+            </button>
+            {% endfor %}
+        </div>
+        <p class="erreur" id="erreur" role="status"></p>
+    </div>
+
+    {%- elif tunnel.termine %}
+    <h1>C'est bon !</h1>
+    <p class="hint">
+        Tous les exercices de <strong>{{ tunnel.seance }}</strong> ont leur point de
+        départ. Tes objectifs sont posés ; ils bougeront tout seuls au fil des séances.
+    </p>
+    <div class="bloc">
+        <h2>Ce qui est calé</h2>
+        <ul class="liste-faits">
+            {% for nom in tunnel.faits %}<li>{{ nom }}</li>{% endfor %}
+        </ul>
+    </div>
+    <div class="actions">
+        <button type="button" class="principal" id="terminer">Commencer à m'entraîner</button>
+    </div>
+    <p class="erreur" id="erreur" role="status"></p>
+
+    {%- else %}
+    <h1>{{ tunnel.courant }}</h1>
+    <p class="sous-titre">Exercice {{ tunnel.position }} sur {{ tunnel.total }} · séance {{ tunnel.seance }}</p>
+    <div class="jauge"><span style="width: {{ ((tunnel.faits|length) / tunnel.total * 100)|round }}%;"></span></div>
+
+    <div class="bloc courant">
+        <p class="sous-titre">Le mouvement</p>
+        <p style="margin:0 0 16px; font-size:16px; line-height:1.6;">{{ fiche.description }}</p>
+
+        {%- if fiche.mise_en_place %}
+        <p class="sous-titre">Se mettre en place</p>
+        <ol>{% for etape in fiche.mise_en_place %}<li>{{ etape }}</li>{% endfor %}</ol>
+        {%- endif %}
+
+        {%- if fiche.instructions %}
+        <p class="sous-titre" style="margin-top:16px;">Exécution</p>
+        <ol>{% for consigne in fiche.instructions %}<li>{{ consigne }}</li>{% endfor %}</ol>
+        {%- endif %}
+
+        <div class="actions">
+            <a class="btn principal" href="/bienvenue/test/{{ tunnel.courant|urlencode }}">J'ai compris, je teste</a>
+            <a class="lien-discret" href="/exercice/{{ tunnel.courant|urlencode }}">Voir la fiche complète</a>
+            <button type="button" id="passer" data-exercice="{{ tunnel.courant }}">Je passe cet exercice</button>
+        </div>
+        <p class="hint" style="margin-top:10px;">
+            Passer pose le point de départ le plus bas : rien n'est perdu, le
+            logiciel remontera tout seul dès ta première séance réussie.
+        </p>
+        <p class="erreur" id="erreur" role="status"></p>
+    </div>
+
+    {%- if tunnel.faits %}
+    <div class="bloc">
+        <p class="sous-titre">Déjà calé</p>
+        <ul class="liste-faits">
+            {% for nom in tunnel.faits %}<li>{{ nom }}</li>{% endfor %}
+        </ul>
+    </div>
+    {%- endif %}
+    {%- endif %}
+</main>
+
+<script>
+    const erreurEl = document.getElementById("erreur");
+
+    async function envoyer(url, corps) {
+        try {
+            const reponse = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(corps || {}),
+            });
+            const donnees = await reponse.json();
+            if (!donnees.ok) {
+                if (erreurEl) erreurEl.textContent = donnees.erreur || "Une erreur est survenue.";
+                return null;
+            }
+            return donnees;
+        } catch (erreur) {
+            if (erreurEl) erreurEl.textContent = "Le serveur ne répond pas.";
+            return null;
+        }
+    }
+
+    document.querySelectorAll(".seances button[data-seance]").forEach((bouton) => {
+        bouton.addEventListener("click", async () => {
+            if (await envoyer("/api/bienvenue/seance", { nom: bouton.dataset.seance })) {
+                window.location.reload();
+            }
+        });
+    });
+
+    const boutonPasser = document.getElementById("passer");
+    if (boutonPasser) {
+        boutonPasser.addEventListener("click", async () => {
+            if (await envoyer("/api/bienvenue/passer", { exercice: boutonPasser.dataset.exercice })) {
+                window.location.reload();
+            }
+        });
+    }
+
+    const boutonTerminer = document.getElementById("terminer");
+    if (boutonTerminer) {
+        boutonTerminer.addEventListener("click", async () => {
+            // Le garde d'onboarding bloque « / » tant que le tunnel n'est pas
+            // fermé : on ne redirige donc qu'après la réponse du serveur.
+            if (await envoyer("/api/bienvenue/terminer")) {
+                window.location.href = "/";
+            }
+        });
+    }
+</script>
+</body>
+</html>

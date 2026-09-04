@@ -20,6 +20,25 @@ Pas de suite de tests automatisée, pas de linter/formatter configuré, pas de C
 
 Le point d'entrée est `main.py` : il possède la boucle caméra principale (une itération = une frame). Cette boucle orchestre à chaque frame, dans cet ordre : détection de pose → détection des gestes de contrôle (bras en X / bras levés) → avancement de la machine à états de la séance (`seance.update()`) → déclenchement du coach vocal sur changement de phase → exécution du mode d'exercice courant (`executer_mode`) → dessin du squelette → encodage JPEG de la frame pour le flux web.
 
+**Tout texte destiné à l'utilisateur porte une clé** (`core/messages.py`).
+C'est la convention du coach vocal (`audio/coach.py`, où `"debut_serie"` désigne
+un `.wav`) étendue à l'écrit : une fonction d'erreur d'exercice retourne une clé
+et non une phrase, `session.moteur.mettre_a_jour_erreur` la résout, et
+`texte()`/`libelle_etape()` ne lèvent jamais — elles tournent dans la boucle
+caméra, où une exception non rattrapée gèle le flux vidéo. Une clé inconnue rend
+donc `None`, c'est-à-dire rien à l'écran. Conséquence utile : un détecteur
+inachevé qui retournerait `True` reste muet, alors qu'il affichait auparavant le
+texte « true » dans le bandeau. **Ajouter un message se fait dans ce module, pas
+en dur là où il est produit** : sinon l'étape audio devra le retrouver à la main.
+
+Quatre champs de `core/state.py` portent ces messages, et ils ne se confondent
+pas : `erreur` reproche une faute de forme (bandeau rouge), `consigne` dit quoi
+faire (bandeau bleu — « place-toi devant la caméra », « croise les bras pour
+démarrer »), `stage` reste le **jeton brut** du détecteur et `etape_libelle` sa
+traduction française. Le front affiche `etape_libelle` et n'a plus à deviner la
+posture en comparant des chaînes. `fiche` porte les consignes de l'exercice
+courant.
+
 L'état partagé entre la boucle caméra (thread principal) et le serveur Flask (thread daemon) transite par le module `core/state.py` — un simple espace de noms de variables globales mutables (pas de classe, pas de verrou), lu par `web/app.py` sur la route `/etat` (pollée par le front) et écrit par `main.py`/`session/moteur.py`. Le `SessionManager` (`session/controleur.py`), lui, protège son état interne par un `RLock` car il est appelé à la fois depuis la boucle caméra et depuis les requêtes HTTP.
 
 Machine à états de séance (`session/`) :
@@ -36,6 +55,24 @@ Machine à états de séance (`session/`) :
 Progression (`progression/`) : le moteur de niveaux, qui pilote les cibles des séances (`appliquer_a_blocs` / `appliquer_a_circuit`). La seule table qu'il écrit est `corrections_niveaux` ; tout le reste de son calcul est dérivé de l'historique à chaque lecture.
 **Le principe directeur du dossier est la distinction niveau / objectif, et rien ne doit la brouiller.** Le *niveau* est le plus haut palier **jamais** validé : un record, une preuve stricte (toutes les séries, sans exception), qui ne recule jamais et vit dans `niveaux.py`. L'*objectif* est ce que la prochaine séance demande : un plan, qui monte ou descend selon la réussite et le ressenti, et qui vit dans `objectifs.py`. Un objectif peut donc légitimement passer **sous** le niveau — c'est un délestage, pas une régression, et l'écran des records continue d'afficher le niveau acquis. Caler l'un sur l'autre était l'ancien défaut : une seule série manquée au développé épaule (12, 9, 12 à 8 kg) renvoyait à 3x15 à 5 kg, deux crans d'haltère en arrière, parce que c'était le dernier palier *pleinement* validé.
 - `paliers.py` — le barème d'un exercice. Un palier est un triplet (poids, séries, cible) et un *niveau* en est l'index, à partir de 1. **L'invariant est le volume** (`séries x cible x poids`), qui ne redescend jamais d'un palier au suivant : après une hausse de poids, la cible repart de la plus petite valeur qui tient le volume déjà atteint, jamais de `cible_min`. Les tranches ont donc des longueurs inégales et le barème se **parcourt** (`_iterer_tranches`) au lieu de se calculer par arithmétique modulo — ne pas « simplifier » en recalculant un index direct, ça casserait l'invariant. L'ordre des bascules est cible → poids → séries ; un exercice au poids du corps n'a qu'une valeur de poids possible, donc sa deuxième roue ne tourne jamais et le barème se réduit de lui-même à « cible puis séries », sans cas particulier. `est_suivi_par_le_moteur(nom)` est le point d'entrée unique de la règle « cet exercice a-t-il des paliers ? » : les échauffements n'en ont pas, l'AMRAP est laissé de côté (son objectif est un plancher, pas une cible).
+  **Le bas du barème appartient au débutant.** `cible_min` est ce qu'on propose à
+  quelqu'un dont l'historique ne prouve rien ; le fixer au niveau d'un pratiquant
+  confirmé laisse un débutant hors barème, donc **sans aucun objectif**. Sur les
+  mouvements au poids du corps il est délibérément très bas. En baisser un est
+  sans danger tant qu'on ne touche **ni `series` ni `poids_min`** : l'échelle de
+  charge n'ayant qu'une valeur, la première tranche s'allonge par le bas et tous
+  les paliers supérieurs se décalent d'une *constante*, sans changer de contenu.
+  Toucher `series` ou `poids_min` fait au contraire recalculer le départ de
+  chaque tranche par `_premiere_cible`, et rebat tout le barème.
+  Les **variantes assistées** (pompes inclinées, pompes et gainage sur les
+  genoux, squat sur chaise) sont des exercices comptabilisés à part entière, pas
+  des échauffements : elles ont un barème, des records, une progression. Chacune
+  réutilise la détection du mouvement complet quand elle reste valable — seul
+  `squat_sur_chaise_detection` est propre, parce que le repère coude-genou de
+  `squat_detection` suppose des haltères qui pendent le long du corps. Toute
+  variante doit être inscrite aux **trois** endroits : `CATALOGUE_EXERCICES`,
+  `MATERIEL_EXERCICES` (lu par `nombre_halteres`, donc par l'échelle de poids) et
+  `SPECS`.
   **Le barème n'a pas de fin.** Une fois l'haltère le plus lourd et le plafond de séries atteints, il ne reste qu'un axe : les répétitions, qui montent alors sans plafond. C'est la *tranche ouverte* — `longueur` à None dans `_iterer_tranches` —, et elle a deux conséquences. D'abord, aucun objectif n'est jamais « hors d'atteinte » : il peut demander beaucoup de répétitions, mais son palier existe toujours (les états `hors_atteinte` d'un programme et `maximum_atteint` d'un niveau sont donc devenus inatteignables ; le code les conserve parce que `palier()` peut encore retourner None sur un exercice sans barème). Ensuite, « nombre total de paliers » n'a plus de sens — il n'existe qu'un `dernier_palier_borne`, qui repère où commence cette dernière tranche.
   Deux pièges. Le générateur de tranches est **infini** : il se termine toujours par la tranche ouverte, donc tout appelant doit poser sa propre condition d'arrêt ; celle de `_niveaux_candidats` s'appuie sur la monotonie du volume, pas sur une borne arbitraire. Et une spec à `cible_max=None` décrit un barème déjà linéaire, que `_iterer_tranches` ne sait pas traiter — chaque fonction publique la court-circuite en amont. Et une surcharge de palier ne peut que **corriger** un palier existant, jamais en insérer ni en supprimer : le décalage rendrait faux tous les niveaux au-dessus et changerait rétroactivement le sens de l'historique déjà interprété (c'est aussi ce que `signature()` sert à détecter, pour un futur cache).
 - `niveaux.py` — déduction du niveau depuis l'historique, **sans table de faits supplémentaire** : le niveau est le plus haut palier jamais validé. Règle idempotente, insensible à l'ordre des séances comme à leur suppression, et qui applique d'elle-même le « pas de recul ». Une performance valide un palier si elle est **au moins aussi lourde et au moins aussi volumineuse** — à poids égal, la répartition séries/répétitions est libre, ce qui crédite le travail lourd et court. Le jugement porte sur un exercice et non sur une séance : le statut `abandoned` est donc volontairement ignoré ici, contrairement à `statistiques_exercices`.
@@ -54,6 +91,21 @@ Progression (`progression/`) : le moteur de niveaux, qui pilote les cibles des s
   Limite connue de l'équivalence par volume : elle **aplatit la structure des séries**. `2x60 s` de gainage devient `1x120 s`, `3x35` pompes devient `5x21` — même volume, difficulté réelle différente sur les mouvements où la fatigue s'accumule au sein de la série.
   Les exigences forment une **liste plate**, chacune portant le libellé de sa séance ; le regroupement se fait à l'affichage, dans l'ordre d'apparition. Une structure imbriquée se lirait mieux mais s'éditerait beaucoup moins bien depuis un formulaire, or les programmes se modifient depuis le site (`/editer-programme/<clé>`, `/creer-programme`). `programmes_personnalises.json` **masque** le dict `PROGRAMMES` du code, exactement comme `seances_personnalisees.json` masque le catalogue de séances : modifier un programme livré avec l'app le bascule sur le disque, le supprimer restaure la version du code. `valider_programme` refuse un exercice sans barème plutôt que de laisser une exigence inévaluable atteindre la page.
   **Deux conventions de charge cohabitent, et c'est délibéré.** Un programme se *transcrit* — on y recopie un tableau écrit ailleurs, qui annonce en général la charge totale des deux haltères — tandis que le reste de l'application *affiche* ce qu'il faut soulever, donc la charge d'un seul haltère. `CHARGE_TOTALE` dit laquelle s'applique à la saisie, `charge_par_haltere` fait la traduction (jamais de division sur un mouvement unilatéral : il n'y a qu'un haltère à porter), et `libelle_charge` fait suivre l'étiquette du champ. Ne jamais écrire ce libellé en dur dans le template — changer la constante laisserait une étiquette mensongère à l'écran, et le même nombre signifierait deux choses selon la page.
+- `calibration.py` — **du test d'un débutant à son niveau de départ**, et la
+  logique du tunnel d'accueil. Comme les ancrages, il ne pose jamais un numéro de
+  niveau : il fabrique une *performance* et laisse `niveau_pour` la traduire.
+  Le test mesure **une série unique au maximum**, que `COEFFICIENT_SERIE_UNIQUE`
+  convertit en capacité de travail multi-séries — un repère d'entraîneur, pas une
+  mesure, d'où l'écran de confirmation qui propose systématiquement le cran du
+  dessous et celui du dessus. Le même coefficient sert aux répétitions et aux
+  secondes : les deux ne fatiguent pas pareil, mais une règle unique vaut mieux
+  que deux réglages dont personne ne saura lequel corriger.
+  `niveau_estime` retournant `None` veut dire **hors barème**, pas « niveau 0 » :
+  la bonne réponse est alors la `variante_facile`, pas un niveau plus bas.
+  **L'avancement du tunnel ne se stocke nulle part** : un exercice est calibré
+  s'il porte un ancrage, donc `etat_tunnel` le déduit et une interruption reprend
+  d'elle-même au bon endroit — même principe que le niveau, dérivé de
+  l'historique plutôt que stocké.
 - `scripts/script_niveaux.py` — vérification manuelle (`python -m scripts.script_niveaux`) : barème, contrôle de non-régression du volume, niveaux réels, et lignes d'historique écartées avec leur raison. À relancer après toute modification d'une spec.
 
 `records.html` affiche le niveau de chaque exercice, son palier (« Niveau 16 · 4x20 à 5 kg ») et le palier suivant, alimenté par `etats_niveaux()` depuis la route `/records`. Volontairement **sans jauge de progression ni total de paliers** : un record dit où l'on en est, et montrer la suite du barème n'est pas la même chose que fixer une cible. Ce qui exprime un objectif — barre d'avancement, part de barème parcourue, niveau à atteindre — appartient à la couche programme, pas ici ; c'est pourquoi `etat_niveau` n'expose aucun pourcentage.
@@ -64,6 +116,17 @@ Bizarrerie à connaître partout où le palier suivant est affiché (ce n'est *p
 Détection (`mouvements/`, `vision/`) :
 - `vision/detector.py` télécharge au premier lancement le modèle MediaPipe (`pose_landmarker_full.task`, absent du repo, ignoré par git) et expose `PoseDetector.detect(frame)` → un `Body` (`vision/body.py`) qui regroupe les landmarks nommés (`vision/landmarks.py`). Le modèle `full` remplace `lite` : ce dernier perdait le tracking sur les mouvements rapides.
 - `mouvements/exercices.py` définit chaque `Exercice` par une fonction `*_detection(corps)` qui retourne une position (`"debut"`/`"fin"`/`"milieu"`/`"maintien"`/`"repos"`) à partir d'angles/distances calculés sur le `Body`. Ces fonctions bilatérales (ex. pompes, développé couché) doivent comparer *les deux* angles gauche/droite au seuil — un bug historique où seul un côté était vérifié (`angle_droit and angle_gauche < seuil`, l'opérateur `and` ne portant que sur l'un des deux) a été corrigé ; rester vigilant si on ajoute un exercice bilatéral sur ce modèle.
+- **La fiche d'un exercice** vit sur `Exercice` (`session/circuit.py`) et sort par
+  `Exercice.fiche()`, point d'entrée unique de « qu'affiche-t-on d'un mouvement ? ».
+  Ses champs ne se recouvrent pas : `description` dit ce qu'est le mouvement,
+  `mise_en_place` comment s'installer **avant** de commencer (cadrage caméra
+  compris — première cause d'un comptage qui ne démarre pas, et qu'aucune
+  détection ne dira jamais), `instructions` l'exécution, `erreurs_frequentes` de
+  la pédagogie écrite. Ne pas confondre cette dernière avec `erreurs`, qui est
+  une liste de **fonctions** exécutées à chaque frame. `variante_facile` /
+  `variante_difficile` nomment un autre exercice du catalogue : c'est ce qui
+  permet au test de calibration de rediriger quelqu'un qui ne tient pas le
+  premier palier, au lieu de le laisser « hors barème ».
 - `mouvements/echauffements.py` déclare les mouvements d'échauffement, sur le même modèle qu'`exercices.py` mais avec `detection` facultative : les rotations articulaires (cou, poignets, coudes, épaules) sont volontairement sans détection, un mouvement trop petit pour être suivi de façon fiable valant mieux sans heuristique que avec une mauvaise. Les mouvements qui reprennent un exercice du catalogue (pompes lentes, élévations à vide) réutilisent sa fonction de détection au lieu d'en dupliquer une variante.
 - `mouvements/compteur.py` (`CompteurMouvement`) transforme une séquence de positions détectées en comptage de répétitions (arme sur `"debut"`, valide sur `"fin"`). `mouvements/positions.py` définit les gestes de contrôle (bras en X, bras levés). `mouvements/outils.py` (`HoldPosition`) mesure un maintien de position dans le temps (utilisé pour la préparation avant série et pour valider un geste tenu 1.5-3s).
 
@@ -78,11 +141,40 @@ La migration s'appuie sur un détail de SQLite : `ALTER TABLE … ADD COLUMN …
 
 **Liens profonds vers les records.** Le filtre Jinja `ancre` (`web/app.py`, même normalisation que les clés de programme) fabrique `/records#exercice-<slug>` ; `records.html` pose l'`id` correspondant sur chaque fiche. Un `<details>` replié ignorant `:target`, la page l'ouvre elle-même en JS — **sur `load` et non à l'exécution du script**, car elle dessine ses graphiques SVG au fil de celui-ci et centrer plus tôt revient à centrer sur une mise en page déjà périmée. Les points de départ sont le nom d'exercice, le badge de record et celui de montée de niveau dans `historique.html`, et le nom d'exercice dans `programmes.html`.
 
-L'accueil porte un **résumé de programme** : avancement global, et surtout la prochaine séance à enchaîner, avec un bouton qui la sélectionne. Ce bouton n'a pas de gestionnaire propre — il porte un `data-seance`, et le gestionnaire générique de l'accueil s'en charge déjà ; seul le défilement vers la carte correspondante est ajouté. Les onglets Historique / Records / Programmes figurent sur les quatre pages.
+L'accueil porte un **résumé de programme** : avancement global, et surtout la prochaine séance à enchaîner, avec un bouton qui la sélectionne. Ce bouton n'a pas de gestionnaire propre — il porte un `data-seance`, et le gestionnaire générique de l'accueil s'en charge déjà ; seul le défilement vers la carte correspondante est ajouté. Les onglets Historique / Records / Programmes / Exercices figurent sur les pages de suivi. Le dernier ouvre le catalogue des fiches (`/exercices`, `/exercice/<nom>`) : c'est le seul endroit où un mouvement s'explique hors séance.
 
 Web (`web/app.py`) : serveur Flask exposant l'API JSON pilotant le `SessionManager` global (démarrage/pause/navigation de séance, CRUD des séances personnalisées, suppression dans l'historique) et les pages HTML (`templates/`) — accueil, création/édition de séance, historique, records, flux vidéo MJPEG (`/video`, lit `state.latest_frame`).
 
 **La connexion est un garde global, pas un test par vue.** `_exiger_un_profil` (`@app.before_request`) redirige vers `/connexion` — ou répond 401 sur `/api/` — tant qu'aucun profil n'est connecté ; seules les routes de `ROUTES_SANS_PROFIL` y échappent. Une trentaine de routes touchent la base : en oublier une donnerait la page d'erreur brute de `_profil_courant` au lieu de l'écran de connexion. **Ajouter une route au flux de connexion oblige à l'inscrire dans cet ensemble.** Le nom du profil arrive dans les templates par un `@app.context_processor` (variable `profil`), et non route par route.
+
+**Une séance d'un seul exercice s'enregistre sous le nom de cet exercice**, et
+c'est à ça que `est_seance_de_test` la reconnaît pour la tenir hors de
+l'historique d'entraînement (elle compte quand même pour les records). Le mode
+test posait `nom_selectionne = "test"`, un nom qu'aucun exercice ne porte : le
+filtre ne se déclenchait donc jamais. Même règle pour `derniere_performance`,
+qu'il faut interroger avec le nom de l'exercice.
+
+**Un profil neuf passe par le tunnel d'accueil avant tout le reste.** Second
+`@app.before_request` (`_exiger_onboarding`) plutôt qu'une condition ajoutée au
+premier : les deux ne protègent pas la même chose et n'ont pas la même liste
+d'exceptions, et celui-ci ne s'applique qu'à quelqu'un de déjà connecté.
+`ROUTES_ONBOARDING` a le même piège que `ROUTES_SANS_PROFIL` — une route oubliée
+renvoie l'utilisateur sur `/bienvenue` en boucle — mais aussi le piège inverse :
+**une route de trop y ouvre l'application entière**. `/api/seance/selectionner`
+n'y figure volontairement pas, le test de calibration armant et arrêtant sa
+propre séance par `/api/bienvenue/test`. Un test rapide de cohérence :
+`ROUTES_ONBOARDING - {r.endpoint for r in app.url_map.iter_rules()}` doit être
+vide, sinon un nom d'endpoint mal orthographié ne protège rien en silence.
+Deux colonnes portent l'état (`utilisateurs.onboarding_termine`,
+`seance_initiale`). Le `DEFAULT 1` de la migration existe pour les profils *déjà
+là* — `creer_utilisateur` pose explicitement `0`, sinon un nouveau venu
+sauterait le tunnel. Le profil connecté (`core/utilisateur.py`) transporte
+désormais ces colonnes pour que le garde n'interroge pas la base à chaque
+requête : **toute écriture dessus doit appeler `rafraichir()`**, faute de quoi la
+session garde une vue périmée et le tunnel se rouvre.
+Le bouton « Je passe cet exercice » ancre au palier 1 : c'est un écart assumé au
+caractère obligatoire du tunnel, sans lequel une blessure ou un matériel
+manquant bloquerait définitivement l'accès à l'application.
 
 **Une séance appartient au profil qui l'a choisie, pas à celui qui est connecté quand elle s'écrit.** `SessionManager.selectionner` fige `Circuit.utilisateur_id`, et `main.py` le passe à `enregistrer_seance`. Ce n'est pas une précaution théorique : le statut bascule sur `finished` avant que le thread caméra n'écrive, l'utilisateur peut changer de profil dans cet intervalle, et une lecture du profil connecté à ce moment-là créditerait le mauvais athlète — ou lèverait dans un thread où rien n'attrape les exceptions, emportant la boucle caméra.
 

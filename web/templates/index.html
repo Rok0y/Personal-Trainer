@@ -411,6 +411,65 @@
             font-weight: 700;
         }
 
+        /* Meme placement que l'alerte d'erreur, decale vers le bas pour que
+           les deux puissent s'afficher ensemble sans se recouvrir. */
+        .consigne-alert {
+            position: absolute;
+            top: calc(50% + 78px);
+            left: 50%;
+            z-index: 8;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: min(440px, calc(100vw - 40px));
+            padding: 14px 20px;
+            border: 1px solid rgba(74, 158, 255, 0.75);
+            border-radius: 16px;
+            background: rgba(12, 24, 45, 0.9);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), 0 0 24px var(--blue-glow);
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, 12px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .consigne-alert.visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        .consigne-asset {
+            display: grid;
+            flex: 0 0 32px;
+            width: 32px;
+            height: 32px;
+            place-items: center;
+            border: 2px solid var(--blue);
+            border-radius: 50%;
+            color: var(--blue);
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .consigne-message {
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        /* Consignes du mouvement, dans le panneau lateral. Elles existaient
+           depuis toujours dans le catalogue sans jamais atteindre l'ecran. */
+        .fiche-card ol {
+            margin: 6px 0 0;
+            padding-left: 18px;
+            color: var(--text);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .fiche-card li { margin-bottom: 3px; }
+
         .burst {
             position: absolute;
             inset: 0;
@@ -1125,6 +1184,14 @@
         <span class="error-message" id="errorMessage"></span>
     </div>
 
+    <!-- Deux bandeaux et non un : l'erreur reproche une faute de forme, la
+         consigne dit quoi faire (« place-toi devant la camera »). Les
+         confondre ferait passer une indication d'aide pour un reproche. -->
+    <div class="consigne-alert" id="consigneAlert" role="status" aria-live="polite">
+        <span class="consigne-asset" aria-hidden="true">i</span>
+        <span class="consigne-message" id="consigneMessage"></span>
+    </div>
+
     <div class="side-panel">
 
         <div class="card position-card">
@@ -1135,6 +1202,11 @@
         <div class="card stage-card">
             <span class="label">Étape</span>
             <span class="stage-value" id="stage">Aucune</span>
+        </div>
+
+        <div class="card fiche-card" id="ficheCard" hidden>
+            <span class="label">Consignes</span>
+            <ol id="ficheInstructions"></ol>
         </div>
 
         <div class="card comment-card" id="commentCard" hidden>
@@ -1455,6 +1527,39 @@
     }
 
     // Met à jour un champ texte avec un petit fondu si la valeur a changé
+    function mettreAJourConsigne(message) {
+        const alerte = document.getElementById("consigneAlert");
+        const messageEl = document.getElementById("consigneMessage");
+        if (message) {
+            messageEl.textContent = message;
+            alerte.classList.add("visible");
+        } else {
+            alerte.classList.remove("visible");
+        }
+    }
+
+    // Les consignes ne changent qu'au changement d'exercice : on ne redessine
+    // la liste que dans ce cas, sinon le DOM serait reconstruit 10 fois par
+    // seconde pour rien.
+    let ficheAffichee = null;
+
+    function mettreAJourFiche(fiche) {
+        const carte = document.getElementById("ficheCard");
+        const liste = document.getElementById("ficheInstructions");
+        const nom = fiche && fiche.nom;
+        if (nom === ficheAffichee) return;
+        ficheAffichee = nom;
+
+        liste.innerHTML = "";
+        const consignes = (fiche && fiche.instructions) || [];
+        consignes.forEach((consigne) => {
+            const element = document.createElement("li");
+            element.textContent = consigne;
+            liste.appendChild(element);
+        });
+        carte.hidden = consignes.length === 0;
+    }
+
     function mettreAJourChamp(id, nouvelleValeur, classeChangement = "changing") {
         const el = document.getElementById(id);
         const valeur = String(nouvelleValeur);
@@ -1795,6 +1900,8 @@
 
                 mettreAJourPoids(data.poids);
                 mettreAJourErreur(data.erreur);
+                mettreAJourConsigne(data.consigne);
+                mettreAJourFiche(data.fiche);
 
 
                 mettreAJourChamp(
@@ -1802,9 +1909,12 @@
                     data.position_actuelle || "Aucune"
                 );
 
+                // `etape_libelle` est la traduction francaise de `stage`, qui
+                // reste le jeton brut du detecteur : c'est le libelle qu'on
+                // montre, jamais « debut » ou « casse ».
                 mettreAJourChamp(
                     "stage",
-                    data.stage || "Aucune"
+                    data.etape_libelle || data.stage || "Aucune"
                 );
 
 

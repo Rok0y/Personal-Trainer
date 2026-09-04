@@ -121,6 +121,18 @@ class SpecProgression:
 #: une élévation latérale léger et long) et le nombre de séries. Des réglages
 #: uniformes produiraient des niveaux incomparables et des premiers paliers
 #: triviaux, gaspillés.
+# **Le bas du barème appartient au débutant.** `cible_min` est le premier palier
+# proposé à quelqu'un dont l'historique ne prouve rien : le fixer au niveau
+# d'un pratiquant confirmé (4x8 pompes, 3x30 s de gainage) laisse un débutant
+# « hors barème », c'est-à-dire sans objectif du tout. Sur les mouvements au
+# poids du corps il est donc délibérément très bas.
+#
+# En baisser un est sans danger tant qu'on ne touche **ni `series` ni
+# `poids_min`** : l'échelle de charge n'a qu'une valeur (SANS_CHARGE), la
+# première tranche s'allonge donc par le bas et tous les paliers supérieurs se
+# décalent d'une constante, sans changer de contenu. Toucher `series` ou
+# `poids_min` fait au contraire recalculer le départ de chaque tranche par
+# `_premiere_cible`, et rebat tout le barème.
 SPECS = {
     # --- Haut du corps, poussée ---
     "Developpé couché altères": SpecProgression(
@@ -128,7 +140,16 @@ SPECS = {
     ),
     # Poids du corps : sans axe de charge, la fourchette de répétitions est
     # allongée pour que le barème ne soit pas épuisé en une poignée de paliers.
-    "Pompes": SpecProgression(series=4, cible_min=8, cible_max=25),
+    #
+    # `cible_min` très bas — voir la note « bas de barème » plus haut : un
+    # débutant doit trouver un premier palier à sa portée, sans quoi il reste
+    # « hors barème » et le moteur n'a rien à lui proposer.
+    "Pompes": SpecProgression(series=4, cible_min=3, cible_max=25),
+    # Variantes assistées : mêmes fourchettes hautes, départ encore plus bas.
+    # Elles existent pour que quelqu'un qui ne fait pas une seule pompe complète
+    # ait quand même un barème, et une progression qui le ramène aux Pompes.
+    "Pompes inclinées": SpecProgression(series=3, cible_min=3, cible_max=20),
+    "Pompes sur les genoux": SpecProgression(series=3, cible_min=3, cible_max=20),
     "Développé épaule": SpecProgression(
         series=3, cible_min=8, cible_max=15, poids_min=4
     ),
@@ -162,24 +183,31 @@ SPECS = {
     # Les jambes encaissent plus de répétitions que le haut du corps, et les
     # haltères y sont vite le facteur limitant.
     "Squat": SpecProgression(series=4, cible_min=10, cible_max=20, poids_min=4),
+    # Au poids du corps, avec une chaise pour repère de profondeur : le squat
+    # sans haltère n'existait pas au barème, alors que c'est par là qu'on
+    # commence.
+    "Squat sur chaise": SpecProgression(series=3, cible_min=5, cible_max=20),
     "Fente droite": SpecProgression(series=4, cible_min=8, cible_max=15, poids_min=4),
     "Fente gauche": SpecProgression(series=4, cible_min=8, cible_max=15, poids_min=4),
     "Souleve de terre roumain": SpecProgression(
         series=4, cible_min=8, cible_max=15, poids_min=4
     ),
     # --- Abdos et gainage ---
-    "Crunches": SpecProgression(series=3, cible_min=12, cible_max=25),
+    "Crunches": SpecProgression(series=3, cible_min=5, cible_max=25),
     # Le gainage plafonne à deux minutes par série : au-delà, tenir plus
     # longtemps ne teste plus grand-chose, et c'est le nombre de séries qui
     # prend le relais.
     "Gainage planche": SpecProgression(
-        series=3, cible_min=30, cible_max=60, pas=2, unite=UNITE_SECONDES
+        series=3, cible_min=10, cible_max=60, pas=2, unite=UNITE_SECONDES
+    ),
+    "Gainage sur les genoux": SpecProgression(
+        series=2, cible_min=10, cible_max=45, pas=2, unite=UNITE_SECONDES
     ),
     "Gainage planche laterale droite": SpecProgression(
-        series=1, cible_min=20, cible_max=60, pas=2, unite=UNITE_SECONDES
+        series=1, cible_min=8, cible_max=60, pas=2, unite=UNITE_SECONDES
     ),
     "Gainage planche laterale gauche": SpecProgression(
-        series=1, cible_min=20, cible_max=60, pas=2, unite=UNITE_SECONDES
+        series=1, cible_min=8, cible_max=60, pas=2, unite=UNITE_SECONDES
     ),
 }
 

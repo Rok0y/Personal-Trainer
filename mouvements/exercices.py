@@ -14,23 +14,28 @@ def curl_biceps_droit_detection(corps):
     return "milieu"
 
 
-def coude_trop_tendu_curl_droit(corps):
+def _coude_qui_part_en_avant(hanche, epaule, coude):
+    """Le coude quitte le buste : le curl se transforme en élévation frontale.
 
-    # Calcul de ton angle du coude
-    angle_coude = 0  # remplacer par ton calcul actuel
+    C'est la faute la plus fréquente du mouvement, et la seule qui se voie de
+    façon fiable sur une pose : l'angle hanche-épaule-coude reste petit tant
+    que le bras pend le long du corps.
+    """
+    if calculer_angle(hanche, epaule, coude) > 45:
+        return "forme_coude_qui_part_en_avant"
+    return None
 
-    if angle_coude > 170:
-        return True
 
-    return False
+def coude_avance_curl_droit(corps):
+    return _coude_qui_part_en_avant(
+        corps.hanche_droite, corps.epaule_droite, corps.coude_droit
+    )
 
 
-def epaule_trop_avancee_curl_droit(corps):
-
-    # Calcul de ta position d'épaule
-    # à remplacer par ta logique
-
-    return False
+def coude_avance_curl_gauche(corps):
+    return _coude_qui_part_en_avant(
+        corps.hanche_gauche, corps.epaule_gauche, corps.coude_gauche
+    )
 
 
 curl_biceps_droit = Exercice(
@@ -42,7 +47,17 @@ curl_biceps_droit = Exercice(
         "Contrôle la descente.",
         "Ne balance pas le mouvement.",
     ],
-    erreurs=[coude_trop_tendu_curl_droit, epaule_trop_avancee_curl_droit],
+    mise_en_place=[
+        "Debout, un haltère dans la main droite, bras le long du corps.",
+        "Place-toi de profil ou légèrement de trois quarts face à la caméra.",
+        "Recule jusqu'à ce que ta tête et tes hanches soient visibles à l'écran.",
+    ],
+    erreurs_frequentes=[
+        "Balancer le buste pour lancer l'haltère : le dos doit rester immobile.",
+        "Le coude qui part en avant : le mouvement devient une élévation.",
+        "Laisser tomber l'haltère à la descente au lieu de la freiner.",
+    ],
+    erreurs=[coude_avance_curl_droit],
 )
 
 # ==================================
@@ -70,7 +85,17 @@ curl_biceps_gauche = Exercice(
         "Contrôle la descente.",
         "Ne balance pas le mouvement.",
     ],
-    erreurs=[],
+    mise_en_place=[
+        "Debout, un haltère dans la main gauche, bras le long du corps.",
+        "Place-toi de profil ou légèrement de trois quarts face à la caméra.",
+        "Recule jusqu'à ce que ta tête et tes hanches soient visibles à l'écran.",
+    ],
+    erreurs_frequentes=[
+        "Balancer le buste pour lancer l'haltère : le dos doit rester immobile.",
+        "Le coude qui part en avant : le mouvement devient une élévation.",
+        "Laisser tomber l'haltère à la descente au lieu de la freiner.",
+    ],
+    erreurs=[coude_avance_curl_gauche],
 )
 
 # ==================================
@@ -97,8 +122,18 @@ def elevation_laterale_detection(corps):
 elevation_laterale = Exercice(
     nom="Elevations latérales",
     detection=elevation_laterale_detection,
-    description="Curl biceps avec haltère du bras gauche.",
+    description="Élévations latérales à deux haltères : monter les bras sur les côtés jusqu'à hauteur des épaules.",
     instructions=["Contrôle la descente.", "Ne balance pas le mouvement."],
+    mise_en_place=[
+        "Debout, un haltère dans chaque main, bras le long du corps.",
+        "Place-toi face à la caméra, les deux bras entièrement visibles.",
+        "Prends léger : c'est un mouvement d'isolation, pas de force.",
+    ],
+    erreurs_frequentes=[
+        "Monter plus haut que les épaules : inutile, et ça sollicite le cou.",
+        "Hausser les épaules vers les oreilles pendant la montée.",
+        "Prendre trop lourd et s'aider d'une impulsion des jambes.",
+    ],
     erreurs=[],
 )
 
@@ -124,12 +159,24 @@ def pompe_detection(corps):
 pompe = Exercice(
     nom="Pompes",
     detection=pompe_detection,
-    description="En position gainage, faire une pompe",
+    description="Pompes au sol, mains sous les épaules, corps aligné des talons à la tête.",
     instructions=[
-        "laisse ta tête en position neutre",
-        "N'écarte pas trop les coudes" "Garde les jambes et le dos alignés",
+        "Garde la tête dans le prolongement du dos, regard vers le sol.",
+        "N'écarte pas trop les coudes.",
+        "Garde les jambes et le dos alignés.",
+    ],
+    mise_en_place=[
+        "Mains au sol un peu plus larges que les épaules, bras tendus.",
+        "Corps aligné des talons aux épaules, regard vers le sol.",
+        "Place-toi de profil face à la caméra, corps entier dans le champ.",
+    ],
+    erreurs_frequentes=[
+        "Les hanches qui tombent ou qui remontent : garde une ligne droite.",
+        "Les coudes complètement écartés à 90° : garde-les à environ 45°.",
+        "Ne descendre qu'à moitié : la poitrine doit approcher du sol.",
     ],
     erreurs=[],
+    variante_facile="Pompes sur les genoux",
 )
 
 # ==================================
@@ -154,10 +201,21 @@ def developpe_couche_sol_detection(corps):
 developpe_couche_sol = Exercice(
     nom="Developpé couché altères",
     detection=developpe_couche_sol_detection,
-    description="Allongé au sol, faire un développé couché avec des altères dans chaque main",
+    description="Développé couché au sol, un haltère dans chaque main, poussée verticale.",
     instructions=[
-        "laisse ta tête en position neutre",
-        "Garde les bras dans l'axe des pecs",
+        "Garde la tête posée au sol, regard vers le plafond.",
+        "Garde les bras dans l'axe de la poitrine.",
+        "Descends les coudes jusqu'au niveau du buste, sans plus bas.",
+    ],
+    mise_en_place=[
+        "Allongé sur le dos sur un tapis, genoux pliés, pieds au sol.",
+        "Un haltère dans chaque main, bras tendus au-dessus de la poitrine.",
+        "Place la caméra sur le côté, à hauteur du sol, corps entier visible.",
+    ],
+    erreurs_frequentes=[
+        "Descendre les coudes trop bas : ça met l'épaule en tension inutile.",
+        "Écarter complètement les coudes au lieu de les garder à 45°.",
+        "Cambrer le bas du dos pour pousser plus lourd.",
     ],
     erreurs=[],
 )
@@ -184,8 +242,22 @@ def extension_triceps_au_dessus_de_la_tete_detection(corps):
 extension_triceps_au_dessus_de_la_tete = Exercice(
     nom="Extension Triceps",
     detection=extension_triceps_au_dessus_de_la_tete_detection,
-    description="tenir une altère en haut de sa tête et faire la faire descendre dans le dos en utilisant les triceps",
-    instructions=["laisse ta tête en position neutre", "n'écarte pas trops les coudes"],
+    description="Extension triceps à un haltère tenu à deux mains, derrière la tête.",
+    instructions=[
+        "Garde la tête droite, dans le prolongement du dos.",
+        "Garde les coudes serrés vers l'avant, ils ne s'écartent pas.",
+        "Descends l'haltère derrière la nuque sans à-coup.",
+    ],
+    mise_en_place=[
+        "Debout ou assis, un haltère tenu à deux mains au-dessus de la tête.",
+        "Coudes serrés vers l'avant, proches des oreilles.",
+        "Place-toi face à la caméra, tête et bras entièrement visibles.",
+    ],
+    erreurs_frequentes=[
+        "Les coudes qui s'écartent vers l'extérieur pendant la descente.",
+        "Cambrer le dos pour compenser une charge trop lourde.",
+        "Descendre l'haltère derrière la nuque sans contrôle.",
+    ],
     erreurs=[],
 )
 
@@ -211,8 +283,22 @@ def developpe_epaule_detection(corps):
 developpe_epaule = Exercice(
     nom="Développé épaule",
     detection=developpe_epaule_detection,
-    description="Tenir des altères dans chaque mains et pousser vers le haut",
-    instructions=["laisse ta tête en position neutre", "n'écarte pas trops les coudes"],
+    description="Développé épaule debout : pousser les haltères au-dessus de la tête.",
+    instructions=[
+        "Garde la tête droite, sans avancer le menton.",
+        "Pousse les haltères à la verticale jusqu'à tendre les bras.",
+        "Redescends jusqu'à hauteur des oreilles, pas plus bas.",
+    ],
+    mise_en_place=[
+        "Debout, un haltère dans chaque main à hauteur des épaules, paumes vers l'avant.",
+        "Gaine le ventre pour éviter de cambrer.",
+        "Place-toi face à la caméra, bras entièrement visibles au-dessus de la tête.",
+    ],
+    erreurs_frequentes=[
+        "Cambrer le bas du dos quand la charge devient lourde.",
+        "Ne pas tendre complètement les bras en haut du mouvement.",
+        "Descendre les coudes trop bas sous la ligne des épaules.",
+    ],
     erreurs=[],
 )
 
@@ -238,8 +324,22 @@ def crunches_detection(corps):
 crunches = Exercice(
     nom="Crunches",
     detection=crunches_detection,
-    description="Alongé sur le coté pour que la caméra voit le coté",
-    instructions=["laisse ta tête en position neutre", "n'écarte pas trops les coudes"],
+    description="Crunch au sol : décoller les épaules en contractant les abdominaux.",
+    instructions=[
+        "Garde le menton décollé du buste, sans tirer sur la nuque.",
+        "Décolle les épaules du sol en soufflant.",
+        "Redescends sans relâcher complètement les abdominaux.",
+    ],
+    mise_en_place=[
+        "Allongé sur le dos, genoux pliés, pieds à plat sur le tapis.",
+        "Mains sur les tempes ou croisées sur la poitrine, jamais derrière la nuque.",
+        "Place la caméra sur le côté, à hauteur du sol.",
+    ],
+    erreurs_frequentes=[
+        "Tirer sur la nuque avec les mains : garde le menton décollé du buste.",
+        "Décoller tout le dos : seules les épaules et le haut du dos se lèvent.",
+        "Aller trop vite : c'est la contraction qui compte, pas la vitesse.",
+    ],
     erreurs=[],
 )
 
@@ -249,13 +349,16 @@ crunches = Exercice(
 
 
 def detection_gainage(corps):
+    # Les deux hanches sont comparees au seuil : la version precedente calculait
+    # bien les deux angles mais n'en testait qu'un, si bien qu'un bassin
+    # affaisse d'un seul cote passait pour un gainage correct.
     angle_hanche_droite = calculer_angle(
         corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche
     )
     angle_hanche_gauche = calculer_angle(
         corps.epaule_droite, corps.hanche_droite, corps.genou_droit
     )
-    hanches_droites = angle_hanche_gauche > 145
+    hanches_droites = angle_hanche_droite > 145 and angle_hanche_gauche > 145
 
     hanche_au_dessus_coude = corps.hanche_gauche.y < corps.coude_gauche.y
     if hanches_droites and hanche_au_dessus_coude:
@@ -269,11 +372,22 @@ planche = Exercice(
     detection=detection_gainage,
     description="Maintenir une position de planche avec le corps aligné.",
     instructions=[
-        "Garde le dos droit",
-        "Contracte les abdominaux",
-        "Ne laisse pas tomber les hanches",
+        "Garde le dos droit.",
+        "Contracte les abdominaux.",
+        "Ne laisse pas tomber les hanches.",
+    ],
+    mise_en_place=[
+        "Avant-bras au sol, coudes à l'aplomb des épaules, pieds sur la pointe.",
+        "Corps aligné des talons aux épaules, regard vers le sol.",
+        "Place-toi de profil face à la caméra, corps entier dans le champ.",
+    ],
+    erreurs_frequentes=[
+        "Les hanches qui s'affaissent : le bas du dos encaisse tout.",
+        "Les fesses trop hautes : la position devient facile et ne travaille plus.",
+        "Bloquer sa respiration : respire calmement pendant tout le maintien.",
     ],
     erreurs=[],
+    variante_facile="Gainage sur les genoux",
 )
 
 # ==================================
@@ -303,7 +417,18 @@ squat = Exercice(
         "Rapproche tes coudes de tes genoux en bas du mouvement.",
         "Remonte en poussant sur les talons.",
     ],
+    mise_en_place=[
+        "Debout, un haltère dans chaque main, bras le long du corps.",
+        "Pieds écartés de la largeur des hanches, pointes légèrement vers l'extérieur.",
+        "Place-toi de profil face à la caméra, jambes entières visibles.",
+    ],
+    erreurs_frequentes=[
+        "Les genoux qui rentrent vers l'intérieur pendant la remontée.",
+        "Le dos qui s'arrondit en bas du mouvement.",
+        "Décoller les talons : garde le poids réparti sur tout le pied.",
+    ],
     erreurs=[],
+    variante_facile="Squat sur chaise",
 )
 
 # ==================================
@@ -333,6 +458,16 @@ fente_droite = Exercice(
         "Le genou avant ne doit pas dépasser la pointe du pied.",
         "Remonte en poussant sur le talon avant.",
     ],
+    mise_en_place=[
+        "Debout, un haltère dans chaque main, jambe droite avancée d'un grand pas.",
+        "Buste droit, regard devant.",
+        "Place-toi de profil face à la caméra, jambes entières visibles.",
+    ],
+    erreurs_frequentes=[
+        "Le genou avant qui dépasse largement la pointe du pied.",
+        "Le buste qui bascule en avant.",
+        "Un pas trop court, qui écrase le genou arrière.",
+    ],
     erreurs=[],
 )
 # ==================================
@@ -361,6 +496,16 @@ fente_gauche = Exercice(
         "Descends le genou arrière vers le sol sans le toucher.",
         "Le genou avant ne doit pas dépasser la pointe du pied.",
         "Remonte en poussant sur le talon avant.",
+    ],
+    mise_en_place=[
+        "Debout, un haltère dans chaque main, jambe gauche avancée d'un grand pas.",
+        "Buste droit, regard devant.",
+        "Place-toi de profil face à la caméra, jambes entières visibles.",
+    ],
+    erreurs_frequentes=[
+        "Le genou avant qui dépasse largement la pointe du pied.",
+        "Le buste qui bascule en avant.",
+        "Un pas trop court, qui écrase le genou arrière.",
     ],
     erreurs=[],
 )
@@ -393,6 +538,16 @@ souleve_roumain = Exercice(
         "Rapproche les mains des pieds sans arrondir le dos.",
         "Remonte en contractant les fessiers.",
     ],
+    mise_en_place=[
+        "Debout, un haltère dans chaque main devant les cuisses.",
+        "Genoux très légèrement fléchis, et ils le restent tout le mouvement.",
+        "Place-toi de profil face à la caméra, corps entier visible.",
+    ],
+    erreurs_frequentes=[
+        "Plier les genoux comme pour un squat : le mouvement vient des hanches.",
+        "Arrondir le bas du dos en descendant : c'est le principal risque.",
+        "Éloigner les haltères des jambes au lieu de les faire glisser le long.",
+    ],
     erreurs=[],
 )
 
@@ -422,9 +577,19 @@ planche_laterale_gauche = Exercice(
     detection=detection_gainage_laterale_gauche,
     description="Maintenir une position de planche latérale sur le côté gauche, corps aligné.",
     instructions=[
-        "Garde le corps aligné de la tête aux pieds",
-        "Contracte les abdominaux et les obliques",
-        "Ne laisse pas tomber les hanches",
+        "Garde le corps aligné de la tête aux pieds.",
+        "Contracte les abdominaux et les obliques.",
+        "Ne laisse pas tomber les hanches.",
+    ],
+    mise_en_place=[
+        "Allongé sur le côté gauche, avant-bras gauche au sol, coude sous l'épaule.",
+        "Jambes tendues, pieds superposés, hanches décollées du sol.",
+        "Place-toi face à la caméra, corps entier dans le champ.",
+    ],
+    erreurs_frequentes=[
+        "Les hanches qui redescendent vers le sol au fil des secondes.",
+        "Le buste qui pivote vers l'avant ou vers l'arrière.",
+        "Poser l'épaule sur le coude au lieu de pousser dans le sol.",
     ],
     erreurs=[],
 )
@@ -456,9 +621,19 @@ planche_laterale_droite = Exercice(
     detection=detection_gainage_laterale_droite,
     description="Maintenir une position de planche latérale sur le côté droit, corps aligné.",
     instructions=[
-        "Garde le corps aligné de la tête aux pieds",
-        "Contracte les abdominaux et les obliques",
-        "Ne laisse pas tomber les hanches",
+        "Garde le corps aligné de la tête aux pieds.",
+        "Contracte les abdominaux et les obliques.",
+        "Ne laisse pas tomber les hanches.",
+    ],
+    mise_en_place=[
+        "Allongé sur le côté droit, avant-bras droit au sol, coude sous l'épaule.",
+        "Jambes tendues, pieds superposés, hanches décollées du sol.",
+        "Place-toi face à la caméra, corps entier dans le champ.",
+    ],
+    erreurs_frequentes=[
+        "Les hanches qui redescendent vers le sol au fil des secondes.",
+        "Le buste qui pivote vers l'avant ou vers l'arrière.",
+        "Poser l'épaule sur le coude au lieu de pousser dans le sol.",
     ],
     erreurs=[],
 )
@@ -491,7 +666,7 @@ def rowing_unilateral_gauche_erreur_buste(corps):
         corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche
     )
     if angle_buste_gauche >= 160:
-        return "Penche-toi davantage vers l'avant"
+        return "forme_buste_pas_assez_penche"
     return None
 
 
@@ -505,6 +680,16 @@ rowing_unilateral_gauche = Exercice(
         "Monte le poignet au-dessus de la hanche.",
         "Contracte l'omoplate en haut du mouvement.",
         "Contrôle la descente.",
+    ],
+    mise_en_place=[
+        "Main droite et genou droit en appui sur une chaise, dos à plat.",
+        "Haltère dans la main gauche, bras tendu vers le sol.",
+        "Place-toi de profil face à la caméra, buste et bras visibles.",
+    ],
+    erreurs_frequentes=[
+        "Ne pas assez pencher le buste : il doit être proche de l'horizontale.",
+        "Tirer avec le bras seul au lieu d'amener l'omoplate vers la colonne.",
+        "Tourner le buste pour monter plus haut.",
     ],
     erreurs=[rowing_unilateral_gauche_erreur_buste],
 )
@@ -537,7 +722,7 @@ def rowing_unilateral_droit_erreur_buste(corps):
         corps.epaule_droite, corps.hanche_droite, corps.genou_droit
     )
     if angle_buste_droit >= 160:
-        return "Penche-toi davantage vers l'avant"
+        return "forme_buste_pas_assez_penche"
     return None
 
 
@@ -551,6 +736,16 @@ rowing_unilateral_droit = Exercice(
         "Monte le poignet au-dessus de la hanche.",
         "Contracte l'omoplate en haut du mouvement.",
         "Contrôle la descente.",
+    ],
+    mise_en_place=[
+        "Main gauche et genou gauche en appui sur une chaise, dos à plat.",
+        "Haltère dans la main droite, bras tendu vers le sol.",
+        "Place-toi de profil face à la caméra, buste et bras visibles.",
+    ],
+    erreurs_frequentes=[
+        "Ne pas assez pencher le buste : il doit être proche de l'horizontale.",
+        "Tirer avec le bras seul au lieu d'amener l'omoplate vers la colonne.",
+        "Tourner le buste pour monter plus haut.",
     ],
     erreurs=[rowing_unilateral_droit_erreur_buste],
 )
@@ -583,7 +778,7 @@ def rowing_penche_erreur_buste(corps):
         corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche
     )
     if angle_buste_gauche >= 165:
-        return "Penche-toi davantage vers l'avant"
+        return "forme_buste_pas_assez_penche"
     return None
 
 
@@ -592,7 +787,7 @@ def rowing_penche_erreur_genoux(corps):
         corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche
     )
     if angle_genou_gauche < 155:
-        return "Garde les jambes presque tendues, plie moins les genoux"
+        return "forme_genoux_trop_plies"
     return None
 
 
@@ -608,6 +803,16 @@ rowing_penche = Exercice(
         "Monte le poignet au-dessus de la hanche.",
         "Contracte les omoplates en haut du mouvement.",
         "Contrôle la descente.",
+    ],
+    mise_en_place=[
+        "Debout, un haltère dans chaque main, buste penché vers l'avant.",
+        "Genoux presque tendus, dos plat, regard vers le sol devant toi.",
+        "Place-toi de profil face à la caméra, corps entier visible.",
+    ],
+    erreurs_frequentes=[
+        "Se redresser au fil des répétitions : le buste doit rester penché.",
+        "Arrondir le dos, surtout en fin de série.",
+        "Plier les genoux pour compenser un manque de souplesse.",
     ],
     erreurs=[rowing_penche_erreur_buste, rowing_penche_erreur_genoux],
 )
@@ -643,9 +848,9 @@ def oiseau_erreur_coudes(corps):
     angle_coude_moyen = (angle_coude_gauche + angle_coude_droit) / 2
 
     if angle_coude_moyen > 170:
-        return "Garde les coudes legerement flechis, ne tends pas completement les bras"
+        return "forme_coudes_trop_tendus"
     if angle_coude_moyen < 120:
-        return "Ne plie pas trop les coudes"
+        return "forme_coudes_trop_plies"
     return None
 
 
@@ -660,5 +865,149 @@ oiseau = Exercice(
         "Contracte les omoplates en haut du mouvement.",
         "Contrôle la descente.",
     ],
+    mise_en_place=[
+        "Debout, buste penché vers l'avant, un haltère dans chaque main.",
+        "Coudes légèrement fléchis, bras pendants sous les épaules.",
+        "Place-toi face à la caméra, les deux bras entièrement visibles.",
+    ],
+    erreurs_frequentes=[
+        "Prendre trop lourd : le mouvement devient un tirage, pas un écarté.",
+        "Tendre complètement les bras, ou au contraire plier les coudes à angle droit.",
+        "Se redresser pour aider la montée.",
+    ],
     erreurs=[oiseau_erreur_coudes],
+)
+
+
+# ==================================
+# Variantes assistées
+# ==================================
+# Régressions des mouvements au poids du corps. Elles n'existent pas pour faire
+# nombre : sans elles, une personne qui ne fait pas une seule pompe complète
+# reste « hors barème » — c'est-à-dire sans aucun objectif — parce que le
+# premier palier des Pompes suppose déjà de savoir en faire. Chacune réutilise
+# la détection du mouvement complet quand celle-ci reste valable, plutôt que
+# d'introduire une heuristique de plus à maintenir.
+
+
+def squat_sur_chaise_detection(corps):
+    """Profondeur lue sur l'angle du genou, pas sur la distance coude-genou.
+
+    `squat_detection` mesure l'écart entre le coude et le genou : ça suppose des
+    haltères qui pendent le long du corps. Au poids du corps, les bras partent
+    devant pour l'équilibre et ce repère ne veut plus rien dire.
+    """
+    angle_gauche = calculer_angle(
+        corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche
+    )
+    angle_droit = calculer_angle(
+        corps.hanche_droite, corps.genou_droit, corps.cheville_droite
+    )
+    if angle_gauche < 110 and angle_droit < 110:
+        return "fin"
+    if angle_gauche > 160 and angle_droit > 160:
+        return "debut"
+    return "milieu"
+
+
+pompes_inclinees = Exercice(
+    nom="Pompes inclinées",
+    # Les angles de coude ne dépendent pas de l'inclinaison : la détection des
+    # pompes s'applique telle quelle.
+    detection=pompe_detection,
+    description=(
+        "Pompes mains posées sur une chaise ou un plan de travail : "
+        "plus le support est haut, plus le mouvement est facile."
+    ),
+    mise_en_place=[
+        "Pose les mains à plat sur l'assise d'une chaise stable, écartées de la largeur des épaules.",
+        "Recule les pieds jusqu'à former une ligne droite des talons aux épaules.",
+        "Place-toi de profil face à la caméra, corps entier visible.",
+    ],
+    instructions=[
+        "Descends la poitrine vers la chaise en pliant les coudes.",
+        "Garde le corps aligné, sans creuser le bas du dos.",
+        "Remonte en poussant sur les mains, sans bloquer les coudes.",
+    ],
+    erreurs_frequentes=[
+        "Les hanches qui tombent : contracte les fessiers et les abdominaux.",
+        "Les coudes qui partent à 90° du buste : garde-les à environ 45°.",
+        "Descendre trop peu : la poitrine doit approcher du support.",
+    ],
+    erreurs=[],
+    variante_difficile="Pompes sur les genoux",
+)
+
+pompes_sur_les_genoux = Exercice(
+    nom="Pompes sur les genoux",
+    detection=pompe_detection,
+    description=(
+        "Pompes au sol avec les genoux posés : la moitié du corps à soulever en moins."
+    ),
+    mise_en_place=[
+        "Pose les genoux sur un tapis, mains au sol un peu plus larges que les épaules.",
+        "Aligne les épaules, les hanches et les genoux ; les pieds restent en l'air.",
+        "Place-toi de profil face à la caméra.",
+    ],
+    instructions=[
+        "Descends la poitrine vers le sol en pliant les coudes.",
+        "Garde la tête dans le prolongement du dos.",
+        "Remonte sans creuser le bas du dos.",
+    ],
+    erreurs_frequentes=[
+        "S'asseoir sur les talons : les hanches doivent rester dans l'axe.",
+        "Descendre la tête avant la poitrine.",
+    ],
+    erreurs=[],
+    variante_facile="Pompes inclinées",
+    variante_difficile="Pompes",
+)
+
+gainage_sur_les_genoux = Exercice(
+    nom="Gainage sur les genoux",
+    # L'angle épaule-hanche-genou reste celui d'un corps aligné, genoux au sol
+    # ou non : la détection du gainage complet convient sans retouche.
+    detection=detection_gainage,
+    description="Planche sur les avant-bras avec les genoux posés au sol.",
+    mise_en_place=[
+        "Pose les avant-bras au sol, coudes sous les épaules.",
+        "Pose les genoux au sol, hanches alignées avec les épaules.",
+        "Place-toi de profil face à la caméra.",
+    ],
+    instructions=[
+        "Serre les abdominaux et les fessiers.",
+        "Garde une ligne droite des épaules aux genoux.",
+        "Respire normalement, ne bloque pas.",
+    ],
+    erreurs_frequentes=[
+        "Les hanches trop hautes : le gainage ne travaille plus.",
+        "Le bas du dos creusé : rentre légèrement le bassin.",
+    ],
+    erreurs=[],
+    variante_difficile="Gainage planche",
+)
+
+squat_sur_chaise = Exercice(
+    nom="Squat sur chaise",
+    detection=squat_sur_chaise_detection,
+    description=(
+        "Squat au poids du corps, en s'asseyant sur une chaise puis en se relevant."
+    ),
+    mise_en_place=[
+        "Place une chaise derrière toi, debout, pieds écartés de la largeur des hanches.",
+        "Tends les bras devant toi pour l'équilibre.",
+        "Place-toi de profil face à la caméra, jambes entières visibles.",
+    ],
+    instructions=[
+        "Descends les hanches vers l'arrière comme pour t'asseoir.",
+        "Effleure l'assise sans t'y poser vraiment, ou assieds-toi si c'est trop dur.",
+        "Remonte en poussant sur les talons.",
+    ],
+    erreurs_frequentes=[
+        "Les genoux qui rentrent vers l'intérieur : garde-les dans l'axe des pieds.",
+        "Le dos qui s'arrondit : regarde devant toi, poitrine ouverte.",
+        "Se laisser tomber sur la chaise : contrôle la descente.",
+    ],
+    erreurs=[],
+    variante_difficile="Squat",
 )
