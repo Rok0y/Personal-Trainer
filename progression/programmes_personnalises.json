@@ -137,5 +137,25 @@
         "poids": 16.0
       }
     ]
+  },
+  "prout": {
+    "nom": "Prout",
+    "description": "",
+    "exigences": [
+      {
+        "seance": "Séance",
+        "exercice": "Curl biceps droit",
+        "series": 3,
+        "cible": 10.0,
+        "poids": 8.0
+      },
+      {
+        "seance": "Séance",
+        "exercice": "Curl biceps gauche",
+        "series": 3,
+        "cible": 10.0,
+        "poids": 8.0
+      }
+    ]
   }
 }
