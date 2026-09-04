@@ -3,13 +3,22 @@ from copy import deepcopy
 from pathlib import Path
 
 from mouvements.echauffements import (
+    abducteurs,
     elevations_laterales_a_vide,
+    extensions_mollets,
+    hanches_avant_arriere,
+    hip_thrust,
     jumping_jacks,
+    montees_de_genou,
     pompes_lentes,
+    rotation_chevilles,
     rotation_cou,
     rotation_coudes,
     rotation_epaules,
+    rotation_genoux,
     rotation_poignets,
+    squat_de_priere,
+    squat_lent,
 )
 from mouvements.exercices import (
     crunches,
@@ -107,6 +116,15 @@ CATALOGUE_ECHAUFFEMENTS = {
         elevations_laterales_a_vide,
         pompes_lentes,
         jumping_jacks,
+        squat_de_priere,
+        squat_lent,
+        rotation_genoux,
+        rotation_chevilles,
+        hanches_avant_arriere,
+        abducteurs,
+        hip_thrust,
+        extensions_mollets,
+        montees_de_genou,
     )
 }
 
@@ -740,6 +758,14 @@ def catalogue():
         # sans ce passage, l'accueil annoncerait les valeurs du disque pendant
         # que `creer_seance` en applique d'autres.
         appliquer_a_blocs(seance["exercices"], objectifs)
+        # Recalculé ici plutôt que gardé depuis les deux constructions
+        # ci-dessus : un seul endroit qui distingue échauffement et exercice,
+        # sur la liste finale (celle affichée), pas sur le nombre de blocs bruts.
+        seance["nombre_echauffements"] = sum(
+            1 for exercice in seance["exercices"]
+            if exercice.get("mode") == MODE_ECHAUFFEMENT
+        )
+        seance["nombre_exercices"] = len(seance["exercices"]) - seance["nombre_echauffements"]
         for exercice in seance["exercices"]:
             exercice["materiel"] = materiel_exercice(
                 exercice["nom"],

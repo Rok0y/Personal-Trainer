@@ -52,8 +52,8 @@ function optionsExercices(choisi = "") {
             .join("")}</optgroup>`;
 
     return (
-        groupe("Exercices", Object.keys(exercices)) +
-        groupe("Échauffement", Object.keys(echauffements))
+        groupe("Échauffement (avant l'entraînement)", Object.keys(echauffements)) +
+        groupe("Exercices", Object.keys(exercices))
     );
 }
 

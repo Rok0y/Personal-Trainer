@@ -74,6 +74,9 @@ label {
 }
 .bloc select:focus, .bloc input:focus { outline: none; border-color: var(--teal); }
 .bloc select option { background: #0f1420; color: var(--text); }
+/* Le sur-titre de groupe (label d'optgroup) prend par défaut la couleur grise
+   du navigateur, illisible sur le fond sombre du menu déroulant ouvert. */
+.bloc select optgroup { background: #0f1420; color: var(--teal); font-weight: 700; }
 
 /* ---------- Couleur par mode ----------
    `--mode-couleur` est posée par le JS sur chaque bloc (data-mode), ce qui

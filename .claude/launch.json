@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "flask-only",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-c", "from web.app import lancer_site; lancer_site()"],
+      "port": 5000
+    }
+  ]
+}

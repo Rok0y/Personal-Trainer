@@ -225,7 +225,7 @@
                     {% endif %}
                 </span>
             </div>
-            <p>{{ seance.nombre_exercices }} exercices</p>
+            <p>{{ seance.nombre_exercices }} exercices{% if seance.nombre_echauffements %} · {{ seance.nombre_echauffements }} échauffements{% endif %}</p>
 
             {% if identifiant == 'test' %}
             <div class="test-config">
@@ -248,8 +248,18 @@
 
             <details class="session-content">
                 <summary>Voir le contenu</summary>
+                {% if seance.exercices|selectattr('mode', 'equalto', 'echauffement')|list %}
+                <details class="session-content">
+                    <summary>Échauffement</summary>
+                    <ul>
+                    {% for exercice in seance.exercices if exercice.mode == 'echauffement' %}
+                        <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.duree }} secondes</li>
+                    {% endfor %}
+                    </ul>
+                </details>
+                {% endif %}
                 <ul>
-                {% for exercice in seance.exercices %}
+                {% for exercice in seance.exercices if exercice.mode != 'echauffement' %}
                     <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}{% if exercice.cible_manuelle %} <span class="badge-manuelle" title="Cible saisie à la main : le moteur de progression ne la fait plus évoluer.">cible manuelle</span>{% endif %}</li>
                 {% endfor %}
                 </ul>
@@ -259,7 +269,7 @@
             <details class="session-objectives">
                 <summary>Objectifs et commentaires</summary>
                 <form class="session-editor" data-editor="{{ identifiant }}">
-                    {% for exercice in seance.exercices %}
+                    {% macro bloc_edition(exercice) %}
                     <div class="edit-exercise" data-exercice="{{ exercice.nom or exercice.exercice }}" data-mode="{{ exercice.mode }}" data-poids="{{ exercice.poids|default(0) }}" data-repos-series="{{ exercice.repos_entre_series|default(0) }}" data-repos-apres="{{ exercice.repos_apres|default(0) }}" data-entrelace="{{ exercice.entrelace_avec or '' }}">
                         <label>{{ exercice.nom or exercice.exercice }}{% if exercice.cible_manuelle %} <span class="badge-manuelle">cible manuelle<button type="button" class="badge-manuelle-retirer" data-retirer-cible-manuelle="{{ exercice.nom or exercice.exercice }}" title="Revenir à la cible proposée par le moteur de progression" aria-label="Retirer la cible manuelle">×</button></span>{% endif %}</label>
                         <p class="editor-equipment">Matériel : {{ exercice.materiel or 'Aucun matériel' }}</p>
@@ -277,6 +287,17 @@
                         <div class="last-series"><strong>Dernière série · </strong>Séance du {{ derniere.date }} : {% for serie in derniere.series %}{% if derniere.mode in MODES_DUREE %}{{ serie.duree|round(1) }} s{% else %}{{ serie.repetitions }}{% if serie.poids %} x {{ serie.poids }} kg{% endif %}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</div>
                         {% endif %}
                     </div>
+                    {% endmacro %}
+                    {% if seance.exercices|selectattr('mode', 'equalto', 'echauffement')|list %}
+                    <details class="session-content">
+                        <summary>Échauffement</summary>
+                        {% for exercice in seance.exercices if exercice.mode == 'echauffement' %}
+                        {{ bloc_edition(exercice) }}
+                        {% endfor %}
+                    </details>
+                    {% endif %}
+                    {% for exercice in seance.exercices if exercice.mode != 'echauffement' %}
+                    {{ bloc_edition(exercice) }}
                     {% endfor %}
                     <button class="save-session" type="submit">Sauvegarder les objectifs</button>
                 </form>
