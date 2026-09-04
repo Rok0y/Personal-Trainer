@@ -95,6 +95,10 @@ class Circuit:
         self.phase = "preparation"
         self.debut_repos = None
         self.historique_enregistre = False
+        # Identifiant de la ligne écrite en base, connu seulement une fois la
+        # séance enregistrée. C'est lui qui permet à l'écran de fin d'annoter
+        # les exercices d'un ressenti.
+        self.seance_id = None
         self.debut = time.time()
         self.resultats_series = []
         self.paires_entrelacees = self._detecter_paires_entrelacees()
@@ -494,15 +498,38 @@ class Circuit:
         self.debut_repos = None
         return True
 
+    def objectif_serie_atteint(self, repetitions=0, duree=0):
+        """La performance donnée atteint-elle la consigne du bloc courant ?
+
+        Point d'entrée unique de « cette série compte-t-elle ». Le seuil dépend
+        du mode : une durée pour un maintien ou un chrono, un nombre de
+        répétitions sinon.
+        """
+        bloc = self.bloc_actuel
+        if bloc is None:
+            return False
+        if bloc.mode in (MODE_MAINTIEN, MODE_CHRONO):
+            return duree >= bloc.duree
+        return repetitions >= bloc.repetitions_par_serie
+
     def terminer_serie_manuellement(self, repetitions=0, duree=0):
-        """Enregistre la performance courante puis lance la transition."""
+        """Enregistre la performance courante puis lance la transition.
+
+        La série n'est marquée `completee` que si elle atteint sa consigne.
+        Terminer à la main, c'est justement le cas où l'objectif peut ne pas
+        être atteint — un gainage lâché à mi-parcours, une série écourtée —, et
+        le forcer à `True` faisait passer un abandon pour une réussite. C'était
+        le seul chemin capable de produire un `completee` faux, si bien que le
+        filtre de `progression.niveaux.performance_realisee` n'avait jusqu'ici
+        jamais rien à écarter.
+        """
         if self.phase != "exercice":
             return False
 
         self.enregistrer_resultat_serie(
             repetitions=repetitions,
             duree=duree,
-            completee=True,
+            completee=self.objectif_serie_atteint(repetitions, duree),
         )
         self.reinitialiser_etat_serie()
         self.terminer_serie()

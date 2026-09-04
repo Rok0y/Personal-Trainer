@@ -18,25 +18,46 @@ Trois raisons, et trois seulement, font qu'un bloc échappe au moteur :
   **collante** : le moteur ne la touche plus jusqu'à resynchronisation.
 """
 
+from historique.database import recuperer_historique
 from progression.niveaux import UNITE_PAR_MODE, etats_niveaux
 from progression.paliers import (
     UNITE_SECONDES,
     est_suivi_par_le_moteur,
+    palier,
     unite,
 )
+from progression.ressenti import evaluation
 
 
 def objectifs_par_exercice(seances=None):
     """Palier à viser pour chaque exercice suivi.
 
-    C'est `suivant` — le premier palier non validé —, sauf quand le barème est
-    épuisé : on reste alors sur le dernier palier atteint plutôt que de ne rien
-    proposer.
+    Deux règles, dans cet ordre.
+
+    1. **Le repère de la dernière séance** (`progression/ressenti.py`) : le
+       palier alors demandé, plus ou moins ce que la réussite et le ressenti
+       lui valent. C'est ce qui permet de sauter plusieurs crans quand c'était
+       trop facile, et de reculer quand c'était trop dur.
+    2. À défaut de repère — premier passage sur l'exercice, cible d'époque
+       indéchiffrable, ou ancrage de niveau plus récent que la dernière séance
+       —, `suivant` : le premier palier non validé. Et si le barème est épuisé,
+       le dernier palier atteint plutôt que rien.
+
+    Un objectif peut donc se retrouver **sous** le niveau de l'exercice. C'est
+    voulu : le niveau est un record, l'objectif est un plan.
+
+    L'historique est lu une seule fois et partagé entre les deux calculs, qui
+    le parcourent tous les deux intégralement.
     """
-    return {
-        nom: (etat["suivant"] or etat["actuel"])
-        for nom, etat in etats_niveaux(seances).items()
-    }
+    seances = recuperer_historique() if seances is None else seances
+    reperes = evaluation(seances)
+
+    objectifs = {}
+    for nom, etat in etats_niveaux(seances).items():
+        repere = reperes.get(nom)
+        vise = palier(nom, repere["vise"]) if repere else None
+        objectifs[nom] = vise or etat["suivant"] or etat["actuel"]
+    return objectifs
 
 
 def objectif_pour(nom_exercice, mode, objectifs):

@@ -60,6 +60,12 @@
         <a class="tab active" href="/programmes">Programmes</a>
     </nav>
 
+    <style>
+        /* Le nom d'exercice mène à sa fiche de records : il garde son allure de
+           titre, seul le survol trahit le lien. */
+        a.exigence-nom { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--border-strong); }
+        a.exigence-nom:hover { color: var(--teal); border-bottom-color: var(--teal); text-decoration: none; }
+    </style>
     <p><a class="tab" href="/creer-programme">+ Nouveau programme</a></p>
 
     {% if not programmes %}<p class="empty">Aucun programme défini.</p>{% endif %}
@@ -84,7 +90,7 @@
             {% for ligne in lignes %}
             <li class="exigence{% if ligne.atteint %} faite{% endif %}">
                 <div class="exigence-titre">
-                    <span class="exigence-nom">{{ ligne.exercice }}</span>
+                    <a class="exigence-nom" href="/records#exercice-{{ ligne.exercice|ancre }}" title="Voir les records et le niveau de {{ ligne.exercice }}">{{ ligne.exercice }}</a>
                     {% if ligne.hors_atteinte %}
                     <span class="etat bloque">Matériel insuffisant</span>
                     {% elif ligne.atteint %}

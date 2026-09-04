@@ -20,8 +20,10 @@ from mouvements.positions import (
 )
 from session.moteur import (
     decrire_prochaine_etape,
+    duree_realisee,
     executer_mode,
     mettre_a_jour_prochain_exercice,
+    oublier_durees,
 )
 from vision.dessin import dessiner_squelette
 from vision.detector import PoseDetector
@@ -78,7 +80,7 @@ def publier_fin_de_seance(seance):
 
     print(">>> ENREGISTREMENT HISTORIQUE <<<")
 
-    enregistrer_seance(
+    seance.seance_id = enregistrer_seance(
         duree=seance.duree_totale,
         exercices=seance.exporter_resultats(),
         nom_seance=controleur.nom_selectionne,
@@ -177,10 +179,9 @@ try:
             if termine_x and seance.phase == "exercice":
                 seance.terminer_serie_manuellement(
                     repetitions=state.repetitions,
-                    duree=state.temps_maintien
-                    or state.temps_chrono
-                    or state.temps_echauffement,
+                    duree=duree_realisee(seance.bloc_actuel, state),
                 )
+                oublier_durees(state)
                 compteur.reset()
                 state.repetitions = 0
                 derniere_rep = 0

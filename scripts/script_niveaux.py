@@ -19,6 +19,7 @@ from progression.paliers import (
     tranches,
     unite,
 )
+from progression.ressenti import evaluation
 from historique.database import recuperer_historique
 from session.seances import CATALOGUE_EXERCICES, catalogue
 
@@ -178,6 +179,33 @@ def afficher_lignes_ignorees(seances):
         )
 
 
+def afficher_decision_objectifs(seances):
+    """Comment chaque objectif a été décidé : repère, réussite, ressenti.
+
+    C'est la lecture qui explique un objectif surprenant. Les trois colonnes
+    se lisent ensemble : `demandé` est le palier de la dernière séance,
+    `issue` dit s'il a été validé, `ressenti` ce qui a été répondu, et
+    `objectif` en est la somme. Un exercice absent d'ici est piloté par la
+    règle de repli (premier palier non validé) faute de repère exploitable.
+    """
+    titre("DÉCISION DE L'OBJECTIF (repère, réussite, ressenti)")
+    reperes = evaluation(seances)
+
+    for nom in sorted(SPECS):
+        repere = reperes.get(nom)
+        if repere is None:
+            print(f"  {nom:<34} pas de repère : premier palier non validé")
+            continue
+        issue = "réussi" if repere["reussi"] else "échoué"
+        ressenti = repere["ressenti"] or "—"
+        vise = palier(nom, repere["vise"])
+        print(
+            f"  {nom:<34} demandé {repere['base']:>3} ({issue:>7})"
+            f" | ressenti {ressenti:<12} {repere['ajustement']:+d}"
+            f" -> objectif {repere['vise']:>3}  {vise.resume() if vise else '?'}"
+        )
+
+
 def principal():
     seances = recuperer_historique()
     print(f"{len(seances)} séance(s) dans l'historique.")
@@ -185,6 +213,7 @@ def principal():
     verifier_monotonie_volume()
     afficher_niveaux(seances)
     afficher_lignes_ignorees(seances)
+    afficher_decision_objectifs(seances)
     afficher_cibles_actuelles(seances)
 
 

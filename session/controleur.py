@@ -199,6 +199,11 @@ class SessionManager:
             return {
                 "statut": self.statut,
                 "seance": self.nom_selectionne,
+                # Reste None tant que le thread caméra n'a pas écrit la séance.
+                # L'écran de fin s'en sert pour savoir quand il peut proposer
+                # la saisie des ressentis : le statut bascule sur `finished`
+                # avant l'enregistrement, pas après.
+                "seance_id": self.seance.seance_id if seance_active else None,
                 "phase": self.seance.phase if self.seance else "idle",
                 "serie_actuelle": self.seance.serie_actuelle if self.seance else 0,
                 "nombre_series_total": (
