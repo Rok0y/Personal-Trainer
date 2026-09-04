@@ -18,6 +18,7 @@ Trois raisons, et trois seulement, font qu'un bloc échappe au moteur :
   **collante** : le moteur ne la touche plus jusqu'à resynchronisation.
 """
 
+from core.utilisateur import identifiant_connecte
 from historique.database import recuperer_historique
 from progression.niveaux import UNITE_PAR_MODE, etats_niveaux
 from progression.paliers import (
@@ -27,6 +28,93 @@ from progression.paliers import (
     unite,
 )
 from progression.ressenti import evaluation
+
+
+def profils_cible_manuelle(valeur):
+    """Normalise la valeur stockée en ensemble d'identifiants de profils.
+
+    Les séances sont partagées entre profils : une cible figée à la main
+    appartient donc à **celui qui l'a figée**, pas à la séance. La valeur
+    stockée est une liste d'identifiants ; l'ancien booléen doit continuer à
+    se lire, sans quoi les marques posées avant les profils disparaîtraient
+    silencieusement au premier chargement.
+
+    Une valeur qu'aucun format connu ne couvre est lue comme « personne » : un
+    faux positif fige une cible que le moteur ne fera plus jamais bouger, et
+    c'est un blocage silencieux, alors qu'un faux négatif se voit dès le
+    prochain affichage et se corrige d'un clic.
+    """
+    if valeur is None or valeur is False:
+        return set()
+    # `True` date d'avant les profils : la marque appartient au profil 1, celui
+    # qui a hérité de tout l'historique à la migration.
+    if valeur is True:
+        return {1}
+    if isinstance(valeur, int):
+        return {valeur}
+    if isinstance(valeur, (list, tuple, set)):
+        return {int(profil) for profil in valeur if isinstance(profil, int)}
+    return set()
+
+
+def fusionner_cible_manuelle(valeur_entrante, valeur_stockee, utilisateur_id=None):
+    """Combine la décision du profil connecté et les marques déjà sur le disque.
+
+    Indispensable parce qu'un enregistrement de séance **réécrit tous les
+    blocs** : le formulaire d'objectifs de l'accueil renvoie ce que le profil
+    connecté voit, c'est-à-dire rien des autres. Sans fusion, la première
+    sauvegarde du second profil effacerait les cibles figées du premier — sur
+    des blocs qu'il n'a jamais touchés.
+
+    La règle : les autres profils viennent du disque, qui fait autorité pour
+    eux ; seul le bit du profil connecté est repris de la valeur entrante. Un
+    client n'a donc jamais à transporter l'état de quelqu'un d'autre.
+    """
+    if utilisateur_id is None:
+        utilisateur_id = identifiant_connecte()
+    autres = profils_cible_manuelle(valeur_stockee)
+    if utilisateur_id is None:
+        return sorted(autres) or None
+    utilisateur_id = int(utilisateur_id)
+    autres.discard(utilisateur_id)
+    if utilisateur_id in profils_cible_manuelle(valeur_entrante):
+        autres.add(utilisateur_id)
+    return sorted(autres) or None
+
+
+def _valeur_cible_manuelle(bloc):
+    """Lit l'attribut, que le bloc soit un dictionnaire ou un `BlocExercice`."""
+    if isinstance(bloc, dict):
+        return bloc.get("cible_manuelle")
+    return getattr(bloc, "cible_manuelle", None)
+
+
+def est_cible_manuelle(bloc, utilisateur_id=None):
+    """Ce bloc est-il figé à la main **pour ce profil** ?"""
+    if utilisateur_id is None:
+        utilisateur_id = identifiant_connecte()
+    if utilisateur_id is None:
+        return False
+    return int(utilisateur_id) in profils_cible_manuelle(_valeur_cible_manuelle(bloc))
+
+
+def definir_cible_manuelle(valeur_actuelle, manuelle, utilisateur_id=None):
+    """Nouvelle valeur à stocker après décision pour un seul profil.
+
+    Retourne None quand plus personne ne fige ce bloc, pour que l'appelant
+    retire la clé plutôt que d'écrire une liste vide. Les identifiants des
+    autres profils sont conservés : c'est tout l'objet du changement de
+    format.
+    """
+    if utilisateur_id is None:
+        utilisateur_id = identifiant_connecte()
+    profils = profils_cible_manuelle(valeur_actuelle)
+    if utilisateur_id is not None:
+        if manuelle:
+            profils.add(int(utilisateur_id))
+        else:
+            profils.discard(int(utilisateur_id))
+    return sorted(profils) or None
 
 
 def objectifs_par_exercice(seances=None):
@@ -85,7 +173,7 @@ def appliquer_a_blocs(blocs, objectifs=None):
     objectifs = objectifs_par_exercice() if objectifs is None else objectifs
 
     for bloc in blocs:
-        if bloc.get("cible_manuelle"):
+        if est_cible_manuelle(bloc):
             continue
         palier_vise = objectif_pour(
             _nom_exercice(bloc), bloc.get("mode"), objectifs
@@ -111,7 +199,7 @@ def appliquer_a_circuit(circuit, objectifs=None):
     objectifs = objectifs_par_exercice() if objectifs is None else objectifs
 
     for bloc in circuit.exercices:
-        if getattr(bloc, "cible_manuelle", False):
+        if est_cible_manuelle(bloc):
             continue
         palier_vise = objectif_pour(bloc.exercice.nom, bloc.mode, objectifs)
         if palier_vise is None:
@@ -141,7 +229,7 @@ def marquer_cibles_manuelles(blocs, objectifs=None):
             _nom_exercice(bloc), bloc.get("mode"), objectifs
         )
         if palier_vise is None:
-            bloc.pop("cible_manuelle", None)
+            _ecrire_cible_manuelle(bloc, False)
             continue
 
         if palier_vise.unite == UNITE_SECONDES:
@@ -154,9 +242,15 @@ def marquer_cibles_manuelles(blocs, objectifs=None):
             and (bloc.get("series") or 0) == palier_vise.series
             and cible == palier_vise.cible
         )
-        if identique:
-            bloc.pop("cible_manuelle", None)
-        else:
-            bloc["cible_manuelle"] = True
+        _ecrire_cible_manuelle(bloc, not identique)
 
     return blocs
+
+
+def _ecrire_cible_manuelle(bloc, manuelle):
+    """Pose ou retire la marque du profil connecté, sans toucher aux autres."""
+    valeur = definir_cible_manuelle(bloc.get("cible_manuelle"), manuelle)
+    if valeur is None:
+        bloc.pop("cible_manuelle", None)
+    else:
+        bloc["cible_manuelle"] = valeur

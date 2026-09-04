@@ -3,10 +3,42 @@ from datetime import datetime
 
 CHEMIN_DB = "historique/personaltrainer.db"
 
+# Nom donné au profil créé pour recueillir l'historique d'avant les profils.
+# Renommable depuis l'écran de connexion : c'est un point de départ, pas une
+# identité imposée.
+NOM_PROFIL_REPRIS = "Moi"
+
 
 def connexion():
 
     return sqlite3.connect(CHEMIN_DB)
+
+
+def _profil_courant(utilisateur_id=None):
+    """Résout le profil auquel une requête s'applique.
+
+    Toutes les fonctions cloisonnées prennent `utilisateur_id=None` et passent
+    par ici : `None` veut dire « le profil connecté », un entier veut dire « ce
+    profil-là ». C'est ce paramètre explicite qui rend la couche données
+    utilisable pour un classement (`recuperer_historique(utilisateur_id=2)`)
+    sans rien changer le jour où l'application deviendra multi-sessions : seule
+    la *résolution* de « qui est-ce » bougera.
+
+    L'absence de profil connecté lève plutôt que de retomber sur un profil par
+    défaut : écrire une séance dans l'historique de quelqu'un d'autre est une
+    corruption silencieuse, un plantage se voit.
+    """
+    if utilisateur_id is not None:
+        return int(utilisateur_id)
+
+    from core.utilisateur import utilisateur_connecte
+
+    connecte = utilisateur_connecte()
+    if connecte is None:
+        raise RuntimeError(
+            "Aucun profil connecté : impossible de lire ou d'écrire l'historique."
+        )
+    return int(connecte["id"])
 
 
 def initialiser():
@@ -35,6 +67,13 @@ def initialiser():
         curseur.execute("ALTER TABLE seances ADD COLUMN statut TEXT DEFAULT 'finished'")
     if "nom_seance" not in colonnes_seances:
         curseur.execute("ALTER TABLE seances ADD COLUMN nom_seance TEXT")
+    # Le cloisonnement par profil ne porte que sur les deux tables racines :
+    # `exercices` et `series_realisees` héritent de leur clé étrangère, y
+    # dupliquer la colonne serait une dénormalisation à maintenir.
+    if "utilisateur_id" not in colonnes_seances:
+        curseur.execute(
+            "ALTER TABLE seances ADD COLUMN utilisateur_id INTEGER DEFAULT 1"
+        )
 
     # Table des exercices réalisés
     curseur.execute("""
@@ -126,17 +165,162 @@ def initialiser():
         )
     """)
 
+    colonnes_corrections = {
+        ligne[1] for ligne in curseur.execute("PRAGMA table_info(corrections_niveaux)")
+    }
+    if "utilisateur_id" not in colonnes_corrections:
+        curseur.execute(
+            "ALTER TABLE corrections_niveaux ADD COLUMN utilisateur_id INTEGER DEFAULT 1"
+        )
+
+    # Profils. Pas de colonne « actif » : le profil connecté est un état de
+    # session, pas une donnée persistée — on se reconnecte à chaque lancement.
+    # Le mot de passe n'existe pas encore ; la table est faite pour en recevoir
+    # un sans migration douloureuse.
+    curseur.execute("""
+        CREATE TABLE IF NOT EXISTS utilisateurs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nom TEXT NOT NULL UNIQUE,
+            cree_le TEXT NOT NULL
+        )
+    """)
+
+    # À l'échelle visée, toute requête filtre par profil : ces index ne sont
+    # pas optionnels.
+    curseur.execute("""
+        CREATE INDEX IF NOT EXISTS index_seances_utilisateur
+        ON seances(utilisateur_id)
+    """)
+    curseur.execute("""
+        CREATE INDEX IF NOT EXISTS index_exercices_seance
+        ON exercices(seance_id)
+    """)
+    curseur.execute("""
+        CREATE INDEX IF NOT EXISTS index_corrections_utilisateur
+        ON corrections_niveaux(utilisateur_id, nom_exercice)
+    """)
+
+    # Reprise d'une base d'avant les profils : l'historique existant porte
+    # `utilisateur_id = 1` par le DEFAULT, il lui faut donc un profil 1 à qui
+    # appartenir. On ne le crée que s'il y a quelque chose à rattacher — sur
+    # une base vierge, c'est l'écran de connexion qui crée le premier profil,
+    # et personne n'hérite par accident de l'historique d'un autre.
+    curseur.execute("SELECT COUNT(*) FROM utilisateurs")
+    if curseur.fetchone()[0] == 0:
+        curseur.execute("SELECT COUNT(*) FROM seances")
+        if curseur.fetchone()[0] > 0:
+            curseur.execute(
+                "INSERT INTO utilisateurs (id, nom, cree_le) VALUES (1, ?, ?)",
+                (NOM_PROFIL_REPRIS, datetime.now().strftime("%d/%m/%Y %H:%M")),
+            )
+
     conn.commit()
 
     conn.close()
 
 
-def enregistrer_seance(duree, exercices, statut="finished", nom_seance=None):
+def lister_utilisateurs():
+    """Tous les profils, du plus ancien au plus récent."""
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute("SELECT id, nom, cree_le FROM utilisateurs ORDER BY id")
+    profils = [
+        {"id": ligne[0], "nom": ligne[1], "cree_le": ligne[2]}
+        for ligne in curseur.fetchall()
+    ]
+    conn.close()
+    return profils
+
+
+def recuperer_utilisateur(utilisateur_id):
+    """Un profil par son identifiant, ou None s'il n'existe pas."""
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "SELECT id, nom, cree_le FROM utilisateurs WHERE id = ?", (utilisateur_id,)
+    )
+    ligne = curseur.fetchone()
+    conn.close()
+    if ligne is None:
+        return None
+    return {"id": ligne[0], "nom": ligne[1], "cree_le": ligne[2]}
+
+
+def creer_utilisateur(nom):
+    """Crée un profil et retourne son dictionnaire.
+
+    Le nom est unique : deux profils homonymes seraient indiscernables sur
+    l'écran de connexion comme dans un futur classement.
+    """
+    nom = (nom or "").strip()
+    if not nom:
+        raise ValueError("Le nom du profil ne peut pas être vide.")
+
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "SELECT id FROM utilisateurs WHERE nom = ? COLLATE NOCASE", (nom,)
+    )
+    if curseur.fetchone() is not None:
+        conn.close()
+        raise ValueError(f"Un profil nommé « {nom} » existe déjà.")
+
+    curseur.execute(
+        "INSERT INTO utilisateurs (nom, cree_le) VALUES (?, ?)",
+        (nom, datetime.now().strftime("%d/%m/%Y %H:%M")),
+    )
+    utilisateur_id = curseur.lastrowid
+    conn.commit()
+    conn.close()
+    return {"id": utilisateur_id, "nom": nom}
+
+
+def renommer_utilisateur(utilisateur_id, nouveau_nom):
+    """Change le nom d'un profil sans toucher à ses données.
+
+    Rien ne référence un profil par son nom — l'appartenance passe par l'id —
+    donc un renommage est purement cosmétique, contrairement à celui d'une
+    séance.
+    """
+    nouveau_nom = (nouveau_nom or "").strip()
+    if not nouveau_nom:
+        raise ValueError("Le nom du profil ne peut pas être vide.")
+
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "SELECT id FROM utilisateurs WHERE nom = ? COLLATE NOCASE AND id != ?",
+        (nouveau_nom, utilisateur_id),
+    )
+    if curseur.fetchone() is not None:
+        conn.close()
+        raise ValueError(f"Un profil nommé « {nouveau_nom} » existe déjà.")
+
+    curseur.execute(
+        "UPDATE utilisateurs SET nom = ? WHERE id = ?", (nouveau_nom, utilisateur_id)
+    )
+    modifies = curseur.rowcount
+    conn.commit()
+    conn.close()
+    if not modifies:
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
+    return {"id": int(utilisateur_id), "nom": nouveau_nom}
+
+
+def enregistrer_seance(
+    duree, exercices, statut="finished", nom_seance=None, utilisateur_id=None
+):
     """Écrit une séance complète et retourne son identifiant.
 
     Le retour est indispensable à l'écran de fin, qui doit pouvoir annoter les
     lignes qui viennent d'être créées (`enregistrer_ressentis`).
     """
+
+    utilisateur_id = _profil_courant(utilisateur_id)
 
     conn = connexion()
 
@@ -149,11 +333,11 @@ def enregistrer_seance(duree, exercices, statut="finished", nom_seance=None):
     curseur.execute(
         """
         INSERT INTO seances
-        (date, duree, statut, nom_seance)
+        (date, duree, statut, nom_seance, utilisateur_id)
 
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?)
         """,
-        (date, duree, statut, nom_seance),
+        (date, duree, statut, nom_seance, utilisateur_id),
     )
 
     seance_id = curseur.lastrowid
@@ -229,15 +413,17 @@ def enregistrer_seance(duree, exercices, statut="finished", nom_seance=None):
     return seance_id
 
 
-def recuperer_historique():
+def recuperer_historique(utilisateur_id=None):
     # Permet aussi la lecture d'une base créée par une version précédente,
     # même lorsque l'application n'a pas encore lancé son initialisation.
     initialiser()
+    utilisateur_id = _profil_courant(utilisateur_id)
     conn = connexion()
 
     curseur = conn.cursor()
 
-    curseur.execute("""
+    curseur.execute(
+        """
         SELECT
             id,
             date,
@@ -246,8 +432,12 @@ def recuperer_historique():
             nom_seance
         FROM seances
 
+        WHERE utilisateur_id = ?
+
         ORDER BY id DESC
-    """)
+        """,
+        (utilisateur_id,),
+    )
 
     seances = curseur.fetchall()
 
@@ -343,7 +533,7 @@ def recuperer_series(curseur, exercice_id):
     ]
 
 
-def enregistrer_ressentis(seance_id, ressentis):
+def enregistrer_ressentis(seance_id, ressentis, utilisateur_id=None):
     """Annote après coup les exercices d'une séance déjà écrite.
 
     C'est une mise à jour et non une insertion : la séance est enregistrée par
@@ -365,12 +555,17 @@ def enregistrer_ressentis(seance_id, ressentis):
     if inconnues:
         raise ValueError(f"Ressenti inconnu : {', '.join(inconnues)}")
 
+    utilisateur_id = _profil_courant(utilisateur_id)
     conn = connexion()
     curseur = conn.cursor()
     curseur.executemany(
-        "UPDATE exercices SET ressenti = ? WHERE seance_id = ? AND nom = ?",
+        """
+        UPDATE exercices SET ressenti = ?
+        WHERE seance_id = ? AND nom = ?
+          AND seance_id IN (SELECT id FROM seances WHERE utilisateur_id = ?)
+        """,
         [
-            (valeur or "", seance_id, nom_exercice)
+            (valeur or "", seance_id, nom_exercice, utilisateur_id)
             for nom_exercice, valeur in ressentis.items()
         ],
     )
@@ -380,7 +575,7 @@ def enregistrer_ressentis(seance_id, ressentis):
     return modifiees
 
 
-def enregistrer_ancrage(nom_exercice, niveau, raison=""):
+def enregistrer_ancrage(nom_exercice, niveau, raison="", utilisateur_id=None):
     """Pose un ancrage de niveau, valable à partir de maintenant.
 
     L'historique antérieur cesse de compter pour cet exercice : c'est ce qui
@@ -388,17 +583,24 @@ def enregistrer_ancrage(nom_exercice, niveau, raison=""):
     de le relever.
     """
     initialiser()
+    utilisateur_id = _profil_courant(utilisateur_id)
     conn = connexion()
     curseur = conn.cursor()
 
-    curseur.execute("SELECT COALESCE(MAX(id), 0) FROM seances")
+    # Le repere chronologique doit etre la derniere seance *de ce profil* :
+    # une seance faite par quelqu'un d'autre entre-temps rendrait l'ancrage
+    # posterieur a des seances qu'il n'a pas vocation a effacer.
+    curseur.execute(
+        "SELECT COALESCE(MAX(id), 0) FROM seances WHERE utilisateur_id = ?",
+        (utilisateur_id,),
+    )
     derniere_seance = curseur.fetchone()[0]
 
     curseur.execute(
         """
         INSERT INTO corrections_niveaux
-        (nom_exercice, niveau, date, apres_seance_id, raison)
-        VALUES (?, ?, ?, ?, ?)
+        (nom_exercice, niveau, date, apres_seance_id, raison, utilisateur_id)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
             nom_exercice,
@@ -406,6 +608,7 @@ def enregistrer_ancrage(nom_exercice, niveau, raison=""):
             datetime.now().strftime("%d/%m/%Y %H:%M"),
             derniere_seance,
             raison or "",
+            utilisateur_id,
         ),
     )
 
@@ -413,21 +616,26 @@ def enregistrer_ancrage(nom_exercice, niveau, raison=""):
     conn.close()
 
 
-def recuperer_ancrages():
+def recuperer_ancrages(utilisateur_id=None):
     """Dernier ancrage de chaque exercice, indexé par nom d'exercice.
 
     Seul le plus récent compte : les précédents restent en base comme trace,
     mais un ancrage plus récent les remplace entièrement.
     """
     initialiser()
+    utilisateur_id = _profil_courant(utilisateur_id)
     conn = connexion()
     curseur = conn.cursor()
 
-    curseur.execute("""
+    curseur.execute(
+        """
         SELECT nom_exercice, niveau, date, apres_seance_id, raison, id
         FROM corrections_niveaux
+        WHERE utilisateur_id = ?
         ORDER BY id
-    """)
+        """,
+        (utilisateur_id,),
+    )
 
     ancrages = {}
     for ligne in curseur.fetchall():
@@ -443,13 +651,18 @@ def recuperer_ancrages():
     return ancrages
 
 
-def supprimer_ancrages(nom_exercice):
+def supprimer_ancrages(nom_exercice, utilisateur_id=None):
     """Efface les ancrages d'un exercice : son niveau redevient purement déduit."""
     initialiser()
+    utilisateur_id = _profil_courant(utilisateur_id)
     conn = connexion()
     curseur = conn.cursor()
     curseur.execute(
-        "DELETE FROM corrections_niveaux WHERE nom_exercice = ?", (nom_exercice,)
+        """
+        DELETE FROM corrections_niveaux
+        WHERE nom_exercice = ? AND utilisateur_id = ?
+        """,
+        (nom_exercice, utilisateur_id),
     )
     supprimes = curseur.rowcount
     conn.commit()
@@ -457,7 +670,7 @@ def supprimer_ancrages(nom_exercice):
     return supprimes
 
 
-def recuperer_historique_ancrages(nom_exercice):
+def recuperer_historique_ancrages(nom_exercice, utilisateur_id=None):
     """Tous les ancrages posés sur un exercice, du plus récent au plus ancien.
 
     Contrairement à `recuperer_ancrages`, qui ne garde que le dernier de
@@ -465,16 +678,17 @@ def recuperer_historique_ancrages(nom_exercice):
     le journal complet.
     """
     initialiser()
+    utilisateur_id = _profil_courant(utilisateur_id)
     conn = connexion()
     curseur = conn.cursor()
     curseur.execute(
         """
         SELECT id, niveau, date, apres_seance_id, raison
         FROM corrections_niveaux
-        WHERE nom_exercice = ?
+        WHERE nom_exercice = ? AND utilisateur_id = ?
         ORDER BY id DESC
         """,
-        (nom_exercice,),
+        (nom_exercice, utilisateur_id),
     )
     ancrages = [
         {
@@ -490,12 +704,21 @@ def recuperer_historique_ancrages(nom_exercice):
     return ancrages
 
 
-def supprimer_ancrage(id_ancrage):
-    """Efface un seul ancrage du journal, par id."""
+def supprimer_ancrage(id_ancrage, utilisateur_id=None):
+    """Efface un seul ancrage du journal, par id.
+
+    Le filtre par profil n'est pas decoratif : l'identifiant vient de l'URL,
+    donc d'un utilisateur, et rien n'empecherait sinon d'effacer l'ancrage de
+    quelqu'un d'autre en changeant le numero.
+    """
     initialiser()
+    utilisateur_id = _profil_courant(utilisateur_id)
     conn = connexion()
     curseur = conn.cursor()
-    curseur.execute("DELETE FROM corrections_niveaux WHERE id = ?", (id_ancrage,))
+    curseur.execute(
+        "DELETE FROM corrections_niveaux WHERE id = ? AND utilisateur_id = ?",
+        (id_ancrage, utilisateur_id),
+    )
     supprimes = curseur.rowcount
     conn.commit()
     conn.close()
@@ -586,16 +809,16 @@ def statistiques_exercices(seances=None):
     return statistiques
 
 
-def derniere_performance(nom_seance):
+def derniere_performance(nom_seance, utilisateur_id=None):
     """Retourne la dernière séance terminée portant ce nom, si elle existe."""
-    seances = recuperer_historique()
+    seances = recuperer_historique(utilisateur_id)
     for seance in seances:
         if seance.get("nom") == nom_seance and seance.get("statut") != "abandoned":
             return seance
     return None
 
 
-def renommer_seance(ancien_nom, nouveau_nom):
+def renommer_seance(ancien_nom, nouveau_nom, utilisateur_id=None):
     """Reporte l'historique sur le nouveau nom quand une séance est renommée.
 
     Sans cela, l'historique déjà enregistré reste attaché à l'ancien nom et
@@ -604,22 +827,33 @@ def renommer_seance(ancien_nom, nouveau_nom):
     if ancien_nom == nouveau_nom:
         return
 
+    utilisateur_id = _profil_courant(utilisateur_id)
     conn = connexion()
     curseur = conn.cursor()
     curseur.execute(
-        "UPDATE seances SET nom_seance = ? WHERE nom_seance = ?",
-        (nouveau_nom, ancien_nom),
+        """
+        UPDATE seances SET nom_seance = ?
+        WHERE nom_seance = ? AND utilisateur_id = ?
+        """,
+        (nouveau_nom, ancien_nom, utilisateur_id),
     )
     conn.commit()
     conn.close()
 
 
-def supprimer_seance(seance_id):
+def supprimer_seance(seance_id, utilisateur_id=None):
     """Supprime une séance de l'historique, avec tous ses exercices et séries."""
+    utilisateur_id = _profil_courant(utilisateur_id)
     conn = connexion()
     curseur = conn.cursor()
 
-    curseur.execute("SELECT id FROM seances WHERE id = ?", (seance_id,))
+    # Le filtre par profil transforme « la seance d'un autre » en « seance
+    # introuvable » : l'identifiant vient de l'URL, il ne doit pas suffire a
+    # atteindre l'historique de quelqu'un d'autre.
+    curseur.execute(
+        "SELECT id FROM seances WHERE id = ? AND utilisateur_id = ?",
+        (seance_id, utilisateur_id),
+    )
     if curseur.fetchone() is None:
         conn.close()
         raise KeyError(f"Séance {seance_id} introuvable")
@@ -640,14 +874,21 @@ def supprimer_seance(seance_id):
     conn.close()
 
 
-def supprimer_exercice_de_seance(seance_id, nom_exercice):
+def supprimer_exercice_de_seance(seance_id, nom_exercice, utilisateur_id=None):
     """Supprime un exercice précis (et ses séries) d'une séance de l'historique."""
+    utilisateur_id = _profil_courant(utilisateur_id)
     conn = connexion()
     curseur = conn.cursor()
 
     curseur.execute(
-        "SELECT id FROM exercices WHERE seance_id = ? AND nom = ?",
-        (seance_id, nom_exercice),
+        """
+        SELECT exercices.id FROM exercices
+        JOIN seances ON seances.id = exercices.seance_id
+        WHERE exercices.seance_id = ?
+          AND exercices.nom = ?
+          AND seances.utilisateur_id = ?
+        """,
+        (seance_id, nom_exercice, utilisateur_id),
     )
     ids_exercices = [ligne[0] for ligne in curseur.fetchall()]
     if not ids_exercices:

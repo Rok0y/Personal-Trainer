@@ -70,7 +70,12 @@ class BlocExercice:
     ):
         #: Cible saisie à la main : le moteur de progression ne la touche plus,
         #: et elle reste collante jusqu'à ce qu'elle soit resynchronisée.
-        self.cible_manuelle = bool(cible_manuelle)
+        #: La valeur est conservée **telle qu'elle a été stockée** (une liste
+        #: d'identifiants de profils) et non réduite à un booléen : les séances
+        #: étant partagées, une marque appartient à un profil, et l'aplatir ici
+        #: ferait perdre celles des autres au premier réenregistrement.
+        #: `progression.objectifs.est_cible_manuelle` la lit pour un profil.
+        self.cible_manuelle = cible_manuelle
         self.exercice = exercice
         self.poids = poids
         self.mode = mode
@@ -99,6 +104,11 @@ class Circuit:
         # séance enregistrée. C'est lui qui permet à l'écran de fin d'annoter
         # les exercices d'un ressenti.
         self.seance_id = None
+        # Profil auquel cette séance appartiendra, fixé au moment où elle est
+        # choisie. Une séance appartient à celui qui l'a faite, pas à celui qui
+        # se trouve connecté quand le thread caméra l'écrit : entre la dernière
+        # répétition et l'écriture en base, il y a le temps de changer de profil.
+        self.utilisateur_id = None
         self.debut = time.time()
         self.resultats_series = []
         self.paires_entrelacees = self._detecter_paires_entrelacees()
@@ -267,6 +277,10 @@ class Circuit:
         échauffements dans la liste alors qu'ils sortent du compteur décalerait
         tous les segments.
         """
+        # Import différé : `progression.niveaux` importe ce module, un import
+        # en tête de fichier fermerait le cycle.
+        from progression.objectifs import est_cible_manuelle
+
         return [
             {
                 "nom": bloc.exercice.nom,
@@ -279,7 +293,11 @@ class Circuit:
                 "repos_entre_series": bloc.repos_entre_series,
                 "repos_apres": bloc.repos_apres,
                 "entrelace_avec": bloc.entrelace_avec,
-                "cible_manuelle": bloc.cible_manuelle,
+                # Résolu pour le profil connecté : cet export alimente
+                # l'affichage, où la question est « ce bloc est-il figé *pour
+                # moi* ? ». La valeur brute, elle, ne quitte jamais
+                # `exporter_blocs`, qui écrit sur le disque.
+                "cible_manuelle": est_cible_manuelle(bloc),
             }
             for bloc in self.exercices
             if inclure_echauffement or not est_echauffement(bloc)

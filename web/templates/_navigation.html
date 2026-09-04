@@ -1,0 +1,20 @@
+{#- Barre de suivi : les trois onglets et le profil connecté.
+
+    Ce bloc était dupliqué à l'identique dans accueil, historique, records et
+    programmes. Y ajouter le profil en aurait fait une cinquième copie, d'où
+    cet include — le premier du projet, volontairement minimal : pas
+    d'héritage Jinja, chaque page reste un document autonome.
+
+    `onglet` désigne la page courante ; sans valeur (l'accueil), aucun onglet
+    n'est actif. Les styles vivent dans `static/base.css`.
+-#}
+<nav class="tabs" aria-label="Suivi">
+    <a class="tab{% if onglet == 'historique' %} active{% endif %}" href="/historique">Historique</a>
+    <a class="tab{% if onglet == 'records' %} active{% endif %}" href="/records">Records</a>
+    <a class="tab{% if onglet == 'programmes' %} active{% endif %}" href="/programmes">Programmes</a>
+    {%- if profil %}
+    <a class="tab tab-profil" href="/connexion" title="Changer de profil">
+        <span class="profil-pastille" aria-hidden="true">{{ profil.nom[:1]|upper }}</span>{{ profil.nom }}
+    </a>
+    {%- endif %}
+</nav>

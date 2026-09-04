@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Trainer - Profils</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+    <style>
+        main { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding: 72px 0; }
+
+        header { margin-bottom: 40px; border-bottom: 1px solid var(--border); padding-bottom: 24px; }
+        .kicker {
+            margin: 0 0 8px; display: inline-flex; align-items: center; gap: 8px;
+            color: var(--orange); font: 700 12px 'Space Grotesk', sans-serif;
+            text-transform: uppercase; letter-spacing: .18em;
+        }
+
+        .profils { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin: 0 0 36px; }
+
+        .profil-carte {
+            display: flex; flex-direction: column; gap: 14px; align-items: flex-start;
+            padding: 22px; border-radius: 14px;
+            border: 1px solid var(--border-strong); background: var(--glass);
+            backdrop-filter: blur(18px);
+            transition: border-color .2s ease, transform .2s ease;
+        }
+        .profil-carte:hover { border-color: var(--teal); transform: translateY(-2px); }
+
+        .profil-choisir {
+            display: flex; align-items: center; gap: 14px; width: 100%;
+            padding: 0; border: 0; background: transparent; text-align: left;
+            text-transform: none; letter-spacing: 0; cursor: pointer;
+        }
+        .profil-choisir:hover { border-color: transparent; }
+
+        .avatar {
+            flex: 0 0 auto; width: 46px; height: 46px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--orange); color: var(--bg);
+            font: 700 20px 'Space Grotesk', sans-serif;
+        }
+        .profil-nom { font: 700 17px 'Space Grotesk', sans-serif; color: var(--text); }
+        .profil-date { display: block; margin-top: 2px; color: var(--muted); font: 400 12px 'Space Grotesk', sans-serif; text-transform: none; letter-spacing: 0; }
+
+        .profil-renommer {
+            padding: 5px 10px; border-radius: 999px; font-size: 10px;
+            color: var(--muted); border-color: var(--border);
+        }
+
+        .creation { border-top: 1px solid var(--border); padding-top: 28px; }
+        .creation h2 { margin: 0 0 6px; font: 700 15px 'Space Grotesk', sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .creation form { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+        .creation input {
+            flex: 1 1 220px; padding: 12px 14px; border-radius: 999px;
+            border: 1px solid var(--border-strong); background: rgba(255,255,255,.03);
+            color: var(--text); font: 500 14px 'Space Grotesk', sans-serif;
+        }
+        .creation input:focus { outline: none; border-color: var(--teal); }
+
+        .erreur { margin: 16px 0 0; color: var(--orange); font-size: 13px; min-height: 18px; }
+
+        @media (max-width: 600px) { main { width: calc(100% - 24px); padding: 32px 0; } }
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        <p class="kicker">Personal Trainer</p>
+        <h1>Qui s'entraine ?</h1>
+        <p class="hint">Chaque profil garde son historique, ses records et ses niveaux. Les seances et les programmes, eux, sont communs.</p>
+    </header>
+
+    <section class="profils">
+        {% for utilisateur in profils %}
+        <div class="profil-carte">
+            <button type="button" class="profil-choisir" data-profil="{{ utilisateur.id }}">
+                <span class="avatar" aria-hidden="true">{{ utilisateur.nom[:1]|upper }}</span>
+                <span>
+                    <span class="profil-nom">{{ utilisateur.nom }}</span>
+                    <span class="profil-date">Depuis le {{ utilisateur.cree_le }}</span>
+                </span>
+            </button>
+            <button type="button" class="profil-renommer" data-renommer="{{ utilisateur.id }}" data-nom="{{ utilisateur.nom }}">Renommer</button>
+        </div>
+        {% endfor %}
+    </section>
+
+    <section class="creation">
+        <h2>Nouveau profil</h2>
+        <p class="hint">Il demarre sans historique : ses niveaux se construiront a partir de ses seances, ou d'un recalage depuis la page Records.</p>
+        <form id="form-creation">
+            <input type="text" id="nom-profil" placeholder="Prenom" maxlength="40" autocomplete="off" required>
+            <button type="submit">Creer et commencer</button>
+        </form>
+        <p class="erreur" id="erreur" role="status"></p>
+    </section>
+</main>
+
+<script>
+    const erreur = document.getElementById("erreur");
+
+    function signaler(message) {
+        erreur.textContent = message || "";
+    }
+
+    async function envoyer(url, corps, methode = "POST") {
+        signaler("");
+        const reponse = await fetch(url, {
+            method: methode,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(corps),
+        });
+        const donnees = await reponse.json().catch(() => ({}));
+        if (!donnees.ok) {
+            signaler(donnees.erreur || "Operation impossible.");
+            return null;
+        }
+        return donnees;
+    }
+
+    document.querySelectorAll("[data-profil]").forEach((bouton) => {
+        bouton.addEventListener("click", async () => {
+            const resultat = await envoyer("/api/session/connexion", { id: Number(bouton.dataset.profil) });
+            if (resultat) window.location.href = "/";
+        });
+    });
+
+    // Le renommage reste sur place : on vient peut-etre uniquement pour
+    // rebaptiser le profil repris de l'ancienne base, sans s'y connecter.
+    document.querySelectorAll("[data-renommer]").forEach((bouton) => {
+        bouton.addEventListener("click", async () => {
+            const nom = window.prompt("Nouveau nom du profil", bouton.dataset.nom);
+            if (nom === null) return;
+            const resultat = await envoyer(`/api/utilisateurs/${bouton.dataset.renommer}`, { nom }, "PUT");
+            if (resultat) window.location.reload();
+        });
+    });
+
+    document.getElementById("form-creation").addEventListener("submit", async (evenement) => {
+        evenement.preventDefault();
+        const champ = document.getElementById("nom-profil");
+        const resultat = await envoyer("/api/utilisateurs", { nom: champ.value });
+        if (resultat) window.location.href = "/";
+    });
+</script>
+</body>
+</html>

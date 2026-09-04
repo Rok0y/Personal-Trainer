@@ -19,7 +19,6 @@ from mouvements.positions import (
     deux_bras_leves,
 )
 from session.moteur import (
-    decrire_prochaine_etape,
     duree_realisee,
     executer_mode,
     mettre_a_jour_prochain_exercice,
@@ -85,18 +84,26 @@ def publier_fin_de_seance(seance):
         exercices=seance.exporter_resultats(),
         nom_seance=controleur.nom_selectionne,
         statut="abandoned" if seance.phase == "abandonne" else "finished",
+        # Profil fixé au choix de la séance : passer par le profil connecté
+        # ici crédite le mauvais athlète si quelqu'un a changé de profil entre
+        # la fin de l'effort et cette écriture — ou lève, personne n'étant
+        # connecté, et emporte la boucle caméra avec.
+        utilisateur_id=seance.utilisateur_id,
     )
 
     seance.historique_enregistre = True
 
 
 controleur.definir_reset_progression(lambda: compteur.reset())
-seance = controleur.selectionner("upper_push")
-"""La séance active est partagée avec l'API web."""
 
-state.prochaine_etape = decrire_prochaine_etape(
-    seance.bloc_actuel, 1, seance.nombre_series if seance.bloc_actuel else 0
-)
+seance = None
+"""La séance active est partagée avec l'API web.
+
+Rien n'est sélectionné au démarrage : aucun profil n'est encore connecté, et
+construire une séance ici lui appliquerait les objectifs de personne — le
+moteur de progression lit l'historique du profil courant. C'est l'écran de
+connexion qui ouvre la session, puis l'accueil qui choisit la séance.
+"""
 
 
 # Initialisation de la base de données

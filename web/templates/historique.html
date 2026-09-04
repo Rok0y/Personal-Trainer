@@ -100,9 +100,6 @@
             background: rgba(27,232,196,.08); border: 1px solid rgba(27,232,196,.18); border-radius: 999px;
             padding: 5px 12px; color: var(--text); font-size: 12px; white-space: nowrap;
         }
-        .tabs { display: flex; gap: 8px; margin-bottom: 22px; }
-        .tab { padding: 9px 14px; border: 1px solid var(--border-strong); border-radius: 8px; color: var(--muted); }
-        .tab.active, .tab:hover { color: var(--teal); border-color: var(--teal); text-decoration: none; }
         details.card { padding: 0; overflow: hidden; }
         details.card > summary { list-style: none; cursor: pointer; padding: 24px; }
         details.card > summary::-webkit-details-marker, details.exercise > summary::-webkit-details-marker { display: none; }
@@ -145,7 +142,7 @@
         <h1>Historique</h1>
         <a class="back" href="/">Accueil</a>
     </header>
-    <nav class="tabs" aria-label="Suivi"><a class="tab active" href="/historique">Historique</a><a class="tab" href="/records">Records</a><a class="tab" href="/programmes">Programmes</a></nav>
+    {% set onglet = 'historique' %}{% include '_navigation.html' %}
     {% if not seances %}<p class="empty">Aucune séance enregistrée.</p>{% endif %}
     {% for seance in seances %}
     {% set duree_totale = seance.duree|int %}
