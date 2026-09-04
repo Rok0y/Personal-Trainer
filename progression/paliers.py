@@ -173,13 +173,13 @@ SPECS = {
     # longtemps ne teste plus grand-chose, et c'est le nombre de séries qui
     # prend le relais.
     "Gainage planche": SpecProgression(
-        series=3, cible_min=30, cible_max=120, pas=2, unite=UNITE_SECONDES
+        series=3, cible_min=30, cible_max=60, pas=2, unite=UNITE_SECONDES
     ),
     "Gainage planche laterale droite": SpecProgression(
-        series=1, cible_min=20, cible_max=120, pas=2, unite=UNITE_SECONDES
+        series=1, cible_min=20, cible_max=60, pas=2, unite=UNITE_SECONDES
     ),
     "Gainage planche laterale gauche": SpecProgression(
-        series=1, cible_min=20, cible_max=120, pas=2, unite=UNITE_SECONDES
+        series=1, cible_min=20, cible_max=60, pas=2, unite=UNITE_SECONDES
     ),
 }
 

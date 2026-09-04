@@ -60,6 +60,46 @@ def executer_mode(seance, corps, compteur, state, coach, derniere_rep):
     raise NotImplementedError(f"Mode inconnu : {bloc.mode}")
 
 
+#: Quel compteur de `core.state` porte la durée réalisée, selon le mode. Un
+#: mode absent d'ici ne mesure pas de temps.
+COMPTEUR_DUREE_PAR_MODE = {
+    MODE_MAINTIEN: "temps_maintien",
+    MODE_CHRONO: "temps_chrono",
+    MODE_ECHAUFFEMENT: "temps_echauffement",
+}
+
+
+def duree_realisee(bloc, state):
+    """Durée courante du bloc, lue dans le compteur de **son** mode.
+
+    À n'employer que pour terminer une série à la main (geste bras en X ou
+    bouton web) : c'est le seul moment où la durée réalisée est lue de
+    l'extérieur d'un `gerer_mode_*`.
+
+    Surtout, ne jamais remplacer ça par une chaîne `temps_maintien or
+    temps_chrono or temps_echauffement`. Les trois compteurs sont des globales
+    partagées, et un gainage abandonné avant la première seconde laisse
+    `temps_maintien` à 0 — donc *falsy* : la chaîne retombait alors sur la
+    durée du dernier échauffement, enregistrant 30 s pour une série jamais
+    tenue. Le mode du bloc est la seule source d'autorité.
+    """
+    if bloc is None:
+        return 0
+    return getattr(state, COMPTEUR_DUREE_PAR_MODE.get(bloc.mode, ""), 0) or 0
+
+
+def oublier_durees(state):
+    """Remet à zéro les compteurs de durée partagés entre les séries.
+
+    `Circuit.reinitialiser_etat_serie` fait le ménage côté bloc, mais les
+    compteurs de `core.state` lui échappent : ils survivaient d'une série à
+    l'autre et d'un exercice au suivant, prêts à être relus par erreur.
+    """
+    for attribut in COMPTEUR_DUREE_PAR_MODE.values():
+        setattr(state, attribut, 0)
+    state.chrono_termine = False
+
+
 def _finaliser_serie(seance, state, bloc):
     """Termine la série en cours et réinitialise les champs temporels du bloc.
 
@@ -71,6 +111,7 @@ def _finaliser_serie(seance, state, bloc):
     seance.terminer_serie()
     mettre_a_jour_prochain_exercice(seance, state)
     seance.reinitialiser_etat_serie(bloc)
+    oublier_durees(state)
 
 
 def mettre_a_jour_erreur(exercice, corps, state):

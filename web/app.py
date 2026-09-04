@@ -10,6 +10,7 @@ from core import state
 from historique.database import (
     derniere_performance,
     enregistrer_ancrage,
+    enregistrer_ressentis,
     recuperer_historique,
     recuperer_historique_ancrages,
     renommer_seance,
@@ -37,7 +38,9 @@ from progression.programmes import (
     supprimer_programme,
     tous_les_programmes,
 )
+from progression.ressenti import ECHELLE, evaluation_seance, jugements_par_seance
 from session.controleur import SessionManager
+from session.moteur import duree_realisee
 from session.seances import (
     catalogue_echauffements,
     catalogue_exercices,
@@ -141,6 +144,7 @@ def index():
                     exercice["nom"]: {
                         "date": seance["date"],
                         "mode": exercice.get("mode", "repetitions"),
+                        "ressenti": exercice.get("ressenti") or "",
                         "series": [
                             serie
                             for serie in exercice.get("series_detaillees", [])
@@ -212,6 +216,7 @@ def etat():
             "duree_echauffement": state.duree_echauffement,
             "prochaine_etape": state.prochaine_etape,
             "statut_session": etat_session["statut"],
+            "seance_id": etat_session["seance_id"],
             "series_terminees": etat_session["series_terminees"],
             "exercices": etat_session["exercices"],
             "nombre_series_total": etat_session["nombre_series_total"],
@@ -355,7 +360,14 @@ def commander_serie(commande):
     donnees = request.get_json(silent=True) or {}
     if commande == "terminer":
         repetitions = donnees.get("repetitions", state.repetitions)
-        duree = donnees.get("duree", state.temps_maintien or state.temps_chrono)
+        # Même règle que le geste bras en X : la durée se lit dans le compteur
+        # du mode courant, jamais dans le premier compteur non nul venu.
+        duree = donnees.get(
+            "duree",
+            duree_realisee(
+                controleur.seance.bloc_actuel if controleur.seance else None, state
+            ),
+        )
         return executer_commande(
             lambda: controleur.terminer_serie(repetitions=repetitions, duree=duree)
         )
@@ -452,6 +464,7 @@ def historique():
         meilleurs=meilleurs_volumes(donnees),
         record_seance_id=seances_du_record(donnees),
         montees=montees_de_niveau(donnees),
+        jugements=jugements_par_seance(donnees),
         detail=False,
     )
 
@@ -492,12 +505,22 @@ def exercices_avec_bareme():
     }
 
 
-def _cle_programme(nom):
-    """Transforme un nom en clé d'URL stable (« Road to TKT » -> road-to-tkt)."""
+def _ancre(nom, defaut):
+    """Normalise un nom en identifiant d'URL stable (« Rowing penché » -> rowing-penche)."""
     sans_accents = unicodedata.normalize("NFKD", nom or "")
     sans_accents = "".join(c for c in sans_accents if not unicodedata.combining(c))
-    cle = re.sub(r"[^a-z0-9]+", "-", sans_accents.lower()).strip("-")
-    return cle or "programme"
+    return re.sub(r"[^a-z0-9]+", "-", sans_accents.lower()).strip("-") or defaut
+
+
+def _cle_programme(nom):
+    """Transforme un nom en clé d'URL stable (« Road to TKT » -> road-to-tkt)."""
+    return _ancre(nom, "programme")
+
+
+#: Permet aux templates de fabriquer un lien profond vers la fiche d'un
+#: exercice sur `/records` : `/records#exercice-{{ nom|ancre }}`. Les deux
+#: extrémités du lien passent par ce filtre, donc elles ne peuvent pas diverger.
+app.jinja_env.filters["ancre"] = lambda nom: _ancre(nom, "exercice")
 
 
 @app.route("/creer-programme")
@@ -642,6 +665,7 @@ def detail_historique(seance_id):
         meilleurs=meilleurs_volumes(donnees),
         record_seance_id=seances_du_record(donnees),
         montees=montees_de_niveau(donnees),
+        jugements=jugements_par_seance(donnees),
         detail=True,
     )
 
@@ -662,3 +686,30 @@ def supprimer_exercice_historique_api(seance_id, nom):
         return jsonify({"ok": True})
     except (KeyError, ValueError) as erreur:
         return jsonify({"ok": False, "erreur": str(erreur)}), 404
+
+
+@app.route("/api/historique/<int:seance_id>/ressentis")
+def lire_ressentis_api(seance_id):
+    """Réussite et ressenti de chaque exercice d'une séance.
+
+    Sert aux écrans à ne proposer que les réponses qui ont un effet : après
+    une réussite on demande si c'était facile, après un échec si c'était trop
+    dur. Une séance inconnue renvoie un dictionnaire vide plutôt qu'une 404 —
+    l'écran de fin interroge cette route pendant que la séance est peut-être
+    encore en cours d'écriture par le thread caméra.
+    """
+    return jsonify({"ok": True, "echelle": list(ECHELLE),
+                    "exercices": evaluation_seance(seance_id)})
+
+
+@app.route("/api/historique/<int:seance_id>/ressentis", methods=["POST"])
+def enregistrer_ressentis_api(seance_id):
+    donnees = request.get_json(silent=True) or {}
+    ressentis = donnees.get("ressentis") or {}
+    if not isinstance(ressentis, dict):
+        return jsonify({"ok": False, "erreur": "Format attendu : un objet"}), 400
+    try:
+        modifiees = enregistrer_ressentis(seance_id, ressentis)
+    except ValueError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
+    return jsonify({"ok": True, "modifiees": modifiees})

@@ -28,6 +28,7 @@
             backdrop-filter:blur(18px); transition:border-color .2s ease;
         }
         details.card[open] { grid-column: 1 / -1; border-color:var(--teal); }
+        details.card.cible { box-shadow:0 0 0 1px var(--teal-glow); }
         details.card summary {
             list-style:none; cursor:pointer; padding:20px;
             display:flex; justify-content:space-between; align-items:center; gap:14px;
@@ -100,7 +101,7 @@
         {% set valeur_pb = stat.pb.valeur or 0 %}
         {% if stat.mode in ('maintien', 'chrono') %}{% set unite = 'secondes' %}{% elif stat.meilleur_volume.valeur > 0 %}{% set unite = 'kg de volume' %}{% else %}{% set unite = 'repetitions' %}{% endif %}
         {% set etat = niveaux.get(nom) %}
-        <details class="card">
+        <details class="card" id="exercice-{{ nom|ancre }}">
             <summary>
                 <div class="summary-info">
                     <h2>{{ nom }}</h2>
@@ -167,6 +168,23 @@
     </section>
 </main>
 <script>
+    // Arrivée depuis l'historique ou les programmes : la fiche visée est
+    // repliée par défaut, et un simple ancrage HTML n'ouvre pas un <details>.
+    // Sans ça, le lien tombe sur un titre muet.
+    function ouvrirFicheCiblee() {
+        if (!window.location.hash) return;
+        const cible = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+        if (!cible) return;
+        cible.open = true;
+        cible.classList.add("cible");
+        cible.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    window.addEventListener("hashchange", ouvrirFicheCiblee);
+    // Après `load` seulement : cette page dessine ses graphiques SVG au fil du
+    // script, ce qui déplace toutes les fiches. Centrer avant, c'est centrer
+    // sur une mise en page qui n'existe déjà plus.
+    window.addEventListener("load", ouvrirFicheCiblee);
+
 function formatDateSeule(valeur) {
     // Ne garde que la partie date, sans l'heure, quel que soit le format d'origine
     const str = String(valeur || "").trim();

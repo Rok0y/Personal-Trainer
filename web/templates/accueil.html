@@ -1,5 +1,9 @@
 {#- Modes dont la cible est une durée et non un nombre de répétitions. -#}
 {%- set MODES_DUREE = ('maintien', 'chrono', 'echauffement') -%}
+{#- Ressentis qui méritent un rappel sur le bandeau de la dernière série.
+    Les valeurs neutres (`ok`, `dur`, absence de réponse) n'y figurent pas :
+    un drapeau ne sert qu'à signaler un écart. -#}
+{%- set LIBELLES_RESSENTI = {'trop_dur': 'trop dur', 'facile': 'facile', 'trop_facile': 'trop facile'} -%}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -93,7 +97,7 @@
         .previous-exercise { padding: 8px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
         .previous-series { margin-top: 4px; color: var(--text); font-size: 12px; }
 
-        /* ---------- Objectifs et commentaires : formulaire d'edition ---------- */
+        /* ---------- Objectifs : formulaire d'edition ---------- */
 
         .session-editor { margin-top: 4px; }
         .edit-exercise {
@@ -164,6 +168,9 @@
         .badge-manuelle-retirer:hover { color: var(--text); }
         .last-series { margin-top: 4px; padding: 8px 10px; border-left: 2px solid var(--teal); background: rgba(27, 232, 196, .07); color: var(--muted); font-size: 12px; }
         .last-series strong { color: var(--text); }
+        .flag-ressenti { display: inline-flex; padding: 1px 7px; margin-left: 4px; border-radius: 999px; border: 1px solid currentColor; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
+        .flag-trop_dur { color: var(--orange); }
+        .flag-facile, .flag-trop_facile { color: var(--teal); }
 
         @media (max-width: 560px) {
             .edit-exercise { grid-template-columns: 1fr 1fr; }
@@ -267,10 +274,10 @@
 
             {% if identifiant != 'test' %}
             <details class="session-objectives">
-                <summary>Objectifs et commentaires</summary>
+                <summary>Objectifs</summary>
                 <form class="session-editor" data-editor="{{ identifiant }}">
                     {% macro bloc_edition(exercice) %}
-                    <div class="edit-exercise" data-exercice="{{ exercice.nom or exercice.exercice }}" data-mode="{{ exercice.mode }}" data-poids="{{ exercice.poids|default(0) }}" data-repos-series="{{ exercice.repos_entre_series|default(0) }}" data-repos-apres="{{ exercice.repos_apres|default(0) }}" data-entrelace="{{ exercice.entrelace_avec or '' }}">
+                    <div class="edit-exercise" data-exercice="{{ exercice.nom or exercice.exercice }}" data-mode="{{ exercice.mode }}" data-poids="{{ exercice.poids|default(0) }}" data-repos-series="{{ exercice.repos_entre_series|default(0) }}" data-repos-apres="{{ exercice.repos_apres|default(0) }}" data-entrelace="{{ exercice.entrelace_avec or '' }}" data-commentaire="{{ exercice.commentaire|default('') }}">
                         <label>{{ exercice.nom or exercice.exercice }}{% if exercice.cible_manuelle %} <span class="badge-manuelle">cible manuelle<button type="button" class="badge-manuelle-retirer" data-retirer-cible-manuelle="{{ exercice.nom or exercice.exercice }}" title="Revenir à la cible proposée par le moteur de progression" aria-label="Retirer la cible manuelle">×</button></span>{% endif %}</label>
                         <p class="editor-equipment">Matériel : {{ exercice.materiel or 'Aucun matériel' }}</p>
                         {% if exercice.cible_manuelle %}<p class="editor-equipment">Cible figée à la main : le moteur de progression ne la fait plus évoluer. Remets les valeurs qu'il propose pour la rebrancher.</p>{% endif %}
@@ -281,10 +288,9 @@
                         {% else %}
                         <span class="number-control" data-unit="Répétitions"><button type="button" data-delta="-1" aria-label="Retirer une répétition">−</button><input class="edit-target" aria-label="Répétitions" type="number" min="0" value="{{ exercice.repetitions }}" title="Répétitions"><button type="button" data-delta="1" aria-label="Ajouter une répétition">+</button></span>
                         {% endif %}
-                        <textarea class="edit-comment" placeholder="Commentaire (optionnel)">{{ exercice.commentaire|default('') }}</textarea>
                         {% set derniere = dernieres_series.get(identifiant, {}).get(exercice.nom or exercice.exercice) %}
                         {% if derniere and derniere.series %}
-                        <div class="last-series"><strong>Dernière série · </strong>Séance du {{ derniere.date }} : {% for serie in derniere.series %}{% if derniere.mode in MODES_DUREE %}{{ serie.duree|round(1) }} s{% else %}{{ serie.repetitions }}{% if serie.poids %} x {{ serie.poids }} kg{% endif %}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</div>
+                        <div class="last-series"><strong>Dernière série · </strong>Séance du {{ derniere.date }} : {% for serie in derniere.series %}{% if derniere.mode in MODES_DUREE %}{{ serie.duree|round(1) }} s{% else %}{{ serie.repetitions }}{% if serie.poids %} x {{ serie.poids }} kg{% endif %}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}{% if derniere.ressenti in LIBELLES_RESSENTI %} <span class="flag-ressenti flag-{{ derniere.ressenti }}">{{ LIBELLES_RESSENTI[derniere.ressenti] }}</span>{% endif %}</div>
                         {% endif %}
                     </div>
                     {% endmacro %}
@@ -426,7 +432,10 @@
                     duree: MODES_DUREE.includes(mode) ? Math.max(1, cible || 1) : 0,
                     repos_entre_series: Number(ligne.dataset.reposSeries) || 0,
                     repos_apres: Number(ligne.dataset.reposApres) || 0,
-                    commentaire: ligne.querySelector(".edit-comment").value.trim(),
+                    // Cet éditeur ne saisit plus de commentaire, mais le
+                    // formulaire réécrit tous les blocs : sans ce report, la
+                    // sauvegarde effacerait les commentaires existants.
+                    commentaire: ligne.dataset.commentaire || "",
                     // Cet éditeur ne touche qu'aux objectifs : l'entrelacement
                     // défini dans « Éditer » doit être renvoyé tel quel.
                     entrelace_avec: ligne.dataset.entrelace || null,

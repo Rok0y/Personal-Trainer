@@ -83,6 +83,10 @@ def initialiser():
         curseur.execute(
             "ALTER TABLE exercices ADD COLUMN repos_apres INTEGER DEFAULT 0"
         )
+    # Ressenti déclaré après coup par l'utilisateur (`progression/ressenti.py`).
+    # Vide tant qu'il n'a rien dit : c'est une absence de réponse, pas un « ok ».
+    if "ressenti" not in colonnes_exercices:
+        curseur.execute("ALTER TABLE exercices ADD COLUMN ressenti TEXT DEFAULT ''")
 
     curseur.execute("""
         CREATE TABLE IF NOT EXISTS series_realisees (
@@ -128,6 +132,11 @@ def initialiser():
 
 
 def enregistrer_seance(duree, exercices, statut="finished", nom_seance=None):
+    """Écrit une séance complète et retourne son identifiant.
+
+    Le retour est indispensable à l'écran de fin, qui doit pouvoir annoter les
+    lignes qui viennent d'être créées (`enregistrer_ressentis`).
+    """
 
     conn = connexion()
 
@@ -217,6 +226,8 @@ def enregistrer_seance(duree, exercices, statut="finished", nom_seance=None):
 
     conn.close()
 
+    return seance_id
+
 
 def recuperer_historique():
     # Permet aussi la lecture d'une base créée par une version précédente,
@@ -262,7 +273,8 @@ def recuperer_historique():
                 duree_cible,
                 entrelace_avec,
                 repos_entre_series,
-                repos_apres
+                repos_apres,
+                ressenti
 
             FROM exercices
 
@@ -296,6 +308,7 @@ def recuperer_historique():
                         "entrelace_avec": exercice[11],
                         "repos_entre_series": exercice[12] or 0,
                         "repos_apres": exercice[13] or 0,
+                        "ressenti": exercice[14] or "",
                         "series_detaillees": recuperer_series(curseur, exercice[0]),
                     }
                     for exercice in exercices
@@ -328,6 +341,43 @@ def recuperer_series(curseur, exercice_id):
         }
         for ligne in curseur.fetchall()
     ]
+
+
+def enregistrer_ressentis(seance_id, ressentis):
+    """Annote après coup les exercices d'une séance déjà écrite.
+
+    C'est une mise à jour et non une insertion : la séance est enregistrée par
+    le thread caméra dès le passage en phase terminale, bien avant que
+    l'utilisateur n'ait vu l'écran de fin.
+
+    `ressentis` associe un nom d'exercice à une valeur de l'échelle, ou à une
+    chaîne vide pour effacer une réponse. Une valeur inconnue lève `ValueError`
+    plutôt que de polluer l'historique — le calcul d'objectif la lirait comme
+    une absence de réponse, silencieusement.
+    """
+    from progression.ressenti import est_valide
+
+    initialiser()
+
+    inconnues = sorted(
+        {valeur for valeur in ressentis.values() if valeur and not est_valide(valeur)}
+    )
+    if inconnues:
+        raise ValueError(f"Ressenti inconnu : {', '.join(inconnues)}")
+
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.executemany(
+        "UPDATE exercices SET ressenti = ? WHERE seance_id = ? AND nom = ?",
+        [
+            (valeur or "", seance_id, nom_exercice)
+            for nom_exercice, valeur in ressentis.items()
+        ],
+    )
+    modifiees = curseur.rowcount
+    conn.commit()
+    conn.close()
+    return modifiees
 
 
 def enregistrer_ancrage(nom_exercice, niveau, raison=""):
