@@ -194,9 +194,18 @@ def seances_du_programme(cle, catalogue_seances):
     eux, et il n'y aurait donc rien à lancer.
     """
     liaisons = liaison_seances(cle, catalogue_seances)
+    libelles = libelles_seances(tous_les_programmes().get(cle, {}))
+    # `position` compte sur l'ordre complet du programme, pas sur la liste
+    # filtrée : c'est le rang que l'utilisateur lit dans « séance 2/3 », et il
+    # ne doit pas se décaler parce qu'un libellé n'a pas de séance jouable.
     return [
-        {"libelle": libelle, "seance": liaisons.get(libelle)}
-        for libelle in libelles_seances(tous_les_programmes().get(cle, {}))
+        {
+            "libelle": libelle,
+            "seance": liaisons.get(libelle),
+            "position": rang,
+            "total": len(libelles),
+        }
+        for rang, libelle in enumerate(libelles, start=1)
         if liaisons.get(libelle) in catalogue_seances
     ]
 
@@ -348,6 +357,19 @@ def index():
             programme["seances_liees"] = seances_du_programme(
                 programme["cle"], seances
             )
+            # Une séance déjà choisie prime sur la proposition automatique : le
+            # bandeau annonçait sinon « Jambes et abdos » après un clic sur
+            # « Push », et le choix de l'utilisateur n'apparaissait nulle part.
+            choisie = next(
+                (
+                    lien
+                    for lien in programme["seances_liees"]
+                    if lien["seance"] == controleur.nom_selectionne
+                ),
+                None,
+            )
+            if choisie is not None:
+                programme["prochaine"] = dict(choisie)
         dernieres_series = {}
         for seance in historique:
             nom = seance.get("nom")

@@ -84,38 +84,22 @@ def _exigence(seance, exercice, series, cible, poids=0):
     }
 
 
+#: Aucun programme livré avec l'application : `programmes_personnalises.json`
+#: est la **seule** source. Le dict a longtemps contenu « Road to TKT », dont
+#: une copie divergente vivait aussi sur le disque — et comme le disque masque
+#: le code, éditer les valeurs ici n'avait aucun effet au runtime, ce qui n'a
+#: rien d'évident à la lecture. Une seule vérité vaut mieux qu'une règle de
+#: précédence à retenir.
+#:
+#: Le mécanisme de masquage reste en place pour un futur programme livré : y
+#: réintroduire une clé qui existe déjà sur le disque recréerait exactement le
+#: piège qu'on vient de retirer. Conséquence directe du vidage : tout programme
+#: est désormais `est_personnalise`, donc supprimable depuis le site — et cette
+#: suppression est définitive, là où elle restaurait avant la version du code.
+#:
 #: Les mouvements unilatéraux sont deux exercices dans le catalogue : une
 #: prescription « 4x12 par côté » devient donc deux exigences.
-PROGRAMMES = {
-    "road_to_tkt": {
-        "nom": "Road to TKT",
-        "description": (
-            "Trois séances à boucler intégralement : chaque exercice doit "
-            "atteindre le volume prescrit."
-        ),
-        "exigences": [
-            _exigence("Push", "Developpé couché altères", 4, 12, 28),
-            _exigence("Push", "Pompes", 3, 35),
-            _exigence("Push", "Développé épaule", 3, 12, 20),
-            _exigence("Push", "Elevations latérales", 3, 15, 10),
-            _exigence("Push", "Extension Triceps", 3, 12, 20),
-            _exigence("Jambes et abdos", "Squat", 4, 15, 26),
-            _exigence("Jambes et abdos", "Fente droite", 3, 10, 20),
-            _exigence("Jambes et abdos", "Fente gauche", 3, 10, 20),
-            _exigence("Jambes et abdos", "Souleve de terre roumain", 3, 12, 28),
-            _exigence("Jambes et abdos", "Gainage planche", 3, 100),
-            _exigence("Jambes et abdos", "Gainage planche laterale droite", 2, 60),
-            _exigence("Jambes et abdos", "Gainage planche laterale gauche", 2, 60),
-            _exigence("Jambes et abdos", "Crunches", 3, 20),
-            _exigence("Pull", "Rowing unilateral droit", 4, 12, 32),
-            _exigence("Pull", "Rowing unilateral gauche", 4, 12, 32),
-            _exigence("Pull", "Rowing penche", 3, 12, 24),
-            _exigence("Pull", "Curl biceps droit", 3, 12, 16),
-            _exigence("Pull", "Curl biceps gauche", 3, 12, 16),
-            _exigence("Pull", "Oiseau", 3, 15, 8),
-        ],
-    },
-}
+PROGRAMMES = {}
 
 
 def _lire_programmes_personnalises():

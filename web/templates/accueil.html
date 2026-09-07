@@ -208,9 +208,9 @@
         {% if programme.prochaine %}
         <div class="resume-prochaine">
             <div>
-                <span class="resume-etiquette">Prochaine séance ({{ programme.prochaine.position }}/{{ programme.prochaine.total }})</span>
-                <strong>{{ programme.prochaine.libelle }}</strong>
-                {% if programme.prochaine.seance %}<span class="resume-liee">via « {{ programme.prochaine.seance }} »</span>{% endif %}
+                <span class="resume-etiquette">Séance choisie (<span id="prochaine-position">{{ programme.prochaine.position }}</span>/{{ programme.prochaine.total }})</span>
+                <strong id="prochaine-libelle">{{ programme.prochaine.libelle }}</strong>
+                <span class="resume-liee" id="prochaine-liee">{% if programme.prochaine.seance %}via « {{ programme.prochaine.seance }} »{% endif %}</span>
             </div>
             {% if programme.prochaine.seance and programme.prochaine.seance in seances %}
             <button type="button" class="resume-demarrer" id="demarrer-programme" data-seance="{{ programme.prochaine.seance }}">Choisir cette séance</button>
@@ -223,9 +223,9 @@
         {% if programme.seances_liees and programme.seances_liees|length > 1 %}
         <label class="resume-bascule">
             Commencer plutôt par
-            <select id="choix-seance-programme">
+            <select id="choix-seance-programme" data-total="{{ programme.prochaine.total if programme.prochaine else programme.seances_liees|length }}">
                 {% for lien in programme.seances_liees %}
-                <option value="{{ lien.seance }}"{% if programme.prochaine and lien.seance == programme.prochaine.seance %} selected{% endif %}>{{ lien.libelle }}</option>
+                <option value="{{ lien.seance }}" data-libelle="{{ lien.libelle }}" data-position="{{ lien.position }}"{% if programme.prochaine and lien.seance == programme.prochaine.seance %} selected{% endif %}>{{ lien.libelle }}</option>
                 {% endfor %}
             </select>
         </label>
@@ -368,6 +368,7 @@
         if (donnees.ok) {
             selection = nom;
             actualiserSelection();
+            refleterSeanceDuProgramme(nom);
             afficherDernierePerformance(donnees.resultat.derniere_performance);
         }
     }
@@ -407,14 +408,28 @@
             if (carte) carte.scrollIntoView({ behavior: "smooth", block: "center" });
         });
     });
-    // Choisir une autre séance du programme : on réécrit la cible du bouton,
-    // que le gestionnaire [data-seance] générique lira au clic. Pas d'appel
-    // serveur, pas de listener supplémentaire.
+    // Le bandeau du programme reflete la seance retenue, d'ou qu'elle vienne :
+    // du selecteur, du bouton, ou d'un clic sur n'importe quelle carte de la
+    // liste. Sans ca il annoncait encore la proposition automatique apres un
+    // choix, et le bouton lancait autre chose que ce qui etait ecrit.
     const choixSeanceProgramme = document.getElementById("choix-seance-programme");
     const boutonProgramme = document.getElementById("demarrer-programme");
-    if (choixSeanceProgramme && boutonProgramme) {
+    function refleterSeanceDuProgramme(nomSeance) {
+        if (!choixSeanceProgramme) return;
+        const option = Array.from(choixSeanceProgramme.options).find((o) => o.value === nomSeance);
+        if (!option) return;  // seance hors programme : le bandeau garde sa proposition
+        choixSeanceProgramme.value = nomSeance;
+        if (boutonProgramme) boutonProgramme.dataset.seance = nomSeance;
+        const libelle = document.getElementById("prochaine-libelle");
+        const position = document.getElementById("prochaine-position");
+        const liee = document.getElementById("prochaine-liee");
+        if (libelle) libelle.textContent = option.dataset.libelle;
+        if (position) position.textContent = option.dataset.position;
+        if (liee) liee.textContent = `via « ${nomSeance} »`;
+    }
+    if (choixSeanceProgramme) {
         choixSeanceProgramme.addEventListener("change", () => {
-            boutonProgramme.dataset.seance = choixSeanceProgramme.value;
+            refleterSeanceDuProgramme(choixSeanceProgramme.value);
         });
     }
     // Changer de programme, lui, se mémorise : c'est le programme qu'on suit.
