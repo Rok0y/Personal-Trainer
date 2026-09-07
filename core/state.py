@@ -28,6 +28,17 @@ fiche = None
 Alimentée depuis `Exercice` : les consignes existaient depuis toujours dans le
 catalogue sans jamais atteindre l'écran.
 """
+
+fiche_suivante = None
+"""Fiche du prochain exercice, pour la lire pendant le repos qui le précède.
+
+Champ séparé de `fiche` et non son remplaçant : les deux pauses n'ont pas le
+même besoin. Pendant `recuperation_serie` on refait le même mouvement et c'est
+`fiche` qu'il faut relire ; pendant `repos_exercice` on prépare le suivant, et
+le matériel comme le cadrage caméra se décident avant la première répétition,
+pas après. Un champ unique obligerait à le faire redevenir la fiche courante à
+la reprise.
+"""
 repetitions = 0
 repetitions_cibles = 10
 temps_maintien = 0

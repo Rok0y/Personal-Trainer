@@ -77,6 +77,7 @@ def publier_fin_de_seance(seance):
     poser_etape(state, "termine")
     state.consigne = None
     state.fiche = None
+    state.fiche_suivante = None
 
     if seance.historique_enregistre or not seance.a_des_resultats():
         return

@@ -198,6 +198,12 @@ def initialiser():
     if "seance_initiale" not in colonnes_utilisateurs:
         curseur.execute("ALTER TABLE utilisateurs ADD COLUMN seance_initiale TEXT")
 
+    # Programme suivi. Pas de DEFAULT : NULL veut dire « aucun choix », et c'est
+    # l'état juste pour un profil déjà créé — lui attribuer d'office un
+    # programme serait un choix qu'il n'a pas fait.
+    if "programme_choisi" not in colonnes_utilisateurs:
+        curseur.execute("ALTER TABLE utilisateurs ADD COLUMN programme_choisi TEXT")
+
     # À l'échelle visée, toute requête filtre par profil : ces index ne sont
     # pas optionnels.
     curseur.execute("""
@@ -244,6 +250,7 @@ def _profil_depuis_ligne(ligne):
         "cree_le": ligne[2],
         "onboarding_termine": bool(ligne[3]),
         "seance_initiale": ligne[4],
+        "programme_choisi": ligne[5],
     }
 
 
@@ -253,7 +260,8 @@ def lister_utilisateurs():
     conn = connexion()
     curseur = conn.cursor()
     curseur.execute(
-        "SELECT id, nom, cree_le, onboarding_termine, seance_initiale "
+        "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
+        "programme_choisi "
         "FROM utilisateurs ORDER BY id"
     )
     profils = [_profil_depuis_ligne(ligne) for ligne in curseur.fetchall()]
@@ -267,7 +275,8 @@ def recuperer_utilisateur(utilisateur_id):
     conn = connexion()
     curseur = conn.cursor()
     curseur.execute(
-        "SELECT id, nom, cree_le, onboarding_termine, seance_initiale "
+        "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
+        "programme_choisi "
         "FROM utilisateurs WHERE id = ?",
         (utilisateur_id,),
     )
@@ -310,6 +319,28 @@ def creer_utilisateur(nom):
     conn.commit()
     conn.close()
     return {"id": utilisateur_id, "nom": nom, "onboarding_termine": False}
+
+
+def definir_programme_choisi(utilisateur_id, cle):
+    """Enregistre le programme que ce profil suit, ou `None` pour n'en suivre aucun.
+
+    Une préférence par profil et non par séance : deux athlètes partagent le
+    catalogue de programmes mais n'en suivent pas le même. L'appelant doit
+    enchaîner sur `core.utilisateur.rafraichir()`, sinon la session garde
+    l'ancien choix jusqu'à la prochaine connexion.
+    """
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "UPDATE utilisateurs SET programme_choisi = ? WHERE id = ?",
+        (cle, utilisateur_id),
+    )
+    if curseur.rowcount == 0:
+        conn.close()
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
+    conn.commit()
+    conn.close()
 
 
 def definir_onboarding(utilisateur_id, termine=None, seance_initiale=None):

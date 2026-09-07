@@ -122,6 +122,11 @@ class SessionManager:
             self._preparer_commande_serie()
             return self.seance.serie_suivante()
 
+    def refaire_derniere_serie(self):
+        with self._verrou:
+            self._preparer_commande_serie()
+            return self.seance.refaire_derniere_serie()
+
     def terminer_serie(self, repetitions=0, duree=0):
         with self._verrou:
             self._preparer_commande_serie()
@@ -197,6 +202,11 @@ class SessionManager:
                 "suivante": self.statut in ("running", "paused")
                 and seance_active
                 and self.seance.serie_actuelle < self.seance.nombre_series,
+                # Indépendant de la phase et de l'index courant : seule compte
+                # l'existence d'une série déjà terminée.
+                "refaire": self.statut in ("running", "paused")
+                and seance_active
+                and self.seance.peut_refaire_derniere_serie(),
                 "terminer": self.statut in ("running", "paused"),
                 "passer_pause": self.statut in ("running", "paused")
                 and seance_active

@@ -172,6 +172,83 @@
   ],
   "upper_push": [
     {
+      "exercice": "Jumping jacks",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 1,
+      "duree": 30,
+      "repos_entre_series": 5,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Rotation des épaules",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 1,
+      "duree": 30,
+      "repos_entre_series": 5,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Rotation des coudes",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 1,
+      "duree": 30,
+      "repos_entre_series": 5,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Rotation des poignets",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 1,
+      "duree": 30,
+      "repos_entre_series": 5,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Rotation du cou",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 1,
+      "duree": 30,
+      "repos_entre_series": 5,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Pompes lentes",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 1,
+      "duree": 30,
+      "repos_entre_series": 5,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Élévations latérales à vide",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 1,
+      "duree": 30,
+      "repos_entre_series": 5,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
       "exercice": "Developpé couché altères",
       "mode": "repetitions",
       "poids": 10,
@@ -196,9 +273,9 @@
     {
       "exercice": "Développé épaule",
       "mode": "repetitions",
-      "poids": 5,
+      "poids": 8,
       "series": 3,
-      "repetitions": 15,
+      "repetitions": 12,
       "duree": 0,
       "repos_entre_series": 45,
       "repos_apres": 90,
@@ -213,8 +290,7 @@
       "duree": 0,
       "repos_entre_series": 45,
       "repos_apres": 90,
-      "commentaire": "",
-      "cible_manuelle": true
+      "commentaire": ""
     },
     {
       "exercice": "Extension Triceps",

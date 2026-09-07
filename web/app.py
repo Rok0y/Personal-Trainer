@@ -25,6 +25,7 @@ from core.utilisateur import (
 from historique.database import (
     creer_utilisateur,
     definir_onboarding,
+    definir_programme_choisi,
     derniere_performance,
     enregistrer_ancrage,
     enregistrer_ressentis,
@@ -53,8 +54,11 @@ from progression.programmes import (
     CHARGE_TOTALE,
     enregistrer_programme,
     est_personnalise,
+    etat_programme,
     etats_programmes,
+    liaison_seances,
     libelle_charge,
+    libelles_seances,
     prochaine_seance,
     supprimer_programme,
     tous_les_programmes,
@@ -161,25 +165,40 @@ def _profil_dans_les_templates():
     return {"profil": utilisateur_connecte()}
 
 
-def meilleurs_volumes(seances):
-    return {
-        nom: stat["meilleur_volume"]["valeur"]
-        for nom, stat in statistiques_exercices(seances).items()
-        if stat["meilleur_volume"]["valeur"]
-    }
+def programme_de_l_accueil():
+    """Le programme suivi par le profil connecté, et la liste où le choisir.
 
-
-def seances_du_record(seances):
-    """Id de la séance qui détient le record de volume, par exercice.
-
-    Sert à n'afficher le badge « nouveau record » que sur la séance qui l'a
-    réellement établi, plutôt que sur toutes celles qui manient du poids.
+    Retourne `(état du programme ou None, {clé: nom})`. Le repli sur le premier
+    programme disponible n'écrit rien en base : tant que personne n'a choisi,
+    l'accueil montre quelque chose d'utile sans prétendre que c'est un choix.
     """
-    return {
-        nom: stat["meilleur_volume"]["seance_id"]
-        for nom, stat in statistiques_exercices(seances).items()
-        if stat["meilleur_volume"]["valeur"]
+    disponibles = {
+        cle: donnees.get("nom", cle) for cle, donnees in tous_les_programmes().items()
     }
+    if not disponibles:
+        return None, {}
+
+    profil = utilisateur_connecte() or {}
+    cle = profil.get("programme_choisi")
+    if cle not in disponibles:
+        cle = next(iter(disponibles))
+    return etat_programme(cle), disponibles
+
+
+def seances_du_programme(cle, catalogue_seances):
+    """Les séances du programme jouables dans l'app, dans l'ordre du programme.
+
+    Sert au sélecteur qui permet de démarrer une autre séance que celle
+    proposée. Les libellés sans séance correspondante sont écartés :
+    `liaison_seances` rend None quand aucune séance ne partage d'exercice avec
+    eux, et il n'y aurait donc rien à lancer.
+    """
+    liaisons = liaison_seances(cle, catalogue_seances)
+    return [
+        {"libelle": libelle, "seance": liaisons.get(libelle)}
+        for libelle in libelles_seances(tous_les_programmes().get(cle, {}))
+        if liaisons.get(libelle) in catalogue_seances
+    ]
 
 
 def noms_exercices_individuels():
@@ -319,11 +338,16 @@ def index():
     if controleur.statut in ("idle", "ready"):
         seances = controleur.catalogue()
         historique = recuperer_historique()
-        # Résumé des programmes pour l'accueil : où j'en suis, et surtout
-        # quelle séance enchaîner maintenant.
-        programmes = etats_programmes(historique)
-        for cle, programme in programmes.items():
-            programme["prochaine"] = prochaine_seance(cle, historique, seances)
+        # Résumé du programme suivi : où j'en suis, et surtout quelle séance
+        # enchaîner maintenant. Un seul, parce qu'on n'en fait qu'un à la fois.
+        programme, programmes_disponibles = programme_de_l_accueil()
+        if programme is not None:
+            programme["prochaine"] = prochaine_seance(
+                programme["cle"], historique, seances
+            )
+            programme["seances_liees"] = seances_du_programme(
+                programme["cle"], seances
+            )
         dernieres_series = {}
         for seance in historique:
             nom = seance.get("nom")
@@ -351,7 +375,8 @@ def index():
             selection=controleur.nom_selectionne,
             exercices=catalogue_exercices(),
             dernieres_series=dernieres_series,
-            programmes=programmes,
+            programme=programme,
+            programmes_disponibles=programmes_disponibles,
         )
 
     if controleur.statut in ("finished", "abandoned"):
@@ -391,6 +416,7 @@ def etat():
             "erreur": state.erreur,
             "consigne": state.consigne,
             "fiche": state.fiche,
+        "fiche_suivante": state.fiche_suivante,
             "repetitions": state.repetitions,
             "repetitions_cibles": state.repetitions_cibles,
             "serie_actuelle": state.serie_actuelle,
@@ -551,6 +577,7 @@ def commander_serie(commande):
         "recommencer": controleur.recommencer_serie,
         "precedente": controleur.serie_precedente,
         "suivante": controleur.serie_suivante,
+        "refaire": controleur.refaire_derniere_serie,
         "terminer": controleur.terminer_serie,
     }
     if commande not in commandes:
@@ -659,8 +686,6 @@ def historique():
     return render_template(
         "historique.html",
         seances=seances_entrainement(donnees),
-        meilleurs=meilleurs_volumes(donnees),
-        record_seance_id=seances_du_record(donnees),
         montees=montees_de_niveau(donnees),
         jugements=jugements_par_seance(donnees),
         detail=False,
@@ -850,9 +875,13 @@ def page_exercice(nom):
 
 @app.route("/programmes")
 def programmes():
+    profil = utilisateur_connecte() or {}
     return render_template(
         "programmes.html",
         programmes=etats_programmes(recuperer_historique()),
+        # La page liste tout ; l'accueil n'en montre qu'un. Le marquer ici, c'est
+        # rendre visible lequel des deux rôles chaque programme joue.
+        programme_suivi=profil.get("programme_choisi"),
     )
 
 
@@ -890,6 +919,22 @@ def _cle_programme(nom):
 #: exercice sur `/records` : `/records#exercice-{{ nom|ancre }}`. Les deux
 #: extrémités du lien passent par ce filtre, donc elles ne peuvent pas diverger.
 app.jinja_env.filters["ancre"] = lambda nom: _ancre(nom, "exercice")
+
+
+@app.route("/api/programme-choisi", methods=["POST"])
+def choisir_programme():
+    """Le programme que je suis en ce moment. Un seul à la fois, par profil."""
+    donnees = request.get_json(silent=True) or {}
+    cle = donnees.get("cle") or None
+    if cle is not None and cle not in tous_les_programmes():
+        return jsonify({"erreur": "Programme inconnu"}), 404
+
+    profil = utilisateur_connecte()
+    definir_programme_choisi(profil["id"], cle)
+    # Sans ce rafraîchissement, la session garderait l'ancien choix et l'accueil
+    # afficherait encore le programme précédent.
+    rafraichir()
+    return jsonify({"ok": True, "cle": cle})
 
 
 @app.route("/creer-programme")
@@ -1031,8 +1076,6 @@ def detail_historique(seance_id):
     return render_template(
         "historique.html",
         seances=[seance],
-        meilleurs=meilleurs_volumes(donnees),
-        record_seance_id=seances_du_record(donnees),
         montees=montees_de_niveau(donnees),
         jugements=jugements_par_seance(donnees),
         detail=True,

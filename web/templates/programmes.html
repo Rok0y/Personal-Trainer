@@ -58,6 +58,12 @@
            titre, seul le survol trahit le lien. */
         a.exigence-nom { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--border-strong); }
         a.exigence-nom:hover { color: var(--teal); border-bottom-color: var(--teal); text-decoration: none; }
+        .suivi { color: var(--teal); font-size: 12px; font-weight: 700; }
+        .suivre {
+            border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 12px;
+            background: var(--glass-strong); color: var(--text); font: inherit; font-size: 12px; cursor: pointer;
+        }
+        .suivre:hover { border-color: var(--teal); color: var(--teal); }
     </style>
     <p><a class="tab" href="/creer-programme">+ Nouveau programme</a></p>
 
@@ -69,6 +75,11 @@
             <h2>{{ programme.nom }}</h2>
             <span class="compte">{% if programme.battu %}Programme battu !{% else %}{{ programme.pourcentage }} % de progression{% endif %} · <a href="/editer-programme/{{ cle }}">Modifier</a></span>
         </div>
+        {% if cle == programme_suivi %}
+        <p class="suivi">Programme suivi — c'est celui qui s'affiche sur l'accueil.</p>
+        {% else %}
+        <p><button type="button" class="suivre" data-programme="{{ cle }}">Suivre ce programme</button></p>
+        {% endif %}
         <p class="description">{{ programme.description }}</p>
         <div class="jauge"><span style="width:{{ programme.pourcentage }}%"></span></div>
         <p class="description">Moyenne de l'avancement sur les {{ programme.total }} exigences · <strong>{{ programme.atteintes }}</strong> entièrement remplie{{ 's' if programme.atteintes > 1 }}</p>
@@ -111,3 +122,18 @@
 </main>
 </body>
 </html>
+
+<script>
+    // Même route que le sélecteur de l'accueil : un seul point d'écriture du
+    // programme suivi.
+    document.querySelectorAll(".suivre").forEach((bouton) => {
+        bouton.addEventListener("click", async () => {
+            await fetch("/api/programme-choisi", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ cle: bouton.dataset.programme }),
+            });
+            window.location.href = "/";
+        });
+    });
+</script>

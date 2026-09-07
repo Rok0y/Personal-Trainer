@@ -167,6 +167,13 @@ class Circuit:
         self._exercice_precedent_entrelace = (
             None  # Track l'exercice avant un partenaire
         )
+        # Repère de la dernière série terminée, posé par `terminer_serie` avant
+        # qu'elle ne déplace quoi que ce soit. C'est le seul moyen fiable de
+        # savoir quoi refaire : `terminer_serie` a cinq sorties, l'incrément de
+        # `serie_actuelle` n'a lieu que s'il reste des séries, et l'index
+        # d'exercice a parfois déjà avancé — la phase ne permet donc pas de
+        # re-dériver la série visée.
+        self._derniere_serie_terminee = None
 
     def _detecter_paires_entrelacees(self):
         """Détecte les paires d'exercices entrelacés.
@@ -556,6 +563,74 @@ class Circuit:
         self.debut_repos = None
         return True
 
+    def oublier_resultat_serie(self, index_exercice, serie):
+        """Retire la performance enregistrée pour une série donnée.
+
+        Symétrique d'`enregistrer_resultat_serie`, qui déduplique à l'écriture :
+        tant qu'on ne l'appelle pas, une série qu'on s'apprête à refaire garde
+        son ancien résultat, et une séance abandonnée entre-temps l'exporterait
+        comme si elle avait compté.
+        """
+        self.resultats_series = [
+            resultat
+            for resultat in self.resultats_series
+            if not (
+                resultat["index_exercice"] == index_exercice
+                and resultat["serie"] == serie
+            )
+        ]
+
+    def peut_refaire_derniere_serie(self):
+        """Une série a-t-elle déjà été terminée ?
+
+        Volontairement muet sur la phase : c'est tout l'intérêt du repère, et
+        c'est ce qui manquait à l'ancienne condition (`serie_actuelle > 1`),
+        fausse dès la dernière série d'un exercice.
+        """
+        return self._derniere_serie_terminee is not None
+
+    def refaire_derniere_serie(self):
+        """Rejoue la série qui vient d'être terminée, quelle que soit la phase.
+
+        Le repos qui suit une série est justement le moment où l'on se rend
+        compte qu'elle ne comptait pas (mauvaise détection, forme ratée). Le
+        repère à restaurer est `self._derniere_serie_terminee`, posé par
+        `terminer_serie` : `{"index_exercice", "serie", "entrelace"}`.
+
+        Retourne True si une série a été relancée, False s'il n'y en a aucune à
+        refaire.
+        """
+        if self._derniere_serie_terminee is None:
+            return False
+
+        repere = self._derniere_serie_terminee
+
+        # L'index d'exercice d'abord : `recommencer_serie` remet à zéro l'état
+        # temporel de `bloc_actuel`, qui dépend de lui. Le restaurer après
+        # coup nettoierait le mauvais bloc — celui de l'exercice suivant, quand
+        # `repos_apres` vaut 0 et que la transition a déjà eu lieu.
+        self.index_exercice = repere["index_exercice"]
+        self.serie_actuelle = repere["serie"]
+        # Sans cette ligne, un superset croit être au milieu d'un aller-retour
+        # qui n'existe plus : la série refaite renverrait vers le partenaire au
+        # lieu d'enchaîner, ou sauterait un cran de série au retour.
+        self._exercice_precedent_entrelace = (
+            dict(repere["entrelace"]) if repere["entrelace"] is not None else None
+        )
+
+        # La performance précédente est effacée maintenant, pas au moment où la
+        # série refaite se termine. Compter sur la déduplication
+        # d'`enregistrer_resultat_serie` laisserait une fenêtre pendant laquelle
+        # un abandon exporte la tentative qu'on vient précisément de désavouer
+        # — et c'est là le sens du bouton : cette série ne comptait pas.
+        self.oublier_resultat_serie(repere["index_exercice"], repere["serie"])
+
+        # Le repère est conservé : rappeler cette méthode restaure le même état
+        # plutôt que de reculer encore d'un cran. La prochaine fin de série le
+        # réécrira d'elle-même.
+        self.recommencer_serie()
+        return True
+
     def serie_suivante(self):
         """Avance à la série suivante, sans dépasser le bloc actuel."""
         if self.serie_actuelle >= self.nombre_series or self.bloc_actuel is None:
@@ -609,6 +684,19 @@ class Circuit:
         Appelée lorsque le nombre de répétitions
         demandé pour la série est atteint.
         """
+
+        # Photographier la série qui vient de s'achever *avant* de bouger quoi
+        # que ce soit : à la sortie de cette méthode, l'information n'est plus
+        # reconstituable (cf. `_derniere_serie_terminee`).
+        self._derniere_serie_terminee = {
+            "index_exercice": self.index_exercice,
+            "serie": self.serie_actuelle,
+            "entrelace": (
+                dict(self._exercice_precedent_entrelace)
+                if self._exercice_precedent_entrelace is not None
+                else None
+            ),
+        }
 
         # -----------------------------------------
         # Vérifier l'entrelacement

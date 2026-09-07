@@ -158,6 +158,13 @@
             font-weight: 700; text-transform: uppercase; letter-spacing: .05em; cursor: pointer;
         }
         .resume-demarrer:hover { opacity: .9; }
+        .resume-pied { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+        .resume-bascule { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+        .resume-pied .resume-bascule, .resume-pied .resume-lien { margin-top: 0; }
+        .resume-bascule select {
+            border: 1px solid var(--border-strong); border-radius: 8px; padding: 6px 10px;
+            background: var(--glass-strong); color: var(--text); font: inherit; font-size: 12px; cursor: pointer;
+        }
         .resume-lien { display: inline-block; margin-top: 12px; color: var(--teal); font-size: 12px; font-weight: 700; }
 
         .badge-manuelle { display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--orange); color: var(--orange); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
@@ -186,8 +193,11 @@
 
     {% include '_navigation.html' %}
 
-    {% if programmes %}<p class="section-titre">Programme en cours</p>{% endif %}
-    {% for cle, programme in programmes.items() %}
+    {% if programme %}<p class="section-titre">Programme en cours</p>{% endif %}
+    {# Un seul programme à l'écran : on n'en suit qu'un à la fois. Les autres
+       restent consultables sur /programmes, et se prennent par le sélecteur
+       ci-dessous. #}
+    {% if programme %}
     <section class="programme-resume">
         <div class="resume-entete">
             <h2>{{ programme.nom }}</h2>
@@ -203,13 +213,38 @@
                 {% if programme.prochaine.seance %}<span class="resume-liee">via « {{ programme.prochaine.seance }} »</span>{% endif %}
             </div>
             {% if programme.prochaine.seance and programme.prochaine.seance in seances %}
-            <button type="button" class="resume-demarrer" data-seance="{{ programme.prochaine.seance }}">Choisir cette séance</button>
+            <button type="button" class="resume-demarrer" id="demarrer-programme" data-seance="{{ programme.prochaine.seance }}">Choisir cette séance</button>
             {% endif %}
         </div>
         {% endif %}
-        <a class="resume-lien" href="/programmes">Voir le détail du programme</a>
+        {# Bascule ponctuelle : rien n'est enregistré, le programme reprendra sa
+           proposition automatique au prochain chargement. Le sélecteur ne fait
+           que réécrire la cible du bouton ci-dessus. #}
+        {% if programme.seances_liees and programme.seances_liees|length > 1 %}
+        <label class="resume-bascule">
+            Commencer plutôt par
+            <select id="choix-seance-programme">
+                {% for lien in programme.seances_liees %}
+                <option value="{{ lien.seance }}"{% if programme.prochaine and lien.seance == programme.prochaine.seance %} selected{% endif %}>{{ lien.libelle }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        {% endif %}
+        <div class="resume-pied">
+            <a class="resume-lien" href="/programmes">Voir le détail du programme</a>
+            {% if programmes_disponibles|length > 1 %}
+            <label class="resume-bascule">
+                Changer de programme
+                <select id="choix-programme">
+                    {% for cle, nom in programmes_disponibles.items() %}
+                    <option value="{{ cle }}"{% if cle == programme.cle %} selected{% endif %}>{{ nom }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            {% endif %}
+        </div>
     </section>
-    {% endfor %}
+    {% endif %}
     <p class="section-titre">Tes séances</p>
     <section class="grid" aria-label="Seances disponibles">
         {% for identifiant, seance in seances.items() %}
@@ -372,6 +407,28 @@
             if (carte) carte.scrollIntoView({ behavior: "smooth", block: "center" });
         });
     });
+    // Choisir une autre séance du programme : on réécrit la cible du bouton,
+    // que le gestionnaire [data-seance] générique lira au clic. Pas d'appel
+    // serveur, pas de listener supplémentaire.
+    const choixSeanceProgramme = document.getElementById("choix-seance-programme");
+    const boutonProgramme = document.getElementById("demarrer-programme");
+    if (choixSeanceProgramme && boutonProgramme) {
+        choixSeanceProgramme.addEventListener("change", () => {
+            boutonProgramme.dataset.seance = choixSeanceProgramme.value;
+        });
+    }
+    // Changer de programme, lui, se mémorise : c'est le programme qu'on suit.
+    const choixProgramme = document.getElementById("choix-programme");
+    if (choixProgramme) {
+        choixProgramme.addEventListener("change", async () => {
+            await fetch("/api/programme-choisi", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ cle: choixProgramme.value }),
+            });
+            window.location.reload();
+        });
+    }
     document.querySelectorAll(".session details").forEach((details) => {
         details.addEventListener("click", (evenement) => evenement.stopPropagation());
     });

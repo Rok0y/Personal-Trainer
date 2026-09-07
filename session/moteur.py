@@ -369,6 +369,10 @@ def decrire_prochaine_etape(bloc, serie_actuelle, nombre_total_series=None):
 
 
 def mettre_a_jour_prochain_exercice(circuit, state):
+    # La fiche du prochain exercice suit le même calcul que son libellé : elle
+    # n'a de sens qu'entre deux exercices, et se recalcule ici plutôt que dans
+    # un second parcours du circuit.
+    state.fiche_suivante = None
     if circuit.phase in ("preparation", "exercice"):
         bloc = circuit.bloc_actuel
         state.prochaine_etape = decrire_prochaine_etape(
@@ -409,6 +413,7 @@ def mettre_a_jour_prochain_exercice(circuit, state):
             state.prochaine_etape = decrire_prochaine_etape(
                 prochain, 1, prochain.nombre_series
             )
+            state.fiche_suivante = prochain.exercice.fiche()
 
             return
 
