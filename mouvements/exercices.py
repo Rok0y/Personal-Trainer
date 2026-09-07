@@ -331,7 +331,6 @@ crunches = Exercice(
     ],
     mise_en_place=[
         "Allongé sur le dos, genoux pliés, pieds à plat sur le tapis.",
-        "Mains sur les tempes ou croisées sur la poitrine, jamais derrière la nuque.",
         "Place-toi de façon à avoir la caméra sur le côté.",
     ],
     erreurs_frequentes=[
@@ -400,9 +399,9 @@ def squat_detection(corps):
     distance_moyenne = (distance_gauche + distance_droite) / 2
 
     if distance_moyenne < 0.05:
-        return "fin"
-    elif distance_moyenne > 0.15:
         return "debut"
+    elif distance_moyenne > 0.15:
+        return "fin"
     return "milieu"
 
 
@@ -441,9 +440,9 @@ def fente_droite_detection(corps):
     )
 
     if angle_genou_droit < 100:
-        return "fin"
-    elif angle_genou_droit > 150:
         return "debut"
+    elif angle_genou_droit > 150:
+        return "fin"
     return "milieu"
 
 
@@ -480,9 +479,9 @@ def fente_gauche_detection(corps):
     )
 
     if angle_genou_gauche < 100:
-        return "fin"
-    elif angle_genou_gauche > 150:
         return "debut"
+    elif angle_genou_gauche > 150:
+        return "fin"
     return "milieu"
 
 
@@ -903,9 +902,9 @@ def squat_sur_chaise_detection(corps):
         corps.hanche_droite, corps.genou_droit, corps.cheville_droite
     )
     if angle_gauche < 110 and angle_droit < 110:
-        return "fin"
-    if angle_gauche > 160 and angle_droit > 160:
         return "debut"
+    if angle_gauche > 160 and angle_droit > 160:
+        return "fin"
     return "milieu"
 
 
