@@ -46,7 +46,10 @@ MESSAGES = {
 LIBELLES_ETAPE = {
     "debut": "Position de départ",
     "milieu": "En mouvement",
-    "fin": "Position basse",
+    # Neutre à dessein : « fin » est la position qui *valide* une répétition,
+    # et ce n'est la position basse que pour le squat et la fente. Sur un curl,
+    # une pompe ou un soulevé de terre, c'est le haut du mouvement.
+    "fin": "Position finale",
     "maintien": "Position tenue",
     "repos": "Position relâchée",
     "casse": "Position incorrecte",
