@@ -51,13 +51,12 @@ from progression.paliers import (
     unite,
 )
 from progression.programmes import (
-    CHARGE_TOTALE,
     enregistrer_programme,
     est_personnalise,
     etat_programme,
     etats_programmes,
     liaison_seances,
-    libelle_charge,
+    LIBELLE_CHARGE,
     libelles_seances,
     prochaine_seance,
     supprimer_programme,
@@ -71,7 +70,6 @@ from session.seances import (
     catalogue_echauffements,
     catalogue_exercices,
     fiche_mouvement,
-    nombre_halteres,
 )
 
 
@@ -917,9 +915,6 @@ def exercices_avec_bareme():
         nom: {
             "nom": nom,
             "unite": unite(nom),
-            # Sert à l'éditeur pour afficher l'équivalent par haltère : la
-            # division ne s'applique qu'aux mouvements bilatéraux.
-            "halteres": nombre_halteres(nom),
         }
         for nom in sorted(exercices_suivis())
     }
@@ -966,8 +961,7 @@ def creer_programme_page():
         exercices=exercices_avec_bareme(),
         programme_cle="",
         programme={"nom": "", "description": "", "exigences": []},
-        libelle_charge=libelle_charge(),
-        charge_totale=CHARGE_TOTALE,
+        libelle_charge=LIBELLE_CHARGE,
         supprimable=False,
     )
 
@@ -982,8 +976,7 @@ def editer_programme_page(cle):
         exercices=exercices_avec_bareme(),
         programme_cle=cle,
         programme=programme,
-        libelle_charge=libelle_charge(),
-        charge_totale=CHARGE_TOTALE,
+        libelle_charge=LIBELLE_CHARGE,
         # Un programme livré dans le code et jamais modifié n'a rien sur le
         # disque : proposer de le supprimer mènerait à une erreur.
         supprimable=est_personnalise(cle),

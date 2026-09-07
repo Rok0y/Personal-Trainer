@@ -8,7 +8,7 @@
         "exercice": "Developpé couché altères",
         "series": 6,
         "cible": 22.0,
-        "poids": 20.0
+        "poids": 10.0
       },
       {
         "seance": "Push",
@@ -22,14 +22,14 @@
         "exercice": "Développé épaule",
         "series": 6,
         "cible": 12.0,
-        "poids": 20.0
+        "poids": 10.0
       },
       {
         "seance": "Push",
         "exercice": "Elevations latérales",
         "series": 3,
         "cible": 15.0,
-        "poids": 20.0
+        "poids": 10.0
       },
       {
         "seance": "Push",
@@ -43,28 +43,28 @@
         "exercice": "Squat",
         "series": 6,
         "cible": 26.0,
-        "poids": 20.0
+        "poids": 10.0
       },
       {
         "seance": "Jambes et abdos",
         "exercice": "Fente droite",
         "series": 6,
         "cible": 10.0,
-        "poids": 20.0
+        "poids": 10.0
       },
       {
         "seance": "Jambes et abdos",
         "exercice": "Fente gauche",
         "series": 6,
         "cible": 10.0,
-        "poids": 20.0
+        "poids": 10.0
       },
       {
         "seance": "Jambes et abdos",
         "exercice": "Souleve de terre roumain",
         "series": 6,
         "cible": 17.0,
-        "poids": 20.0
+        "poids": 10.0
       },
       {
         "seance": "Jambes et abdos",
@@ -113,7 +113,7 @@
         "exercice": "Rowing penche",
         "series": 6,
         "cible": 14.0,
-        "poids": 20.0
+        "poids": 10.0
       },
       {
         "seance": "Pull",
@@ -134,7 +134,7 @@
         "exercice": "Oiseau",
         "series": 3,
         "cible": 15.0,
-        "poids": 16.0
+        "poids": 8.0
       }
     ]
   }
