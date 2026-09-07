@@ -84,7 +84,7 @@
         <p class="description">{{ programme.description }}</p>
         <div class="jauge"><span style="width:{{ programme.pourcentage }}%"></span></div>
         <p class="description">Moyenne de l'avancement sur les {{ programme.total }} exigences · <strong>{{ programme.atteintes }}</strong> entièrement remplie{{ 's' if programme.atteintes > 1 }}</p>
-        <p class="hint">Les prescriptions sont converties <strong>à volume égal</strong> vers un palier de ton barème : « 6x15 » peut donc s'y lire « 4x23 ». C'est ce qui rend un programme écrit avec d'autres haltères comparable à ta progression. Les charges s'entendent partout pour un seul haltère.</p>
+        <p class="hint">Chaque exigence est calée sur un <strong>palier de ton barème</strong> au moment de l'enregistrement : une prescription qui n'y correspond pas est remplacée par le premier palier de même volume, donc réalisable avec tes haltères. Les charges s'entendent partout pour un seul haltère.</p>
 
         {% if programme.hors_atteinte %}
         <p class="alerte">{{ programme.hors_atteinte }} exigence(s) dépassent le sommet de ton barème : aucune combinaison de poids, de séries et de répétitions disponible n'atteint le volume demandé. Il faut des haltères plus lourds — ce n'est pas une question d'entraînement.</p>
@@ -107,11 +107,11 @@
                 </div>
                 <div class="exigence-barre"><span style="width: {{ ligne.avancement }}%"></span></div>
                 <p class="exigence-detail">
-                    {# Ce que tu as écrit dans le programme vient en premier : la
-                       ligne n'affichait que sa traduction sur le barème, si bien
-                       qu'éditer « 6x15 » faisait apparaitre « 4x23 » sans que rien
-                       n'explique le rapport entre les deux. #}
-                    Prescrit <strong>{{ ligne.prescription }}</strong>
+                    {# L'exigence est calée sur un palier à l'enregistrement, donc
+                       les deux valeurs coïncident normalement. Le « soit » ne
+                       ressort qu'après un changement de spec, quand une exigence
+                       enregistrée sous l'ancien barème n'y correspond plus. #}
+                    Objectif <strong>{{ ligne.prescription }}</strong>
                     {% if ligne.palier_requis %}
                     {%- if ligne.palier_requis.resume() != ligne.prescription %}
                     · soit <strong>{{ ligne.palier_requis.resume() }}</strong> sur ton barème

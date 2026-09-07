@@ -40,8 +40,6 @@ from progression.paliers import (
     volume,
 )
 
-#: Comment lire les charges écrites dans un programme : `True` = la valeur est
-#: la charge **totale**, les deux haltères réunis (elle est donc divisée par
 #: Intitulé du champ de charge, défini une fois : écrit en dur dans le
 #: template, il finirait par mentir le jour où la convention bougerait.
 LIBELLE_CHARGE = "Charge par haltère (kg)"
@@ -120,6 +118,32 @@ def est_personnalise(cle):
     return cle in _lire_programmes_personnalises()
 
 
+def _cale_sur_le_bareme(exercice, series, cible, poids):
+    """Ramène une prescription sur le palier de même volume. Le barème fait foi.
+
+    Une exigence qui ne correspond à aucun palier est indéfendable : elle
+    demandait « 6x10 à 20 kg » quand l'haltère le plus lourd fait 18, ou une
+    combinaison séries/répétitions que le barème ne propose à aucun niveau. On
+    la remplace donc par le premier palier qui atteint son volume — même effort
+    total, forme réalisable — plutôt que de la stocker telle quelle et de la
+    traduire à chaque affichage.
+
+    Traduire au lieu de caler laissait deux valeurs vivre côte à côte : celle
+    qu'on relit dans l'éditeur et celle que la page de programme calcule. Elles
+    n'étaient jamais les mêmes, et rien ne disait laquelle faisait autorité.
+
+    Retourne le triplet inchangé si le barème ne sait pas répondre — mieux vaut
+    conserver la saisie que la remplacer par rien.
+    """
+    niveau = niveau_pour_volume(exercice, volume(series, cible, poids))
+    if niveau is None:
+        return series, cible, poids
+    cale = palier(exercice, niveau)
+    if cale is None:
+        return series, cible, poids
+    return cale.series, cale.cible, cale.poids
+
+
 def valider_programme(donnees):
     """Refuse un programme incohérent avant qu'il n'atteigne le disque.
 
@@ -151,9 +175,7 @@ def valider_programme(donnees):
             _exigence(
                 (ligne.get("seance") or "Séance").strip(),
                 exercice,
-                series,
-                cible,
-                poids,
+                *_cale_sur_le_bareme(exercice, series, cible, poids),
             )
         )
 
