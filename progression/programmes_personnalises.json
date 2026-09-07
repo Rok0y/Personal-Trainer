@@ -118,16 +118,16 @@
       {
         "seance": "Pull",
         "exercice": "Curl biceps droit",
-        "series": 5,
-        "cible": 14,
-        "poids": 18
+        "series": 4,
+        "cible": 15,
+        "poids": 10
       },
       {
         "seance": "Pull",
         "exercice": "Curl biceps gauche",
-        "series": 5,
-        "cible": 14,
-        "poids": 18
+        "series": 4,
+        "cible": 15,
+        "poids": 10
       },
       {
         "seance": "Pull",

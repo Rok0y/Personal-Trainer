@@ -173,11 +173,15 @@ SPECS = {
     "Oiseau": SpecProgression(
         series=3, cible_min=10, cible_max=15, poids_min=2, poids_max=8
     ),
+    # Isolation à un bras : le plafond de charge n'est pas celui du matériel.
+    # Sans `poids_max`, le barème proposait des paliers jusqu'à l'haltère de
+    # 18 kg, une charge qu'on ne curle pas d'un bras — et une exigence de
+    # programme s'y calait, la rendant absurde.
     "Curl biceps droit": SpecProgression(
-        series=4, cible_min=8, cible_max=15, poids_min=4
+        series=4, cible_min=8, cible_max=15, poids_min=4, poids_max=12
     ),
     "Curl biceps gauche": SpecProgression(
-        series=4, cible_min=8, cible_max=15, poids_min=4
+        series=4, cible_min=8, cible_max=15, poids_min=4, poids_max=12
     ),
     # --- Bas du corps ---
     # Les jambes encaissent plus de répétitions que le haut du corps, et les
