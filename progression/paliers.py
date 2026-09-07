@@ -136,7 +136,7 @@ class SpecProgression:
 SPECS = {
     # --- Haut du corps, poussée ---
     "Developpé couché altères": SpecProgression(
-        series=4, cible_min=8, cible_max=15, poids_min=4
+        series=4, cible_min=8, cible_max=22, poids_min=4
     ),
     # Poids du corps : sans axe de charge, la fourchette de répétitions est
     # allongée pour que le barème ne soit pas épuisé en une poignée de paliers.
@@ -144,14 +144,14 @@ SPECS = {
     # `cible_min` très bas — voir la note « bas de barème » plus haut : un
     # débutant doit trouver un premier palier à sa portée, sans quoi il reste
     # « hors barème » et le moteur n'a rien à lui proposer.
-    "Pompes": SpecProgression(series=4, cible_min=3, cible_max=25),
+    "Pompes": SpecProgression(series=4, cible_min=3, cible_max=15),
     # Variantes assistées : mêmes fourchettes hautes, départ encore plus bas.
     # Elles existent pour que quelqu'un qui ne fait pas une seule pompe complète
     # ait quand même un barème, et une progression qui le ramène aux Pompes.
     "Pompes inclinées": SpecProgression(series=3, cible_min=3, cible_max=20),
     "Pompes sur les genoux": SpecProgression(series=3, cible_min=3, cible_max=20),
     "Développé épaule": SpecProgression(
-        series=3, cible_min=8, cible_max=15, poids_min=4
+        series=3, cible_min=8, cible_max=12, poids_min=4
     ),
     # Isolation légère : beaucoup de répétitions, et jamais très lourd.
     "Elevations latérales": SpecProgression(
@@ -160,18 +160,18 @@ SPECS = {
     # Lourd et court : la fourchette basse évite qu'une série de 7 à 14 kg
     # tombe hors barème alors qu'elle vaut plus que 15 répétitions à 6 kg.
     "Extension Triceps": SpecProgression(
-        series=3, cible_min=6, cible_max=12, poids_min=8
+        series=3, cible_min=6, cible_max=13, poids_min=8
     ),
     # --- Haut du corps, tirage ---
     "Rowing unilateral droit": SpecProgression(
-        series=4, cible_min=6, cible_max=12, poids_min=8
+        series=4, cible_min=6, cible_max=14, poids_min=8
     ),
     "Rowing unilateral gauche": SpecProgression(
-        series=4, cible_min=6, cible_max=12, poids_min=8
+        series=4, cible_min=6, cible_max=14, poids_min=8
     ),
-    "Rowing penche": SpecProgression(series=3, cible_min=8, cible_max=15, poids_min=4),
+    "Rowing penche": SpecProgression(series=3, cible_min=8, cible_max=14, poids_min=4),
     "Oiseau": SpecProgression(
-        series=3, cible_min=10, cible_max=18, poids_min=2, poids_max=8
+        series=3, cible_min=10, cible_max=15, poids_min=2, poids_max=8
     ),
     "Curl biceps droit": SpecProgression(
         series=4, cible_min=8, cible_max=15, poids_min=4
@@ -182,23 +182,23 @@ SPECS = {
     # --- Bas du corps ---
     # Les jambes encaissent plus de répétitions que le haut du corps, et les
     # haltères y sont vite le facteur limitant.
-    "Squat": SpecProgression(series=4, cible_min=10, cible_max=20, poids_min=4),
+    "Squat": SpecProgression(series=4, cible_min=10, cible_max=26, poids_min=4),
     # Au poids du corps, avec une chaise pour repère de profondeur : le squat
     # sans haltère n'existait pas au barème, alors que c'est par là qu'on
     # commence.
     "Squat sur chaise": SpecProgression(series=3, cible_min=5, cible_max=20),
-    "Fente droite": SpecProgression(series=4, cible_min=8, cible_max=15, poids_min=4),
-    "Fente gauche": SpecProgression(series=4, cible_min=8, cible_max=15, poids_min=4),
+    "Fente droite": SpecProgression(series=4, cible_min=8, cible_max=10, poids_min=4),
+    "Fente gauche": SpecProgression(series=4, cible_min=8, cible_max=10, poids_min=4),
     "Souleve de terre roumain": SpecProgression(
-        series=4, cible_min=8, cible_max=15, poids_min=4
+        series=4, cible_min=8, cible_max=17, poids_min=4
     ),
     # --- Abdos et gainage ---
-    "Crunches": SpecProgression(series=3, cible_min=5, cible_max=25),
+    "Crunches": SpecProgression(series=3, cible_min=5, cible_max=20),
     # Le gainage plafonne à deux minutes par série : au-delà, tenir plus
     # longtemps ne teste plus grand-chose, et c'est le nombre de séries qui
     # prend le relais.
     "Gainage planche": SpecProgression(
-        series=3, cible_min=10, cible_max=60, pas=2, unite=UNITE_SECONDES
+        series=3, cible_min=10, cible_max=100, pas=2, unite=UNITE_SECONDES
     ),
     "Gainage sur les genoux": SpecProgression(
         series=2, cible_min=10, cible_max=45, pas=2, unite=UNITE_SECONDES

@@ -64,7 +64,17 @@ Progression (`progression/`) : le moteur de niveaux, qui pilote les cibles des s
   charge n'ayant qu'une valeur, la première tranche s'allonge par le bas et tous
   les paliers supérieurs se décalent d'une *constante*, sans changer de contenu.
   Toucher `series` ou `poids_min` fait au contraire recalculer le départ de
-  chaque tranche par `_premiere_cible`, et rebat tout le barème.
+  chaque tranche par `_premiere_cible`, et rebat tout le barème. **`cible_max`
+  aussi**, et c'est le réglage par lequel on ajuste un barème à un programme :
+  il fixe le volume de fin de tranche, donc l'entrée de la suivante. Le baisser
+  fait entrer les séries en jeu plus tôt — tant qu'il reste haut, le barème
+  épuise les répétitions avant d'ajouter une série, et une prescription écrite
+  en 6 séries n'a aucun palier de même forme.
+  Piège du **baisser** : les séances déjà enregistrées portent des cibles qui
+  peuvent désormais dépasser `cible_max`. `ressenti._cible_visee` ne sait alors
+  plus les traduire en niveau, et l'objectif proposé retombe **sous** le niveau
+  acquis — observé sur les fentes en passant de 15 à 10. C'est transitoire : la
+  première séance jouée sur le nouveau barème rétablit un repère valide.
   Les **variantes assistées** (pompes inclinées, pompes et gainage sur les
   genoux, squat sur chaise) sont des exercices comptabilisés à part entière, pas
   des échauffements : elles ont un barème, des records, une progression. Chacune
