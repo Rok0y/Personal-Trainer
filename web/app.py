@@ -24,6 +24,7 @@ from core.utilisateur import (
 )
 from historique.database import (
     creer_utilisateur,
+    definir_materiel,
     definir_onboarding,
     definir_programme_choisi,
     derniere_performance,
@@ -41,7 +42,7 @@ from historique.database import (
     supprimer_exercice_de_seance,
     supprimer_seance,
 )
-from progression.calibration import etat_tunnel, mode_de_test, proposition
+from core.materiel import ACCESSOIRES, POIDS_REFERENCE, materiel_du_profil, normaliser
 from progression.niveaux import etat_niveau, etats_niveaux, montees_de_niveau
 from progression.paliers import (
     est_suivi_par_le_moteur,
@@ -120,20 +121,7 @@ def _exiger_un_profil():
 #: les fiches d'exercice (le tunnel y renvoie) et la selection de seance test.
 ROUTES_ONBOARDING = {
     "page_bienvenue",
-    "page_bienvenue_test",
-    "bienvenue_choisir_seance",
-    "bienvenue_lancer_test",
-    "bienvenue_estimer",
-    "bienvenue_valider",
-    "bienvenue_passer",
-    "bienvenue_terminer",
-    "etat",
-    "video",
-    # Le test de calibration arme et arrete lui-meme sa seance
-    # (`/api/bienvenue/test`), donc ni la selection ni le demarrage generiques
-    # n'ont a etre ouverts : les laisser passer permettrait de lancer une
-    # seance complete sans avoir fait le tunnel.
-    "abandonner_seance",
+    "enregistrer_materiel",
     "page_exercice",
     "page_exercices",
 }
@@ -439,6 +427,7 @@ def etat():
         "fiche_suivante": state.fiche_suivante,
             "repetitions": state.repetitions,
             "repetitions_cibles": state.repetitions_cibles,
+            "test_max": state.test_max,
             "serie_actuelle": state.serie_actuelle,
             "nombre_series": state.nombre_series,
             "phase": state.phase,
@@ -460,6 +449,9 @@ def etat():
             "seance_id": etat_session["seance_id"],
             "series_terminees": etat_session["series_terminees"],
             "exercices": etat_session["exercices"],
+            "echauffements": etat_session["echauffements"],
+            "echauffements_termines": etat_session["echauffements_termines"],
+            "dans_echauffement": etat_session["dans_echauffement"],
             "nombre_series_total": etat_session["nombre_series_total"],
             "commandes_autorisees": etat_session["commandes_autorisees"],
         }
@@ -722,144 +714,59 @@ def records():
     )
 
 
-def _tunnel_courant():
-    """Etat du tunnel pour le profil connecte, ou None s'il n'a pas de seance.
-
-    Relit les ancrages a chaque appel : c'est eux qui portent l'avancement, il
-    n'y a aucun etat de tunnel a maintenir en memoire.
-    """
-    profil = utilisateur_connecte()
-    if not profil or not profil.get("seance_initiale"):
-        return None
-    return etat_tunnel(profil["seance_initiale"], recuperer_ancrages())
-
-
 @app.route("/bienvenue")
 def page_bienvenue():
-    """Le tunnel d'accueil : choix de la seance, puis fiche + test par exercice."""
-    profil = utilisateur_connecte()
-    tunnel = _tunnel_courant()
-    fiche = fiche_mouvement(tunnel["courant"]) if tunnel and tunnel["courant"] else None
+    """Questionnaire de materiel : la seule etape avant la premiere seance.
+
+    Le tunnel de calibration exercice par exercice a disparu : un exercice sans
+    donnees se teste desormais **en seance** (`progression.objectifs.a_calibrer`),
+    au moment ou on le rencontre. Ne restait donc a demander que ce qu'aucune
+    camera ne peut deviner : le materiel.
+    """
+    return _page_materiel(premiere_fois=True)
+
+
+@app.route("/materiel")
+def page_materiel():
+    """Le meme questionnaire, en modification. Meme template, meme API."""
+    return _page_materiel(premiere_fois=False)
+
+
+def _page_materiel(premiere_fois):
     return render_template(
         "bienvenue.html",
-        seances=catalogue(),
-        tunnel=tunnel,
-        fiche=fiche,
-        deja_fait=profil.get("onboarding_termine") if profil else True,
+        premiere_fois=premiere_fois,
+        seances=catalogue() if premiere_fois else {},
+        poids_reference=list(POIDS_REFERENCE),
+        accessoires=ACCESSOIRES,
+        materiel=materiel_du_profil(),
     )
 
 
-@app.route("/bienvenue/test/<nom>")
-def page_bienvenue_test(nom):
-    """Ecran du test de calibration d'un exercice : fiche a gauche, camera a droite."""
-    fiche = fiche_mouvement(nom)
-    if fiche is None or not est_suivi_par_le_moteur(nom):
-        abort(404)
-    return render_template(
-        "bienvenue_test.html",
-        fiche=fiche,
-        mode=mode_de_test(nom),
-        unite=unite(nom),
-    )
+@app.route("/api/materiel", methods=["POST"])
+def enregistrer_materiel():
+    """Enregistre l'inventaire, et referme le tunnel d'accueil au passage.
 
-
-@app.route("/api/bienvenue/seance", methods=["POST"])
-def bienvenue_choisir_seance():
-    donnees = request.get_json(silent=True) or {}
-    nom = donnees.get("nom")
-    if nom not in catalogue():
-        return jsonify({"ok": False, "erreur": "Seance inconnue"}), 400
-    definir_onboarding(utilisateur_connecte()["id"], seance_initiale=nom)
-    rafraichir()
-    return jsonify({"ok": True, "tunnel": _tunnel_courant()})
-
-
-@app.route("/api/bienvenue/test", methods=["POST"])
-def bienvenue_lancer_test():
-    """Arme une serie unique sans limite sur l'exercice a calibrer."""
-    donnees = request.get_json(silent=True) or {}
-    nom = donnees.get("exercice")
-    if not est_suivi_par_le_moteur(nom):
-        return jsonify({"ok": False, "erreur": "Exercice sans bareme"}), 400
-
-    def armer():
-        controleur.selectionner_test(nom, mode_de_test(nom), cible=None)
-        controleur.demarrer()
-        return controleur.etat()
-
-    return executer_commande(armer)
-
-
-@app.route("/api/bienvenue/estimer", methods=["POST"])
-def bienvenue_estimer():
-    """Traduit un maximum en palier propose, sans rien enregistrer.
-
-    Separe de la validation a dessein : l'utilisateur doit pouvoir voir ce que
-    son test donne, et le corriger, avant que quoi que ce soit n'entre en base.
+    Les deux ecritures vont ensemble : declarer son materiel *est* l'accueil,
+    et les separer laisserait un profil coince sur /bienvenue apres avoir
+    repondu. `rafraichir()` est obligatoire — le profil connecte transporte ces
+    deux colonnes, et le garde de requete les relit sans repasser par la base.
     """
     donnees = request.get_json(silent=True) or {}
-    nom = donnees.get("exercice")
-    if not est_suivi_par_le_moteur(nom):
-        return jsonify({"ok": False, "erreur": "Exercice sans bareme"}), 400
-    try:
-        maximum = float(donnees.get("maximum") or 0)
-        poids = float(donnees.get("poids") or 0)
-    except (TypeError, ValueError):
-        return jsonify({"ok": False, "erreur": "Valeurs invalides"}), 400
+    materiel = normaliser(donnees.get("materiel"))
+    profil = utilisateur_connecte()
 
-    resultat = proposition(nom, poids, maximum)
-    fiche = fiche_mouvement(nom) or {}
-    resultat["variante_facile"] = fiche.get("variante_facile")
-    return jsonify({"ok": True, "proposition": resultat})
+    definir_materiel(profil["id"], materiel)
 
-
-@app.route("/api/bienvenue/valider", methods=["POST"])
-def bienvenue_valider():
-    """Pose l'ancrage du niveau retenu et avance d'une etape."""
-    donnees = request.get_json(silent=True) or {}
-    nom = donnees.get("exercice")
-    if not est_suivi_par_le_moteur(nom):
-        return jsonify({"ok": False, "erreur": "Exercice sans bareme"}), 400
-    try:
-        niveau = int(donnees.get("niveau") or 0)
-    except (TypeError, ValueError):
-        return jsonify({"ok": False, "erreur": "Niveau invalide"}), 400
-    if niveau < 1 or palier(nom, niveau) is None:
-        return jsonify({"ok": False, "erreur": "Niveau hors bareme"}), 400
-
-    enregistrer_ancrage(nom, niveau, raison="Test d'accueil")
-    return jsonify({"ok": True, "tunnel": _tunnel_courant()})
-
-
-@app.route("/api/bienvenue/passer", methods=["POST"])
-def bienvenue_passer():
-    """Sortie de secours d'une etape : ancre au premier palier et passe.
-
-    Sans elle, une blessure, un materiel manquant ou un exercice qu'on ne veut
-    pas tenter bloquent definitivement l'acces a l'application. Le palier 1 est
-    volontairement bas : le moteur remontera de lui-meme des la premiere
-    seance reussie.
-    """
-    donnees = request.get_json(silent=True) or {}
-    nom = donnees.get("exercice")
-    if not est_suivi_par_le_moteur(nom):
-        return jsonify({"ok": False, "erreur": "Exercice sans bareme"}), 400
-    enregistrer_ancrage(nom, 1, raison="Test d'accueil passe")
-    return jsonify({"ok": True, "tunnel": _tunnel_courant()})
-
-
-@app.route("/api/bienvenue/terminer", methods=["POST"])
-def bienvenue_terminer():
-    """Ferme le tunnel. Refuse tant qu'un exercice n'est pas calibre."""
-    tunnel = _tunnel_courant()
-    if tunnel is None:
-        return jsonify({"ok": False, "erreur": "Aucune seance choisie"}), 400
-    if not tunnel["termine"]:
-        return jsonify({"ok": False, "erreur": "Il reste des exercices a tester"}), 409
-    definir_onboarding(utilisateur_connecte()["id"], termine=True)
+    seance = donnees.get("seance")
+    if not profil.get("onboarding_termine"):
+        definir_onboarding(
+            profil["id"],
+            termine=True,
+            seance_initiale=seance if seance in catalogue() else None,
+        )
     rafraichir()
-    controleur.nouvelle_seance()
-    return jsonify({"ok": True, "seance": tunnel["seance"]})
+    return jsonify({"ok": True, "materiel": materiel})
 
 
 @app.route("/exercices")

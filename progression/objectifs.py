@@ -27,6 +27,7 @@ from progression.paliers import (
     palier,
     unite,
 )
+from progression.calibration import CIBLE_TEST, charge_de_test
 from progression.ressenti import evaluation
 
 
@@ -148,13 +149,56 @@ def objectifs_par_exercice(seances=None):
     return objectifs
 
 
+def exercices_sans_donnees(seances=None):
+    """Exercices dont rien ne prouve le niveau : ni historique, ni ancrage.
+
+    Ne pas confondre avec « absent d'`objectifs_par_exercice` », qui ne se
+    produit jamais : `etat_niveau` propose toujours `suivant`, c'est-à-dire le
+    palier 1, pour quelqu'un qui n'a rien fait. C'est un objectif par défaut,
+    pas un objectif mesuré — et le prendre pour tel a exactement l'effet qu'on
+    veut éviter, programmer un débutant au hasard. Le signal fiable est
+    `niveau is None`, que `progression.niveaux` documente comme « hors barème »
+    et non « niveau 0 ».
+    """
+    seances = recuperer_historique() if seances is None else seances
+    return {
+        nom
+        for nom, etat in etats_niveaux(seances).items()
+        if etat["niveau"] is None
+    }
+
+
+def _pilote_par_le_moteur(nom_exercice, mode):
+    """Ce couple exercice/mode relève-t-il du moteur, objectif ou pas ?
+
+    Séparé d'`objectif_pour` parce que « le moteur ne pilote pas ce bloc » et
+    « le moteur le pilote mais n'a encore rien à proposer » demandent deux
+    réponses opposées : la première laisse la cible du fichier, la seconde
+    déclenche un test de calibration.
+    """
+    if not est_suivi_par_le_moteur(nom_exercice):
+        return False
+    return UNITE_PAR_MODE.get(mode) == unite(nom_exercice)
+
+
 def objectif_pour(nom_exercice, mode, objectifs):
     """Palier à viser pour un bloc, ou None si le moteur ne le pilote pas."""
-    if not est_suivi_par_le_moteur(nom_exercice):
-        return None
-    if UNITE_PAR_MODE.get(mode) != unite(nom_exercice):
+    if not _pilote_par_le_moteur(nom_exercice, mode):
         return None
     return objectifs.get(nom_exercice)
+
+
+def a_calibrer(nom_exercice, mode, sans_donnees):
+    """Cet exercice doit-il être testé au maximum avant d'être programmé ?
+
+    Vrai quand le moteur le pilote mais que rien ne prouve son niveau (voir
+    `exercices_sans_donnees`). Rien n'est stocké : le test pose un ancrage, cet
+    ancrage donne un niveau, et la question ne se repose plus — même principe
+    que le reste de `progression/`, où tout se dérive au lieu de se marquer.
+    """
+    if not _pilote_par_le_moteur(nom_exercice, mode):
+        return False
+    return nom_exercice in sans_donnees
 
 
 def _nom_exercice(bloc):
@@ -162,7 +206,7 @@ def _nom_exercice(bloc):
     return bloc.get("exercice") or bloc.get("nom")
 
 
-def appliquer_a_blocs(blocs, objectifs=None):
+def appliquer_a_blocs(blocs, objectifs=None, sans_donnees=None):
     """Réécrit les cibles des blocs (dictionnaires) pilotés par le moteur.
 
     Modifie les dictionnaires sur place et les retourne, pour servir aussi bien
@@ -171,13 +215,28 @@ def appliquer_a_blocs(blocs, objectifs=None):
     joue pas.
     """
     objectifs = objectifs_par_exercice() if objectifs is None else objectifs
+    # Passé par l'appelant quand il boucle sur plusieurs séances
+    # (`session.seances.catalogue`) : chaque calcul relit tout l'historique.
+    if sans_donnees is None:
+        sans_donnees = exercices_sans_donnees()
 
     for bloc in blocs:
         if est_cible_manuelle(bloc):
             continue
-        palier_vise = objectif_pour(
-            _nom_exercice(bloc), bloc.get("mode"), objectifs
-        )
+        nom = _nom_exercice(bloc)
+        # Marqué, jamais réécrit : ces dictionnaires servent à l'affichage,
+        # mais le formulaire d'objectifs de l'accueil les renvoie tels quels à
+        # l'enregistrement. Y poser la cible du test graverait `1 x 999` dans
+        # `seances_personnalisees.json`. La cible réelle du test est posée sur
+        # le `Circuit`, qui lui ne repart jamais sur le disque tel quel.
+        if a_calibrer(nom, bloc.get("mode"), sans_donnees):
+            bloc["test_max"] = True
+            bloc["poids_test"] = charge_de_test(nom)
+            continue
+        bloc.pop("test_max", None)
+        bloc.pop("poids_test", None)
+
+        palier_vise = objectif_pour(nom, bloc.get("mode"), objectifs)
         if palier_vise is None:
             continue
         bloc["poids"] = palier_vise.poids
@@ -190,18 +249,49 @@ def appliquer_a_blocs(blocs, objectifs=None):
     return blocs
 
 
-def appliquer_a_circuit(circuit, objectifs=None):
+def appliquer_a_circuit(circuit, objectifs=None, sans_donnees=None):
     """Même chose sur un `Circuit` déjà construit.
 
     Nécessaire parce que les séances du catalogue Python sont des `Circuit`
     écrits à la main, jamais passés par `construire_circuit`.
     """
     objectifs = objectifs_par_exercice() if objectifs is None else objectifs
+    # Passé par l'appelant quand il boucle sur plusieurs séances
+    # (`session.seances.catalogue`) : chaque calcul relit tout l'historique.
+    if sans_donnees is None:
+        sans_donnees = exercices_sans_donnees()
 
     for bloc in circuit.exercices:
         if est_cible_manuelle(bloc):
             continue
-        palier_vise = objectif_pour(bloc.exercice.nom, bloc.mode, objectifs)
+
+        nom = bloc.exercice.nom
+        # Un exercice sans le moindre repère n'est pas programmé, il est
+        # mesuré : une série unique au maximum, à charge moyenne, terminée à la
+        # main. `Circuit._cloturer_test` en tire l'ancrage dès la série finie,
+        # et la séance d'après le trouvera dans `objectifs`.
+        bloc.test_max = a_calibrer(nom, bloc.mode, sans_donnees)
+        if bloc.test_max:
+            # La définition d'origine est mise de côté : la séance finie est
+            # réécrite sur le disque depuis ce même bloc
+            # (`enregistrer_configuration_seance`), et y graver `1 x 999`
+            # remplacerait définitivement l'exercice par son test.
+            bloc.avant_test = {
+                "nombre_series": bloc.nombre_series,
+                "poids": bloc.poids,
+                "repetitions_par_serie": bloc.repetitions_par_serie,
+                "duree": bloc.duree,
+            }
+            bloc.nombre_series = 1
+            bloc.poids = charge_de_test(nom)
+            if unite(nom) == UNITE_SECONDES:
+                bloc.duree = CIBLE_TEST
+            else:
+                bloc.repetitions_par_serie = CIBLE_TEST
+            continue
+        bloc.avant_test = None
+
+        palier_vise = objectif_pour(nom, bloc.mode, objectifs)
         if palier_vise is None:
             continue
         bloc.poids = palier_vise.poids

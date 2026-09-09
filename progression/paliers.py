@@ -136,7 +136,7 @@ class SpecProgression:
 SPECS = {
     # --- Haut du corps, poussée ---
     "Developpé couché altères": SpecProgression(
-        series=4, cible_min=8, cible_max=22, poids_min=4
+        series=4, cible_min=8, cible_max=20, poids_min=4
     ),
     # Poids du corps : sans axe de charge, la fourchette de répétitions est
     # allongée pour que le barème ne soit pas épuisé en une poignée de paliers.
@@ -148,64 +148,63 @@ SPECS = {
     # Variantes assistées : mêmes fourchettes hautes, départ encore plus bas.
     # Elles existent pour que quelqu'un qui ne fait pas une seule pompe complète
     # ait quand même un barème, et une progression qui le ramène aux Pompes.
-    "Pompes inclinées": SpecProgression(series=3, cible_min=3, cible_max=20),
-    "Pompes sur les genoux": SpecProgression(series=3, cible_min=3, cible_max=20),
+    "Pompes inclinées": SpecProgression(series=3, cible_min=3, cible_max=15),
+    "Pompes sur les genoux": SpecProgression(series=3, cible_min=3, cible_max=15),
     "Développé épaule": SpecProgression(
-        series=3, cible_min=8, cible_max=12, poids_min=4
+        series=3, cible_min=8, cible_max=15, poids_min=4
     ),
     # Isolation légère : beaucoup de répétitions, et jamais très lourd.
     "Elevations latérales": SpecProgression(
         series=3, cible_min=10, cible_max=18, poids_min=2, poids_max=8
     ),
     # Lourd et court : la fourchette basse évite qu'une série de 7 à 14 kg
-    # tombe hors barème alors qu'elle vaut plus que 15 répétitions à 6 kg.
     "Extension Triceps": SpecProgression(
-        series=3, cible_min=6, cible_max=13, poids_min=8
+        series=3, cible_min=6, cible_max=10, poids_min=8
     ),
     # --- Haut du corps, tirage ---
     "Rowing unilateral droit": SpecProgression(
-        series=4, cible_min=6, cible_max=14, poids_min=8
+        series=4, cible_min=6, cible_max=15, poids_min=5
     ),
     "Rowing unilateral gauche": SpecProgression(
-        series=4, cible_min=6, cible_max=14, poids_min=8
+        series=4, cible_min=6, cible_max=15, poids_min=8
     ),
-    "Rowing penche": SpecProgression(series=3, cible_min=8, cible_max=14, poids_min=4),
+    "Rowing penche": SpecProgression(series=3, cible_min=8, cible_max=15, poids_min=4),
     "Oiseau": SpecProgression(
-        series=3, cible_min=10, cible_max=15, poids_min=2, poids_max=8
+        series=3, cible_min=10, cible_max=20, poids_min=2, poids_max=8
     ),
     # Isolation à un bras : le plafond de charge n'est pas celui du matériel.
     # Sans `poids_max`, le barème proposait des paliers jusqu'à l'haltère de
     # 18 kg, une charge qu'on ne curle pas d'un bras — et une exigence de
     # programme s'y calait, la rendant absurde.
     "Curl biceps droit": SpecProgression(
-        series=4, cible_min=8, cible_max=15, poids_min=4, poids_max=12
+        series=4, cible_min=3, cible_max=15, poids_min=4, poids_max=12
     ),
     "Curl biceps gauche": SpecProgression(
-        series=4, cible_min=8, cible_max=15, poids_min=4, poids_max=12
+        series=4, cible_min=3, cible_max=15, poids_min=4, poids_max=12
     ),
     # --- Bas du corps ---
     # Les jambes encaissent plus de répétitions que le haut du corps, et les
     # haltères y sont vite le facteur limitant.
-    "Squat": SpecProgression(series=4, cible_min=10, cible_max=26, poids_min=4),
+    "Squat": SpecProgression(series=4, cible_min=10, cible_max=15, poids_min=4),
     # Au poids du corps, avec une chaise pour repère de profondeur : le squat
     # sans haltère n'existait pas au barème, alors que c'est par là qu'on
     # commence.
-    "Squat sur chaise": SpecProgression(series=3, cible_min=5, cible_max=20),
+    "Squat sur chaise": SpecProgression(series=3, cible_min=5, cible_max=15),
     "Fente droite": SpecProgression(series=4, cible_min=8, cible_max=10, poids_min=4),
     "Fente gauche": SpecProgression(series=4, cible_min=8, cible_max=10, poids_min=4),
     "Souleve de terre roumain": SpecProgression(
-        series=4, cible_min=8, cible_max=17, poids_min=4
+        series=4, cible_min=8, cible_max=15, poids_min=4
     ),
     # --- Abdos et gainage ---
-    "Crunches": SpecProgression(series=3, cible_min=5, cible_max=20),
+    "Crunches": SpecProgression(series=3, cible_min=5, cible_max=15),
     # Le gainage plafonne à deux minutes par série : au-delà, tenir plus
     # longtemps ne teste plus grand-chose, et c'est le nombre de séries qui
     # prend le relais.
     "Gainage planche": SpecProgression(
-        series=3, cible_min=10, cible_max=100, pas=2, unite=UNITE_SECONDES
+        series=3, cible_min=10, cible_max=60, pas=2, unite=UNITE_SECONDES
     ),
     "Gainage sur les genoux": SpecProgression(
-        series=2, cible_min=10, cible_max=45, pas=2, unite=UNITE_SECONDES
+        series=2, cible_min=10, cible_max=60, pas=2, unite=UNITE_SECONDES
     ),
     "Gainage planche laterale droite": SpecProgression(
         series=1, cible_min=8, cible_max=60, pas=2, unite=UNITE_SECONDES
@@ -250,17 +249,22 @@ def unite(nom_exercice):
 
 
 def echelle_poids(nom_exercice):
-    """Échelle du matériel : ce que les haltères disponibles permettent."""
-    # Import différé : `session.seances` consommera le moteur de progression au
-    # ticket T5, et un import au chargement du module créerait alors un cycle.
+    """Échelle du matériel : ce que les haltères du profil connecté permettent.
+
+    Les deux constantes ci-dessus ne sont plus que la gamme de référence : le
+    stock réellement possédé est déclaré par profil (`core.materiel`) et les
+    deux échelles s'en dérivent. Un profil qui n'a rien déclaré retrouve
+    exactement ces constantes, donc son barème ne bouge pas.
+    """
+    # Import différé : `session.seances` consomme le moteur de progression, et
+    # un import au chargement du module fermerait le cycle.
+    from core.materiel import echelle_disponible
     from session.seances import nombre_halteres
 
     nb_halteres = nombre_halteres(nom_exercice)
-    if nb_halteres >= 2:
-        return ECHELLE_DEUX_HALTERES
-    if nb_halteres == 1:
-        return ECHELLE_UN_HALTERE
-    return SANS_CHARGE
+    if nb_halteres <= 0:
+        return SANS_CHARGE
+    return echelle_disponible(nb_halteres)
 
 
 def echelle_exercice(nom_exercice):

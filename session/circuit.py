@@ -138,6 +138,12 @@ class BlocExercice:
         self.commentaire = commentaire or ""
         self.entrelace_avec = entrelace_avec
 
+        #: Série de calibration : cet exercice n'a encore aucune donnée, donc
+        #: la séance demande un maximum au lieu d'une cible. Posé par
+        #: `progression.objectifs.appliquer_a_circuit`, qui est déjà le seul
+        #: endroit à savoir si le moteur a un objectif à proposer.
+        self.test_max = False
+
         self.temps_maintien = 0
         self.temps_restant_precedent = None
 
@@ -293,6 +299,47 @@ class Circuit:
         return sum(bloc.nombre_series for bloc in self.blocs_comptabilises)
 
     @property
+    def blocs_echauffement(self):
+        """Blocs d'échauffement, pour leur barre de progression dédiée.
+
+        Miroir exact de `blocs_comptabilises` : l'échauffement est exclu de
+        partout ailleurs, il lui faut donc son propre compteur plutôt qu'une
+        exception glissée dans celui des exercices.
+        """
+        return [bloc for bloc in self.exercices if est_echauffement(bloc)]
+
+    @property
+    def nombre_series_echauffement(self):
+        return sum(bloc.nombre_series for bloc in self.blocs_echauffement)
+
+    @property
+    def dans_echauffement(self):
+        """Vrai tant que le bloc courant est un échauffement.
+
+        C'est ce drapeau, et non « reste-t-il des échauffements ? », qui décide
+        de la barre affichée : une séance peut n'en avoir aucun, et la barre des
+        exercices doit alors s'afficher dès la première frame.
+        """
+        return (
+            0 <= self.index_exercice < len(self.exercices)
+            and est_echauffement(self.exercices[self.index_exercice])
+        )
+
+    @property
+    def series_echauffement_terminees(self):
+        """Même comptage que `series_terminees`, avec le filtre inverse.
+
+        L'entrelacement n'est pas traité ici : il n'a de sens qu'entre deux
+        exercices comptabilisés (superset gauche/droite), et un échauffement
+        entrelacé n'existe pas dans le catalogue.
+        """
+        return sum(
+            bloc.nombre_series
+            for bloc in self.exercices[: self.index_exercice]
+            if est_echauffement(bloc)
+        ) + (max(0, self.serie_actuelle - 1) if self.dans_echauffement else 0)
+
+    @property
     def series_terminees(self):
         """Compte les séries terminées en utilisant les résultats enregistrés."""
         # Si on a entrelacement, utiliser les résultats pour compter correctement
@@ -327,13 +374,13 @@ class Circuit:
             self.passer_exercice_suivant()
         return True
 
-    def exporter_configuration(self, inclure_echauffement=True):
-        """Décrit les blocs configurés.
+    def exporter_configuration(self, blocs=None):
+        """Décrit les blocs configurés — tous par défaut.
 
-        `inclure_echauffement=False` sert à la barre de progression du front,
-        qui indexe les segments à plat avec `series_terminees` : garder les
-        échauffements dans la liste alors qu'ils sortent du compteur décalerait
-        tous les segments.
+        `blocs` sert aux deux barres de progression du front, qui indexent
+        leurs segments à plat avec un compteur : la barre des exercices reçoit
+        `blocs_comptabilises` et celle de l'échauffement `blocs_echauffement`.
+        Mélanger les deux listes décalerait tous les segments de l'autre.
         """
         # Import différé : `progression.niveaux` importe ce module, un import
         # en tête de fichier fermerait le cycle.
@@ -357,8 +404,7 @@ class Circuit:
                 # `exporter_blocs`, qui écrit sur le disque.
                 "cible_manuelle": est_cible_manuelle(bloc),
             }
-            for bloc in self.exercices
-            if inclure_echauffement or not est_echauffement(bloc)
+            for bloc in (self.exercices if blocs is None else blocs)
         ]
 
     def exporter_resultats(self):
@@ -510,8 +556,34 @@ class Circuit:
                 and precedent["serie"] == self.serie_actuelle
             ):
                 self.resultats_series[index] = resultat
+                self._cloturer_test(resultat)
                 return
         self.resultats_series.append(resultat)
+        self._cloturer_test(resultat)
+
+    def _cloturer_test(self, resultat):
+        """Pose l'ancrage de niveau quand la série qui s'achève était un test.
+
+        Ici et pas à la fin de la séance : la performance vient d'être mesurée,
+        et l'ancrage doit exister avant que le moteur ne recalcule quoi que ce
+        soit. Refaire la série repose un ancrage — sans dommage, le journal des
+        ancrages ne retient que le dernier de chaque exercice.
+        """
+        bloc = self.bloc_actuel
+        if bloc is None or not getattr(bloc, "test_max", False):
+            return
+
+        from progression.calibration import cloturer_test
+        from progression.paliers import UNITE_SECONDES, unite
+
+        nom = bloc.exercice.nom
+        if unite(nom) == UNITE_SECONDES:
+            maximum = resultat["duree"]
+        else:
+            maximum = resultat["repetitions"]
+        if not maximum:
+            return
+        cloturer_test(nom, bloc.poids, maximum)
 
     def reinitialiser_etat_serie(self, bloc=None):
         """Remet à zéro les champs temporels d'un bloc (par défaut le bloc courant).

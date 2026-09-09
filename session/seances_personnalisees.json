@@ -509,5 +509,64 @@
       "commentaire": "",
       "entrelace_avec": null
     }
+  ],
+  "Séance bas du corps": [
+    {
+      "exercice": "Squat",
+      "mode": "repetitions",
+      "poids": 4,
+      "series": 4,
+      "repetitions": 19,
+      "duree": 0,
+      "repos_entre_series": 60,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Fente droite",
+      "mode": "repetitions",
+      "poids": 8,
+      "series": 4,
+      "repetitions": 10,
+      "duree": 0,
+      "repos_entre_series": 60,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Fente gauche",
+      "mode": "repetitions",
+      "poids": 8,
+      "series": 4,
+      "repetitions": 10,
+      "duree": 0,
+      "repos_entre_series": 60,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Souleve de terre roumain",
+      "mode": "repetitions",
+      "poids": 4,
+      "series": 4,
+      "repetitions": 10,
+      "duree": 0,
+      "repos_entre_series": 60,
+      "repos_apres": 90,
+      "commentaire": ""
+    }
+  ],
+  "Séance Haut du corps": [
+    {
+      "exercice": "Elevations latérales",
+      "mode": "repetitions",
+      "poids": 6,
+      "series": 3,
+      "repetitions": 17,
+      "duree": 0,
+      "repos_entre_series": 60,
+      "repos_apres": 90,
+      "commentaire": ""
+    }
   ]
 }

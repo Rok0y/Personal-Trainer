@@ -4,22 +4,25 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 
 ## Fonctionnalités principales
 
-- **Prise en main guidée pour un nouveau profil** : à sa création, un profil est
-  accueilli par un parcours qui présente, un par un, les exercices de la séance
-  qu'il a choisie. Pour chacun : une fiche qui explique comment s'installer et
-  comment exécuter le mouvement, puis un petit test devant la caméra — une seule
-  série, autant de répétitions que possible. L'application en déduit le point de
-  départ, l'affiche en clair (« 3x12 à 4 kg ») et laisse le corriger d'un cran
-  vers le haut ou vers le bas avant de le valider. Rien à réussir : chaque
-  exercice peut être passé, et le parcours reprend là où il s'est arrêté si on
-  quitte en cours de route.
+- **Prise en main d'un nouveau profil** : une seule question à sa création — son
+  **matériel**. Quels haltères il possède (aucun, un, une paire, poids par
+  poids) et quels accessoires. Le matériel appartient au profil : il fixe
+  l'échelle de charge de ses barèmes et dit quels exercices lui sont
+  accessibles. Modifiable à tout moment depuis la page *Mon matériel*.
+- **Calibration en séance, pas en tunnel** : il n'y a pas d'examen d'entrée. On
+  lance une séance normale, et le premier exercice sur lequel l'application ne
+  sait rien devient une **série unique au maximum** à charge moyenne (« fais
+  autant de répétitions propres que tu peux, puis croise les bras »). Le niveau
+  de départ s'en déduit sur-le-champ, et la séance suivante propose un vrai
+  objectif. Rien n'est à reprendre si on s'arrête en cours de route : un
+  exercice est calibré dès qu'il a été testé une fois.
 - **Fiches d'exercice** : chaque mouvement explique comment se placer (cadrage
   caméra compris), comment l'exécuter et ce qu'il faut éviter. Consultables à
   tout moment depuis l'onglet **Exercices**, et rappelées pendant la séance.
 - **Variantes assistées** : pompes inclinées, pompes et gainage sur les genoux,
   squat sur chaise. Ce sont des exercices à part entière — ils ont leur barème,
-  leurs records et leur progression — et le test de calibration y renvoie quand
-  le mouvement complet est encore hors de portée. Les premiers paliers des
+  leurs records et leur progression — et servent de repli quand le mouvement
+  complet est encore hors de portée. Les premiers paliers des
   mouvements au poids du corps sont par ailleurs délibérément bas, pour que
   quelqu'un qui débute ait toujours un objectif à sa mesure.
 - **Messages écrits pendant la séance** : en plus des corrections de forme, une
@@ -45,11 +48,12 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 - **Progression automatique des séances** : chaque séance repart de l'objectif de la précédente. Réussi, il monte d'un palier ; manqué, il revient à l'identique. Vous pouvez toujours saisir une cible à la main : elle est alors figée (badge « cible manuelle » sur l'accueil) jusqu'à ce que vous la remettiez sur la valeur proposée.
 - **Ressenti en fin de séance** : chaque exercice vous demande comment c'était, et l'objectif suivant s'ajuste en conséquence. Réussi, « c'était facile » fait sauter deux paliers au lieu d'un et « c'était trop facile » en fait sauter trois ; manqué, « c'était trop dur » redescend d'un palier. Ne rien répondre garde la progression d'un palier par séance réussie. Les réponses proposées dépendent de ce qui s'est passé, et peuvent être saisies ou corrigées plus tard depuis la page Historique.
   Votre **niveau ne recule jamais** pour autant : il reste le plus haut palier que vous ayez validé. Seul l'objectif descend, le temps de repasser la marche.
-- **Programmes sportifs** : un programme (« Road to TKT ») liste une performance à atteindre par exercice, et la page Programmes montre où vous en êtes sur chacune. Les prescriptions sont traduites **par le volume** — une répétition à 20 kg en vaut deux à 10 kg — pour rester réalisables avec le matériel dont vous disposez ; chaque ligne montre les deux, ce que le programme demande et l'équivalent sur votre barème (« 6x15 » peut s'y lire « 4x23 »). Un programme ne stocke aucune progression : tout est recalculé depuis votre historique. Les programmes se créent et se modifient depuis l'interface (bouton « Modifier » sur la page Programmes), y compris ceux livrés avec l'application. Chaque exigence est **calée sur un palier de votre barème** à l'enregistrement : une prescription qui n'y correspond pas (plus lourde que vos haltères, ou dans une forme que le barème ne propose pas) est remplacée par le premier palier de même volume. Les charges s'y saisissent **pour un seul haltère**, comme partout ailleurs dans l'application : un tableau qui annonce la charge totale des deux haltères se divise par deux avant d'être recopié.
+- **Programmes sportifs** : un programme (« Road to TKT ») liste une performance à atteindre par exercice, et la page Programmes montre où vous en êtes sur chacune. Les prescriptions sont traduites **par le volume** — une répétition à 20 kg en vaut deux à 10 kg — pour rester réalisables avec le matériel dont vous disposez ; chaque ligne montre les deux, ce que le programme demande et l'équivalent sur votre barème (« 6x15 » peut s'y lire « 4x23 »). Un programme ne stocke aucune progression : tout est recalculé depuis votre historique. Les programmes se créent et se modifient depuis l'interface (bouton « Modifier » sur la page Programmes), y compris ceux livrés avec l'application. Chaque exigence est **calée sur un palier de votre barème** à l'enregistrement : une prescription qui n'y correspond pas (plus lourde que vos haltères, ou dans une forme que le barème ne propose pas) est remplacée par le premier palier de même volume. Les charges s'y saisissent **pour un seul haltère**, comme partout ailleurs dans l'application : un tableau qui annonce la charge totale des deux haltères se divise par deux avant d'être recopié. Enregistrer un programme **relie chacune de ses séances à une séance jouable** : si une séance existante correspond au libellé (même nom, ou majorité d'exercices en commun) elle est adoptée telle quelle — vos échauffements et vos repos sont conservés, rien n'est réécrit — et sinon elle est créée. Le lien est ensuite mémorisé dans le programme.
 - **Recalage du niveau** : si votre historique ne reflète pas votre niveau réel (séance faite sans l'application, reprise après une interruption, premier usage), la page Records permet de le recaler. Vous n'entrez pas un numéro de niveau mais une performance que vous savez tenir — séries, répétitions ou secondes, charge — et le barème en déduit le niveau. L'historique antérieur cesse alors de compter pour cet exercice, ce qui permet aussi bien de monter que de descendre.
+- **Barre de progression de l'échauffement** : pendant l'échauffement, la barre du bas suit les mouvements d'échauffement (en bleu) et non les exercices, qu'elle laisse place dès le premier exercice comptabilisé. Deux barres, jamais deux en même temps.
 - **Interface web locale** (Flask) pour démarrer/mettre en pause une séance, suivre l'état en direct via le flux caméra, consulter l'historique, les records et les programmes — accessibles par des onglets en haut de chaque page.
 - **Résumé de programme sur l'accueil** : un seul programme y figure — celui que vous suivez en ce moment — avec son avancement global (la moyenne de votre progression sur chaque exigence, pas seulement celles déjà bouclées) et, surtout, la prochaine séance à enchaîner, sélectionnable d'un clic. Les séances d'un programme se suivent en boucle ; une séance abandonnée est reproposée. Deux réglages accompagnent la carte : « Changer de programme », qui se retient (chaque profil suit le sien), et « Commencer plutôt par », qui démarre une autre séance du programme pour aujourd'hui sans rien changer à la suite. La page Programmes, elle, continue de tous les lister.
-- **Profils** : l'application demande à chaque lancement qui s'entraîne. Chaque profil garde son propre historique, ses records, ses niveaux et ses recalages ; les séances et les programmes, eux, sont communs à tout le monde. Un nouveau profil commence par la prise en main décrite plus haut, qui pose ses niveaux de départ ; ils évoluent ensuite au fil de ses séances, et restent recalables à tout moment depuis la page Records. Le profil connecté s'affiche à droite des onglets, et ce bouton ramène à l'écran de sélection. On ne change pas de profil pendant une séance en cours.
+- **Profils** : l'application demande à chaque lancement qui s'entraîne. Chaque profil garde son propre historique, ses records, ses niveaux et ses recalages ; les séances et les programmes, eux, sont communs à tout le monde. Un nouveau profil déclare son matériel, puis ses niveaux se posent au fil de ses séances par le test décrit plus haut ; ils restent recalables à tout moment depuis la page Records. Le profil connecté s'affiche à droite des onglets, et ce bouton ramène à l'écran de sélection. On ne change pas de profil pendant une séance en cours.
 - **Création de séances personnalisées** : composez vos propres circuits d'exercices depuis l'interface web, avec réorganisation des exercices par glisser-déposer.
 
 ## Architecture / organisation du code
@@ -60,8 +64,8 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 - `audio/` — Coach vocal : sélection et déclenchement des annonces (`coach.py`), lecture des fichiers son (`lecteur.py`), banque de fichiers audio (`Fichiers/`) et outils de génération/nettoyage des sons (`nettoyer_sons.py`, `generer_annonces_manquantes.py`).
 - `historique/` — Persistance SQLite des séances, statistiques et records (`database.py`, base `personaltrainer.db`).
 - `web/` — Serveur Flask (`app.py`) exposant l'API et les pages (démarrage/pause de séance, historique, records, création/édition de séances) et les templates HTML associés (`templates/`).
-- `progression/` — Moteur de progression : le barème de paliers de chaque exercice (`paliers.py`), la déduction du niveau atteint à partir de l'historique (`niveaux.py`), l'application des objectifs aux séances (`objectifs.py`), l'ajustement par le ressenti déclaré en fin de séance (`ressenti.py`), les programmes sportifs (`programmes.py`) et le test de niveau d'un nouveau profil (`calibration.py`).
-- `core/` — État partagé entre la boucle caméra et le site web (`state.py`), identité du profil connecté (`utilisateur.py`) et catalogue des messages affichés à l'utilisateur (`messages.py`).
+- `progression/` — Moteur de progression : le barème de paliers de chaque exercice (`paliers.py`), la déduction du niveau atteint à partir de l'historique (`niveaux.py`), l'application des objectifs aux séances (`objectifs.py`), l'ajustement par le ressenti déclaré en fin de séance (`ressenti.py`), les programmes sportifs (`programmes.py`) et la traduction d'un maximum en niveau de départ (`calibration.py`).
+- `core/` — État partagé entre la boucle caméra et le site web (`state.py`), identité du profil connecté (`utilisateur.py`), matériel déclaré par le profil (`materiel.py`) et catalogue des messages affichés à l'utilisateur (`messages.py`).
 - `scripts/` — Outils de développement manuels, hors du chemin critique de l'application (`script_verification_positions.py`, `script_niveaux.py`).
 
 Le point d'entrée de l'application est `main.py`, qui orchestre la boucle caméra, la machine à séances, le coach vocal et le serveur web. L'état partagé entre la boucle caméra et le site web transite par `core/state.py`.

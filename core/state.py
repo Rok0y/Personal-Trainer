@@ -39,6 +39,10 @@ le matériel comme le cadrage caméra se décident avant la première répétiti
 pas après. Un champ unique obligerait à le faire redevenir la fiche courante à
 la reprise.
 """
+test_max = False
+"""La série en cours est-elle un test de calibration (maximum au premier
+passage) ? Le front s'en sert pour remplacer la cible par « max » : la valeur
+réelle est un plafond volontairement inatteignable."""
 repetitions = 0
 repetitions_cibles = 10
 temps_maintien = 0

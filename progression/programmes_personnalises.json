@@ -136,6 +136,56 @@
         "cible": 15,
         "poids": 8
       }
-    ]
+    ],
+    "seances": {
+      "Push": "upper_push",
+      "Jambes et abdos": "jambes_abdos",
+      "Pull": "Upper Pull"
+    }
+  },
+  "mimi-p-tit-cul": {
+    "nom": "Mimi P'tit cul",
+    "description": "",
+    "exigences": [
+      {
+        "seance": "Séance bas du corps",
+        "exercice": "Squat",
+        "series": 4,
+        "cible": 19,
+        "poids": 4
+      },
+      {
+        "seance": "Séance bas du corps",
+        "exercice": "Fente droite",
+        "series": 4,
+        "cible": 10,
+        "poids": 8
+      },
+      {
+        "seance": "Séance bas du corps",
+        "exercice": "Fente gauche",
+        "series": 4,
+        "cible": 10,
+        "poids": 8
+      },
+      {
+        "seance": "Séance bas du corps",
+        "exercice": "Souleve de terre roumain",
+        "series": 4,
+        "cible": 10,
+        "poids": 4
+      },
+      {
+        "seance": "Séance Haut du corps",
+        "exercice": "Elevations latérales",
+        "series": 3,
+        "cible": 17,
+        "poids": 6
+      }
+    ],
+    "seances": {
+      "Séance bas du corps": "Séance bas du corps",
+      "Séance Haut du corps": "Séance Haut du corps"
+    }
   }
 }

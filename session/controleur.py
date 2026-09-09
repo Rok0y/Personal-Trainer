@@ -232,9 +232,27 @@ class SessionManager:
                 # Sans échauffement : le front indexe ces blocs à plat avec
                 # `series_terminees`, qui n'en tient pas compte non plus.
                 "exercices": (
-                    self.seance.exporter_configuration(inclure_echauffement=False)
+                    self.seance.exporter_configuration(
+                        self.seance.blocs_comptabilises
+                    )
                     if seance_active
                     else []
+                ),
+                # Barre de progression de l'échauffement : même forme, filtre
+                # inverse. Le front affiche celle-ci tant que
+                # `dans_echauffement`, puis bascule définitivement sur l'autre.
+                "echauffements": (
+                    self.seance.exporter_configuration(
+                        self.seance.blocs_echauffement
+                    )
+                    if seance_active
+                    else []
+                ),
+                "echauffements_termines": (
+                    self.seance.series_echauffement_terminees if seance_active else 0
+                ),
+                "dans_echauffement": (
+                    self.seance.dans_echauffement if seance_active else False
                 ),
                 "commandes_autorisees": commandes,
             }

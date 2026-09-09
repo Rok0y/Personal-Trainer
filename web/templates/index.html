@@ -460,9 +460,15 @@
 
         /* Consignes du mouvement, dans le panneau lateral. Elles existaient
            depuis toujours dans le catalogue sans jamais atteindre l'ecran. */
+        /* `.card` ne pose aucun padding : chaque variante pose le sien
+           (cf. `.position-card`). Sans celui-ci le texte touchait la bordure. */
+        .fiche-card {
+            padding: 18px 22px 20px;
+        }
+
         .fiche-card ol {
             margin: 6px 0 0;
-            padding-left: 18px;
+            padding-left: 20px;
             color: var(--text);
             font-size: 13px;
             line-height: 1.55;
@@ -772,6 +778,14 @@
         .progress-segment.active {
             background: var(--orange);
             box-shadow: 0 0 8px var(--orange-glow);
+        }
+
+        /* Barre de l'échauffement : même géométrie, autre couleur. La bascule
+           vers la barre des exercices est un moment de la séance, elle doit se
+           voir sans avoir à lire les étiquettes. */
+        .progress-echauffement .progress-segment.complete {
+            background: var(--blue);
+            box-shadow: 0 0 8px var(--blue-glow);
         }
 
         .card {
@@ -1465,8 +1479,14 @@
         const actuel = Number(etat.repetitions) || 0;
         const cible = Number(etat.repetitions_cibles) || 0;
 
-        if (cibleEl.textContent.trim() !== String(cible)) {
-            cibleEl.textContent = cible;
+        // Test de calibration : la cible est un plafond volontairement
+        // inatteignable, l'afficher tel quel demanderait 999 répétitions. La
+        // barre reste vide, parce qu'il n'y a rien à remplir — on s'arrête
+        // quand la forme se dégrade, pas à un chiffre.
+        const test = Boolean(etat.test_max);
+        const libelleCible = test ? "max" : String(cible);
+        if (cibleEl.textContent.trim() !== libelleCible) {
+            cibleEl.textContent = libelleCible;
         }
 
         if (dernierReps !== null && actuel !== dernierReps) {
@@ -1475,7 +1495,10 @@
         repsEl.textContent = actuel;
         dernierReps = actuel;
 
-        const pct = cible > 0 ? Math.max(0, Math.min(100, (actuel / cible) * 100)) : 0;
+        const pct =
+            !test && cible > 0
+                ? Math.max(0, Math.min(100, (actuel / cible) * 100))
+                : 0;
         fill.style.width = `${pct}%`;
     }
 
@@ -1496,10 +1519,15 @@
         }
         tempsEl.textContent = actuelArrondi;
         tempsTexteEl.textContent = actuelArrondi;
-        dureeTexteEl.textContent = cible;
+        // Même règle qu'en répétitions : un test se tient au maximum.
+        const test = Boolean(etat.test_max);
+        dureeTexteEl.textContent = test ? "max" : cible;
         dernierMaintienEntier = actuelArrondi;
 
-        const pct = cible > 0 ? Math.max(0, Math.min(100, (actuel / cible) * 100)) : 0;
+        const pct =
+            !test && cible > 0
+                ? Math.max(0, Math.min(100, (actuel / cible) * 100))
+                : 0;
         fill.style.width = `${pct}%`;
 
         // NOTE : la posture (correcte/cassée) est déduite de "stage".
@@ -1705,11 +1733,16 @@
         signatureProgression = signature;
     }
 
-    function mettreAJourProgression(exercices, seriesTerminees) {
+    // Deux barres, jamais deux en même temps : celle de l'échauffement cède la
+    // place à celle des exercices dès que le premier exercice comptabilisé
+    // commence. Même fonction, deux jeux de données — la mémoïsation de
+    // `initialiserProgression` porte sur la liste, donc la bascule redessine.
+    function mettreAJourProgression(exercices, seriesTerminees, echauffement) {
         initialiserProgression(exercices);
         const terminees = Number(seriesTerminees) || 0;
         ["sessionProgressSegments", "overlaySessionProgressSegments"].forEach((id) => {
             const conteneur = document.getElementById(id);
+            conteneur.classList.toggle("progress-echauffement", Boolean(echauffement));
             conteneur.querySelectorAll(".progress-segment").forEach((segment, index) => {
                 segment.classList.toggle("complete", index < terminees);
                 segment.classList.toggle("active", index === terminees);
@@ -1921,7 +1954,18 @@
                 actualiserCommandes(data.commandes_autorisees, data.statut_session, data.phase);
                 const totalSeries = Number(data.nombre_series_total) || 0;
                 const seriesTerminees = Number(data.series_terminees) || 0;
-                mettreAJourProgression(data.exercices, seriesTerminees);
+                // `dans_echauffement` et non « reste-t-il des échauffements ? » :
+                // une séance qui n'en a aucun doit montrer la barre des
+                // exercices dès la première frame.
+                const echauffement =
+                    Boolean(data.dans_echauffement) && (data.echauffements || []).length > 0;
+                mettreAJourProgression(
+                    echauffement ? data.echauffements : data.exercices,
+                    echauffement
+                        ? Number(data.echauffements_termines) || 0
+                        : seriesTerminees,
+                    echauffement
+                );
                 mettreAJourDuree(data.duree_session);
                 if (["finished", "abandoned"].includes(data.statut_session)) {
                     window.location.href = "/";

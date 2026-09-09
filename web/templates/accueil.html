@@ -151,7 +151,6 @@
         }
         .resume-etiquette { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
         .resume-prochaine strong { font-size: 17px; }
-        .resume-liee { color: var(--muted); font-size: 12px; margin-left: 6px; }
         .resume-demarrer {
             padding: 9px 16px; border-radius: 999px; border: 1px solid var(--orange);
             background: var(--orange); color: #0a0d13; font-family: inherit; font-size: 12px;
@@ -168,6 +167,10 @@
         .resume-lien { display: inline-block; margin-top: 12px; color: var(--teal); font-size: 12px; font-weight: 700; }
 
         .badge-manuelle { display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--orange); color: var(--orange); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
+        /* Premier passage : la seance mesurera au lieu de programmer. Distinct
+           du badge orange « cible manuelle », qui signale l'inverse — une
+           valeur figee a la main. */
+        .badge-test { display: inline-flex; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--blue); color: var(--blue); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
         .badge-manuelle-retirer { border: none; background: none; padding: 0; color: inherit; font-size: 13px; line-height: 1; cursor: pointer; font-family: inherit; }
         .badge-manuelle-retirer:hover { color: var(--text); }
         .last-series { margin-top: 4px; padding: 8px 10px; border-left: 2px solid var(--teal); background: rgba(27, 232, 196, .07); color: var(--muted); font-size: 12px; }
@@ -209,8 +212,10 @@
         <div class="resume-prochaine">
             <div>
                 <span class="resume-etiquette">Séance choisie (<span id="prochaine-position">{{ programme.prochaine.position }}</span>/{{ programme.prochaine.total }})</span>
-                <strong id="prochaine-libelle">{{ programme.prochaine.libelle }}</strong>
-                <span class="resume-liee" id="prochaine-liee">{% if programme.prochaine.seance %}via « {{ programme.prochaine.seance }} »{% endif %}</span>
+                {# Le nom de la séance, pas le libellé du programme : « Push » peut être
+                   joué par `upper_push`, et annoncer un nom que la liste ci-dessous
+                   ne porte pas rendrait le bandeau invérifiable. #}
+                <strong id="prochaine-libelle">{{ programme.prochaine.seance or programme.prochaine.libelle }}</strong>
             </div>
             {% if programme.prochaine.seance and programme.prochaine.seance in seances %}
             <button type="button" class="resume-demarrer" id="demarrer-programme" data-seance="{{ programme.prochaine.seance }}">Choisir cette séance</button>
@@ -225,7 +230,7 @@
             Commencer plutôt par
             <select id="choix-seance-programme" data-total="{{ programme.prochaine.total if programme.prochaine else programme.seances_liees|length }}">
                 {% for lien in programme.seances_liees %}
-                <option value="{{ lien.seance }}" data-libelle="{{ lien.libelle }}" data-position="{{ lien.position }}"{% if programme.prochaine and lien.seance == programme.prochaine.seance %} selected{% endif %}>{{ lien.libelle }}</option>
+                <option value="{{ lien.seance }}" data-libelle="{{ lien.seance or lien.libelle }}" data-position="{{ lien.position }}"{% if programme.prochaine and lien.seance == programme.prochaine.seance %} selected{% endif %}>{{ lien.seance or lien.libelle }}</option>
                 {% endfor %}
             </select>
         </label>
@@ -295,7 +300,7 @@
                 {% endif %}
                 <ul>
                 {% for exercice in seance.exercices if exercice.mode != 'echauffement' %}
-                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}{% if exercice.cible_manuelle %} <span class="badge-manuelle" title="Cible saisie à la main : le moteur de progression ne la fait plus évoluer.">cible manuelle</span>{% endif %}</li>
+                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}{% if exercice.cible_manuelle %} <span class="badge-manuelle" title="Cible saisie à la main : le moteur de progression ne la fait plus évoluer.">cible manuelle</span>{% endif %}{% if exercice.test_max %} <span class="badge-test" title="Aucune donnée sur cet exercice : la séance demandera un maximum en une série pour situer ton niveau.">à tester</span>{% endif %}</li>
                 {% endfor %}
                 </ul>
             </details>
@@ -408,6 +413,9 @@
             if (carte) carte.scrollIntoView({ behavior: "smooth", block: "center" });
         });
     });
+    // Le libelle du programme est desormais le nom de la seance elle-meme
+    // (`progression.programmes.synchroniser_seances`), donc plus de « via » a
+    // afficher : il n'y a plus d'heuristique a rendre verifiable.
     // Le bandeau du programme reflete la seance retenue, d'ou qu'elle vienne :
     // du selecteur, du bouton, ou d'un clic sur n'importe quelle carte de la
     // liste. Sans ca il annoncait encore la proposition automatique apres un
@@ -422,10 +430,8 @@
         if (boutonProgramme) boutonProgramme.dataset.seance = nomSeance;
         const libelle = document.getElementById("prochaine-libelle");
         const position = document.getElementById("prochaine-position");
-        const liee = document.getElementById("prochaine-liee");
         if (libelle) libelle.textContent = option.dataset.libelle;
         if (position) position.textContent = option.dataset.position;
-        if (liee) liee.textContent = `via « ${nomSeance} »`;
     }
     if (choixSeanceProgramme) {
         choixSeanceProgramme.addEventListener("change", () => {

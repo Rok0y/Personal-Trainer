@@ -76,6 +76,7 @@ def publier_fin_de_seance(seance):
     state.exercice_actuel = "Séance terminée"
     poser_etape(state, "termine")
     state.consigne = None
+    state.test_max = False
     state.fiche = None
     state.fiche_suivante = None
 
@@ -307,6 +308,10 @@ try:
                 # ----------------------------------
                 # EXERCICE EN COURS
                 # ----------------------------------
+                # Ne vaut que pour la phase exercice : sans cette remise à
+                # zéro le drapeau survivrait aux repos et à l'exercice suivant.
+                state.test_max = False
+
                 if seance.phase == "exercice":
                     exercice = seance.exercice_actuel
 
@@ -318,6 +323,16 @@ try:
                         # dans le catalogue ; c'est ici qu'elles atteignent
                         # enfin l'écran.
                         state.fiche = exercice.fiche()
+
+                        # Sur un test de calibration la cible affichée est un
+                        # plafond hors d'atteinte : sans cette consigne, l'écran
+                        # demanderait 999 répétitions sans expliquer pourquoi.
+                        bloc = seance.bloc_actuel
+                        state.test_max = bool(
+                            bloc is not None and getattr(bloc, "test_max", False)
+                        )
+                        if state.test_max:
+                            state.consigne = texte("test_calibration")
 
                         # Execution du moteur d'exo
                         derniere_rep, repetitions, serie_terminee = executer_mode(

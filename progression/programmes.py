@@ -183,26 +183,196 @@ def valider_programme(donnees):
         "nom": nom,
         "description": (donnees.get("description") or "").strip(),
         "exigences": propres,
+        # Libellé de séance -> nom de la séance de l'application. Une **donnée**
+        # du programme et non un calcul : c'est ce qui permet à un libellé
+        # d'être joué par une séance qui ne porte pas son nom (« Push » joué par
+        # `upper_push`) sans avoir à le redeviner à chaque lecture.
+        # `synchroniser_seances` la remplit, l'éditeur ne la saisit pas.
+        "seances": dict(donnees.get("seances") or {}),
     }
 
 
+#: Repos par défaut d'une séance générée, en secondes. Deux valeurs qu'un
+#: programme ne dit jamais — il prescrit un effort, pas un chronomètre — et
+#: qu'on n'écrase donc plus une fois qu'elles ont été ajustées à la main.
+REPOS_ENTRE_SERIES_PAR_DEFAUT = 60
+REPOS_APRES_PAR_DEFAUT = 90
+
+
 def enregistrer_programme(cle, donnees):
-    """Crée ou remplace un programme personnalisé."""
+    """Crée ou remplace un programme personnalisé, et ses séances avec lui."""
     cle = (cle or "").strip()
     if not cle:
         raise ValueError("La clé du programme est requise")
     programmes = _lire_programmes_personnalises()
     programmes[cle] = valider_programme(donnees)
     _ecrire_programmes_personnalises(programmes)
+    synchroniser_seances(cle)
     return cle
+
+
+def _normaliser(texte):
+    """Comparaison de noms tolérante aux accents, à la casse et aux séparateurs."""
+    import unicodedata
+
+    sans_accents = unicodedata.normalize("NFKD", texte or "")
+    sans_accents = "".join(c for c in sans_accents if not unicodedata.combining(c))
+    return "".join(c for c in sans_accents.lower() if c.isalnum())
+
+
+#: Part des exercices d'un libellé qu'une séance doit contenir pour être
+#: reconnue comme étant *cette* séance. La moitié : en dessous, deux séances qui
+#: partagent un ou deux mouvements (des curls dans « bras » comme dans « Pull »)
+#: seraient confondues, et le programme piloterait la mauvaise.
+RECOUVREMENT_MINIMAL = 0.5
+
+
+def seance_correspondante(libelle, exercices_attendus, catalogue_seances):
+    """La séance existante qui *est* déjà ce libellé, ou None.
+
+    Deux épreuves, de la plus sûre à la plus faible : le nom exact (aux accents
+    et à la casse près), puis le meilleur **recouvrement d'exercices** au-dessus
+    de `RECOUVREMENT_MINIMAL`.
+
+    C'est l'ancienne `liaison_seances`, qui s'exécutait à *chaque affichage* et
+    pouvait donc changer d'avis en silence — d'où le « via *upper_push* » qu'il
+    fallait afficher partout pour la rendre vérifiable. Elle ne sert plus
+    qu'**une fois**, au moment de lier ; le lien est ensuite écrit dans le
+    programme, et c'est lui qui fait foi.
+    """
+    attendus = set(exercices_attendus)
+    if not attendus:
+        return None
+
+    cible = _normaliser(libelle)
+    for nom in catalogue_seances:
+        if _normaliser(nom) == cible:
+            return nom
+
+    meilleur, meilleur_score = None, 0.0
+    for nom, seance in catalogue_seances.items():
+        contenu = {
+            exercice.get("nom") or exercice.get("exercice")
+            for exercice in seance.get("exercices", [])
+        }
+        score = len(attendus & contenu) / len(attendus)
+        if score > meilleur_score:
+            meilleur, meilleur_score = nom, score
+    return meilleur if meilleur_score >= RECOUVREMENT_MINIMAL else None
+
+
+def synchroniser_seances(cle):
+    """Relie chaque libellé de séance du programme à une séance jouable.
+
+    **Adopter d'abord, créer ensuite.** Un programme s'écrit presque toujours
+    après coup, sur des séances qui existent déjà — montées avec leurs
+    échauffements, leurs repos, leur entrelacement. En fabriquer des copies
+    nommées d'après les libellés (« Push » à côté d'`upper_push`) laisserait
+    deux séances jumelles dont une seule est complète, et c'est la vide que le
+    programme lancerait. On cherche donc l'existante (`seance_correspondante`),
+    et on ne crée que si rien ne correspond.
+
+    **Une séance adoptée n'est jamais réécrite.** Ses blocs sont à elle : repos,
+    échauffements, entrelacement et commentaires ne viennent pas du programme et
+    ne doivent pas en dépendre. Un exercice exigé qu'elle ne contient pas lui est
+    simplement **ajouté** ; rien n'est modifié ni retiré. Une séance créée, elle,
+    est construite entièrement depuis les exigences.
+
+    **Les cibles écrites ne sont pas jouées telles quelles**, et il ne faut pas
+    les lire comme une prescription du jour : une exigence est l'objectif de
+    *fin* de programme (« 6x22 »). Ces blocs n'étant pas marqués
+    `cible_manuelle`, `appliquer_a_blocs` les réécrit au palier du moment à
+    chaque chargement — le fichier ne fait autorité que sur la structure.
+    """
+    programmes = _lire_programmes_personnalises()
+    programme = programmes.get(cle) or tous_les_programmes().get(cle)
+    if programme is None:
+        return {}
+
+    # Import différé : `session.seances` consomme déjà ce module.
+    from session.seances import (
+        _lire_seances_personnalisees,
+        catalogue,
+        enregistrer_seance_personnalisee,
+    )
+
+    catalogue_seances = catalogue()
+    stockees = _lire_seances_personnalisees()
+    liens = dict(programme.get("seances") or {})
+
+    for libelle in libelles_seances(programme):
+        exigences = [
+            exigence
+            for exigence in programme["exigences"]
+            if (exigence.get("seance") or "Séance") == libelle
+        ]
+        attendus = [exigence["exercice"] for exigence in exigences]
+
+        # Un lien déjà posé fait foi tant que sa séance existe : c'est ce qui
+        # rend l'association stable, et corrigeable à la main.
+        nom_seance = liens.get(libelle)
+        if nom_seance not in catalogue_seances:
+            nom_seance = seance_correspondante(libelle, attendus, catalogue_seances)
+
+        if nom_seance is None:
+            nom_seance = libelle
+            enregistrer_seance_personnalisee(
+                nom_seance, [_bloc_depuis_exigence(e, {}) for e in exigences]
+            )
+        elif nom_seance in stockees:
+            # Adoptée : on ne complète que ce qui manque. Une séance du
+            # catalogue Python n'est pas touchée du tout — l'écrire créerait au
+            # passage une surcharge personnalisée que personne n'a demandée.
+            blocs = stockees[nom_seance]
+            presents = {bloc.get("exercice") for bloc in blocs}
+            manquants = [e for e in exigences if e["exercice"] not in presents]
+            if manquants:
+                enregistrer_seance_personnalisee(
+                    nom_seance,
+                    blocs + [_bloc_depuis_exigence(e, {}) for e in manquants],
+                )
+
+        liens[libelle] = nom_seance
+
+    if cle in programmes and programmes[cle].get("seances") != liens:
+        programmes[cle]["seances"] = liens
+        _ecrire_programmes_personnalises(programmes)
+
+    return liens
+
+
+def _bloc_depuis_exigence(exigence, ancien):
+    """Un bloc de séance depuis une exigence, en conservant l'existant.
+
+    Le mode se déduit de l'unité du barème : un exercice mesuré en secondes ne
+    peut pas recevoir une cible en répétitions, même contrainte que celle qui
+    fait qu'un bloc en `chrono` échappe au moteur d'objectifs.
+    """
+    from session.circuit import MODE_MAINTIEN, MODE_REPETITIONS
+
+    exercice = exigence["exercice"]
+    en_secondes = unite(exercice) == UNITE_SECONDES
+    return {
+        **ancien,
+        "exercice": exercice,
+        "mode": MODE_MAINTIEN if en_secondes else MODE_REPETITIONS,
+        "poids": exigence["poids"],
+        "series": exigence["series"],
+        "repetitions": 0 if en_secondes else exigence["cible"],
+        "duree": exigence["cible"] if en_secondes else 0,
+        "repos_entre_series": ancien.get(
+            "repos_entre_series", REPOS_ENTRE_SERIES_PAR_DEFAUT
+        ),
+        "repos_apres": ancien.get("repos_apres", REPOS_APRES_PAR_DEFAUT),
+        "commentaire": ancien.get("commentaire", ""),
+    }
 
 
 def supprimer_programme(cle):
     """Supprime un programme personnalisé.
 
-    Un programme livré dans le code et jamais modifié n'a rien sur le disque :
-    il n'est donc pas supprimable, et c'est voulu — le supprimer reviendrait à
-    éditer le code.
+    Les séances qu'il a créées ou adoptées lui survivent : elles sont jouables
+    en dehors de lui, et un programme n'en est pas propriétaire.
     """
     programmes = _lire_programmes_personnalises()
     if cle not in programmes:
@@ -315,12 +485,16 @@ def libelles_seances(programme):
 def liaison_seances(cle, catalogue_seances=None):
     """Associe chaque libellé de séance du programme à une séance de l'app.
 
-    Rien ne relie formellement les deux : un programme nomme ses séances
-    librement (« Push »), l'app les siennes autrement (« upper_push »). Plutôt
-    qu'un formulaire d'appariement de plus, on déduit le lien par
-    **recouvrement d'exercices** — la séance qui partage le plus d'exercices
-    avec le groupe l'emporte. Heuristique assumée, donc toujours affichée à
-    l'écran pour rester vérifiable ; None quand aucun exercice ne correspond.
+    Simple lecture du lien que `synchroniser_seances` a posé et écrit dans le
+    programme. C'était auparavant une heuristique par recouvrement d'exercices,
+    rejouée à chaque affichage : elle pouvait se tromper, obligeait l'accueil à
+    annoncer la séance retenue (« via *upper_push* ») pour rester vérifiable, et
+    rendait None dès que le recouvrement était nul. L'heuristique vit toujours
+    dans `seance_correspondante`, mais ne sert plus qu'une fois, au moment de
+    lier.
+
+    Un programme jamais réenregistré depuis ce changement n'a pas encore ses
+    liens : ils se posent au premier appel de `synchroniser_seances`.
     """
     programme = tous_les_programmes().get(cle)
     if programme is None:
@@ -332,25 +506,13 @@ def liaison_seances(cle, catalogue_seances=None):
 
         catalogue_seances = catalogue()
 
-    contenus = {
-        nom: {exercice["nom"] for exercice in seance.get("exercices", [])}
-        for nom, seance in catalogue_seances.items()
+    liens = programme.get("seances") or {}
+    return {
+        libelle: (
+            liens.get(libelle) if liens.get(libelle) in catalogue_seances else None
+        )
+        for libelle in libelles_seances(programme)
     }
-
-    liaison = {}
-    for libelle in libelles_seances(programme):
-        attendus = {
-            exigence["exercice"]
-            for exigence in programme["exigences"]
-            if (exigence.get("seance") or "Séance") == libelle
-        }
-        meilleur, recouvrement = None, 0
-        for nom, exercices in contenus.items():
-            commun = len(attendus & exercices)
-            if commun > recouvrement:
-                meilleur, recouvrement = nom, commun
-        liaison[libelle] = meilleur
-    return liaison
 
 
 def prochaine_seance(cle, historique, catalogue_seances=None):

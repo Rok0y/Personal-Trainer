@@ -50,6 +50,7 @@ from progression.objectifs import (
     appliquer_a_circuit,
     definir_cible_manuelle,
     est_cible_manuelle,
+    exercices_sans_donnees,
     fusionner_cible_manuelle,
     objectifs_par_exercice,
 )
@@ -642,15 +643,18 @@ def _fusionner_cibles_manuelles(blocs, blocs_stockes):
 
 
 def exporter_blocs(circuit):
-    """Produit une définition JSON indépendante des objets Python du catalogue."""
+    """Produit une définition JSON indépendante des objets Python du catalogue.
+
+    Un bloc joué en test de calibration ressort avec sa définition **d'avant le
+    test** : la fin de séance réécrit le fichier depuis ces blocs, et y graver
+    la série unique au maximum remplacerait l'exercice par son test pour de
+    bon.
+    """
     return [
         {
             "exercice": bloc.exercice.nom,
-            "poids": bloc.poids,
+            **_cible_persistee(bloc),
             "mode": bloc.mode,
-            "series": bloc.nombre_series,
-            "repetitions": bloc.repetitions_par_serie,
-            "duree": bloc.duree,
             "repos_entre_series": bloc.repos_entre_series,
             "repos_apres": bloc.repos_apres,
             "commentaire": bloc.commentaire,
@@ -659,6 +663,22 @@ def exporter_blocs(circuit):
         }
         for bloc in circuit.exercices
     ]
+
+
+def _cible_persistee(bloc):
+    """Poids, séries et cible tels qu'ils doivent retourner sur le disque."""
+    avant = getattr(bloc, "avant_test", None) or {
+        "nombre_series": bloc.nombre_series,
+        "poids": bloc.poids,
+        "repetitions_par_serie": bloc.repetitions_par_serie,
+        "duree": bloc.duree,
+    }
+    return {
+        "poids": avant["poids"],
+        "series": avant["nombre_series"],
+        "repetitions": avant["repetitions_par_serie"],
+        "duree": avant["duree"],
+    }
 
 
 def enregistrer_configuration_seance(nom, circuit):
@@ -817,6 +837,9 @@ def creer_seance_test(nom_exercice, mode, cible=None):
 
 def catalogue():
     objectifs = objectifs_par_exercice()
+    # Les deux calculs relisent l'historique : une fois pour tout le catalogue,
+    # pas une fois par séance.
+    sans_donnees = exercices_sans_donnees()
     resultats = {
         nom: {
             "nom": nom,
@@ -851,7 +874,7 @@ def catalogue():
         # Les cibles affichées doivent être celles que la séance jouera :
         # sans ce passage, l'accueil annoncerait les valeurs du disque pendant
         # que `creer_seance` en applique d'autres.
-        appliquer_a_blocs(seance["exercices"], objectifs)
+        appliquer_a_blocs(seance["exercices"], objectifs, sans_donnees)
         # Recalculé ici plutôt que gardé depuis les deux constructions
         # ci-dessus : un seul endroit qui distingue échauffement et exercice,
         # sur la liste finale (celle affichée), pas sur le nombre de blocs bruts.

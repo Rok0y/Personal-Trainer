@@ -204,6 +204,14 @@ def initialiser():
     if "programme_choisi" not in colonnes_utilisateurs:
         curseur.execute("ALTER TABLE utilisateurs ADD COLUMN programme_choisi TEXT")
 
+    # Matériel du profil (JSON). Pas de DEFAULT : NULL veut dire « rien de
+    # déclaré », et `core.materiel.normaliser` en fait le matériel complet
+    # d'avant cette colonne — un profil existant ne change donc pas de barème.
+    # C'est aussi ce NULL que le garde de `web/app.py` lit pour envoyer un
+    # profil neuf remplir le questionnaire.
+    if "materiel" not in colonnes_utilisateurs:
+        curseur.execute("ALTER TABLE utilisateurs ADD COLUMN materiel TEXT")
+
     # À l'échelle visée, toute requête filtre par profil : ces index ne sont
     # pas optionnels.
     curseur.execute("""
@@ -251,6 +259,9 @@ def _profil_depuis_ligne(ligne):
         "onboarding_termine": bool(ligne[3]),
         "seance_initiale": ligne[4],
         "programme_choisi": ligne[5],
+        # Brut (JSON ou None) : `core.materiel.normaliser` en a la
+        # responsabilité, et None doit rester distinguable d'un inventaire vide.
+        "materiel": ligne[6],
     }
 
 
@@ -261,7 +272,7 @@ def lister_utilisateurs():
     curseur = conn.cursor()
     curseur.execute(
         "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
-        "programme_choisi "
+        "programme_choisi, materiel "
         "FROM utilisateurs ORDER BY id"
     )
     profils = [_profil_depuis_ligne(ligne) for ligne in curseur.fetchall()]
@@ -276,7 +287,7 @@ def recuperer_utilisateur(utilisateur_id):
     curseur = conn.cursor()
     curseur.execute(
         "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
-        "programme_choisi "
+        "programme_choisi, materiel "
         "FROM utilisateurs WHERE id = ?",
         (utilisateur_id,),
     )
@@ -335,6 +346,29 @@ def definir_programme_choisi(utilisateur_id, cle):
     curseur.execute(
         "UPDATE utilisateurs SET programme_choisi = ? WHERE id = ?",
         (cle, utilisateur_id),
+    )
+    if curseur.rowcount == 0:
+        conn.close()
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
+    conn.commit()
+    conn.close()
+
+
+def definir_materiel(utilisateur_id, materiel):
+    """Enregistre l'inventaire d'un profil (dictionnaire, sérialisé en JSON).
+
+    L'appelant doit enchaîner sur `core.utilisateur.rafraichir()` : le profil
+    connecté transporte cette colonne, et le garde de `web/app.py` la relit à
+    chaque requête sans repasser par la base.
+    """
+    import json
+
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "UPDATE utilisateurs SET materiel = ? WHERE id = ?",
+        (json.dumps(materiel), utilisateur_id),
     )
     if curseur.rowcount == 0:
         conn.close()

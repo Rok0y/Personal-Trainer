@@ -3,182 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bienvenue</title>
+    <title>{% if premiere_fois %}Bienvenue{% else %}Mon matériel{% endif %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
 <style>
-        main { width:min(860px,calc(100% - 40px)); }
-        h1 { color:var(--teal); }
-        h2 { margin:0 0 12px; font-family:'Bebas Neue','Space Grotesk',sans-serif; font-weight:400; font-size:26px; }
-        .bloc {
-            background:var(--glass); border:1px solid var(--border-strong); border-radius:12px;
-            padding:22px; margin-bottom:14px; backdrop-filter:blur(18px);
-        }
-        .bloc.courant { border-color:var(--teal); }
-        ol, ul { margin:0; padding-left:20px; line-height:1.7; font-size:15px; }
-        li { margin-bottom:4px; }
-        .sous-titre {
-            margin:0 0 10px; color:var(--muted);
-            font:700 12px 'Space Grotesk',sans-serif; letter-spacing:.16em; text-transform:uppercase;
-        }
-        .jauge { height:6px; border-radius:999px; background:var(--border); overflow:hidden; margin:6px 0 18px; }
-        .jauge span { display:block; height:100%; background:var(--teal); border-radius:999px; transition:width .3s ease; }
-        .seances { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; }
-        .seances button {
-            text-align:left; text-transform:none; letter-spacing:0; padding:16px 18px;
-            border-radius:12px; background:var(--glass); line-height:1.5;
-        }
-        .seances button strong { display:block; font-size:16px; margin-bottom:4px; }
-        .seances button em { font-style:normal; color:var(--muted); font-size:13px; font-weight:400; }
-        .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; align-items:center; }
-        .actions .principal { border-color:var(--teal); color:var(--teal); }
-        .lien-discret { color:var(--muted); font-size:12px; }
-        .liste-faits li { color:var(--muted); }
-        .erreur { color:var(--orange); font-size:13px; min-height:18px; margin:10px 0 0; }
+    main { width:min(860px,calc(100% - 40px)); }
+    h1 { color:var(--teal); }
+    h2 { margin:0 0 6px; font-family:'Bebas Neue','Space Grotesk',sans-serif; font-weight:400; font-size:26px; }
+    .bloc {
+        background:var(--glass); border:1px solid var(--border-strong); border-radius:12px;
+        padding:22px; margin-bottom:14px; backdrop-filter:blur(18px);
+    }
+    .sous-titre {
+        margin:0 0 10px; color:var(--muted);
+        font:700 12px 'Space Grotesk',sans-serif; letter-spacing:.16em; text-transform:uppercase;
+    }
+    .halteres { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:12px; }
+    .haltere {
+        display:flex; align-items:center; justify-content:space-between; gap:10px;
+        padding:10px 12px; border:1px solid var(--border-strong); border-radius:10px;
+        background:rgba(0,0,0,.22);
+    }
+    .haltere strong { font-size:15px; }
+    .haltere select {
+        background:rgba(0,0,0,.35); color:var(--text); border:1px solid var(--border-strong);
+        border-radius:8px; padding:6px 8px; font-family:inherit; font-size:13px;
+    }
+    .accessoires { display:flex; flex-wrap:wrap; gap:16px; margin-top:12px; }
+    .accessoires label { display:flex; align-items:center; gap:8px; font-size:15px; }
+    .seances { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; margin-top:12px; }
+    .seances button {
+        text-align:left; text-transform:none; letter-spacing:0; padding:16px 18px;
+        border-radius:12px; background:var(--glass); line-height:1.5;
+    }
+    .seances button.choisie { border-color:var(--teal); color:var(--teal); }
+    .seances button strong { display:block; font-size:16px; margin-bottom:4px; }
+    .seances button em { font-style:normal; color:var(--muted); font-size:13px; font-weight:400; }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; align-items:center; }
+    .actions .principal { border-color:var(--teal); color:var(--teal); }
+    .erreur { color:var(--orange); font-size:13px; min-height:18px; margin:10px 0 0; }
 </style>
 </head>
 <body>
 <main>
-    <p class="kicker">Premiers pas</p>
+    <p class="kicker">{% if premiere_fois %}Premiers pas{% else %}Réglages{% endif %}</p>
 
-    {%- if deja_fait %}
-    <h1>Tout est prêt</h1>
-    <p class="hint">Ce profil a déjà fait le tour du propriétaire.</p>
-    <div class="actions"><a class="btn principal" href="/">Aller à l'accueil</a></div>
-
-    {%- elif not tunnel %}
+    {%- if premiere_fois %}
     <h1>Bienvenue {{ profil.nom }}</h1>
-    <p class="hint" style="max-width:60ch; line-height:1.7;">
-        Avant la première séance, on va faire connaissance : pour chaque exercice,
-        tu auras une fiche qui explique comment le faire, puis un petit test devant
-        la caméra. Ce test sert à trouver ton point de départ — il n'y a rien à
-        réussir, et tu peux en passer autant que tu veux.
+    <p class="hint" style="max-width:64ch; line-height:1.7;">
+        Une seule chose à régler avant de commencer : ton matériel. Il décide des
+        charges que les séances peuvent te proposer et des exercices qui te sont
+        accessibles. Pas de test à passer ici — la première fois qu'une séance
+        rencontre un exercice qu'elle ne connaît pas de toi, elle te demandera
+        simplement d'en faire le maximum, et en déduira ton point de départ.
     </p>
-    <p class="hint">Commence par choisir la séance que tu voudrais faire en premier.</p>
-
-    <div class="bloc">
-        <h2>Ta première séance</h2>
-        <div class="seances">
-            {% for nom, seance in seances.items() if nom != 'test' %}
-            <button type="button" data-seance="{{ nom }}">
-                <strong>{{ nom }}</strong>
-                <em>{{ seance.nombre_exercices }} exercice{{ 's' if seance.nombre_exercices > 1 }}{% if seance.materiel %} · {{ seance.materiel }}{% endif %}</em>
-            </button>
-            {% endfor %}
-        </div>
-        <p class="erreur" id="erreur" role="status"></p>
-    </div>
-
-    {%- elif tunnel.termine %}
-    <h1>C'est bon !</h1>
-    <p class="hint">
-        Tous les exercices de <strong>{{ tunnel.seance }}</strong> ont leur point de
-        départ. Tes objectifs sont posés ; ils bougeront tout seuls au fil des séances.
-    </p>
-    <div class="bloc">
-        <h2>Ce qui est calé</h2>
-        <ul class="liste-faits">
-            {% for nom in tunnel.faits %}<li>{{ nom }}</li>{% endfor %}
-        </ul>
-    </div>
-    <div class="actions">
-        <button type="button" class="principal" id="terminer">Commencer à m'entraîner</button>
-    </div>
-    <p class="erreur" id="erreur" role="status"></p>
-
     {%- else %}
-    <h1>{{ tunnel.courant }}</h1>
-    <p class="sous-titre">Exercice {{ tunnel.position }} sur {{ tunnel.total }} · séance {{ tunnel.seance }}</p>
-    <div class="jauge"><span style="width: {{ ((tunnel.faits|length) / tunnel.total * 100)|round }}%;"></span></div>
+    <h1>Mon matériel</h1>
+    <p class="hint" style="max-width:64ch; line-height:1.7;">
+        Le matériel décide de l'échelle de charge de tes barèmes. Le modifier ne
+        touche pas à tes niveaux acquis : il change ce que les prochaines séances
+        peuvent proposer.
+    </p>
+    {%- endif %}
 
-    <div class="bloc courant">
-        <p class="sous-titre">Le mouvement</p>
-        <p style="margin:0 0 16px; font-size:16px; line-height:1.6;">{{ fiche.description }}</p>
-
-        {%- if fiche.mise_en_place %}
-        <p class="sous-titre">Se mettre en place</p>
-        <ol>{% for etape in fiche.mise_en_place %}<li>{{ etape }}</li>{% endfor %}</ol>
-        {%- endif %}
-
-        {%- if fiche.instructions %}
-        <p class="sous-titre" style="margin-top:16px;">Exécution</p>
-        <ol>{% for consigne in fiche.instructions %}<li>{{ consigne }}</li>{% endfor %}</ol>
-        {%- endif %}
-
-        <div class="actions">
-            <a class="btn principal" href="/bienvenue/test/{{ tunnel.courant|urlencode }}">J'ai compris, je teste</a>
-            <a class="lien-discret" href="/exercice/{{ tunnel.courant|urlencode }}">Voir la fiche complète</a>
-            <button type="button" id="passer" data-exercice="{{ tunnel.courant }}">Je passe cet exercice</button>
-        </div>
-        <p class="hint" style="margin-top:10px;">
-            Passer pose le point de départ le plus bas : rien n'est perdu, le
-            logiciel remontera tout seul dès ta première séance réussie.
-        </p>
-        <p class="erreur" id="erreur" role="status"></p>
-    </div>
-
-    {%- if tunnel.faits %}
     <div class="bloc">
-        <p class="sous-titre">Déjà calé</p>
-        <ul class="liste-faits">
-            {% for nom in tunnel.faits %}<li>{{ nom }}</li>{% endfor %}
-        </ul>
+        <h2>Haltères</h2>
+        <p class="sous-titre">Pour chaque poids, ce que tu possèdes</p>
+        <div class="halteres" id="halteres"></div>
+    </div>
+
+    <div class="bloc">
+        <h2>Accessoires</h2>
+        <div class="accessoires" id="accessoires"></div>
+    </div>
+
+    {%- if premiere_fois %}
+    <div class="bloc">
+        <h2>Première séance</h2>
+        <p class="sous-titre">Celle que l'accueil te proposera</p>
+        <div class="seances" id="seances">
+            {%- for cle, seance in seances.items() %}
+            <button type="button" data-seance="{{ cle }}">
+                <strong>{{ seance.nom }}</strong>
+                <em>{{ seance.exercices|length }} exercices</em>
+            </button>
+            {%- endfor %}
+        </div>
     </div>
     {%- endif %}
-    {%- endif %}
+
+    <div class="actions">
+        <button type="button" class="principal" id="valider">
+            {% if premiere_fois %}C'est parti{% else %}Enregistrer{% endif %}
+        </button>
+        {%- if not premiere_fois %}<a class="btn" href="/">Retour</a>{%- endif %}
+    </div>
+    <p class="erreur" id="erreur"></p>
 </main>
 
 <script>
-    const erreurEl = document.getElementById("erreur");
+const POIDS = {{ poids_reference|tojson }};
+const ACCESSOIRES = {{ accessoires|tojson }};
+const MATERIEL = {{ materiel|tojson }};
+const PREMIERE_FOIS = {{ premiere_fois|tojson }};
 
-    async function envoyer(url, corps) {
-        try {
-            const reponse = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(corps || {}),
-            });
-            const donnees = await reponse.json();
-            if (!donnees.ok) {
-                if (erreurEl) erreurEl.textContent = donnees.erreur || "Une erreur est survenue.";
-                return null;
-            }
-            return donnees;
-        } catch (erreur) {
-            if (erreurEl) erreurEl.textContent = "Le serveur ne répond pas.";
-            return null;
-        }
-    }
+// Une seule question par poids (« combien j'en ai ? ») plutôt que deux échelles
+// séparées : déclarer une paire de 12 kg sans posséder l'haltère de 12 kg
+// n'aurait aucun sens, et le barème dérive les deux échelles de ce stock.
+const conteneurHalteres = document.getElementById("halteres");
+POIDS.forEach((poids) => {
+    const quantite = MATERIEL.halteres[poids] || 0;
+    const ligne = document.createElement("div");
+    ligne.className = "haltere";
+    ligne.innerHTML =
+        "<strong>" + poids + " kg</strong>" +
+        '<select data-poids="' + poids + '">' +
+        '<option value="0"' + (quantite === 0 ? " selected" : "") + ">Aucun</option>" +
+        '<option value="1"' + (quantite === 1 ? " selected" : "") + ">Un</option>" +
+        '<option value="2"' + (quantite >= 2 ? " selected" : "") + ">Une paire</option>" +
+        "</select>";
+    conteneurHalteres.appendChild(ligne);
+});
 
-    document.querySelectorAll(".seances button[data-seance]").forEach((bouton) => {
-        bouton.addEventListener("click", async () => {
-            if (await envoyer("/api/bienvenue/seance", { nom: bouton.dataset.seance })) {
-                window.location.reload();
-            }
-        });
+const conteneurAccessoires = document.getElementById("accessoires");
+Object.entries(ACCESSOIRES).forEach(([cle, libelle]) => {
+    const label = document.createElement("label");
+    const coche = MATERIEL.accessoires.includes(cle) ? " checked" : "";
+    label.innerHTML =
+        '<input type="checkbox" data-accessoire="' + cle + '"' + coche + "> " + libelle;
+    conteneurAccessoires.appendChild(label);
+});
+
+let seanceChoisie = null;
+const conteneurSeances = document.getElementById("seances");
+if (conteneurSeances) {
+    conteneurSeances.addEventListener("click", (evenement) => {
+        const bouton = evenement.target.closest("button[data-seance]");
+        if (!bouton) return;
+        conteneurSeances.querySelectorAll("button").forEach((b) => b.classList.remove("choisie"));
+        bouton.classList.add("choisie");
+        seanceChoisie = bouton.dataset.seance;
     });
+    const premier = conteneurSeances.querySelector("button[data-seance]");
+    if (premier) premier.click();
+}
 
-    const boutonPasser = document.getElementById("passer");
-    if (boutonPasser) {
-        boutonPasser.addEventListener("click", async () => {
-            if (await envoyer("/api/bienvenue/passer", { exercice: boutonPasser.dataset.exercice })) {
-                window.location.reload();
-            }
-        });
-    }
+function collecter() {
+    const halteres = {};
+    conteneurHalteres.querySelectorAll("select").forEach((select) => {
+        const quantite = Number(select.value) || 0;
+        if (quantite > 0) halteres[select.dataset.poids] = quantite;
+    });
+    const accessoires = [...conteneurAccessoires.querySelectorAll("input:checked")]
+        .map((input) => input.dataset.accessoire);
+    return { halteres, accessoires };
+}
 
-    const boutonTerminer = document.getElementById("terminer");
-    if (boutonTerminer) {
-        boutonTerminer.addEventListener("click", async () => {
-            // Le garde d'onboarding bloque « / » tant que le tunnel n'est pas
-            // fermé : on ne redirige donc qu'après la réponse du serveur.
-            if (await envoyer("/api/bienvenue/terminer")) {
-                window.location.href = "/";
-            }
+const erreur = document.getElementById("erreur");
+document.getElementById("valider").addEventListener("click", async () => {
+    erreur.textContent = "";
+    const corps = { materiel: collecter() };
+    if (PREMIERE_FOIS) corps.seance = seanceChoisie;
+    try {
+        const reponse = await fetch("/api/materiel", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(corps),
         });
+        const donnees = await reponse.json();
+        if (!reponse.ok || !donnees.ok) {
+            erreur.textContent = donnees.erreur || "Échec de l'enregistrement";
+            return;
+        }
+        window.location.href = "/";
+    } catch (e) {
+        erreur.textContent = "Erreur réseau";
     }
+});
 </script>
 </body>
 </html>

@@ -15,8 +15,15 @@ séries de chaque mouvement ne serait jamais terminé.
 D'où la difficulté que ce module doit résoudre : un maximum en série unique et
 une cible de barème ne mesurent pas la même chose. Vingt pompes d'affilée une
 fois ne veulent pas dire quatre séries de vingt. Il faut convertir, et aucune
-conversion n'est exacte — c'est pourquoi l'écran de confirmation existe, et
-qu'il propose toujours le cran du dessous et celui du dessus.
+conversion n'est exacte : l'estimation est volontairement prudente, et le
+moteur d'objectifs la corrige dès la séance suivante.
+
+**Le test se joue en séance, pas dans un tunnel d'accueil.** Il n'y a plus
+d'écran préalable où passer chaque exercice l'un après l'autre : une séance
+ordinaire rencontre un exercice dont elle ne sait rien
+(`progression.objectifs.a_calibrer`), demande un maximum à la place de sa
+cible, et pose l'ancrage à la fin de la série. L'avancement ne se stocke
+toujours nulle part — un exercice est calibré s'il porte un ancrage.
 """
 
 from progression.paliers import (
@@ -33,6 +40,46 @@ from progression.paliers import (
 #: prudent — un objectif de départ trop bas se corrige en une séance, un
 #: objectif trop haut décourage et fait échouer toutes les séries.
 COEFFICIENT_SERIE_UNIQUE = 0.65
+
+
+#: Cible d'une série de test : un plafond qu'on n'atteint pas. Le test se
+#: termine à la main (geste bras en X ou bouton « Série terminée »), jamais en
+#: atteignant sa consigne — c'est ce qui en fait un maximum et non une série de
+#: plus. Une valeur, plutôt qu'un mode dédié : tous les compteurs, l'audio et
+#: l'affichage continuent de fonctionner sans connaître le test.
+CIBLE_TEST = 999
+
+
+def charge_de_test(nom_exercice):
+    """La charge « relativement moyenne » sur laquelle tester un exercice.
+
+    Le milieu de l'échelle réellement disponible, donc du matériel déclaré par
+    le profil : tester à 2 kg ne dit rien de quelqu'un qui en soulève 10, et
+    tester au maximum de la gamme décourage un débutant. Zéro pour un mouvement
+    au poids du corps, dont l'échelle n'a qu'une valeur.
+    """
+    from progression.paliers import echelle_exercice
+
+    echelle = echelle_exercice(nom_exercice)
+    if not echelle:
+        return 0
+    return echelle[len(echelle) // 2]
+
+
+def cloturer_test(nom_exercice, poids, maximum):
+    """Traduit le maximum réalisé en ancrage de niveau, et le pose.
+
+    Retourne le niveau ancré. Un maximum qui n'atteint pas le premier palier
+    ancre quand même au palier 1 plutôt que de ne rien poser : sans ancrage
+    l'exercice resterait « sans données » et redemanderait un test à chaque
+    séance, ce qui est précisément la boucle qu'on veut éviter. Le moteur
+    d'objectifs redescendra de lui-même si les séries échouent.
+    """
+    from historique.database import enregistrer_ancrage
+
+    niveau = niveau_estime(nom_exercice, poids, maximum) or 1
+    enregistrer_ancrage(nom_exercice, niveau, raison="Test en séance")
+    return niveau
 
 
 def series_de_reference(nom_exercice):
@@ -67,124 +114,3 @@ def niveau_estime(nom_exercice, poids, maximum):
     # palier : on propage tel quel, c'est le signal « propose une variante plus
     # facile » et non « niveau zéro ».
     return niveau_pour(nom_exercice, poids, series, cible)
-
-
-def proposition(nom_exercice, poids, maximum):
-    """Ce que l'écran de confirmation a besoin d'afficher.
-
-    Toujours trois crans quand ils existent — celui d'en dessous, celui qu'on
-    propose, celui d'au-dessus. La conversion est une estimation : l'utilisateur
-    doit pouvoir la corriger sans repasser par le test.
-    """
-    if not est_suivi_par_le_moteur(nom_exercice):
-        return None
-
-    niveau = niveau_estime(nom_exercice, poids, maximum)
-    propose = palier(nom_exercice, niveau) if niveau else None
-
-    return {
-        "exercice": nom_exercice,
-        "unite": unite(nom_exercice),
-        "maximum": maximum,
-        "poids": poids,
-        "niveau": niveau,
-        "palier": propose.resume() if propose else None,
-        # `hors_barème` n'est pas « niveau 0 » : c'est « même le premier palier
-        # n'est pas atteint », et la bonne réponse est alors une variante plus
-        # facile, pas un niveau plus bas.
-        "hors_bareme": niveau is None,
-        "premier": palier(nom_exercice, 1).resume(),
-        "voisins": paliers_voisins(nom_exercice, niveau),
-    }
-
-
-def paliers_voisins(nom_exercice, niveau):
-    """Les crans immédiatement en dessous et au-dessus, pour l'ajustement.
-
-    Une liste de dicts `{niveau, resume}` plutôt que deux champs : l'écran les
-    affiche en boutons, et un cran manquant (niveau 1 n'a pas de précédent)
-    disparaît de lui-même au lieu de demander une condition de plus au template.
-    """
-    if not niveau:
-        return []
-    voisins = []
-    for candidat in (niveau - 1, niveau + 1):
-        cran = palier(nom_exercice, candidat) if candidat >= 1 else None
-        if cran is not None:
-            voisins.append({"niveau": candidat, "resume": cran.resume()})
-    return voisins
-
-
-# ---------------------------------------------------------------------------
-# Le tunnel d'accueil
-# ---------------------------------------------------------------------------
-#
-# **Aucune table de suivi.** L'avancement du tunnel se déduit de ce qui existe
-# déjà : un exercice est calibré s'il porte un ancrage. Quitter l'application
-# en cours de route et revenir reprend donc au bon endroit sans qu'un état ait
-# eu besoin d'être maintenu — c'est la même règle que le reste de
-# `progression/`, où le niveau se dérive de l'historique plutôt que de se
-# stocker.
-
-
-def mode_de_test(nom_exercice):
-    """Mode sous lequel tester un exercice, déduit de l'unité de son barème.
-
-    Un barème en secondes ne peut pas se valider par un comptage de
-    répétitions : c'est la même contrainte que celle qui fait qu'un bloc en
-    `chrono` échappe au moteur d'objectifs.
-    """
-    from session.circuit import MODE_MAINTIEN, MODE_REPETITIONS
-    from progression.paliers import UNITE_SECONDES
-
-    if unite(nom_exercice) == UNITE_SECONDES:
-        return MODE_MAINTIEN
-    return MODE_REPETITIONS
-
-
-def exercices_a_calibrer(nom_seance):
-    """Exercices de cette séance que le test d'accueil doit couvrir.
-
-    Les échauffements en sont exclus (ils ne comptent nulle part) comme les
-    mouvements sans barème (rien à calibrer). L'ordre est celui de la séance :
-    c'est celui dans lequel la personne les rencontrera.
-    """
-    from session.seances import catalogue
-
-    seance = catalogue().get(nom_seance)
-    if seance is None:
-        return []
-
-    noms = []
-    for bloc in seance["exercices"]:
-        nom = bloc.get("nom") or bloc.get("exercice")
-        if not est_suivi_par_le_moteur(nom) or nom in noms:
-            continue
-        # Un exercice dont le mode ne parle pas l'unité du barème ne peut pas
-        # être calibré par ce test : on le laisse au moteur d'objectifs.
-        if bloc.get("mode") != mode_de_test(nom):
-            continue
-        noms.append(nom)
-    return noms
-
-
-def etat_tunnel(nom_seance, ancrages):
-    """Où en est le tunnel : ce qui est fait, ce qui reste, l'étape courante.
-
-    `ancrages` est le dictionnaire de `recuperer_ancrages()` — passé en
-    argument plutôt que relu ici, pour que la même lecture serve à toutes les
-    étapes d'une page.
-    """
-    exercices = exercices_a_calibrer(nom_seance)
-    faits = [nom for nom in exercices if nom in ancrages]
-    restants = [nom for nom in exercices if nom not in ancrages]
-    return {
-        "seance": nom_seance,
-        "exercices": exercices,
-        "faits": faits,
-        "restants": restants,
-        "courant": restants[0] if restants else None,
-        "termine": not restants,
-        "position": len(faits) + 1,
-        "total": len(exercices),
-    }

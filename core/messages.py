@@ -37,6 +37,12 @@ MESSAGES = {
     "preparation_bras_en_x": "Croise les bras devant toi pour lancer la série.",
     "preparation_decompte": "C'est parti ! Redescends les bras et mets-toi en place.",
     "pause": "Séance en pause. Reprends quand tu veux depuis le site.",
+    # Test de calibration joué en séance : premier passage sur un exercice dont
+    # rien n'est connu. Une consigne et non une erreur — elle guide, elle ne
+    # reproche rien.
+    "test_calibration": (
+        "Premier passage : fais ton maximum, puis croise les bras pour valider."
+    ),
 }
 
 # Traduction des jetons rendus par les fonctions de détection. Le front
