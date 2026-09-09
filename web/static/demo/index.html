@@ -97,6 +97,7 @@
   .compteur { font-size: 60px; font-weight: 700; line-height: 1;
               font-variant-numeric: tabular-nums; }
   .compteur span { font-size: 20px; color: #c3d0e0; font-weight: 600; }
+  .nomExercice { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
   .consigne { color: var(--alerte); min-height: 22px; margin-bottom: 8px; font-weight: 600; }
   .jauge { height: 8px; background: rgba(255,255,255,.2); border-radius: 4px; overflow: hidden; }
   .jauge > div { height: 100%; background: var(--accent); width: 0; transition: width .15s; }
@@ -201,6 +202,7 @@
     <p class="muet" id="infoCamera" style="margin:8px 0 0"></p>
   </div>
   <div class="basDeSeance">
+    <div class="nomExercice" id="nomExercice"></div>
     <div class="consigne" id="consigne"></div>
     <div class="compteur"><b id="compteur">0</b> <span id="compteurCible"></span></div>
     <div class="jauge" style="margin-top:10px"><div id="jauge"></div></div>
@@ -568,6 +570,7 @@ function reinitialiser() {
   document.getElementById("jauge").style.width = "0%";
   document.getElementById("compteurCible").textContent = "";
   document.getElementById("boutonCommencer").hidden = false;
+  document.getElementById("nomExercice").textContent = exercice.nom;
   afficherConsigne("Mets-toi en position");
 }
 
