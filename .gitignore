@@ -73,6 +73,16 @@ htmlcov/
 scripts/fixtures_detections.jsonl
 
 # =========================
+# Demo statique
+# =========================
+
+# Copies de travail des sons, produites par `python -m scripts.preparer_demo`.
+# Les originaux sont dans audio/Fichiers/ ; a regenerer avant un deploiement.
+# catalogue.json est versionne, lui : il est petit et son absence rendrait la
+# demo silencieusement vide.
+web/static/demo/sons/
+
+# =========================
 # Spike de validation web
 # =========================
 

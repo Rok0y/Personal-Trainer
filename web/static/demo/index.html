@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Coach — démo</title>
+<style>
+  :root {
+    --fond: #0f1319;
+    --carte: #19202a;
+    --carte-haute: #222b38;
+    --bord: #2c3644;
+    --texte: #e8eef6;
+    --attenue: #8fa0b6;
+    --accent: #4b9bff;
+    --ok: #3fbf7f;
+    --alerte: #e0a33e;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    background: var(--fond);
+    color: var(--texte);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    padding: 16px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    max-width: 720px;
+    margin-inline: auto;
+  }
+  h1 { font-size: 21px; margin: 0 0 6px; letter-spacing: -.01em; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  h3 { font-size: 13px; margin: 18px 0 6px; color: var(--attenue);
+       text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  p { margin: 0 0 12px; }
+  .muet { color: var(--attenue); font-size: 14px; }
+  .carte {
+    background: var(--carte);
+    border: 1px solid var(--bord);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  button {
+    font: inherit; font-weight: 600;
+    padding: 16px 20px; border-radius: 12px; border: 0;
+    background: var(--accent); color: #fff; cursor: pointer; width: 100%;
+  }
+  button:active { opacity: .85; }
+  button.secondaire { background: var(--carte-haute); color: var(--texte); }
+  button.discret { background: none; color: var(--attenue); padding: 10px;
+                   text-decoration: underline; }
+  ul { margin: 0; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  .exercice {
+    display: block; width: 100%; text-align: left;
+    background: var(--carte); border: 1px solid var(--bord);
+    color: var(--texte); font-weight: 600;
+    padding: 14px 16px; border-radius: 12px; margin-bottom: 8px;
+  }
+  .exercice small { display: block; font-weight: 400; color: var(--attenue);
+                    margin-top: 3px; font-size: 13px; }
+  #zoneVideo { position: relative; line-height: 0; margin-bottom: 14px; }
+  canvas { width: 100%; height: auto; border-radius: 14px; background: #000; display: block; }
+  .surcouche {
+    position: absolute; inset: auto 0 0 0; padding: 14px;
+    background: linear-gradient(transparent, rgba(0,0,0,.75));
+    border-radius: 0 0 14px 14px; line-height: 1.4;
+  }
+  .compteur { font-size: 68px; font-weight: 700; line-height: 1;
+              font-variant-numeric: tabular-nums; }
+  .compteur span { font-size: 22px; color: var(--attenue); font-weight: 600; }
+  .consigne { text-align: center; color: var(--alerte); min-height: 24px; margin-bottom: 10px; }
+  .jauge { height: 8px; background: var(--carte-haute); border-radius: 4px; overflow: hidden; }
+  .jauge > div { height: 100%; background: var(--accent); width: 0; transition: width .15s; }
+  .reussite { text-align: center; }
+  .reussite .grand { font-size: 44px; font-weight: 700; color: var(--ok); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ecran 1 : accueil -->
+<section id="ecranAccueil">
+  <h1>Coach de musculation</h1>
+  <p class="muet">Ta caméra compte tes répétitions et une voix te guide. Tout se passe sur ton appareil&nbsp;: aucune image n'est envoyée nulle part.</p>
+  <div class="carte">
+    <h3>Ce qu'il te faut</h3>
+    <ul class="muet">
+      <li>De quoi caler ton téléphone ou ta tablette, à 2-3 mètres</li>
+      <li>Un peu de place pour bouger</li>
+      <li>Le son activé</li>
+    </ul>
+  </div>
+  <button id="versExercices">Choisir un exercice</button>
+</section>
+
+<!-- ecran 2 : choix -->
+<section id="ecranChoix" hidden>
+  <h1>Quel exercice&nbsp;?</h1>
+  <p class="muet">Prends-en un que tu sais faire — on teste le comptage, pas ta forme.</p>
+  <div id="listeExercices"></div>
+</section>
+
+<!-- ecran 3 : fiche -->
+<section id="ecranFiche" hidden>
+  <h1 id="ficheNom"></h1>
+  <p class="muet" id="ficheDescription"></p>
+  <div class="carte">
+    <h3 style="margin-top:0">Installe-toi</h3>
+    <ul id="ficheMiseEnPlace"></ul>
+    <h3>Le mouvement</h3>
+    <ul id="ficheInstructions"></ul>
+  </div>
+  <button id="boutonDemarrer">Démarrer</button>
+  <p class="muet" style="text-align:center" id="messageDemarrage">Le son s'active à ce clic&nbsp;: iOS l'exige.</p>
+  <button class="discret" id="retourChoix">Choisir un autre exercice</button>
+</section>
+
+<!-- ecran 4 : seance -->
+<section id="ecranSeance" hidden>
+  <div id="zoneVideo">
+    <canvas id="canvas"></canvas>
+    <div class="surcouche">
+      <div class="compteur"><span id="compteurUnite"></span> <b id="compteur">0</b> <span id="compteurCible"></span></div>
+    </div>
+  </div>
+  <div class="consigne" id="consigne"></div>
+  <div class="jauge"><div id="jauge"></div></div>
+  <button class="secondaire" id="boutonArreter" style="margin-top:14px">Arrêter</button>
+</section>
+
+<!-- ecran 5 : fin -->
+<section id="ecranFin" hidden>
+  <div class="carte reussite">
+    <div class="grand" id="finChiffre"></div>
+    <p class="muet" id="finTexte"></p>
+  </div>
+  <div class="carte">
+    <h3 style="margin-top:0">La vraie question</h3>
+    <p>Est-ce que le comptage était juste&nbsp;? Est-ce que la voix arrivait au bon moment&nbsp;?</p>
+    <p class="muet">C'est exactement ce qu'on cherche à savoir. Copie le résumé et envoie-le, avec ce que tu en as pensé.</p>
+    <button class="secondaire" id="boutonResume">Copier le résumé</button>
+  </div>
+  <button id="boutonRecommencer">Refaire un exercice</button>
+</section>
+
+<script type="module">
+import { PoseLandmarker, FilesetResolver, DrawingUtils }
+  from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+import { construire_corps } from "../js/landmarks.js";
+import { DETECTIONS } from "../js/detections.js";
+import { CompteurMouvement } from "../js/compteur.js";
+
+const VERSION_WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const MODELE = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
+
+const CIBLE_REPETITIONS = 10;
+const CIBLE_SECONDES = 30;
+// Meme garde-fou que INTERVALLE_MAX_ECHAUFFEMENT cote Python : un onglet
+// suspendu par iOS ne doit pas crediter d'un coup tout le temps ecoule.
+const INTERVALLE_MAX = 0.5;
+
+let catalogue = [];
+let exercice = null;
+let poseLandmarker = null;
+let flux = null;
+let verrouEcran = null;
+let compteur = new CompteurMouvement();
+let modeMaintien = null;
+let secondesTenues = 0;
+let dernierInstant = null;
+let dernierHorodatage = -1;
+let derniereValeur = 0;
+let enCours = false;
+let termine = false;
+
+function montrer(id) {
+  for (const section of document.querySelectorAll("section")) {
+    section.hidden = section.id !== id;
+  }
+  window.scrollTo(0, 0);
+}
+
+// ----- audio -----
+
+let contexteAudio = null;
+const sons = new Map();
+
+async function debloquerAudio() {
+  contexteAudio = new (window.AudioContext || window.webkitAudioContext)();
+  const vide = contexteAudio.createBuffer(1, 1, 22050);
+  const source = contexteAudio.createBufferSource();
+  source.buffer = vide;
+  source.connect(contexteAudio.destination);
+  source.start(0);
+  await contexteAudio.resume();
+}
+
+async function chargerSons() {
+  const noms = ["bip", ...Array.from({ length: 20 }, (_, i) => String(i + 1))];
+  await Promise.all(
+    noms.map(async (nom) => {
+      try {
+        const reponse = await fetch(`sons/${nom}.wav`);
+        const donnees = await reponse.arrayBuffer();
+        sons.set(nom, await contexteAudio.decodeAudioData(donnees));
+      } catch {
+        // Un son absent ne doit jamais interrompre une seance : on se tait.
+      }
+    })
+  );
+}
+
+function jouer(nom) {
+  const buffer = sons.get(String(nom));
+  if (!buffer || !contexteAudio) return;
+  const source = contexteAudio.createBufferSource();
+  source.buffer = buffer;
+  source.connect(contexteAudio.destination);
+  source.start(0);
+}
+
+// ----- catalogue -----
+
+async function chargerCatalogue() {
+  catalogue = await (await fetch("catalogue.json")).json();
+  const liste = document.getElementById("listeExercices");
+  liste.innerHTML = "";
+  for (const fiche of catalogue) {
+    if (!DETECTIONS[fiche.detection]) continue;
+    const bouton = document.createElement("button");
+    bouton.className = "exercice";
+    bouton.innerHTML = `${fiche.nom}<small>${fiche.description ?? ""}</small>`;
+    bouton.addEventListener("click", () => ouvrirFiche(fiche));
+    liste.appendChild(bouton);
+  }
+}
+
+function ouvrirFiche(fiche) {
+  exercice = fiche;
+  document.getElementById("ficheNom").textContent = fiche.nom;
+  document.getElementById("ficheDescription").textContent = fiche.description ?? "";
+  remplir("ficheMiseEnPlace", fiche.mise_en_place);
+  remplir("ficheInstructions", fiche.instructions);
+  montrer("ecranFiche");
+}
+
+function remplir(id, elements) {
+  const ul = document.getElementById(id);
+  ul.innerHTML = "";
+  for (const texte of elements ?? []) {
+    const li = document.createElement("li");
+    li.textContent = texte;
+    ul.appendChild(li);
+  }
+}
+
+// ----- seance -----
+
+async function demarrer() {
+  const bouton = document.getElementById("boutonDemarrer");
+  const message = document.getElementById("messageDemarrage");
+  bouton.disabled = true;
+  bouton.textContent = "Préparation…";
+
+  try {
+    await debloquerAudio();
+
+    flux = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    });
+    const video = document.createElement("video");
+    video.playsInline = true;
+    video.muted = true;
+    video.srcObject = flux;
+    await video.play();
+    window._video = video;
+
+    if (!poseLandmarker) {
+      const fileset = await FilesetResolver.forVisionTasks(VERSION_WASM);
+      poseLandmarker = await creerDetecteur(fileset);
+    }
+
+    try {
+      verrouEcran = await navigator.wakeLock.request("screen");
+    } catch {
+      // L'ecran s'eteindra peut-etre : genant, pas bloquant.
+    }
+
+    chargerSons();
+    reinitialiser();
+    montrer("ecranSeance");
+    enCours = true;
+    requestAnimationFrame(boucle);
+  } catch (erreur) {
+    message.textContent = `Impossible de démarrer : ${erreur.message}`;
+    bouton.disabled = false;
+    bouton.textContent = "Réessayer";
+  }
+}
+
+async function creerDetecteur(fileset) {
+  const options = {
+    baseOptions: { modelAssetPath: MODELE, delegate: "GPU" },
+    runningMode: "VIDEO",
+    numPoses: 1,
+  };
+  try {
+    return await PoseLandmarker.createFromOptions(fileset, options);
+  } catch {
+    options.baseOptions.delegate = "CPU";
+    return await PoseLandmarker.createFromOptions(fileset, options);
+  }
+}
+
+function reinitialiser() {
+  compteur = new CompteurMouvement();
+  modeMaintien = null;
+  secondesTenues = 0;
+  dernierInstant = null;
+  derniereValeur = 0;
+  termine = false;
+  document.getElementById("compteur").textContent = "0";
+  document.getElementById("jauge").style.width = "0%";
+  document.getElementById("compteurUnite").textContent = "";
+  document.getElementById("compteurCible").textContent = "";
+}
+
+function boucle() {
+  if (!enCours) return;
+  const video = window._video;
+  const canvas = document.getElementById("canvas");
+
+  if (video.readyState < 2) {
+    requestAnimationFrame(boucle);
+    return;
+  }
+  if (canvas.width !== video.videoWidth) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+  }
+
+  const maintenant = performance.now();
+  const horodatage = Math.max(maintenant, dernierHorodatage + 1);
+  dernierHorodatage = horodatage;
+
+  const resultat = poseLandmarker.detectForVideo(video, horodatage);
+  const landmarks = resultat.landmarks?.[0];
+
+  const ctx = canvas.getContext("2d");
+  ctx.save();
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  if (landmarks) {
+    const utils = new DrawingUtils(ctx);
+    utils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS,
+      { color: "#4b9bff", lineWidth: 4 });
+    utils.drawLandmarks(landmarks, { color: "#e8eef6", radius: 3 });
+  }
+  ctx.restore();
+
+  const consigne = document.getElementById("consigne");
+  if (!landmarks) {
+    consigne.textContent = "Recule un peu — je ne te vois pas en entier";
+    dernierInstant = null;
+  } else {
+    consigne.textContent = "";
+    if (!termine) traiter(construire_corps(landmarks), maintenant / 1000);
+  }
+
+  requestAnimationFrame(boucle);
+}
+
+function traiter(corps, instant) {
+  const jeton = DETECTIONS[exercice.detection](corps);
+
+  // Le mode se deduit du jeton plutot que d'une metadonnee : une detection
+  // qui parle de "maintien" mesure un temps, les autres comptent des
+  // repetitions. Rien a declarer, donc rien qui puisse mentir.
+  if (modeMaintien === null) {
+    modeMaintien = jeton === "maintien" || jeton === "repos";
+    document.getElementById("compteurCible").textContent =
+      modeMaintien ? `/ ${CIBLE_SECONDES} s` : `/ ${CIBLE_REPETITIONS}`;
+  }
+
+  if (modeMaintien) {
+    if (jeton === "maintien") {
+      if (dernierInstant !== null) {
+        secondesTenues += Math.min(instant - dernierInstant, INTERVALLE_MAX);
+      }
+      dernierInstant = instant;
+    } else {
+      dernierInstant = null;
+      document.getElementById("consigne").textContent = "Reprends la position";
+    }
+    majAffichage(Math.floor(secondesTenues), CIBLE_SECONDES, "s");
+  } else {
+    dernierInstant = null;
+    const [, repetitions] = compteur.mettre_a_jour(jeton);
+    majAffichage(repetitions, CIBLE_REPETITIONS, "");
+  }
+}
+
+function majAffichage(valeur, cible, unite) {
+  if (valeur !== derniereValeur) {
+    derniereValeur = valeur;
+    document.getElementById("compteur").textContent = valeur;
+    document.getElementById("compteurUnite").textContent = unite;
+    if (valeur > 0) jouer(valeur <= 20 ? valeur : "bip");
+  }
+  document.getElementById("jauge").style.width =
+    `${Math.min((valeur / cible) * 100, 100)}%`;
+
+  if (valeur >= cible && !termine) {
+    termine = true;
+    jouer("bip");
+    setTimeout(terminer, 700);
+  }
+}
+
+function terminer() {
+  arreterCapture();
+  const valeur = derniereValeur;
+  document.getElementById("finChiffre").textContent =
+    modeMaintien ? `${valeur} s` : `${valeur} répétitions`;
+  document.getElementById("finTexte").textContent =
+    `${exercice.nom} — objectif atteint.`;
+  montrer("ecranFin");
+}
+
+function arreterCapture() {
+  enCours = false;
+  if (flux) {
+    for (const piste of flux.getTracks()) piste.stop();
+    flux = null;
+  }
+  if (verrouEcran) {
+    verrouEcran.release().catch(() => {});
+    verrouEcran = null;
+  }
+}
+
+// ----- navigation -----
+
+document.getElementById("versExercices")
+  .addEventListener("click", () => montrer("ecranChoix"));
+document.getElementById("retourChoix")
+  .addEventListener("click", () => montrer("ecranChoix"));
+document.getElementById("boutonDemarrer").addEventListener("click", demarrer);
+
+document.getElementById("boutonArreter").addEventListener("click", () => {
+  arreterCapture();
+  document.getElementById("finChiffre").textContent =
+    modeMaintien ? `${derniereValeur} s` : `${derniereValeur} répétitions`;
+  document.getElementById("finTexte").textContent = `${exercice.nom} — arrêté avant la fin.`;
+  montrer("ecranFin");
+});
+
+document.getElementById("boutonRecommencer").addEventListener("click", () => {
+  const bouton = document.getElementById("boutonDemarrer");
+  bouton.disabled = false;
+  bouton.textContent = "Démarrer";
+  montrer("ecranChoix");
+});
+
+document.getElementById("boutonResume").addEventListener("click", async () => {
+  const resume = [
+    `Exercice : ${exercice?.nom ?? "—"}`,
+    modeMaintien ? `Tenu : ${derniereValeur} s` : `Comptées : ${derniereValeur}`,
+    `Appareil : ${navigator.userAgent}`,
+    "",
+    "Le comptage était-il juste ? ",
+    "La voix arrivait-elle au bon moment ? ",
+    "Qu'est-ce qui a manqué ? ",
+  ].join("\n");
+  try {
+    await navigator.clipboard.writeText(resume);
+    document.getElementById("boutonResume").textContent = "Résumé copié";
+  } catch {
+    alert(resume);
+  }
+});
+
+chargerCatalogue();
+</script>
+</body>
+</html>

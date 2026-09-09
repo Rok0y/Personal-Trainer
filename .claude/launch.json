@@ -10,7 +10,7 @@
     {
       "name": "statique",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8000"],
+      "runtimeArgs": ["-m", "http.server", "8000", "--directory", "web/static"],
       "port": 8000
     }
   ]
