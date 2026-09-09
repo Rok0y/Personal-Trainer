@@ -23,23 +23,21 @@
     background: var(--fond);
     color: var(--texte);
     font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  .page {
     padding: 16px;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
     max-width: 720px;
     margin-inline: auto;
   }
   h1 { font-size: 21px; margin: 0 0 6px; letter-spacing: -.01em; }
-  h2 { font-size: 17px; margin: 0 0 10px; }
   h3 { font-size: 13px; margin: 18px 0 6px; color: var(--attenue);
        text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
   p { margin: 0 0 12px; }
   .muet { color: var(--attenue); font-size: 14px; }
   .carte {
-    background: var(--carte);
-    border: 1px solid var(--bord);
-    border-radius: 14px;
-    padding: 16px;
-    margin-bottom: 14px;
+    background: var(--carte); border: 1px solid var(--bord);
+    border-radius: 14px; padding: 16px; margin-bottom: 14px;
   }
   button {
     font: inherit; font-weight: 600;
@@ -50,65 +48,106 @@
   button.secondaire { background: var(--carte-haute); color: var(--texte); }
   button.discret { background: none; color: var(--attenue); padding: 10px;
                    text-decoration: underline; }
-  select {
+  select, textarea {
     font: inherit; width: 100%; padding: 12px;
     background: var(--carte-haute); color: var(--texte);
     border: 1px solid var(--bord); border-radius: 10px;
   }
+  textarea { min-height: 90px; resize: vertical; }
   input[type=range] { width: 100%; accent-color: var(--accent); }
   ul { margin: 0; padding-left: 20px; }
   li { margin-bottom: 6px; }
+
   .exercice {
-    display: block; width: 100%; text-align: left;
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
     background: var(--carte); border: 1px solid var(--bord);
     color: var(--texte); font-weight: 600;
     padding: 14px 16px; border-radius: 12px; margin-bottom: 8px;
   }
   .exercice small { display: block; font-weight: 400; color: var(--attenue);
                     margin-top: 3px; font-size: 13px; }
-  #zoneVideo { position: relative; line-height: 0; margin-bottom: 14px; }
-  canvas { width: 100%; height: auto; border-radius: 14px; background: #000; display: block; }
-  .surcouche {
-    position: absolute; inset: auto 0 0 0; padding: 14px;
-    background: linear-gradient(transparent, rgba(0,0,0,.75));
-    border-radius: 0 0 14px 14px; line-height: 1.4;
+  .exercice .pastille {
+    flex: 0 0 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--bord); display: grid; place-items: center;
+    font-size: 13px; color: transparent;
   }
-  .compteur { font-size: 68px; font-weight: 700; line-height: 1;
+  .exercice.fait { border-color: var(--ok); }
+  .exercice.fait .pastille { background: var(--ok); border-color: var(--ok); color: #0f1319; }
+
+  /* Ecran de seance : plein ecran. La camera est le contenu, pas une vignette. */
+  #ecranSeance { position: fixed; inset: 0; background: #000; display: none; }
+  #ecranSeance.actif { display: block; }
+  /* `contain` et non `cover` : recadrer masquerait une partie de ce que le
+     modele analyse, donc on pourrait etre detecte hors de l'image affichee —
+     or c'est precisement le cadrage qu'on cherche a verifier a l'ecran. */
+  #canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .hautDeSeance {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 12px;
+    display: flex; gap: 8px;
+    background: linear-gradient(rgba(0,0,0,.65), transparent);
+  }
+  .hautDeSeance button { width: auto; padding: 9px 14px; font-size: 14px;
+                         background: rgba(0,0,0,.55); backdrop-filter: blur(6px); }
+  .basDeSeance {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(transparent, rgba(0,0,0,.8));
+  }
+  .compteur { font-size: 60px; font-weight: 700; line-height: 1;
               font-variant-numeric: tabular-nums; }
-  .compteur span { font-size: 22px; color: var(--attenue); font-weight: 600; }
-  .consigne { text-align: center; color: var(--alerte); min-height: 24px; margin-bottom: 10px; }
-  .jauge { height: 8px; background: var(--carte-haute); border-radius: 4px; overflow: hidden; }
+  .compteur span { font-size: 20px; color: #c3d0e0; font-weight: 600; }
+  .consigne { color: var(--alerte); min-height: 22px; margin-bottom: 8px; font-weight: 600; }
+  .jauge { height: 8px; background: rgba(255,255,255,.2); border-radius: 4px; overflow: hidden; }
   .jauge > div { height: 100%; background: var(--accent); width: 0; transition: width .15s; }
+  .panneauCamera {
+    position: absolute; inset: auto 12px 0 12px; bottom: 130px;
+    background: rgba(16,20,26,.94); border: 1px solid var(--bord);
+    border-radius: 14px; padding: 14px;
+  }
+
+  .probleme {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 12px; border: 1px solid var(--bord); border-radius: 10px;
+    margin-bottom: 8px; cursor: pointer;
+  }
+  .probleme.coche { border-color: var(--accent); background: rgba(75,155,255,.12); }
+  .probleme input { margin: 3px 0 0; accent-color: var(--accent); flex: 0 0 auto; }
   .reussite { text-align: center; }
-  .reussite .grand { font-size: 44px; font-weight: 700; color: var(--ok); }
+  .reussite .grand { font-size: 42px; font-weight: 700; color: var(--ok); }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 
-<!-- ecran 1 : accueil -->
+<div class="page">
+
 <section id="ecranAccueil">
   <h1>Coach de musculation</h1>
   <p class="muet">Ta caméra compte tes répétitions et une voix te guide. Tout se passe sur ton appareil&nbsp;: aucune image n'est envoyée nulle part.</p>
   <div class="carte">
-    <h3>Ce qu'il te faut</h3>
+    <h3 style="margin-top:0">Ce qu'il te faut</h3>
     <ul class="muet">
-      <li>De quoi caler ton téléphone ou ta tablette, à 2-3 mètres</li>
-      <li>Un peu de place pour bouger</li>
+      <li>De quoi caler ton téléphone ou ta tablette <b>à 2-3 mètres</b>, et surtout <b>à hauteur de poitrine</b> — idéalement entre la poitrine et le nombril. Posé au sol, il ne te verra pas en entier.</li>
+      <li>De la place pour bouger</li>
       <li>Le son activé</li>
+      <li>Des haltères si tu en as — sinon, <b>fais semblant</b>, ça compte pareil</li>
     </ul>
   </div>
   <button id="versExercices">Choisir un exercice</button>
 </section>
 
-<!-- ecran 2 : choix -->
 <section id="ecranChoix" hidden>
   <h1>Quel exercice&nbsp;?</h1>
-  <p class="muet">Prends-en un que tu sais faire — on teste le comptage, pas ta forme.</p>
+  <p class="muet">Prends-en un que tu sais faire — on teste le comptage, pas ta forme. Certains demandent des haltères&nbsp;: si tu n'en as pas, mime le mouvement, la détection ne verra pas la différence.</p>
+  <div class="carte" id="blocResume" hidden>
+    <p style="margin:0 0 10px"><b id="resumeCompte"></b></p>
+    <button class="secondaire" id="boutonResume">Copier le résumé pour Arthur</button>
+    <button class="discret" id="boutonOublier">Tout effacer et recommencer</button>
+  </div>
   <div id="listeExercices"></div>
 </section>
 
-<!-- ecran 3 : fiche -->
 <section id="ecranFiche" hidden>
   <h1 id="ficheNom"></h1>
   <p class="muet" id="ficheDescription"></p>
@@ -123,42 +162,43 @@
   <button class="discret" id="retourChoix">Choisir un autre exercice</button>
 </section>
 
-<!-- ecran 4 : seance -->
-<section id="ecranSeance" hidden>
-  <div id="zoneVideo">
-    <canvas id="canvas"></canvas>
-    <div class="surcouche">
-      <div class="compteur"><span id="compteurUnite"></span> <b id="compteur">0</b> <span id="compteurCible"></span></div>
-    </div>
-  </div>
-  <div class="consigne" id="consigne"></div>
-  <div class="jauge"><div id="jauge"></div></div>
-  <div class="carte" style="margin-top:14px">
-    <h3 style="margin-top:0">Cadrage</h3>
-    <p class="muet" style="margin-bottom:8px">Si tu n'es pas visible en entier, essaie une autre caméra — l'arrière est souvent bien plus large, et la voix te guide sans que tu voies l'écran.</p>
-    <select id="choixCamera"></select>
-    <div id="reglageZoom" hidden style="margin-top:12px">
-      <label class="muet" for="zoom">Zoom arrière</label>
-      <input type="range" id="zoom" style="width:100%">
-    </div>
-    <p class="muet" id="infoCamera" style="margin:8px 0 0"></p>
-  </div>
-  <button class="secondaire" id="boutonArreter" style="margin-top:14px">Arrêter</button>
-</section>
-
-<!-- ecran 5 : fin -->
 <section id="ecranFin" hidden>
   <div class="carte reussite">
     <div class="grand" id="finChiffre"></div>
     <p class="muet" id="finTexte"></p>
   </div>
   <div class="carte">
-    <h3 style="margin-top:0">La vraie question</h3>
-    <p>Est-ce que le comptage était juste&nbsp;? Est-ce que la voix arrivait au bon moment&nbsp;?</p>
-    <p class="muet">C'est exactement ce qu'on cherche à savoir. Copie le résumé et envoie-le, avec ce que tu en as pensé.</p>
-    <button class="secondaire" id="boutonResume">Copier le résumé</button>
+    <h3 style="margin-top:0">Qu'est-ce qui n'allait pas&nbsp;?</h3>
+    <p class="muet">Coche ce que tu as remarqué. Si tout s'est bien passé, ne coche rien.</p>
+    <div id="listeProblemes"></div>
+    <h3>Autre chose&nbsp;?</h3>
+    <textarea id="commentaire" placeholder="Ce qui t'a gêné, surpris, ou manqué…"></textarea>
   </div>
-  <button id="boutonRecommencer">Refaire un exercice</button>
+  <button id="boutonEnregistrer">Enregistrer et revenir à la liste</button>
+</section>
+
+</div>
+
+<section id="ecranSeance">
+  <canvas id="canvas"></canvas>
+  <div class="hautDeSeance">
+    <button class="secondaire" id="boutonArreter">Terminer</button>
+    <button class="secondaire" id="boutonCadrage">Cadrage</button>
+  </div>
+  <div class="panneauCamera" id="panneauCamera" hidden>
+    <p class="muet" style="margin:0 0 8px">Pas visible en entier&nbsp;? La caméra arrière est bien plus large — et la voix te guide sans que tu voies l'écran.</p>
+    <select id="choixCamera"></select>
+    <div id="reglageZoom" hidden style="margin-top:10px">
+      <label class="muet" for="zoom">Zoom arrière</label>
+      <input type="range" id="zoom">
+    </div>
+    <p class="muet" id="infoCamera" style="margin:8px 0 0"></p>
+  </div>
+  <div class="basDeSeance">
+    <div class="consigne" id="consigne"></div>
+    <div class="compteur"><b id="compteur">0</b> <span id="compteurCible"></span></div>
+    <div class="jauge" style="margin-top:10px"><div id="jauge"></div></div>
+  </div>
 </section>
 
 <script type="module">
@@ -177,6 +217,17 @@ const CIBLE_SECONDES = 30;
 // Meme garde-fou que INTERVALLE_MAX_ECHAUFFEMENT cote Python : un onglet
 // suspendu par iOS ne doit pas crediter d'un coup tout le temps ecoule.
 const INTERVALLE_MAX = 0.5;
+const STOCKAGE = "demo-coach-resultats";
+
+const PROBLEMES = [
+  ["comptage_oubli", "Il a oublié des répétitions"],
+  ["comptage_double", "Il en a compté en trop"],
+  ["cadrage", "Il ne me voyait pas bien / cadrage difficile"],
+  ["voix_tard", "La voix arrivait au mauvais moment"],
+  ["pas_de_son", "Je n'ai pas entendu de son"],
+  ["consignes", "Je n'ai pas compris ce qu'il fallait faire"],
+  ["lenteur", "C'était lent ou saccadé"],
+];
 
 let catalogue = [];
 let exercice = null;
@@ -184,7 +235,6 @@ let poseLandmarker = null;
 let flux = null;
 let video = null;
 let miroir = true;
-let verrouEcran = null;
 let compteur = new CompteurMouvement();
 let modeMaintien = null;
 let secondesTenues = 0;
@@ -194,10 +244,37 @@ let derniereValeur = 0;
 let enCours = false;
 let termine = false;
 
+// ----- resultats accumules -----
+// Conserves d'un exercice a l'autre et d'un rechargement a l'autre : le
+// testeur envoie un seul resume a la fin, pas un par exercice.
+
+function lireResultats() {
+  try {
+    return JSON.parse(localStorage.getItem(STOCKAGE)) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function ecrireResultats(resultats) {
+  try {
+    localStorage.setItem(STOCKAGE, JSON.stringify(resultats));
+  } catch {
+    // Navigation privee : les resultats vivront le temps de la session.
+  }
+}
+
+let resultats = lireResultats();
+
 function montrer(id) {
   for (const section of document.querySelectorAll("section")) {
-    section.hidden = section.id !== id;
+    if (section.id === "ecranSeance") {
+      section.classList.toggle("actif", id === "ecranSeance");
+    } else {
+      section.hidden = section.id !== id;
+    }
   }
+  document.querySelector(".page").hidden = id === "ecranSeance";
   window.scrollTo(0, 0);
 }
 
@@ -244,16 +321,31 @@ function jouer(nom) {
 
 async function chargerCatalogue() {
   catalogue = await (await fetch("catalogue.json")).json();
+  dessinerListe();
+}
+
+function dessinerListe() {
   const liste = document.getElementById("listeExercices");
   liste.innerHTML = "";
   for (const fiche of catalogue) {
     if (!DETECTIONS[fiche.detection]) continue;
+    const fait = Boolean(resultats[fiche.nom]);
     const bouton = document.createElement("button");
-    bouton.className = "exercice";
-    bouton.innerHTML = `${fiche.nom}<small>${fiche.description ?? ""}</small>`;
+    bouton.className = `exercice${fait ? " fait" : ""}`;
+    bouton.innerHTML =
+      `<span class="pastille">✓</span>` +
+      `<span>${fiche.nom}<small>${fiche.description ?? ""}</small></span>`;
     bouton.addEventListener("click", () => ouvrirFiche(fiche));
     liste.appendChild(bouton);
   }
+  majResume();
+}
+
+function majResume() {
+  const nombre = Object.keys(resultats).length;
+  document.getElementById("blocResume").hidden = nombre === 0;
+  document.getElementById("resumeCompte").textContent =
+    nombre === 1 ? "1 exercice testé" : `${nombre} exercices testés`;
 }
 
 function ouvrirFiche(fiche) {
@@ -262,6 +354,9 @@ function ouvrirFiche(fiche) {
   document.getElementById("ficheDescription").textContent = fiche.description ?? "";
   remplir("ficheMiseEnPlace", fiche.mise_en_place);
   remplir("ficheInstructions", fiche.instructions);
+  const bouton = document.getElementById("boutonDemarrer");
+  bouton.disabled = false;
+  bouton.textContent = "Démarrer";
   montrer("ecranFiche");
 }
 
@@ -275,43 +370,6 @@ function remplir(id, elements) {
   }
 }
 
-// ----- seance -----
-
-async function demarrer() {
-  const bouton = document.getElementById("boutonDemarrer");
-  const message = document.getElementById("messageDemarrage");
-  bouton.disabled = true;
-  bouton.textContent = "Préparation…";
-
-  try {
-    await debloquerAudio();
-
-    await ouvrirCamera();
-    listerCameras();
-
-    if (!poseLandmarker) {
-      const fileset = await FilesetResolver.forVisionTasks(VERSION_WASM);
-      poseLandmarker = await creerDetecteur(fileset);
-    }
-
-    try {
-      verrouEcran = await navigator.wakeLock.request("screen");
-    } catch {
-      // L'ecran s'eteindra peut-etre : genant, pas bloquant.
-    }
-
-    chargerSons();
-    reinitialiser();
-    montrer("ecranSeance");
-    enCours = true;
-    requestAnimationFrame(boucle);
-  } catch (erreur) {
-    message.textContent = `Impossible de démarrer : ${erreur.message}`;
-    bouton.disabled = false;
-    bouton.textContent = "Réessayer";
-  }
-}
-
 // ----- camera -----
 
 async function ouvrirCamera(deviceId) {
@@ -319,9 +377,9 @@ async function ouvrirCamera(deviceId) {
     for (const piste of flux.getTracks()) piste.stop();
   }
 
-  // Une resolution large est demandee en 4:3 plutot qu'en 16:9 : sur un
-  // telephone tenu debout, c'est la hauteur qui manque pour cadrer un corps
-  // entier, et le 16:9 rogne precisement le haut et le bas.
+  // Resolution demandee en 4:3 plutot qu'en 16:9 : sur un telephone pose
+  // debout, c'est la hauteur qui manque pour cadrer un corps entier, et le
+  // 16:9 rogne precisement le haut et le bas.
   const contrainte = deviceId
     ? { deviceId: { exact: deviceId } }
     : { facingMode: "user" };
@@ -341,9 +399,9 @@ async function ouvrirCamera(deviceId) {
   const piste = flux.getVideoTracks()[0];
   const reglages = piste.getSettings();
 
-  // Le miroir est une convention d'affichage du selfie : sur une camera
+  // Le miroir est une convention d'affichage du selfie ; sur une camera
   // arriere il desoriente. Il ne touche que le dessin, jamais l'image
-  // envoyee au modele — la detection est donc insensible a ce choix.
+  // envoyee au modele — la detection y est donc insensible.
   miroir = reglages.facingMode !== "environment";
 
   configurerZoom(piste);
@@ -361,7 +419,6 @@ function configurerZoom(piste) {
     bloc.hidden = true;
     return;
   }
-
   bloc.hidden = false;
   curseur.min = capacites.zoom.min;
   curseur.max = capacites.zoom.max;
@@ -374,7 +431,7 @@ function configurerZoom(piste) {
 
 async function listerCameras() {
   // Les libelles ne sont renseignes qu'une fois l'autorisation accordee :
-  // enumerer avant le premier getUserMedia ne donnerait que des entrees
+  // enumerer avant le premier getUserMedia ne rendrait que des entrees
   // anonymes.
   const appareils = await navigator.mediaDevices.enumerateDevices();
   const cameras = appareils.filter((a) => a.kind === "videoinput");
@@ -390,6 +447,45 @@ async function listerCameras() {
     select.appendChild(option);
   });
   select.hidden = cameras.length < 2;
+}
+
+// ----- seance -----
+
+let verrouEcran = null;
+
+async function demarrer() {
+  const bouton = document.getElementById("boutonDemarrer");
+  const message = document.getElementById("messageDemarrage");
+  bouton.disabled = true;
+  bouton.textContent = "Préparation…";
+
+  try {
+    await debloquerAudio();
+    await ouvrirCamera();
+    listerCameras();
+
+    if (!poseLandmarker) {
+      const fileset = await FilesetResolver.forVisionTasks(VERSION_WASM);
+      poseLandmarker = await creerDetecteur(fileset);
+    }
+
+    try {
+      verrouEcran = await navigator.wakeLock.request("screen");
+    } catch {
+      // L'ecran s'eteindra peut-etre : genant, pas bloquant.
+    }
+
+    chargerSons();
+    reinitialiser();
+    document.getElementById("panneauCamera").hidden = true;
+    montrer("ecranSeance");
+    enCours = true;
+    requestAnimationFrame(boucle);
+  } catch (erreur) {
+    message.textContent = `Impossible de démarrer : ${erreur.message}`;
+    bouton.disabled = false;
+    bouton.textContent = "Réessayer";
+  }
 }
 
 async function creerDetecteur(fileset) {
@@ -415,7 +511,6 @@ function reinitialiser() {
   termine = false;
   document.getElementById("compteur").textContent = "0";
   document.getElementById("jauge").style.width = "0%";
-  document.getElementById("compteurUnite").textContent = "";
   document.getElementById("compteurCible").textContent = "";
 }
 
@@ -475,7 +570,7 @@ function traiter(corps, instant) {
   if (modeMaintien === null) {
     modeMaintien = jeton === "maintien" || jeton === "repos";
     document.getElementById("compteurCible").textContent =
-      modeMaintien ? `/ ${CIBLE_SECONDES} s` : `/ ${CIBLE_REPETITIONS}`;
+      modeMaintien ? `secondes / ${CIBLE_SECONDES}` : `/ ${CIBLE_REPETITIONS}`;
   }
 
   if (modeMaintien) {
@@ -488,19 +583,18 @@ function traiter(corps, instant) {
       dernierInstant = null;
       document.getElementById("consigne").textContent = "Reprends la position";
     }
-    majAffichage(Math.floor(secondesTenues), CIBLE_SECONDES, "s");
+    majAffichage(Math.floor(secondesTenues), CIBLE_SECONDES);
   } else {
     dernierInstant = null;
     const [, repetitions] = compteur.mettre_a_jour(jeton);
-    majAffichage(repetitions, CIBLE_REPETITIONS, "");
+    majAffichage(repetitions, CIBLE_REPETITIONS);
   }
 }
 
-function majAffichage(valeur, cible, unite) {
+function majAffichage(valeur, cible) {
   if (valeur !== derniereValeur) {
     derniereValeur = valeur;
     document.getElementById("compteur").textContent = valeur;
-    document.getElementById("compteurUnite").textContent = unite;
     if (valeur > 0) jouer(valeur <= 20 ? valeur : "bip");
   }
   document.getElementById("jauge").style.width =
@@ -509,18 +603,34 @@ function majAffichage(valeur, cible, unite) {
   if (valeur >= cible && !termine) {
     termine = true;
     jouer("bip");
-    setTimeout(terminer, 700);
+    setTimeout(() => terminer(true), 700);
   }
 }
 
-function terminer() {
+function terminer(objectifAtteint) {
   arreterCapture();
-  const valeur = derniereValeur;
   document.getElementById("finChiffre").textContent =
-    modeMaintien ? `${valeur} s` : `${valeur} répétitions`;
+    modeMaintien ? `${derniereValeur} s` : `${derniereValeur} répétitions`;
   document.getElementById("finTexte").textContent =
-    `${exercice.nom} — objectif atteint.`;
+    `${exercice.nom} — ${objectifAtteint ? "objectif atteint" : "arrêté avant la fin"}.`;
+  dessinerProblemes();
+  document.getElementById("commentaire").value = "";
   montrer("ecranFin");
+}
+
+function dessinerProblemes() {
+  const conteneur = document.getElementById("listeProblemes");
+  conteneur.innerHTML = "";
+  for (const [cle, libelle] of PROBLEMES) {
+    const ligne = document.createElement("label");
+    ligne.className = "probleme";
+    ligne.innerHTML = `<input type="checkbox" value="${cle}"><span>${libelle}</span>`;
+    const case_ = ligne.querySelector("input");
+    case_.addEventListener("change", () =>
+      ligne.classList.toggle("coche", case_.checked)
+    );
+    conteneur.appendChild(ligne);
+  }
 }
 
 function arreterCapture() {
@@ -543,46 +653,69 @@ document.getElementById("retourChoix")
   .addEventListener("click", () => montrer("ecranChoix"));
 document.getElementById("boutonDemarrer").addEventListener("click", demarrer);
 
+document.getElementById("boutonCadrage").addEventListener("click", () => {
+  const panneau = document.getElementById("panneauCamera");
+  panneau.hidden = !panneau.hidden;
+});
+
 document.getElementById("choixCamera").addEventListener("change", async (e) => {
-  const info = document.getElementById("infoCamera");
   try {
     await ouvrirCamera(e.target.value);
   } catch (erreur) {
-    info.textContent = `Caméra indisponible : ${erreur.message}`;
+    document.getElementById("infoCamera").textContent =
+      `Caméra indisponible : ${erreur.message}`;
   }
 });
 
-document.getElementById("boutonArreter").addEventListener("click", () => {
-  arreterCapture();
-  document.getElementById("finChiffre").textContent =
-    modeMaintien ? `${derniereValeur} s` : `${derniereValeur} répétitions`;
-  document.getElementById("finTexte").textContent = `${exercice.nom} — arrêté avant la fin.`;
-  montrer("ecranFin");
-});
+document.getElementById("boutonArreter")
+  .addEventListener("click", () => terminer(false));
 
-document.getElementById("boutonRecommencer").addEventListener("click", () => {
-  const bouton = document.getElementById("boutonDemarrer");
-  bouton.disabled = false;
-  bouton.textContent = "Démarrer";
+document.getElementById("boutonEnregistrer").addEventListener("click", () => {
+  const problemes = [...document.querySelectorAll("#listeProblemes input:checked")]
+    .map((c) => c.value);
+  resultats[exercice.nom] = {
+    valeur: derniereValeur,
+    unite: modeMaintien ? "s" : "reps",
+    problemes,
+    commentaire: document.getElementById("commentaire").value.trim(),
+  };
+  ecrireResultats(resultats);
+  dessinerListe();
   montrer("ecranChoix");
 });
 
 document.getElementById("boutonResume").addEventListener("click", async () => {
+  const libelles = Object.fromEntries(PROBLEMES);
+  const lignes = Object.entries(resultats).map(([nom, r]) => {
+    const soucis = r.problemes.length
+      ? r.problemes.map((p) => libelles[p]).join(" ; ")
+      : "rien à signaler";
+    const commentaire = r.commentaire ? `\n    « ${r.commentaire} »` : "";
+    return `- ${nom} : ${r.valeur} ${r.unite} — ${soucis}${commentaire}`;
+  });
+
   const resume = [
-    `Exercice : ${exercice?.nom ?? "—"}`,
-    modeMaintien ? `Tenu : ${derniereValeur} s` : `Comptées : ${derniereValeur}`,
+    `Test de la démo — ${Object.keys(resultats).length} exercice(s)`,
     `Appareil : ${navigator.userAgent}`,
     "",
-    "Le comptage était-il juste ? ",
-    "La voix arrivait-elle au bon moment ? ",
-    "Qu'est-ce qui a manqué ? ",
+    ...lignes,
   ].join("\n");
+
+  const bouton = document.getElementById("boutonResume");
   try {
     await navigator.clipboard.writeText(resume);
-    document.getElementById("boutonResume").textContent = "Résumé copié";
+    bouton.textContent = "Résumé copié — envoie-le à Arthur";
   } catch {
-    alert(resume);
+    prompt("Copie ce texte et envoie-le :", resume);
   }
+});
+
+document.getElementById("boutonOublier").addEventListener("click", () => {
+  if (!confirm("Effacer tous les résultats de ce test ?")) return;
+  resultats = {};
+  ecrireResultats(resultats);
+  dessinerListe();
+  document.getElementById("boutonResume").textContent = "Copier le résumé pour Arthur";
 });
 
 chargerCatalogue();
