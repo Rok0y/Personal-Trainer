@@ -63,3 +63,12 @@ htmlcov/
 # Historiques
 # =========================
 *.db
+
+# =========================
+# Spike de validation web
+# =========================
+
+# Copies de travail des sons : les originaux sont dans audio/Fichiers/,
+# dupliquées ici uniquement parce qu'un serveur statique ne sert jamais
+# au-dessus de sa racine.
+spike/sons/
