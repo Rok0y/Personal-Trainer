@@ -166,6 +166,14 @@ class Circuit:
         # se trouve connecté quand le thread caméra l'écrit : entre la dernière
         # répétition et l'écriture en base, il y a le temps de changer de profil.
         self.utilisateur_id = None
+        # Horloge des modes qui cumulent des deltas image par image
+        # (`gerer_mode_maintien`, `gerer_mode_echauffement`). Portée par la
+        # séance et non par le module : chaque client a sa propre ligne de
+        # temps, et un serveur multi-sessions en ferait tourner plusieurs en
+        # parallèle. Un client web la remplace par sa propre horodatation, ce
+        # qui sort la latence du réseau du calcul — seule la gigue subsiste,
+        # que `moteur.INTERVALLE_MAX` borne déjà.
+        self.maintenant = time.monotonic
         self.debut = time.time()
         self.resultats_series = []
         self.paires_entrelacees = self._detecter_paires_entrelacees()

@@ -1,5 +1,3 @@
-import time
-
 from audio.coach import annoncer_progression, annoncer_temps_restant
 from core.messages import libelle_etape, texte
 from session.circuit import (
@@ -186,7 +184,7 @@ def gerer_mode_maintien(corps, bloc, seance, state, coach):
 
     if position != "maintien" and getattr(bloc, "position_maintien_validee", False):
         coach("correction_gainage")
-    maintenant = time.monotonic()
+    maintenant = seance.maintenant()
 
     if not hasattr(bloc, "dernier_maintien"):
         bloc.dernier_maintien = maintenant
@@ -226,7 +224,7 @@ def gerer_mode_chrono(bloc, seance, state):
     # doit effacer celle du bloc précédent, sinon le bandeau reste affiché
     # pendant toute la durée du mouvement.
     state.erreur = None
-    maintenant = time.monotonic()
+    maintenant = seance.maintenant()
 
     if not hasattr(bloc, "debut_chrono"):
         bloc.debut_chrono = maintenant
@@ -255,7 +253,7 @@ def gerer_mode_chrono(bloc, seance, state):
 def gerer_mode_amrap(corps, bloc, compteur, seance, state, coach, derniere_rep):
 
     mettre_a_jour_erreur(bloc.exercice, corps, state)
-    maintenant = time.monotonic()
+    maintenant = seance.maintenant()
 
     if not hasattr(bloc, "debut_amrap"):
         bloc.debut_amrap = maintenant
@@ -309,7 +307,7 @@ def gerer_mode_echauffement(corps, bloc, seance, state):
       n'alimente que l'affichage : elle ne conditionne jamais l'avancement du
       chrono, un échauffement ne doit pas pouvoir se bloquer.
     """
-    maintenant = time.monotonic()
+    maintenant = seance.maintenant()
 
     if not hasattr(bloc, "temps_echauffement"):
         bloc.temps_echauffement = 0
