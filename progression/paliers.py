@@ -157,7 +157,9 @@ SPECS = {
     "Elevations latérales": SpecProgression(
         series=3, cible_min=10, cible_max=18, poids_min=2, poids_max=8
     ),
-    # Lourd et court : la fourchette basse évite qu'une série de 7 à 14 kg
+    # Lourd et court : la fourchette est basse des deux côtés, pour qu'une
+    # série de 7 répétitions à 14 kg reste dans le barème plutôt que d'en
+    # sortir alors qu'elle vaut plus que 15 répétitions à 6 kg.
     "Extension Triceps": SpecProgression(
         series=3, cible_min=6, cible_max=10, poids_min=8
     ),
@@ -197,7 +199,7 @@ SPECS = {
     ),
     # --- Abdos et gainage ---
     "Crunches": SpecProgression(series=3, cible_min=5, cible_max=15),
-    # Le gainage plafonne à deux minutes par série : au-delà, tenir plus
+    # Le gainage plafonne à une minute par série : au-delà, tenir plus
     # longtemps ne teste plus grand-chose, et c'est le nombre de séries qui
     # prend le relais.
     "Gainage planche": SpecProgression(
