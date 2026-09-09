@@ -65,6 +65,14 @@ htmlcov/
 *.db
 
 # =========================
+# Harnais de comparaison Python / JS
+# =========================
+
+# Donnee derivee : regeneree a l'identique en quelques secondes par
+# `python -m scripts.generer_fixtures`, la graine etant fixe.
+scripts/fixtures_detections.jsonl
+
+# =========================
 # Spike de validation web
 # =========================
 

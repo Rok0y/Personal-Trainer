@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "description": "Marque ce dossier comme du JavaScript a modules pour Node, afin que le harnais de comparaison puisse importer ces fichiers tels quels. Le navigateur, lui, les charge deja comme des modules et ignore ce fichier."
+}
