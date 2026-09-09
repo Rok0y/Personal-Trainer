@@ -134,6 +134,10 @@
       <li>Des haltères si tu en as — sinon, <b>fais semblant</b>, ça compte pareil</li>
     </ul>
   </div>
+  <div class="carte" id="avertissementWebview" hidden style="border-color:var(--alerte)">
+    <p style="margin:0"><b>Ouvre plutôt cette page dans Safari.</b></p>
+    <p class="muet" style="margin:6px 0 0">Tu l'as ouverte depuis une application (Messenger, Instagram…), dont le navigateur intégré peut couper le son. Menu «&nbsp;…&nbsp;» en haut à droite → «&nbsp;Ouvrir dans le navigateur&nbsp;».</p>
+  </div>
   <button id="versExercices">Choisir un exercice</button>
 </section>
 
@@ -158,7 +162,8 @@
     <ul id="ficheInstructions"></ul>
   </div>
   <button id="boutonDemarrer">Démarrer</button>
-  <p class="muet" style="text-align:center" id="messageDemarrage">Le son s'active à ce clic&nbsp;: iOS l'exige.</p>
+  <button class="secondaire" id="boutonTestSon" style="margin-top:8px">Tester le son</button>
+  <p class="muet" style="text-align:center" id="messageDemarrage">Le son s'active au premier clic&nbsp;: iOS l'exige. Monte le volume et vérifie avant de commencer.</p>
   <button class="discret" id="retourChoix">Choisir un autre exercice</button>
 </section>
 
@@ -184,6 +189,7 @@
   <div class="hautDeSeance">
     <button class="secondaire" id="boutonArreter">Terminer</button>
     <button class="secondaire" id="boutonCadrage">Cadrage</button>
+    <button class="secondaire" id="boutonCommencer">Commencer</button>
   </div>
   <div class="panneauCamera" id="panneauCamera" hidden>
     <p class="muet" style="margin:0 0 8px">Pas visible en entier&nbsp;? La caméra arrière est bien plus large — et la voix te guide sans que tu voies l'écran.</p>
@@ -218,6 +224,9 @@ const CIBLE_SECONDES = 30;
 // suspendu par iOS ne doit pas crediter d'un coup tout le temps ecoule.
 const INTERVALLE_MAX = 0.5;
 const STOCKAGE = "demo-coach-resultats";
+const MAX_PERSONNES = 4;
+const SECONDES_EN_POSITION = 1;
+const DECOMPTE = 3;
 
 const PROBLEMES = [
   ["comptage_oubli", "Il a oublié des répétitions"],
@@ -226,6 +235,8 @@ const PROBLEMES = [
   ["voix_tard", "La voix arrivait au mauvais moment"],
   ["pas_de_son", "Je n'ai pas entendu de son"],
   ["consignes", "Je n'ai pas compris ce qu'il fallait faire"],
+  ["modele", "J'aurais voulu voir le mouvement en image ou en vidéo"],
+  ["depart", "Il a compté pendant que je m'installais"],
   ["lenteur", "C'était lent ou saccadé"],
 ];
 
@@ -243,6 +254,12 @@ let dernierHorodatage = -1;
 let derniereValeur = 0;
 let enCours = false;
 let termine = false;
+let phase = "preparation";
+let debutImmobile = null;
+let finDecompte = null;
+let dernierDecompteDit = null;
+let bustePrecedent = null;
+let personnesVues = 0;
 
 // ----- resultats accumules -----
 // Conserves d'un exercice a l'autre et d'un rechargement a l'autre : le
@@ -284,13 +301,40 @@ let contexteAudio = null;
 const sons = new Map();
 
 async function debloquerAudio() {
-  contexteAudio = new (window.AudioContext || window.webkitAudioContext)();
+  if (!contexteAudio) {
+    contexteAudio = new (window.AudioContext || window.webkitAudioContext)();
+    // iOS suspend un contexte audio a la moindre reconfiguration de session
+    // — notamment a l'ouverture de la camera. Sans cette reprise
+    // automatique, tout devient muet sans qu'aucune erreur ne soit levee.
+    contexteAudio.addEventListener("statechange", () => {
+      if (contexteAudio.state === "suspended") contexteAudio.resume().catch(() => {});
+    });
+  }
   const vide = contexteAudio.createBuffer(1, 1, 22050);
   const source = contexteAudio.createBufferSource();
   source.buffer = vide;
   source.connect(contexteAudio.destination);
   source.start(0);
   await contexteAudio.resume();
+}
+
+function navigateurIntegre() {
+  // Un lien ouvert depuis Messenger, Instagram ou TikTok s'affiche dans une
+  // webview integree, aux capacites reduites — l'utilisateur croit pourtant
+  // etre dans son navigateur.
+  const ua = navigator.userAgent;
+  for (const marque of ["FBAN", "FBAV", "Instagram", "Line/", "TikTok", "Twitter"]) {
+    if (ua.includes(marque)) return marque;
+  }
+  return null;
+}
+
+function diagnostic() {
+  return {
+    audio: contexteAudio?.state ?? "absent",
+    sons: sons.size,
+    webview: navigateurIntegre(),
+  };
 }
 
 async function chargerSons() {
@@ -462,6 +506,9 @@ async function demarrer() {
   try {
     await debloquerAudio();
     await ouvrirCamera();
+    // L'ouverture de la camera vient peut-etre de suspendre le contexte :
+    // on le relance apres, pas avant.
+    await contexteAudio.resume().catch(() => {});
     listerCameras();
 
     if (!poseLandmarker) {
@@ -492,7 +539,10 @@ async function creerDetecteur(fileset) {
   const options = {
     baseOptions: { modelAssetPath: MODELE, delegate: "GPU" },
     runningMode: "VIDEO",
-    numPoses: 1,
+    // Plusieurs poses en salle de sport : n'en chercher qu'une laisserait le
+    // modele designer lui-meme un sujet, et changer d'avis d'une image a
+    // l'autre — le compteur suivrait alternativement deux personnes.
+    numPoses: MAX_PERSONNES,
   };
   try {
     return await PoseLandmarker.createFromOptions(fileset, options);
@@ -509,9 +559,16 @@ function reinitialiser() {
   dernierInstant = null;
   derniereValeur = 0;
   termine = false;
+  phase = "preparation";
+  debutImmobile = null;
+  finDecompte = null;
+  dernierDecompteDit = null;
+  bustePrecedent = null;
   document.getElementById("compteur").textContent = "0";
   document.getElementById("jauge").style.width = "0%";
   document.getElementById("compteurCible").textContent = "";
+  document.getElementById("boutonCommencer").hidden = false;
+  afficherConsigne("Mets-toi en position");
 }
 
 function boucle() {
@@ -532,7 +589,8 @@ function boucle() {
   dernierHorodatage = horodatage;
 
   const resultat = poseLandmarker.detectForVideo(video, horodatage);
-  const landmarks = resultat.landmarks?.[0];
+  const landmarks = choisirPose(resultat.landmarks);
+  personnesVues = resultat.landmarks?.length ?? 0;
 
   const ctx = canvas.getContext("2d");
   ctx.save();
@@ -549,16 +607,42 @@ function boucle() {
   }
   ctx.restore();
 
-  const consigne = document.getElementById("consigne");
   if (!landmarks) {
-    consigne.textContent = "Recule un peu — je ne te vois pas en entier";
+    afficherConsigne("Recule un peu — je ne te vois pas en entier");
     dernierInstant = null;
-  } else {
-    consigne.textContent = "";
-    if (!termine) traiter(construire_corps(landmarks), maintenant / 1000);
+    debutEnPosition = null;
+  } else if (!termine) {
+    traiter(construire_corps(landmarks), maintenant / 1000);
   }
 
   requestAnimationFrame(boucle);
+}
+
+function choisirPose(poses) {
+  if (!poses?.length) return null;
+  if (poses.length === 1) return poses[0];
+
+  // La personne qui s'entraine est celle qui fait face a la camera, donc la
+  // plus grande a l'image. Choisir soi-meme evite que le modele change de
+  // sujet d'une image a l'autre — le compteur suivrait alors deux personnes
+  // en alternance, sans que rien ne le signale.
+  let meilleure = null;
+  let meilleureSurface = -1;
+  for (const pose of poses) {
+    const xs = pose.map((p) => p.x);
+    const ys = pose.map((p) => p.y);
+    const surface =
+      (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
+    if (surface > meilleureSurface) {
+      meilleureSurface = surface;
+      meilleure = pose;
+    }
+  }
+  return meilleure;
+}
+
+function afficherConsigne(texte) {
+  document.getElementById("consigne").textContent = texte;
 }
 
 function traiter(corps, instant) {
@@ -571,6 +655,11 @@ function traiter(corps, instant) {
     modeMaintien = jeton === "maintien" || jeton === "repos";
     document.getElementById("compteurCible").textContent =
       modeMaintien ? `secondes / ${CIBLE_SECONDES}` : `/ ${CIBLE_REPETITIONS}`;
+  }
+
+  if (phase !== "comptage") {
+    preparer(corps, instant);
+    return;
   }
 
   if (modeMaintien) {
@@ -589,6 +678,80 @@ function traiter(corps, instant) {
     const [, repetitions] = compteur.mettre_a_jour(jeton);
     majAffichage(repetitions, CIBLE_REPETITIONS);
   }
+}
+
+// Deplacement du buste, en unites d'image par seconde, sous lequel on
+// considere la personne installee.
+const SEUIL_IMMOBILE = 0.25;
+
+function preparer(corps, instant) {
+  if (phase === "decompte") {
+    const restant = Math.ceil(finDecompte - instant);
+    if (restant <= 0) {
+      lancerComptage();
+      return;
+    }
+    if (restant !== dernierDecompteDit) {
+      dernierDecompteDit = restant;
+      jouer("bip");
+    }
+    afficherConsigne(`Ça démarre dans ${restant}…`);
+    return;
+  }
+
+  const bouge = mesurerMouvement(corps, instant);
+  const foule = personnesVues > 1 ? ` (${personnesVues} personnes vues, je suis la plus proche)` : "";
+
+  if (bouge === null || bouge > SEUIL_IMMOBILE) {
+    debutImmobile = null;
+    afficherConsigne(`Mets-toi en position${foule}`);
+    return;
+  }
+
+  if (debutImmobile === null) debutImmobile = instant;
+  if (instant - debutImmobile >= SECONDES_EN_POSITION) {
+    phase = "decompte";
+    finDecompte = instant + DECOMPTE;
+    dernierDecompteDit = null;
+  } else {
+    afficherConsigne(`Ne bouge plus${foule}`);
+  }
+}
+
+function mesurerMouvement(corps, instant) {
+  // Le buste seulement : poignets et chevilles bougent encore quand
+  // quelqu'un est pret, et feraient echouer la detection d'immobilite.
+  const points = [
+    corps.epaule_gauche, corps.epaule_droite,
+    corps.hanche_gauche, corps.hanche_droite,
+  ];
+  const actuel = points.map((p) => ({ x: p.x, y: p.y }));
+
+  if (!bustePrecedent || bustePrecedent.instant === instant) {
+    bustePrecedent = { points: actuel, instant };
+    return null;
+  }
+
+  const ecoule = instant - bustePrecedent.instant;
+  const total = actuel.reduce((somme, p, i) => {
+    const avant = bustePrecedent.points[i];
+    return somme + Math.hypot(p.x - avant.x, p.y - avant.y);
+  }, 0);
+  bustePrecedent = { points: actuel, instant };
+
+  return total / actuel.length / ecoule;
+}
+
+function lancerComptage() {
+  phase = "comptage";
+  compteur.reset();
+  secondesTenues = 0;
+  dernierInstant = null;
+  derniereValeur = 0;
+  document.getElementById("compteur").textContent = "0";
+  document.getElementById("boutonCommencer").hidden = true;
+  afficherConsigne("");
+  jouer("bip");
 }
 
 function majAffichage(valeur, cible) {
@@ -653,6 +816,17 @@ document.getElementById("retourChoix")
   .addEventListener("click", () => montrer("ecranChoix"));
 document.getElementById("boutonDemarrer").addEventListener("click", demarrer);
 
+document.getElementById("boutonTestSon").addEventListener("click", async (e) => {
+  const bouton = e.currentTarget;
+  await debloquerAudio();
+  if (!sons.size) await chargerSons();
+  jouer("bip");
+  const d = diagnostic();
+  bouton.textContent = d.audio === "running" && d.sons
+    ? "Tu as entendu un bip ? Sinon, monte le volume"
+    : `Son indisponible (${d.audio}, ${d.sons} sons)`;
+});
+
 document.getElementById("boutonCadrage").addEventListener("click", () => {
   const panneau = document.getElementById("panneauCamera");
   panneau.hidden = !panneau.hidden;
@@ -667,6 +841,11 @@ document.getElementById("choixCamera").addEventListener("change", async (e) => {
   }
 });
 
+// Filet de securite : personne ne doit rester bloque en preparation parce
+// que la detection d'immobilite ne se declenche pas chez lui.
+document.getElementById("boutonCommencer")
+  .addEventListener("click", () => { if (phase !== "comptage") lancerComptage(); });
+
 document.getElementById("boutonArreter")
   .addEventListener("click", () => terminer(false));
 
@@ -678,6 +857,10 @@ document.getElementById("boutonEnregistrer").addEventListener("click", () => {
     unite: modeMaintien ? "s" : "reps",
     problemes,
     commentaire: document.getElementById("commentaire").value.trim(),
+    // Mesure plutot que deduction : « je n'ai pas entendu de son » ne dit pas
+    // si le contexte audio tournait, si les fichiers etaient charges, ni si
+    // la page s'affichait dans une webview bridee.
+    technique: diagnostic(),
   };
   ecrireResultats(resultats);
   dessinerListe();
@@ -691,12 +874,15 @@ document.getElementById("boutonResume").addEventListener("click", async () => {
       ? r.problemes.map((p) => libelles[p]).join(" ; ")
       : "rien à signaler";
     const commentaire = r.commentaire ? `\n    « ${r.commentaire} »` : "";
-    return `- ${nom} : ${r.valeur} ${r.unite} — ${soucis}${commentaire}`;
+    const t = r.technique;
+    const technique = t ? `\n    [audio ${t.audio}, ${t.sons} sons${t.webview ? `, webview ${t.webview}` : ""}]` : "";
+    return `- ${nom} : ${r.valeur} ${r.unite} — ${soucis}${commentaire}${technique}`;
   });
 
   const resume = [
     `Test de la démo — ${Object.keys(resultats).length} exercice(s)`,
     `Appareil : ${navigator.userAgent}`,
+    `Navigateur intégré : ${navigateurIntegre() ?? "non"}`,
     "",
     ...lignes,
   ].join("\n");
@@ -717,6 +903,8 @@ document.getElementById("boutonOublier").addEventListener("click", () => {
   dessinerListe();
   document.getElementById("boutonResume").textContent = "Copier le résumé pour Arthur";
 });
+
+document.getElementById("avertissementWebview").hidden = !navigateurIntegre();
 
 chargerCatalogue();
 </script>
