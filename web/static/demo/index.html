@@ -50,6 +50,12 @@
   button.secondaire { background: var(--carte-haute); color: var(--texte); }
   button.discret { background: none; color: var(--attenue); padding: 10px;
                    text-decoration: underline; }
+  select {
+    font: inherit; width: 100%; padding: 12px;
+    background: var(--carte-haute); color: var(--texte);
+    border: 1px solid var(--bord); border-radius: 10px;
+  }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
   ul { margin: 0; padding-left: 20px; }
   li { margin-bottom: 6px; }
   .exercice {
@@ -127,6 +133,16 @@
   </div>
   <div class="consigne" id="consigne"></div>
   <div class="jauge"><div id="jauge"></div></div>
+  <div class="carte" style="margin-top:14px">
+    <h3 style="margin-top:0">Cadrage</h3>
+    <p class="muet" style="margin-bottom:8px">Si tu n'es pas visible en entier, essaie une autre caméra — l'arrière est souvent bien plus large, et la voix te guide sans que tu voies l'écran.</p>
+    <select id="choixCamera"></select>
+    <div id="reglageZoom" hidden style="margin-top:12px">
+      <label class="muet" for="zoom">Zoom arrière</label>
+      <input type="range" id="zoom" style="width:100%">
+    </div>
+    <p class="muet" id="infoCamera" style="margin:8px 0 0"></p>
+  </div>
   <button class="secondaire" id="boutonArreter" style="margin-top:14px">Arrêter</button>
 </section>
 
@@ -166,6 +182,8 @@ let catalogue = [];
 let exercice = null;
 let poseLandmarker = null;
 let flux = null;
+let video = null;
+let miroir = true;
 let verrouEcran = null;
 let compteur = new CompteurMouvement();
 let modeMaintien = null;
@@ -268,16 +286,8 @@ async function demarrer() {
   try {
     await debloquerAudio();
 
-    flux = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false,
-    });
-    const video = document.createElement("video");
-    video.playsInline = true;
-    video.muted = true;
-    video.srcObject = flux;
-    await video.play();
-    window._video = video;
+    await ouvrirCamera();
+    listerCameras();
 
     if (!poseLandmarker) {
       const fileset = await FilesetResolver.forVisionTasks(VERSION_WASM);
@@ -300,6 +310,86 @@ async function demarrer() {
     bouton.disabled = false;
     bouton.textContent = "Réessayer";
   }
+}
+
+// ----- camera -----
+
+async function ouvrirCamera(deviceId) {
+  if (flux) {
+    for (const piste of flux.getTracks()) piste.stop();
+  }
+
+  // Une resolution large est demandee en 4:3 plutot qu'en 16:9 : sur un
+  // telephone tenu debout, c'est la hauteur qui manque pour cadrer un corps
+  // entier, et le 16:9 rogne precisement le haut et le bas.
+  const contrainte = deviceId
+    ? { deviceId: { exact: deviceId } }
+    : { facingMode: "user" };
+  contrainte.width = { ideal: 1920 };
+  contrainte.height = { ideal: 1440 };
+
+  flux = await navigator.mediaDevices.getUserMedia({ video: contrainte, audio: false });
+
+  if (!video) {
+    video = document.createElement("video");
+    video.playsInline = true;
+    video.muted = true;
+  }
+  video.srcObject = flux;
+  await video.play();
+
+  const piste = flux.getVideoTracks()[0];
+  const reglages = piste.getSettings();
+
+  // Le miroir est une convention d'affichage du selfie : sur une camera
+  // arriere il desoriente. Il ne touche que le dessin, jamais l'image
+  // envoyee au modele — la detection est donc insensible a ce choix.
+  miroir = reglages.facingMode !== "environment";
+
+  configurerZoom(piste);
+  document.getElementById("infoCamera").textContent =
+    `${reglages.width}x${reglages.height}` +
+    (reglages.facingMode ? ` — ${reglages.facingMode}` : "");
+}
+
+function configurerZoom(piste) {
+  const bloc = document.getElementById("reglageZoom");
+  const curseur = document.getElementById("zoom");
+  const capacites = piste.getCapabilities?.() ?? {};
+
+  if (!capacites.zoom) {
+    bloc.hidden = true;
+    return;
+  }
+
+  bloc.hidden = false;
+  curseur.min = capacites.zoom.min;
+  curseur.max = capacites.zoom.max;
+  curseur.step = capacites.zoom.step ?? 0.1;
+  curseur.value = piste.getSettings().zoom ?? capacites.zoom.min;
+  curseur.oninput = () => {
+    piste.applyConstraints({ advanced: [{ zoom: Number(curseur.value) }] }).catch(() => {});
+  };
+}
+
+async function listerCameras() {
+  // Les libelles ne sont renseignes qu'une fois l'autorisation accordee :
+  // enumerer avant le premier getUserMedia ne donnerait que des entrees
+  // anonymes.
+  const appareils = await navigator.mediaDevices.enumerateDevices();
+  const cameras = appareils.filter((a) => a.kind === "videoinput");
+  const select = document.getElementById("choixCamera");
+  const actuelle = flux?.getVideoTracks()[0]?.getSettings()?.deviceId;
+
+  select.innerHTML = "";
+  cameras.forEach((camera, index) => {
+    const option = document.createElement("option");
+    option.value = camera.deviceId;
+    option.textContent = camera.label || `Caméra ${index + 1}`;
+    option.selected = camera.deviceId === actuelle;
+    select.appendChild(option);
+  });
+  select.hidden = cameras.length < 2;
 }
 
 async function creerDetecteur(fileset) {
@@ -331,10 +421,9 @@ function reinitialiser() {
 
 function boucle() {
   if (!enCours) return;
-  const video = window._video;
   const canvas = document.getElementById("canvas");
 
-  if (video.readyState < 2) {
+  if (!video || video.readyState < 2) {
     requestAnimationFrame(boucle);
     return;
   }
@@ -352,8 +441,10 @@ function boucle() {
 
   const ctx = canvas.getContext("2d");
   ctx.save();
-  ctx.translate(canvas.width, 0);
-  ctx.scale(-1, 1);
+  if (miroir) {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   if (landmarks) {
     const utils = new DrawingUtils(ctx);
@@ -451,6 +542,15 @@ document.getElementById("versExercices")
 document.getElementById("retourChoix")
   .addEventListener("click", () => montrer("ecranChoix"));
 document.getElementById("boutonDemarrer").addEventListener("click", demarrer);
+
+document.getElementById("choixCamera").addEventListener("change", async (e) => {
+  const info = document.getElementById("infoCamera");
+  try {
+    await ouvrirCamera(e.target.value);
+  } catch (erreur) {
+    info.textContent = `Caméra indisponible : ${erreur.message}`;
+  }
+});
 
 document.getElementById("boutonArreter").addEventListener("click", () => {
   arreterCapture();
