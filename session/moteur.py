@@ -13,7 +13,9 @@ from session.circuit import (
 #: Un écart plus long que ça entre deux images vient forcément d'une
 #: interruption du flux (utilisateur hors champ, pause web, frame lente) :
 #: on ne le comptabilise pas d'un bloc au retour de l'utilisateur.
-INTERVALLE_MAX_ECHAUFFEMENT = 0.5
+#: S'applique à tous les modes qui cumulent des deltas image par image —
+#: maintien et échauffement — et non au seul échauffement, d'où le nom.
+INTERVALLE_MAX = 0.5
 
 
 def executer_mode(seance, corps, compteur, state, coach, derniere_rep):
@@ -189,7 +191,7 @@ def gerer_mode_maintien(corps, bloc, seance, state, coach):
     if not hasattr(bloc, "dernier_maintien"):
         bloc.dernier_maintien = maintenant
 
-    temps_ecoule = maintenant - bloc.dernier_maintien
+    temps_ecoule = min(maintenant - bloc.dernier_maintien, INTERVALLE_MAX)
     bloc.dernier_maintien = maintenant
 
     if position == "maintien":
@@ -315,7 +317,7 @@ def gerer_mode_echauffement(corps, bloc, seance, state):
 
     delta = maintenant - bloc.dernier_tick_echauffement
     bloc.dernier_tick_echauffement = maintenant
-    bloc.temps_echauffement += min(delta, INTERVALLE_MAX_ECHAUFFEMENT)
+    bloc.temps_echauffement += min(delta, INTERVALLE_MAX)
 
     if bloc.exercice.detection is not None:
         mettre_a_jour_erreur(bloc.exercice, corps, state)
