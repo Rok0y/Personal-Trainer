@@ -285,6 +285,144 @@ function ecrireResultats(resultats) {
 
 let resultats = lireResultats();
 
+// ----- fluidite, minute par minute -----
+// Un vieil iPad peut tenir quarante images par seconde la premiere minute et
+// s'effondrer a la cinquieme, quand la chauffe le fait ralentir : c'est la
+// forme de la courbe qui renseigne, pas une moyenne globale. La mesure est
+// donc decoupee par minute *de camera* — le temps pendant lequel des images
+// defilent, pas le temps ecoule — et cumulee d'un exercice a l'autre, la
+// chauffe ne se remettant pas a zero entre deux.
+//
+// Chaque minute tient dans un histogramme de 1 img/s de large plutot que dans
+// la liste de ses images. Trois raisons : c'est borne (61 nombres, que la
+// minute compte 300 images ou 3000), ca se relit apres un rechargement — un
+// vieil iPad ferme l'onglet des que la memoire manque, et c'est justement
+// l'appareil qu'on cherche a mesurer — et deux tranches se fusionnent en
+// s'additionnant, ce qu'une mediane deja calculee ne sait plus faire.
+
+const STOCKAGE_PERF = "demo-coach-performance";
+// Une case par image par seconde : la case i regroupe ce qui s'arrondit a i.
+// Arrondir plutot que tronquer n'est pas cosmetique — un flux parfaitement
+// regulier a 12 img/s mesure 11,9999 a cause du calcul en virgule flottante,
+// et une troncature le rangerait systematiquement une case trop bas.
+const NOMBRE_CASES = 61; // 0 a 59, puis 60 et plus
+// Au-dela, l'image n'a pas ete lente : la page a ete suspendue (ecran
+// verrouille, appel entrant, onglet passe en arriere-plan). La compter comme
+// une demi-image par seconde ferait passer une mise en veille pour un
+// effondrement thermique.
+const PAUSE_MINIMALE = 2;
+const PERIODE_ECRITURE = 15;
+
+function histogrammeVide() {
+  return { cases: new Array(NOMBRE_CASES).fill(0), images: 0, mini: null, pauses: 0 };
+}
+
+function ajouterImage(histo, fps) {
+  histo.cases[Math.min(NOMBRE_CASES - 1, Math.round(fps))] += 1;
+  histo.images += 1;
+  if (histo.mini === null || fps < histo.mini) histo.mini = fps;
+}
+
+// Le rang cherche tombe dans une case, dont on rend l'etiquette : la valeur
+// est donc vraie a 1 img/s pres.
+function centile(histo, part) {
+  const rang = Math.floor(histo.images * part);
+  let cumul = 0;
+  for (let i = 0; i < NOMBRE_CASES; i++) {
+    cumul += histo.cases[i];
+    if (cumul > rang) return i;
+  }
+  return 0;
+}
+
+function lirePerf() {
+  try {
+    const brut = JSON.parse(localStorage.getItem(STOCKAGE_PERF));
+    if (brut && brut.minutes) return brut;
+  } catch {
+    // Rien de mesure jusqu'ici, ou stockage indisponible.
+  }
+  return { secondes: 0, minutes: {} };
+}
+
+function ecrirePerf() {
+  perf.secondes = secondesCamera;
+  try {
+    localStorage.setItem(STOCKAGE_PERF, JSON.stringify(perf));
+  } catch {
+    // Comme pour les resultats : la mesure vivra le temps de la session.
+  }
+}
+
+let perf = lirePerf();
+let secondesCamera = perf.secondes ?? 0;
+let derniereEcriture = secondesCamera;
+let histoExercice = histogrammeVide();
+let derniereImage = null;
+
+function minuteCourante() {
+  const cle = String(Math.floor(secondesCamera / 60));
+  if (!perf.minutes[cle]) perf.minutes[cle] = histogrammeVide();
+  return perf.minutes[cle];
+}
+
+function mesurerImage(maintenant) {
+  if (derniereImage === null) {
+    derniereImage = maintenant;
+    return;
+  }
+  const delta = (maintenant - derniereImage) / 1000;
+  derniereImage = maintenant;
+
+  if (delta > PAUSE_MINIMALE) {
+    minuteCourante().pauses += 1;
+    histoExercice.pauses += 1;
+    return;
+  }
+
+  secondesCamera += delta;
+  const fps = 1 / delta;
+  ajouterImage(minuteCourante(), fps);
+  ajouterImage(histoExercice, fps);
+
+  // Ecrire a chaque image couterait plus cher que la detection ; ne rien
+  // ecrire avant la fin perdrait tout le jour ou l'appareil abandonne en
+  // pleine serie, c'est-a-dire le seul jour ou la mesure sert vraiment.
+  if (secondesCamera - derniereEcriture >= PERIODE_ECRITURE) {
+    derniereEcriture = secondesCamera;
+    ecrirePerf();
+  }
+}
+
+function resumerHistogramme(histo) {
+  if (!histo || !histo.images) return null;
+  return {
+    images: histo.images,
+    median: centile(histo, 0.5),
+    p10: centile(histo, 0.1),
+    mini: Math.round(histo.mini),
+    pauses: histo.pauses,
+  };
+}
+
+function lignesParMinute() {
+  return Object.keys(perf.minutes)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map((minute) => {
+      const r = resumerHistogramme(perf.minutes[String(minute)]);
+      if (!r) return null;
+      const pauses = r.pauses ? `, ${r.pauses} interruption(s)` : "";
+      const alerte = r.p10 < 10 ? "   <-- lent" : "";
+      // Le nombre d'images est affiche parce que la derniere minute est
+      // souvent tronquee : sans lui, trois images a 40 img/s ressemblent a
+      // une minute pleine.
+      return `  min ${minute + 1} : median ${r.median} / p10 ${r.p10} / mini ${r.mini}`
+        + ` (${r.images} images${pauses})${alerte}`;
+    })
+    .filter(Boolean);
+}
+
 function montrer(id) {
   for (const section of document.querySelectorAll("section")) {
     if (section.id === "ecranSeance") {
@@ -566,6 +704,8 @@ function reinitialiser() {
   finDecompte = null;
   dernierDecompteDit = null;
   bustePrecedent = null;
+  histoExercice = histogrammeVide();
+  derniereImage = null;
   document.getElementById("compteur").textContent = "0";
   document.getElementById("jauge").style.width = "0%";
   document.getElementById("compteurCible").textContent = "";
@@ -588,6 +728,7 @@ function boucle() {
   }
 
   const maintenant = performance.now();
+  mesurerImage(maintenant);
   const horodatage = Math.max(maintenant, dernierHorodatage + 1);
   dernierHorodatage = horodatage;
 
@@ -775,6 +916,7 @@ function majAffichage(valeur, cible) {
 
 function terminer(objectifAtteint) {
   arreterCapture();
+  ecrirePerf();
   document.getElementById("finChiffre").textContent =
     modeMaintien ? `${derniereValeur} s` : `${derniereValeur} répétitions`;
   document.getElementById("finTexte").textContent =
@@ -864,6 +1006,7 @@ document.getElementById("boutonEnregistrer").addEventListener("click", () => {
     // si le contexte audio tournait, si les fichiers etaient charges, ni si
     // la page s'affichait dans une webview bridee.
     technique: diagnostic(),
+    fluidite: resumerHistogramme(histoExercice),
   };
   ecrireResultats(resultats);
   dessinerListe();
@@ -878,9 +1021,15 @@ document.getElementById("boutonResume").addEventListener("click", async () => {
       : "rien à signaler";
     const commentaire = r.commentaire ? `\n    « ${r.commentaire} »` : "";
     const t = r.technique;
+    const f = r.fluidite;
+    const fluidite = f
+      ? `\n    [${f.median} img/s median, p10 ${f.p10}, mini ${f.mini}${f.pauses ? `, ${f.pauses} interruption(s)` : ""}]`
+      : "";
     const technique = t ? `\n    [audio ${t.audio}, ${t.sons} sons${t.webview ? `, webview ${t.webview}` : ""}]` : "";
-    return `- ${nom} : ${r.valeur} ${r.unite} — ${soucis}${commentaire}${technique}`;
+    return `- ${nom} : ${r.valeur} ${r.unite} — ${soucis}${commentaire}${technique}${fluidite}`;
   });
+
+  const minutes = lignesParMinute();
 
   const resume = [
     `Test de la démo — ${Object.keys(resultats).length} exercice(s)`,
@@ -888,6 +1037,9 @@ document.getElementById("boutonResume").addEventListener("click", async () => {
     `Navigateur intégré : ${navigateurIntegre() ?? "non"}`,
     "",
     ...lignes,
+    "",
+    `Fluidité, minute par minute de caméra (${Math.round(secondesCamera)} s au total, à 1 img/s près)`,
+    ...(minutes.length ? minutes : ["  aucune mesure"]),
   ].join("\n");
 
   const bouton = document.getElementById("boutonResume");
@@ -903,6 +1055,11 @@ document.getElementById("boutonOublier").addEventListener("click", () => {
   if (!confirm("Effacer tous les résultats de ce test ?")) return;
   resultats = {};
   ecrireResultats(resultats);
+  perf = { secondes: 0, minutes: {} };
+  secondesCamera = 0;
+  derniereEcriture = 0;
+  histoExercice = histogrammeVide();
+  ecrirePerf();
   dessinerListe();
   document.getElementById("boutonResume").textContent = "Copier le résumé pour Arthur";
 });
