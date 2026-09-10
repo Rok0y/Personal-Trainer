@@ -162,6 +162,11 @@
     <h3>Le mouvement</h3>
     <ul id="ficheInstructions"></ul>
   </div>
+  <label class="probleme" for="entoure" style="margin-bottom:12px">
+    <input type="checkbox" id="entoure">
+    <span>D'autres personnes passent dans le champ (salle de sport)<br>
+      <span class="muet">Le suivi devient plus prudent, mais l'image est moins fluide.</span></span>
+  </label>
   <button id="boutonDemarrer">Démarrer</button>
   <button class="secondaire" id="boutonTestSon" style="margin-top:8px">Tester le son</button>
   <p class="muet" style="text-align:center" id="messageDemarrage">Le son s'active au premier clic&nbsp;: iOS l'exige. Monte le volume et vérifie avant de commencer.</p>
@@ -226,14 +231,14 @@ const CIBLE_SECONDES = 30;
 // suspendu par iOS ne doit pas crediter d'un coup tout le temps ecoule.
 const INTERVALLE_MAX = 0.5;
 const STOCKAGE = "demo-coach-resultats";
-// Combien de personnes le modele cherche a l'image. Chercher au-dela d'une
-// seule coute cher — mesure sur le meme iPad, meme modele : 41,7 images/s a
-// une pose contre 24 a quatre. Reglable par `?poses=N` pour pouvoir comparer
-// deux reglages sur un meme appareil au lieu d'en debattre.
-const MAX_PERSONNES = Math.min(
-  4,
-  Math.max(1, Number(new URLSearchParams(location.search).get("poses")) || 4)
-);
+// Combien de personnes le modele cherche a l'image. Mesure a l'aveugle entre
+// les deux reglages, meme iPad et meme modele `full` : 36 images/s et un
+// squelette stable a une pose, contre 24 et un squelette qui saute a quatre.
+// Une seule pose est donc le defaut. En chercher plusieurs garde son sens en
+// salle de sport — le modele pourrait se fixer sur un passant — mais ca se
+// paie sur les deux tableaux, donc ca ne peut pas rester le cas courant.
+const POSES_SEUL = 1;
+const POSES_ENTOURE = 4;
 // Deplacement maximal du centre d'une personne entre deux images, en fraction
 // de l'image. Au-dela, ce n'est plus la meme personne qui bouge : c'est le
 // suivi qui a saute sur quelqu'un d'autre.
@@ -256,6 +261,13 @@ const PROBLEMES = [
 let catalogue = [];
 let exercice = null;
 let poseLandmarker = null;
+let fileset = null;
+let posesDuDetecteur = null;
+let preparation = Promise.resolve();
+let posesVoulues = Math.min(
+  POSES_ENTOURE,
+  Math.max(1, Number(new URLSearchParams(location.search).get("poses")) || POSES_SEUL)
+);
 let flux = null;
 let video = null;
 let miroir = true;
@@ -485,7 +497,7 @@ function diagnostic() {
   return {
     audio: contexteAudio?.state ?? "absent",
     sons: sons.size,
-    poses: MAX_PERSONNES,
+    poses: posesVoulues,
     webview: navigateurIntegre(),
   };
 }
@@ -555,6 +567,9 @@ function ouvrirFiche(fiche) {
   bouton.disabled = false;
   bouton.textContent = "Démarrer";
   montrer("ecranFiche");
+  // En tache de fond : un echec ici n'a pas a etre signale, `demarrer` le
+  // retentera et parlera lui-meme.
+  preparerDetecteur().catch(() => {});
 }
 
 function remplir(id, elements) {
@@ -664,10 +679,7 @@ async function demarrer() {
     await contexteAudio.resume().catch(() => {});
     listerCameras();
 
-    if (!poseLandmarker) {
-      const fileset = await FilesetResolver.forVisionTasks(VERSION_WASM);
-      poseLandmarker = await creerDetecteur(fileset);
-    }
+    await preparerDetecteur();
 
     try {
       verrouEcran = await navigator.wakeLock.request("screen");
@@ -688,14 +700,42 @@ async function demarrer() {
   }
 }
 
-async function creerDetecteur(fileset) {
+// Le modele pese une dizaine de mega-octets et met une quinzaine de secondes
+// a arriver sur une connexion moyenne. L'attendre au clic sur « Demarrer »
+// donne un bouton qui ne repond pas ; le fabriquer des l'ouverture de la fiche
+// recouvre cette attente par le temps de lecture des consignes. Pas plus tot :
+// allouer le detecteur pour quelqu'un qui ne fait que parcourir la liste
+// couterait de la memoire sur les appareils qui en manquent le plus.
+// Les appels s'enchainent au lieu de se chevaucher : le prechargement de la
+// fiche et un clic rapide sur « Demarrer » fabriqueraient sinon deux
+// detecteurs, dont un jamais libere. Le second appel trouve le travail deja
+// fait et rend la main tout de suite.
+function preparerDetecteur() {
+  preparation = preparation
+    .catch(() => {})
+    .then(async () => {
+      if (!fileset) fileset = await FilesetResolver.forVisionTasks(VERSION_WASM);
+      // Lu avant l'attente : la case a cocher peut basculer pendant la
+      // fabrication, et c'est ce qui a ete construit qu'on enregistre.
+      const voulues = posesVoulues;
+      if (poseLandmarker && posesDuDetecteur === voulues) return poseLandmarker;
+      const detecteur = await creerDetecteur(fileset, voulues);
+      poseLandmarker?.close();
+      poseLandmarker = detecteur;
+      posesDuDetecteur = voulues;
+      return detecteur;
+    });
+  return preparation;
+}
+
+async function creerDetecteur(fileset, poses) {
   const options = {
     baseOptions: { modelAssetPath: MODELE, delegate: "GPU" },
     runningMode: "VIDEO",
     // Plusieurs poses en salle de sport : n'en chercher qu'une laisserait le
     // modele designer lui-meme un sujet, et changer d'avis d'une image a
     // l'autre — le compteur suivrait alternativement deux personnes.
-    numPoses: MAX_PERSONNES,
+    numPoses: poses,
   };
   try {
     return await PoseLandmarker.createFromOptions(fileset, options);
@@ -995,6 +1035,12 @@ document.getElementById("versExercices")
 document.getElementById("retourChoix")
   .addEventListener("click", () => montrer("ecranChoix"));
 document.getElementById("boutonDemarrer").addEventListener("click", demarrer);
+
+document.getElementById("entoure").addEventListener("change", (e) => {
+  posesVoulues = e.target.checked ? POSES_ENTOURE : POSES_SEUL;
+  preparerDetecteur().catch(() => {});
+});
+document.getElementById("entoure").checked = posesVoulues > POSES_SEUL;
 
 document.getElementById("boutonTestSon").addEventListener("click", async (e) => {
   const bouton = e.currentTarget;
