@@ -186,6 +186,7 @@
     <textarea id="commentaire" placeholder="Ce qui t'a gêné, surpris, ou manqué…"></textarea>
   </div>
   <button id="boutonEnregistrer">Enregistrer et revenir à la liste</button>
+  <p class="muet" style="text-align:center">La caméra reste ouverte entre deux exercices, mais ne transmet plus rien&nbsp;: c'est ce qui évite qu'on te redemande l'autorisation à chaque fois.</p>
 </section>
 
 </div>
@@ -585,9 +586,8 @@ function remplir(id, elements) {
 // ----- camera -----
 
 async function ouvrirCamera(deviceId) {
-  if (flux) {
-    for (const piste of flux.getTracks()) piste.stop();
-  }
+  // Changer de camera est le seul cas ou l'on ferme vraiment la precedente.
+  libererCamera();
 
   // Resolution demandee en 4:3 plutot qu'en 16:9 : sur un telephone pose
   // debout, c'est la hauteur qui manque pour cadrer un corps entier, et le
@@ -673,7 +673,8 @@ async function demarrer() {
 
   try {
     await debloquerAudio();
-    await ouvrirCamera();
+    if (cameraVivante()) await reprendreCamera();
+    else await ouvrirCamera();
     // L'ouverture de la camera vient peut-etre de suspendre le contexte :
     // on le relance apres, pas avant.
     await contexteAudio.resume().catch(() => {});
@@ -1016,17 +1017,42 @@ function dessinerProblemes() {
   }
 }
 
+// La camera est ouverte une fois et gardee d'un exercice a l'autre, mise en
+// sourdine entre les deux plutot que fermee. Chaque `getUserMedia` est une
+// demande d'autorisation potentielle : sur une session de 23 exercices, Safari
+// a redemande l'acces trois fois a un testeur, en plein milieu de son test.
+// Une piste desactivee ne livre plus aucune image — rien n'est donc analyse ni
+// affiche pendant les temps morts — mais reste ouverte, donc reutilisable sans
+// nouvelle demande. Le prix est que le voyant de la camera reste allume entre
+// deux exercices : c'est annonce a l'ecran de fin plutot que subi.
 function arreterCapture() {
   enCours = false;
-  if (flux) {
-    for (const piste of flux.getTracks()) piste.stop();
-    flux = null;
-  }
+  for (const piste of flux?.getTracks() ?? []) piste.enabled = false;
   if (verrouEcran) {
     verrouEcran.release().catch(() => {});
     verrouEcran = null;
   }
 }
+
+function cameraVivante() {
+  return flux?.getVideoTracks()[0]?.readyState === "live";
+}
+
+async function reprendreCamera() {
+  for (const piste of flux.getTracks()) piste.enabled = true;
+  // iOS met la video en pause quand la page passe en arriere-plan ; la
+  // relancer ne coute rien quand elle tourne deja.
+  await video.play().catch(() => {});
+}
+
+function libererCamera() {
+  for (const piste of flux?.getTracks() ?? []) piste.stop();
+  flux = null;
+}
+
+// Quitter la page rend la camera pour de bon : la garder ouverte n'a de sens
+// que le temps d'une session de test.
+window.addEventListener("pagehide", libererCamera);
 
 // ----- navigation -----
 
