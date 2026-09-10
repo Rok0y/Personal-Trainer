@@ -226,7 +226,18 @@ const CIBLE_SECONDES = 30;
 // suspendu par iOS ne doit pas crediter d'un coup tout le temps ecoule.
 const INTERVALLE_MAX = 0.5;
 const STOCKAGE = "demo-coach-resultats";
-const MAX_PERSONNES = 4;
+// Combien de personnes le modele cherche a l'image. Chercher au-dela d'une
+// seule coute cher — mesure sur le meme iPad, meme modele : 41,7 images/s a
+// une pose contre 24 a quatre. Reglable par `?poses=N` pour pouvoir comparer
+// deux reglages sur un meme appareil au lieu d'en debattre.
+const MAX_PERSONNES = Math.min(
+  4,
+  Math.max(1, Number(new URLSearchParams(location.search).get("poses")) || 4)
+);
+// Deplacement maximal du centre d'une personne entre deux images, en fraction
+// de l'image. Au-dela, ce n'est plus la meme personne qui bouge : c'est le
+// suivi qui a saute sur quelqu'un d'autre.
+const SAUT_MAX = 0.25;
 const SECONDES_EN_POSITION = 1;
 const DECOMPTE = 3;
 
@@ -262,6 +273,7 @@ let finDecompte = null;
 let dernierDecompteDit = null;
 let bustePrecedent = null;
 let personnesVues = 0;
+let poseSuivie = null;
 
 // ----- resultats accumules -----
 // Conserves d'un exercice a l'autre et d'un rechargement a l'autre : le
@@ -473,6 +485,7 @@ function diagnostic() {
   return {
     audio: contexteAudio?.state ?? "absent",
     sons: sons.size,
+    poses: MAX_PERSONNES,
     webview: navigateurIntegre(),
   };
 }
@@ -704,6 +717,7 @@ function reinitialiser() {
   finDecompte = null;
   dernierDecompteDit = null;
   bustePrecedent = null;
+  poseSuivie = null;
   histoExercice = histogrammeVide();
   derniereImage = null;
   document.getElementById("compteur").textContent = "0";
@@ -762,27 +776,48 @@ function boucle() {
   requestAnimationFrame(boucle);
 }
 
+function repere(pose) {
+  const xs = pose.map((p) => p.x);
+  const ys = pose.map((p) => p.y);
+  const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
+  const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
+  return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, surface: (x1 - x0) * (y1 - y0) };
+}
+
 function choisirPose(poses) {
   if (!poses?.length) return null;
-  if (poses.length === 1) return poses[0];
 
-  // La personne qui s'entraine est celle qui fait face a la camera, donc la
-  // plus grande a l'image. Choisir soi-meme evite que le modele change de
-  // sujet d'une image a l'autre — le compteur suivrait alors deux personnes
-  // en alternance, sans que rien ne le signale.
-  let meilleure = null;
-  let meilleureSurface = -1;
-  for (const pose of poses) {
-    const xs = pose.map((p) => p.x);
-    const ys = pose.map((p) => p.y);
-    const surface =
-      (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
-    if (surface > meilleureSurface) {
-      meilleureSurface = surface;
-      meilleure = pose;
-    }
+  const reperes = poses.map(repere);
+
+  // Au premier choix, la personne qui s'entraine est celle qui fait face a la
+  // camera, donc la plus grande a l'image.
+  let choisi = 0;
+  for (let i = 1; i < reperes.length; i++) {
+    if (reperes[i].surface > reperes[choisi].surface) choisi = i;
   }
-  return meilleure;
+
+  // Ensuite on suit *la meme*, en reprenant celle qui est la plus proche de la
+  // derniere retenue. Reprendre la plus grande a chaque image semblait sur,
+  // mais ne l'est pas : deux candidats de tailles voisines echangent leur rang
+  // d'une image a l'autre, le squelette saute d'un corps a l'autre, et un
+  // aller-retour suffit a faire compter une repetition qui n'existe pas.
+  // Au-dela de SAUT_MAX, on considere le sujet perdu et on repart sur la plus
+  // grande — sinon un suivi errone se perpetuerait.
+  if (poseSuivie) {
+    let plusProche = null;
+    let distance = Infinity;
+    for (let i = 0; i < reperes.length; i++) {
+      const d = Math.hypot(reperes[i].x - poseSuivie.x, reperes[i].y - poseSuivie.y);
+      if (d < distance) {
+        distance = d;
+        plusProche = i;
+      }
+    }
+    if (distance <= SAUT_MAX) choisi = plusProche;
+  }
+
+  poseSuivie = reperes[choisi];
+  return poses[choisi];
 }
 
 function afficherConsigne(texte) {
@@ -1025,7 +1060,7 @@ document.getElementById("boutonResume").addEventListener("click", async () => {
     const fluidite = f
       ? `\n    [${f.median} img/s median, p10 ${f.p10}, mini ${f.mini}${f.pauses ? `, ${f.pauses} interruption(s)` : ""}]`
       : "";
-    const technique = t ? `\n    [audio ${t.audio}, ${t.sons} sons${t.webview ? `, webview ${t.webview}` : ""}]` : "";
+    const technique = t ? `\n    [audio ${t.audio}, ${t.sons} sons, ${t.poses ?? "?"} poses${t.webview ? `, webview ${t.webview}` : ""}]` : "";
     return `- ${nom} : ${r.valeur} ${r.unite} — ${soucis}${commentaire}${technique}${fluidite}`;
   });
 
