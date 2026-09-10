@@ -404,23 +404,39 @@ export function oiseau_erreur_coudes(corps) {
   return null;
 }
 
+// Hauteur de la hanche au-dessus du genou, rapportee a celle du tibia. Sans
+// unite, donc independante de la taille de la personne et de sa distance a la
+// camera : environ 1 debout, tend vers 0 quand la hanche arrive a hauteur de
+// genou. Fonction privee, non exportee : le harnais n'apparie que les
+// detections, et sa jumelle Python est `_descente_hanche`.
+function descente_hanche(hanche, genou, cheville) {
+  const tibia = cheville.y - genou.y;
+  if (tibia <= 0) return null;
+  return (genou.y - hanche.y) / tibia;
+}
+
 export function squat_sur_chaise_detection(corps) {
-  // Profondeur lue sur l'angle du genou et non sur la distance coude-genou :
-  // au poids du corps les bras partent devant pour l'equilibre, et le repere
-  // de squat_detection, qui suppose des halteres qui pendent, ne veut plus
-  // rien dire.
-  const angle_gauche = calculer_angle(
-    corps.hanche_gauche,
-    corps.genou_gauche,
-    corps.cheville_gauche
-  );
-  const angle_droit = calculer_angle(
-    corps.hanche_droite,
-    corps.genou_droit,
-    corps.cheville_droite
-  );
-  if (angle_gauche < 110 && angle_droit < 110) return "debut";
-  if (angle_gauche > 160 && angle_droit > 160) return "fin";
+  // Profondeur lue sur la descente de la hanche, et non sur un angle. Deux
+  // reperes ont ete essayes avant celui-ci, et chacun supposait un point de
+  // vue. La distance coude-genou de squat_detection suppose des halteres qui
+  // pendent le long du corps. L'angle du genou, lui, ne se lit que de profil :
+  // la flexion se fait dans le plan sagittal, donc *vers* la camera quand on
+  // lui fait face, et une projection en deux dimensions garde alors la jambe
+  // presque droite au plus bas du mouvement — la detection ne quittait jamais
+  // "fin" et ne comptait rien.
+  //
+  // Les deux jambes sont moyennees et non exigees ensemble : de face elles
+  // sont egalement visibles, de profil la plus eloignee est estimee, et une
+  // moyenne encaisse cette estimation la ou une conjonction s'y casse.
+  const mesures = [
+    descente_hanche(corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche),
+    descente_hanche(corps.hanche_droite, corps.genou_droit, corps.cheville_droite),
+  ].filter((mesure) => mesure !== null);
+  if (!mesures.length) return "milieu";
+
+  const descente = mesures.reduce((a, b) => a + b, 0) / mesures.length;
+  if (descente < 0.45) return "debut";
+  if (descente > 0.75) return "fin";
   return "milieu";
 }
 

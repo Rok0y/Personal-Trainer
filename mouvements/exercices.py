@@ -888,22 +888,57 @@ oiseau = Exercice(
 # d'introduire une heuristique de plus à maintenir.
 
 
-def squat_sur_chaise_detection(corps):
-    """Profondeur lue sur l'angle du genou, pas sur la distance coude-genou.
+def _descente_hanche(hanche, genou, cheville):
+    """Hauteur de la hanche au-dessus du genou, rapportée à celle du tibia.
 
-    `squat_detection` mesure l'écart entre le coude et le genou : ça suppose des
-    haltères qui pendent le long du corps. Au poids du corps, les bras partent
-    devant pour l'équilibre et ce repère ne veut plus rien dire.
+    Rapportée, donc sans unité : le résultat ne dépend ni de la taille de la
+    personne ni de sa distance à la caméra. Vaut environ 1 debout, tend vers 0
+    quand la hanche arrive à hauteur de genou.
     """
-    angle_gauche = calculer_angle(
-        corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche
-    )
-    angle_droit = calculer_angle(
-        corps.hanche_droite, corps.genou_droit, corps.cheville_droite
-    )
-    if angle_gauche < 110 and angle_droit < 110:
+    tibia = cheville.y - genou.y
+    if tibia <= 0:
+        return None
+    return (genou.y - hanche.y) / tibia
+
+
+def squat_sur_chaise_detection(corps):
+    """Profondeur lue sur la descente de la hanche, et non sur un angle.
+
+    Deux repères ont été essayés avant celui-ci, et chacun supposait un point de
+    vue. La distance coude-genou de `squat_detection` suppose des haltères qui
+    pendent le long du corps ; au poids du corps les bras partent devant pour
+    l'équilibre. L'angle du genou, lui, ne se lit que de profil : la flexion se
+    fait dans le plan sagittal, donc *vers* la caméra quand on lui fait face, et
+    une projection en deux dimensions garde alors la jambe presque droite au
+    plus bas du mouvement. Mesuré sur une pose de face plausible, l'angle ne
+    descendait pas sous 124° au plus profond, là où le seuil exigeait 110 : la
+    détection ne quittait jamais `"fin"`, ne s'armait donc jamais, et ne
+    comptait aucune répétition — c'est le défaut remonté par un testeur.
+
+    Ce qui se voit des deux points de vue, c'est que la hanche descend vers le
+    genou. Les deux jambes sont moyennées et non exigées ensemble : de face
+    elles sont également visibles, de profil la plus éloignée est estimée, et
+    une moyenne encaisse cette estimation là où une conjonction s'y casse.
+    """
+    mesures = [
+        mesure
+        for mesure in (
+            _descente_hanche(
+                corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche
+            ),
+            _descente_hanche(
+                corps.hanche_droite, corps.genou_droit, corps.cheville_droite
+            ),
+        )
+        if mesure is not None
+    ]
+    if not mesures:
+        return "milieu"
+
+    descente = sum(mesures) / len(mesures)
+    if descente < 0.45:
         return "debut"
-    if angle_gauche > 160 and angle_droit > 160:
+    if descente > 0.75:
         return "fin"
     return "milieu"
 
@@ -994,7 +1029,7 @@ squat_sur_chaise = Exercice(
     mise_en_place=[
         "Place une chaise derrière toi, debout, pieds écartés de la largeur des hanches.",
         "Tends les bras devant toi pour l'équilibre.",
-        "Place-toi de profil face à la caméra, jambes entières visibles.",
+        "Place-toi face à la caméra, jambes entières visibles.",
     ],
     instructions=[
         "Descends les hanches vers l'arrière comme pour t'asseoir.",

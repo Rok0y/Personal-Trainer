@@ -82,7 +82,18 @@ Progression (`progression/`) : le moteur de niveaux, qui pilote les cibles des s
   des échauffements : elles ont un barème, des records, une progression. Chacune
   réutilise la détection du mouvement complet quand elle reste valable — seul
   `squat_sur_chaise_detection` est propre, parce que le repère coude-genou de
-  `squat_detection` suppose des haltères qui pendent le long du corps. Toute
+  `squat_detection` suppose des haltères qui pendent le long du corps.
+  **Un angle ne se lit pas depuis n'importe quel point de vue, et c'est un piège
+  récurrent** : les landmarks sont exploités en deux dimensions, or un angle dont
+  la flexion se fait dans le plan sagittal — le genou, la hanche — est illisible
+  de face, où le mouvement va *vers* la caméra. Mesuré sur une pose de face
+  plausible, le genou ne descend pas sous 124° au plus profond d'un squat, là où
+  le seuil en exigeait 110 : la détection restait bloquée sur `"fin"`, ne
+  s'armait jamais et ne comptait rien — un testeur a fait l'exercice entier pour
+  zéro répétition. Avant d'écrire une détection, se demander de quel côté sera la
+  caméra, et préférer un repère **vertical** (une hauteur rapportée à un segment
+  du corps, comme `_descente_hanche`) dès que la fiche demande une vue de face.
+  Toute
   variante doit être inscrite aux **trois** endroits : `CATALOGUE_EXERCICES`,
   `MATERIEL_EXERCICES` (lu par `nombre_halteres`, donc par l'échelle de poids) et
   `SPECS`.
