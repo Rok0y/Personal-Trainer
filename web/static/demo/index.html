@@ -613,7 +613,7 @@ function boucle() {
   if (!landmarks) {
     afficherConsigne("Recule un peu — je ne te vois pas en entier");
     dernierInstant = null;
-    debutEnPosition = null;
+    debutImmobile = null;
   } else if (!termine) {
     traiter(construire_corps(landmarks), maintenant / 1000);
   }
