@@ -157,6 +157,24 @@ Bizarrerie à connaître partout où le palier suivant est affiché (ce n'est *p
 Détection (`mouvements/`, `vision/`) :
 - `vision/detector.py` télécharge au premier lancement le modèle MediaPipe (`pose_landmarker_full.task`, absent du repo, ignoré par git) et expose `PoseDetector.detect(frame)` → un `Body` (`vision/body.py`) qui regroupe les landmarks nommés (`vision/landmarks.py`). Le modèle `full` remplace `lite` : ce dernier perdait le tracking sur les mouvements rapides.
 - `mouvements/exercices.py` définit chaque `Exercice` par une fonction `*_detection(corps)` qui retourne une position (`"debut"`/`"fin"`/`"milieu"`/`"maintien"`/`"repos"`) à partir d'angles/distances calculés sur le `Body`. Ces fonctions bilatérales (ex. pompes, développé couché) doivent comparer *les deux* angles gauche/droite au seuil — un bug historique où seul un côté était vérifié (`angle_droit and angle_gauche < seuil`, l'opérateur `and` ne portant que sur l'un des deux) a été corrigé ; rester vigilant si on ajoute un exercice bilatéral sur ce modèle.
+  **La règle vaut tant que la caméra voit les deux côtés, et s'inverse quand la
+  fiche demande une vue de profil** : le membre éloigné est alors *toujours*
+  masqué et estimé par le modèle, si bien qu'exiger que les deux angles
+  franchissent le seuil revient à exiger que cette estimation soit exacte. Le
+  gainage s'arrêtait par intermittence pour cette raison. Ces détections-là
+  **moyennent** les deux côtés (`detection_gainage`, `squat_sur_chaise_detection`)
+  et renoncent à repérer un défaut d'un seul côté — que la vue de profil ne
+  montre de toute façon pas. Moyenner n'est jamais un raccourci pour faire
+  passer une détection récalcitrante : c'est justifié par l'occultation, et par
+  elle seule.
+  **Une position de maintien se reconnaît à ce qui la rend difficile, pas à sa
+  seule forme.** La planche latérale vérifiait l'alignement du corps, le côté au
+  sol et la hanche au-dessus du coude — trois conditions que quelqu'un
+  simplement *allongé sur le côté* remplit toutes, d'où du temps compté sans
+  rien faire. Il manquait l'effort : le buste soulevé par l'appui sur
+  l'avant-bras (`_appui_sur_le_bras`). Devant un maintien qui compte trop
+  facilement, chercher la condition d'effort absente avant de resserrer un
+  seuil géométrique.
 - **`"debut"` et `"fin"` ne décrivent pas une posture, mais un moment du comptage.** `CompteurMouvement` s'arme sur `"debut"` et incrémente sur `"fin"` : la règle est donc que **`"fin"` est la position qui *valide* une répétition, c'est-à-dire la fin de la phase concentrique** — le haut d'un curl, mais aussi le verrouillage d'une pompe, le retour debout d'un squat ou d'un soulevé de terre. Les dix-sept détections d'`exercices.py` suivent cette convention ; l'inverser sur un mouvement le ferait compter sur la descente, si bien qu'une pompe non verrouillée ou un squat non remonté compterait quand même. **Un mouvement compté a deux seuils, un maintien n'en a qu'un**, et ça change la façon de les régler : l'écart entre `"debut"` et `"fin"` est une hystérésis qui absorbe le tremblement des landmarks, alors qu'un mode `maintien` bascule sur un seuil unique. Ouvrir ou resserrer un seuil de comptage se fait donc en déplaçant **les deux bornes ensemble** pour conserver l'écart ; resserrer un seuil de maintien trop près de la position parfaite le fait au contraire clignoter, et le chrono perd des fractions de seconde alors que la position est tenue. C'est aussi pourquoi le libellé de `"fin"` dans `core/messages.py` est neutre (« Position finale ») : « Position basse » n'est vrai d'aucun mouvement depuis l'alignement.
 - **La fiche d'un exercice** vit sur `Exercice` (`session/circuit.py`) et sort par
   `Exercice.fiche()`, point d'entrée unique de « qu'affiche-t-on d'un mouvement ? ».

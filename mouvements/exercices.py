@@ -351,19 +351,31 @@ crunches = Exercice(
 
 
 def detection_gainage(corps):
-    # Les deux hanches sont comparees au seuil : la version precedente calculait
-    # bien les deux angles mais n'en testait qu'un, si bien qu'un bassin
-    # affaisse d'un seul cote passait pour un gainage correct.
+    """Bassin aligné et hanches soulevées du sol.
+
+    Deux réglages ici viennent de tests, et vont dans des sens opposés.
+
+    Le seuil est passé de 145 à 135 degrés : un bassin légèrement bas reste un
+    gainage, et à 145 le maintien se coupait par à-coups alors que la position
+    était tenue.
+
+    Surtout, les deux côtés sont **moyennés et non exigés ensemble**. La fiche
+    demande une vue de profil : la jambe éloignée est donc *toujours* masquée
+    et son genou estimé par le modèle. Exiger que les deux angles dépassent le
+    seuil revient à exiger que cette estimation soit exacte — un testeur voyait
+    le chrono s'arrêter par intermittence et l'attribuait à ses genoux. Une
+    moyenne encaisse l'estimation. Ce qu'elle abandonne, c'est la détection
+    d'un bassin affaissé d'un seul côté — que la conjonction avait été
+    introduite pour attraper, mais qu'une vue de profil ne montre de toute
+    façon pas.
+    """
     angle_hanche_droite = calculer_angle(
         corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche
     )
     angle_hanche_gauche = calculer_angle(
         corps.epaule_droite, corps.hanche_droite, corps.genou_droit
     )
-    # Seuil ouvert de 145 a 135 degres : un bassin legerement bas reste un
-    # gainage, et a 145 le maintien se coupait par a-coups — le testeur voyait
-    # le chrono perdre une demi-seconde alors qu'il tenait la position.
-    hanches_droites = angle_hanche_droite > 135 and angle_hanche_gauche > 135
+    hanches_droites = (angle_hanche_droite + angle_hanche_gauche) / 2 > 135
 
     hanche_au_dessus_coude = corps.hanche_gauche.y < corps.coude_gauche.y
     if hanches_droites and hanche_au_dessus_coude:
@@ -561,6 +573,20 @@ souleve_roumain = Exercice(
 # ==================================
 
 
+def _appui_sur_le_bras(epaule, coude, hanche):
+    """De combien le buste est soulevé par l'appui sur le bras.
+
+    Rapporté à la longueur du buste, donc sans unité : indépendant de la taille
+    de la personne et du cadrage. Vaut environ 0 quand on est simplement
+    allongé sur le côté — l'épaule est alors à la hauteur du coude, tous deux
+    au sol — et grimpe vers 0,5 dès qu'on se redresse sur l'avant-bras.
+    """
+    buste = calculer_distance(epaule, hanche)
+    if buste <= 0:
+        return 0.0
+    return (coude.y - epaule.y) / buste
+
+
 def detection_gainage_laterale_gauche(corps):
     angle_hanche_gauche = calculer_angle(
         corps.epaule_gauche, corps.hanche_gauche, corps.cheville_gauche
@@ -573,7 +599,15 @@ def detection_gainage_laterale_gauche(corps):
 
     hanche_au_dessus_coude = corps.hanche_gauche.y < corps.coude_gauche.y
 
-    if corps_aligne and cote_gauche_au_sol and hanche_au_dessus_coude:
+    # Allongé sur le côté sans rien faire, les trois conditions précédentes
+    # sont réunies : le corps est aligné, le bon côté est en bas, et la hanche
+    # passe de justesse au-dessus du coude puisque tous deux touchent le sol.
+    # Un testeur voyait donc le chrono tourner « alors que je ne suis pas en
+    # position ». Ce qui distingue vraiment une planche latérale, c'est que le
+    # buste est *soulevé* par l'appui sur l'avant-bras.
+    souleve = _appui_sur_le_bras(corps.epaule_gauche, corps.coude_gauche, corps.hanche_gauche) > 0.25
+
+    if corps_aligne and cote_gauche_au_sol and hanche_au_dessus_coude and souleve:
         return "maintien"
 
     return "repos"
@@ -622,7 +656,15 @@ def detection_gainage_laterale_droite(corps):
 
     hanche_au_dessus_coude = corps.hanche_droite.y < corps.coude_droit.y
 
-    if corps_aligne and cote_droit_au_sol and hanche_au_dessus_coude:
+    # Allongé sur le côté sans rien faire, les trois conditions précédentes
+    # sont réunies : le corps est aligné, le bon côté est en bas, et la hanche
+    # passe de justesse au-dessus du coude puisque tous deux touchent le sol.
+    # Un testeur voyait donc le chrono tourner « alors que je ne suis pas en
+    # position ». Ce qui distingue vraiment une planche latérale, c'est que le
+    # buste est *soulevé* par l'appui sur l'avant-bras.
+    souleve = _appui_sur_le_bras(corps.epaule_droite, corps.coude_droit, corps.hanche_droite) > 0.25
+
+    if corps_aligne and cote_droit_au_sol and hanche_au_dessus_coude and souleve:
         return "maintien"
 
     return "repos"

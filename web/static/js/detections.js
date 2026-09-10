@@ -166,10 +166,17 @@ export function detection_gainage(corps) {
     corps.hanche_droite,
     corps.genou_droit
   );
-  const hanches_droites =
-    // Seuil ouvert de 145 a 135 degres : un bassin legerement bas reste un
-    // gainage, et a 145 le maintien se coupait par a-coups.
-    angle_hanche_droite > 135 && angle_hanche_gauche > 135;
+  // Seuil ouvert de 145 a 135 degres : un bassin legerement bas reste un
+  // gainage, et a 145 le maintien se coupait par a-coups.
+  //
+  // Moyenne des deux cotes, et non conjonction. La fiche demande une vue de
+  // profil : la jambe eloignee est donc *toujours* masquee et son genou
+  // estime. Exiger que les deux angles depassent le seuil revient a exiger
+  // que cette estimation soit exacte — un testeur voyait le chrono s'arreter
+  // par intermittence et l'attribuait a ses genoux. Ce qu'on abandonne, c'est
+  // le reperage d'un bassin affaisse d'un seul cote, qu'une vue de profil ne
+  // montre de toute facon pas.
+  const hanches_droites = (angle_hanche_droite + angle_hanche_gauche) / 2 > 135;
 
   const hanche_au_dessus_coude = corps.hanche_gauche.y < corps.coude_gauche.y;
   if (hanches_droites && hanche_au_dessus_coude) return "maintien";
@@ -227,6 +234,16 @@ export function souleve_de_terre_roumain_detection(corps) {
   return "milieu";
 }
 
+// De combien le buste est souleve par l'appui sur le bras, rapporte a la
+// longueur du buste — donc sans unite, independant de la taille et du cadrage.
+// Vaut environ 0 quand on est simplement allonge sur le cote (epaule et coude
+// tous deux au sol) et grimpe vers 0,5 des qu'on se redresse sur l'avant-bras.
+function appui_sur_le_bras(epaule, coude, hanche) {
+  const buste = calculer_distance(epaule, hanche);
+  if (buste <= 0) return 0;
+  return (coude.y - epaule.y) / buste;
+}
+
 export function detection_gainage_laterale_gauche(corps) {
   const angle_hanche_gauche = calculer_angle(
     corps.epaule_gauche,
@@ -243,7 +260,15 @@ export function detection_gainage_laterale_gauche(corps) {
 
   const hanche_au_dessus_coude = corps.hanche_gauche.y < corps.coude_gauche.y;
 
-  if (corps_aligne && cote_gauche_au_sol && hanche_au_dessus_coude) {
+  // Allonge sur le cote sans rien faire, les trois conditions precedentes sont
+  // reunies : le corps est aligne, le bon cote est en bas, et la hanche passe
+  // de justesse au-dessus du coude puisque tous deux touchent le sol. Un
+  // testeur voyait donc le chrono tourner « alors que je ne suis pas en
+  // position ». Ce qui distingue vraiment une planche laterale, c'est que le
+  // buste est *souleve* par l'appui sur l'avant-bras.
+  const souleve = appui_sur_le_bras(corps.epaule_gauche, corps.coude_gauche, corps.hanche_gauche) > 0.25;
+
+  if (corps_aligne && cote_gauche_au_sol && hanche_au_dessus_coude && souleve) {
     return "maintien";
   }
 
@@ -263,7 +288,15 @@ export function detection_gainage_laterale_droite(corps) {
 
   const hanche_au_dessus_coude = corps.hanche_droite.y < corps.coude_droit.y;
 
-  if (corps_aligne && cote_droit_au_sol && hanche_au_dessus_coude) {
+  // Allonge sur le cote sans rien faire, les trois conditions precedentes sont
+  // reunies : le corps est aligne, le bon cote est en bas, et la hanche passe
+  // de justesse au-dessus du coude puisque tous deux touchent le sol. Un
+  // testeur voyait donc le chrono tourner « alors que je ne suis pas en
+  // position ». Ce qui distingue vraiment une planche laterale, c'est que le
+  // buste est *souleve* par l'appui sur l'avant-bras.
+  const souleve = appui_sur_le_bras(corps.epaule_droite, corps.coude_droit, corps.hanche_droite) > 0.25;
+
+  if (corps_aligne && cote_droit_au_sol && hanche_au_dessus_coude && souleve) {
     return "maintien";
   }
 
