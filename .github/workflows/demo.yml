@@ -1,0 +1,77 @@
+# Publie la demo statique sur GitHub Pages.
+#
+# Elle vivait jusqu'ici derriere un tunnel Cloudflare, ce qui imposait trois
+# contraintes a chaque test : le PC allume, le tunnel lance, et une adresse
+# qui change a chaque redemarrage. Un testeur ouvre le lien quand ca l'arrange,
+# pas quand la machine est prete. Pages donne une adresse definitive, gratuite,
+# et se met a jour par un simple push.
+#
+# Prealable a faire une fois, a la main : Settings > Pages > Source =
+# "GitHub Actions". Sans ca, l'etape configure-pages echoue en le disant.
+
+name: Demo
+
+on:
+  push:
+    branches: [main, feat/portage-web]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un deploiement en cours n'est jamais annule : mieux vaut publier deux fois
+# de suite que laisser le site a moitie remplace.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # `scripts.preparer_demo` n'a besoin que de numpy : il n'importe que le
+      # catalogue d'exercices, jamais la couche vision ni l'audio. Installer
+      # tout requirements.txt tirerait opencv et mediapipe, plusieurs centaines
+      # de mega-octets pour rien. Si l'arbre d'imports s'alourdit un jour,
+      # cette etape echouera en le disant — c'est le comportement voulu.
+      - name: Installer la seule dependance necessaire
+        run: pip install numpy==1.26.4
+
+      # Le catalogue et les sons de la demo ne sont pas versionnes : ils sont
+      # derives de CATALOGUE_EXERCICES et de audio/Fichiers/. Les regenerer ici
+      # garantit que le site publie ne peut pas etre en retard sur le code.
+      - name: Exporter le catalogue et rapatrier les sons
+        run: python -m scripts.preparer_demo
+
+      # La racine du site redirige vers la demo : un lien partage sans son
+      # `/demo/` final tomberait autrement sur une 404 sans explication.
+      - name: Preparer le dossier a publier
+        run: |
+          cp -r web/static _site
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>Coach - demo</title>
+          <meta http-equiv="refresh" content="0; url=demo/">
+          <p><a href="demo/">Ouvrir la demo</a></p>
+          HTML
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploiement
+        uses: actions/deploy-pages@v4
