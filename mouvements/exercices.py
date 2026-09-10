@@ -207,9 +207,9 @@ developpe_couche_sol = Exercice(
         "Descends les coudes jusqu'au niveau du buste, pas plus bas.",
     ],
     mise_en_place=[
-        "Allongé sur le dos sur un tapis.",
+        "Allongé sur le dos sur un tapis, jambes tendues ou genoux pliés, au choix.",
         "Un haltère dans chaque main, bras tendus au-dessus de la poitrine.",
-        "Place-toi face à la caméra, les pieds vers la caméra.",
+        "Place la caméra sur le côté, à hauteur de ton corps, et non vers tes pieds.",
     ],
     erreurs_frequentes=[
         "Descendre les coudes trop bas : ça met l'épaule en tension inutile.",
@@ -313,9 +313,13 @@ def crunches_detection(corps):
     angle_hanche_gauche = calculer_angle(
         corps.epaule_droite, corps.hanche_droite, corps.genou_droit
     )
-    if angle_hanche_droite < 70 and angle_hanche_gauche < 70:
+    # Seuils ouverts de 70/95 a 85/100 : a 70 degres il fallait decoller tout
+    # le dos, c'est-a-dire faire un releve de buste et non un crunch. L'ecart
+    # de 15 degres entre les deux bornes est conserve — c'est lui qui empeche
+    # un tremblement de landmark de compter une repetition.
+    if angle_hanche_droite < 85 and angle_hanche_gauche < 85:
         return "fin"
-    elif angle_hanche_droite > 95 and angle_hanche_gauche > 95:
+    elif angle_hanche_droite > 100 and angle_hanche_gauche > 100:
         return "debut"
     return "milieu"
 
@@ -356,7 +360,10 @@ def detection_gainage(corps):
     angle_hanche_gauche = calculer_angle(
         corps.epaule_droite, corps.hanche_droite, corps.genou_droit
     )
-    hanches_droites = angle_hanche_droite > 145 and angle_hanche_gauche > 145
+    # Seuil ouvert de 145 a 135 degres : un bassin legerement bas reste un
+    # gainage, et a 145 le maintien se coupait par a-coups — le testeur voyait
+    # le chrono perdre une demi-seconde alors qu'il tenait la position.
+    hanches_droites = angle_hanche_droite > 135 and angle_hanche_gauche > 135
 
     hanche_au_dessus_coude = corps.hanche_gauche.y < corps.coude_gauche.y
     if hanches_droites and hanche_au_dessus_coude:
@@ -558,7 +565,9 @@ def detection_gainage_laterale_gauche(corps):
     angle_hanche_gauche = calculer_angle(
         corps.epaule_gauche, corps.hanche_gauche, corps.cheville_gauche
     )
-    corps_aligne = angle_hanche_gauche > 150
+    # Meme resserrement que du cote droit, et pour la meme raison : le maintien
+    # se declenchait avant que la position soit prise.
+    corps_aligne = angle_hanche_gauche > 155
 
     cote_gauche_au_sol = corps.epaule_gauche.y > corps.epaule_droite.y
 
@@ -602,7 +611,12 @@ def detection_gainage_laterale_droite(corps):
     angle_hanche_droite = calculer_angle(
         corps.epaule_droite, corps.hanche_droite, corps.cheville_droite
     )
-    corps_aligne = angle_hanche_droite > 150
+    # Seuil resserre de 150 a 155 degres : a 150 le corps pouvait casser de 30
+    # degres et passer pour aligne, si bien qu'un testeur a compte du temps les
+    # fesses posees au sol. Resserre modestement et non a 165 : ce mode n'a pas
+    # d'hysteresis, donc un seuil trop pres de la position parfaite ferait
+    # clignoter le maintien.
+    corps_aligne = angle_hanche_droite > 155
 
     cote_droit_au_sol = corps.epaule_droite.y > corps.epaule_gauche.y
 

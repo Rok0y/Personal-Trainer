@@ -146,8 +146,12 @@ export function crunches_detection(corps) {
     corps.hanche_droite,
     corps.genou_droit
   );
-  if (angle_hanche_droite < 70 && angle_hanche_gauche < 70) return "fin";
-  else if (angle_hanche_droite > 95 && angle_hanche_gauche > 95) return "debut";
+  // Seuils ouverts de 70/95 a 85/100 : a 70 degres il fallait decoller tout le
+  // dos, c'est-a-dire faire un releve de buste et non un crunch. L'ecart de 15
+  // degres entre les deux bornes est conserve — c'est lui qui empeche un
+  // tremblement de landmark de compter une repetition.
+  if (angle_hanche_droite < 85 && angle_hanche_gauche < 85) return "fin";
+  else if (angle_hanche_droite > 100 && angle_hanche_gauche > 100) return "debut";
   return "milieu";
 }
 
@@ -163,7 +167,9 @@ export function detection_gainage(corps) {
     corps.genou_droit
   );
   const hanches_droites =
-    angle_hanche_droite > 145 && angle_hanche_gauche > 145;
+    // Seuil ouvert de 145 a 135 degres : un bassin legerement bas reste un
+    // gainage, et a 145 le maintien se coupait par a-coups.
+    angle_hanche_droite > 135 && angle_hanche_gauche > 135;
 
   const hanche_au_dessus_coude = corps.hanche_gauche.y < corps.coude_gauche.y;
   if (hanches_droites && hanche_au_dessus_coude) return "maintien";
@@ -227,7 +233,11 @@ export function detection_gainage_laterale_gauche(corps) {
     corps.hanche_gauche,
     corps.cheville_gauche
   );
-  const corps_aligne = angle_hanche_gauche > 150;
+  // Seuil resserre de 150 a 155 degres : a 150 le corps pouvait casser de 30
+  // degres et passer pour aligne, fesses posees au sol comprises. Resserre
+  // modestement : sans hysteresis, un seuil trop pres de la position parfaite
+  // ferait clignoter le maintien.
+  const corps_aligne = angle_hanche_gauche > 155;
 
   const cote_gauche_au_sol = corps.epaule_gauche.y > corps.epaule_droite.y;
 
@@ -246,7 +256,8 @@ export function detection_gainage_laterale_droite(corps) {
     corps.hanche_droite,
     corps.cheville_droite
   );
-  const corps_aligne = angle_hanche_droite > 150;
+  // Meme resserrement que du cote gauche, et pour la meme raison.
+  const corps_aligne = angle_hanche_droite > 155;
 
   const cote_droit_au_sol = corps.epaule_droite.y > corps.epaule_gauche.y;
 

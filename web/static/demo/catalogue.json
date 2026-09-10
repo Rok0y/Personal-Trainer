@@ -71,9 +71,9 @@
     "nom": "Developpé couché altères",
     "description": "Développé couché au sol, un haltère dans chaque main, poussée verticale.",
     "mise_en_place": [
-      "Allongé sur le dos sur un tapis.",
+      "Allongé sur le dos sur un tapis, jambes tendues ou genoux pliés, au choix.",
       "Un haltère dans chaque main, bras tendus au-dessus de la poitrine.",
-      "Place-toi face à la caméra, les pieds vers la caméra."
+      "Place la caméra sur le côté, à hauteur de ton corps, et non vers tes pieds."
     ],
     "instructions": [
       "Garde la tête posée au sol, regard vers le plafond.",
@@ -521,7 +521,7 @@
     "mise_en_place": [
       "Place une chaise derrière toi, debout, pieds écartés de la largeur des hanches.",
       "Tends les bras devant toi pour l'équilibre.",
-      "Place-toi de profil face à la caméra, jambes entières visibles."
+      "Place-toi face à la caméra, jambes entières visibles."
     ],
     "instructions": [
       "Descends les hanches vers l'arrière comme pour t'asseoir.",
