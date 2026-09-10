@@ -76,7 +76,7 @@ Le point d'entrée de l'application est `main.py`, qui orchestre la boucle camé
 
 - Python 3.11
 - Une webcam
-- Les dépendances Python du projet (MediaPipe, OpenCV, Flask, pygame, pydub, numpy, notamment) — voir `requirements.txt` (un travail est en cours pour figer la liste précise des dépendances dans ce fichier).
+- Les dépendances Python du projet — `pip install -r requirements.txt`. Les versions y sont figées sur celles qui font réellement tourner l'application, et le fichier porte un avertissement à lire : `opencv-contrib-python` et `opencv-python` fournissent tous deux le module `cv2` et s'écrasent mutuellement, il ne faut donc en installer qu'un seul.
 
 ## Installation & lancement
 
