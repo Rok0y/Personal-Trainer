@@ -82,6 +82,49 @@ def decrire(nom, mouvement):
     return fiche
 
 
+def exporter_baremes():
+    """Les baremes de progression, exportes tels que le Python les definit.
+
+    `progression/paliers.py` n'a que des imports de bibliotheque standard au
+    niveau module — ses dependances au profil et au catalogue sont differees —,
+    donc l'importer ici ne tire ni pygame ni opencv, et le workflow de
+    deploiement (numpy seul) continue de passer.
+
+    Les echelles de reference partent avec : ce sont elles que le JS restreint
+    ensuite au materiel declare, exactement comme `echelle_disponible`.
+    """
+    from dataclasses import asdict
+
+    from core.materiel import ACCESSOIRES, MATERIEL_PAR_DEFAUT, POIDS_REFERENCE
+    from progression import paliers
+    from session.seances import MATERIEL_EXERCICES, nombre_halteres
+
+    return {
+        "specs": {nom: asdict(spec) for nom, spec in paliers.SPECS.items()},
+        "echelles": {
+            "un_haltere": list(paliers.ECHELLE_UN_HALTERE),
+            "deux_halteres": list(paliers.ECHELLE_DEUX_HALTERES),
+            "sans_charge": list(paliers.SANS_CHARGE),
+            "reference": list(POIDS_REFERENCE),
+        },
+        # Le descriptif **brut** et non une liste d'accessoires deja
+        # deduite : `core.materiel.accessoires_manquants` cherche une
+        # sous-chaine dedans, et refaire cette regle en JavaScript serait la
+        # dupliquer. Le nombre d'halteres, lui, vient d'une fonction dont la
+        # logique de decoupage n'a pas a traverser.
+        "materiel": {
+            nom: {
+                "halteres": nombre_halteres(nom),
+                "brut": MATERIEL_EXERCICES.get(nom, "") or "",
+            }
+            for nom in paliers.SPECS
+        },
+        "accessoires": ACCESSOIRES,
+        "materiel_par_defaut": MATERIEL_PAR_DEFAUT,
+        "series_max_par_defaut": paliers.SERIES_MAX_PAR_DEFAUT,
+    }
+
+
 def exporter_pour_application():
     """Tous les mouvements et toutes les seances, pour l'ecran de seance.
 
@@ -187,6 +230,10 @@ def main():
     (DONNEES / "seances.json").write_text(
         json.dumps(seances, ensure_ascii=False, indent=1), encoding="utf-8"
     )
+    baremes = exporter_baremes()
+    (DONNEES / "baremes.json").write_text(
+        json.dumps(baremes, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
 
     copies, manquants = copier_sons()
 
@@ -194,6 +241,7 @@ def main():
     if sans_detection:
         print(f"  ecartes (pas de detection de pose) : {', '.join(sans_detection)}")
     print(f"{len(mouvements)} mouvements et {len(seances)} seances vers {DONNEES}")
+    print(f"{len(baremes['specs'])} baremes exportes")
     print(f"{copies} sons copies (demo + application)")
     if manquants:
         print(f"  manquants : {', '.join(manquants)}")

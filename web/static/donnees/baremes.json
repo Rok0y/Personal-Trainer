@@ -1,0 +1,415 @@
+{
+ "specs": {
+  "Developpé couché altères": {
+   "series": 4,
+   "cible_min": 8,
+   "cible_max": 20,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 4,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Pompes": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Pompes inclinées": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Pompes sur les genoux": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Développé épaule": {
+   "series": 3,
+   "cible_min": 8,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 4,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Elevations latérales": {
+   "series": 3,
+   "cible_min": 10,
+   "cible_max": 18,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": 8,
+   "surcharges": {}
+  },
+  "Extension Triceps": {
+   "series": 3,
+   "cible_min": 6,
+   "cible_max": 10,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 8,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Rowing unilateral droit": {
+   "series": 4,
+   "cible_min": 6,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 5,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Rowing unilateral gauche": {
+   "series": 4,
+   "cible_min": 6,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 8,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Rowing penche": {
+   "series": 3,
+   "cible_min": 8,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 4,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Oiseau": {
+   "series": 3,
+   "cible_min": 10,
+   "cible_max": 20,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": 8,
+   "surcharges": {}
+  },
+  "Curl biceps droit": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 4,
+   "poids_max": 12,
+   "surcharges": {}
+  },
+  "Curl biceps gauche": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 4,
+   "poids_max": 12,
+   "surcharges": {}
+  },
+  "Squat": {
+   "series": 4,
+   "cible_min": 10,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 4,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Squat sur chaise": {
+   "series": 3,
+   "cible_min": 5,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Fente droite": {
+   "series": 4,
+   "cible_min": 8,
+   "cible_max": 10,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 4,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Fente gauche": {
+   "series": 4,
+   "cible_min": 8,
+   "cible_max": 10,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 4,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Souleve de terre roumain": {
+   "series": 4,
+   "cible_min": 8,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 4,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Crunches": {
+   "series": 3,
+   "cible_min": 5,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Gainage planche": {
+   "series": 3,
+   "cible_min": 10,
+   "cible_max": 60,
+   "pas": 2,
+   "unite": "secondes",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Gainage sur les genoux": {
+   "series": 2,
+   "cible_min": 10,
+   "cible_max": 60,
+   "pas": 2,
+   "unite": "secondes",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Gainage planche laterale droite": {
+   "series": 1,
+   "cible_min": 8,
+   "cible_max": 60,
+   "pas": 2,
+   "unite": "secondes",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null,
+   "surcharges": {}
+  },
+  "Gainage planche laterale gauche": {
+   "series": 1,
+   "cible_min": 8,
+   "cible_max": 60,
+   "pas": 2,
+   "unite": "secondes",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null,
+   "surcharges": {}
+  }
+ },
+ "echelles": {
+  "un_haltere": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   8,
+   10,
+   12,
+   14,
+   16,
+   18
+  ],
+  "deux_halteres": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   8,
+   10
+  ],
+  "sans_charge": [
+   0
+  ],
+  "reference": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   8,
+   10,
+   12,
+   14,
+   16,
+   18
+  ]
+ },
+ "materiel": {
+  "Developpé couché altères": {
+   "halteres": 2,
+   "brut": "Deux haltères et un tapis"
+  },
+  "Pompes": {
+   "halteres": 0,
+   "brut": ""
+  },
+  "Pompes inclinées": {
+   "halteres": 0,
+   "brut": "Une chaise"
+  },
+  "Pompes sur les genoux": {
+   "halteres": 0,
+   "brut": "Un tapis"
+  },
+  "Développé épaule": {
+   "halteres": 2,
+   "brut": "Deux haltères"
+  },
+  "Elevations latérales": {
+   "halteres": 2,
+   "brut": "Deux haltères"
+  },
+  "Extension Triceps": {
+   "halteres": 1,
+   "brut": "Un haltère"
+  },
+  "Rowing unilateral droit": {
+   "halteres": 1,
+   "brut": "Un haltère et une chaise"
+  },
+  "Rowing unilateral gauche": {
+   "halteres": 1,
+   "brut": "Un haltère et une chaise"
+  },
+  "Rowing penche": {
+   "halteres": 2,
+   "brut": "Deux haltères"
+  },
+  "Oiseau": {
+   "halteres": 2,
+   "brut": "Deux haltères"
+  },
+  "Curl biceps droit": {
+   "halteres": 1,
+   "brut": "Un haltère"
+  },
+  "Curl biceps gauche": {
+   "halteres": 1,
+   "brut": "Un haltère"
+  },
+  "Squat": {
+   "halteres": 2,
+   "brut": "Deux haltères et un tapis"
+  },
+  "Squat sur chaise": {
+   "halteres": 0,
+   "brut": "Une chaise"
+  },
+  "Fente droite": {
+   "halteres": 2,
+   "brut": "Deux haltères et un tapis"
+  },
+  "Fente gauche": {
+   "halteres": 2,
+   "brut": "Deux haltères et un tapis"
+  },
+  "Souleve de terre roumain": {
+   "halteres": 2,
+   "brut": "Deux haltères"
+  },
+  "Crunches": {
+   "halteres": 0,
+   "brut": "Un tapis"
+  },
+  "Gainage planche": {
+   "halteres": 0,
+   "brut": "Un tapis"
+  },
+  "Gainage sur les genoux": {
+   "halteres": 0,
+   "brut": "Un tapis"
+  },
+  "Gainage planche laterale droite": {
+   "halteres": 0,
+   "brut": "Un tapis"
+  },
+  "Gainage planche laterale gauche": {
+   "halteres": 0,
+   "brut": "Un tapis"
+  }
+ },
+ "accessoires": {
+  "tapis": "Un tapis",
+  "chaise": "Une chaise"
+ },
+ "materiel_par_defaut": {
+  "halteres": {
+   "2": 2,
+   "3": 2,
+   "4": 2,
+   "5": 2,
+   "6": 2,
+   "8": 2,
+   "10": 2,
+   "12": 1,
+   "14": 1,
+   "16": 1,
+   "18": 1
+  },
+  "accessoires": [
+   "tapis",
+   "chaise"
+  ]
+ },
+ "series_max_par_defaut": 6
+}

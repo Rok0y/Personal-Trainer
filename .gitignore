@@ -95,3 +95,5 @@ scripts/fixtures_poses.jsonl
 scripts/fixtures_catalogue.json
 scripts/fixtures_historique.jsonl
 web/static/sons/
+scripts/fixtures_paliers.jsonl
+scripts/fixtures_paliers_specs.json
