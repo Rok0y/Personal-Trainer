@@ -174,7 +174,7 @@ class Circuit:
         # qui sort la latence du réseau du calcul — seule la gigue subsiste,
         # que `moteur.INTERVALLE_MAX` borne déjà.
         self.maintenant = time.monotonic
-        self.debut = time.time()
+        self.debut = self.maintenant()
         self.resultats_series = []
         self.paires_entrelacees = self._detecter_paires_entrelacees()
         self.serie_actuelle_locale = 1
@@ -285,12 +285,12 @@ class Circuit:
             duree = self.bloc_actuel.repos_apres
         else:
             return 0
-        temps_ecoule = time.time() - self.debut_repos
+        temps_ecoule = self.maintenant() - self.debut_repos
         return max(0, duree - temps_ecoule)
 
     @property
     def duree_totale(self):
-        return int(time.time() - self.debut)
+        return int(self.maintenant() - self.debut)
 
     @property
     def blocs_comptabilises(self):
@@ -796,7 +796,7 @@ class Circuit:
                 self.index_exercice = partenaire_index
                 # GARDER le même serie_actuelle pour que l'affichage reste cohérent
                 self.phase = "recuperation_serie"
-                self.debut_repos = time.time()
+                self.debut_repos = self.maintenant()
                 return
             else:
                 # On revient du partenaire
@@ -811,13 +811,13 @@ class Circuit:
                     # Passer à l'exercice suivant
                     if self.bloc_actuel.repos_apres > 0:
                         self.phase = "repos_exercice"
-                        self.debut_repos = time.time()
+                        self.debut_repos = self.maintenant()
                     else:
                         self.passer_exercice_suivant()
                 else:
                     # Il y a encore des séries
                     self.phase = "recuperation_serie"
-                    self.debut_repos = time.time()
+                    self.debut_repos = self.maintenant()
                 return
 
         # Cas 2 : On revient du partenaire entrelacé (dans le cas où le partenaire est celui-ci)
@@ -830,12 +830,12 @@ class Circuit:
             if self.serie_actuelle > self.nombre_series:
                 if self.bloc_actuel.repos_apres > 0:
                     self.phase = "repos_exercice"
-                    self.debut_repos = time.time()
+                    self.debut_repos = self.maintenant()
                 else:
                     self.passer_exercice_suivant()
             else:
                 self.phase = "recuperation_serie"
-                self.debut_repos = time.time()
+                self.debut_repos = self.maintenant()
             return
 
         # -----------------------------------------
@@ -845,7 +845,7 @@ class Circuit:
         if self.serie_actuelle < self.nombre_series:
             self.serie_actuelle += 1
             self.phase = "recuperation_serie"
-            self.debut_repos = time.time()
+            self.debut_repos = self.maintenant()
             return
 
         # -----------------------------------------
@@ -855,7 +855,7 @@ class Circuit:
 
         if self.bloc_actuel.repos_apres > 0:
             self.phase = "repos_exercice"
-            self.debut_repos = time.time()
+            self.debut_repos = self.maintenant()
         else:
             self.passer_exercice_suivant()
 
