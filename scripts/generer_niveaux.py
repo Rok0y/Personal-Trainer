@@ -28,8 +28,14 @@ import json
 import random
 from pathlib import Path
 
-import core.materiel as materiel
 from progression import niveaux, paliers
+from scripts.historiques_au_hasard import (
+    INVENTAIRES,
+    ancrages as tirer_ancrages,
+    historique as tirer_historique,
+    injecter_inventaire,
+    palier_serialisable,
+)
 
 RACINE = Path(__file__).resolve().parent.parent
 DESTINATION = Path(__file__).parent / "fixtures_niveaux.jsonl"
@@ -40,100 +46,6 @@ GRAINE = 20260912
 #: les fonctions du module.
 HISTORIQUES = 120
 
-MODES = ("repetitions", "maintien", "chrono", "amrap", "echauffement")
-
-#: Inventaires balayés, comme pour le barème : l'échelle de poids décale les
-#: niveaux, donc un port juste avec des haltères complets peut être faux pour
-#: un débutant.
-INVENTAIRES = {
-    "non_declare": None,
-    "debutant": {"halteres": {2: 2, 3: 2, 4: 2}, "accessoires": ["tapis"]},
-    "complet": {"halteres": {p: 2 for p in materiel.POIDS_REFERENCE},
-                "accessoires": ["tapis", "chaise"]},
-}
-
-
-def _exercice(tirage, noms):
-    nom = tirage.choice(noms)
-    spec = paliers.SPECS.get(nom)
-    mode = tirage.choice(MODES)
-    maintien = mode in ("maintien", "chrono")
-    cible = tirage.randint(5, 40) if maintien else tirage.randint(3, 25)
-    nb_series = tirage.randint(1, 6)
-
-    series = []
-    for numero in range(1, nb_series + 1):
-        # Des séries **inégales**, et parfois inachevées : c'est le seul moyen
-        # d'éprouver la règle du maillon faible. Des séries identiques et
-        # toutes complètes rendraient `min` équivalent à `max`.
-        realise = max(0, cible + tirage.randint(-5, 3))
-        series.append({
-            "serie": numero,
-            "repetitions": 0 if maintien else realise,
-            "poids": tirage.choice([0, 2, 4, 5, 6, 8, 10, 14, 18]),
-            "duree": realise if maintien else 0,
-            "completee": tirage.random() > 0.25,
-        })
-
-    return {
-        "nom": nom,
-        "mode": mode,
-        "poids": series[0]["poids"],
-        "series": nb_series,
-        "repetitions": sum(s["repetitions"] for s in series),
-        "duree": sum(s["duree"] for s in series),
-        "series_cibles": nb_series,
-        "repetitions_cibles": 0 if maintien else cible,
-        "duree_cible": cible if maintien else 0,
-        "commentaire": "",
-        "entrelace_avec": None,
-        "repos_entre_series": 45,
-        "repos_apres": 60,
-        "ressenti": tirage.choice(["", "ok", "facile", "trop_dur", "trop_facile"]),
-        "series_detaillees": series,
-    }
-
-
-def _historique(tirage, noms):
-    """Un historique au format de `recuperer_historique` : le plus récent en tête."""
-    nombre = tirage.randint(1, 12)
-    seances = []
-    for index in range(nombre, 0, -1):
-        seances.append({
-            "id": index,
-            "date": f"{index:02d}/03/2026 08:00",
-            "duree": tirage.randint(300, 3600),
-            "statut": tirage.choice(["finished", "finished", "abandoned"]),
-            "nom": tirage.choice(["bras", "Upper Pull", None]),
-            # Un exercice peut apparaître deux fois dans la même séance : la
-            # meilleure ligne l'emporte, jamais leur somme.
-            "exercices": [_exercice(tirage, noms) for _ in range(tirage.randint(1, 4))],
-        })
-    return seances
-
-
-def _ancrages(tirage, noms, seances):
-    """Des ancrages posés **au milieu** de l'historique.
-
-    Posés à la fin, ils ne feraient jamais table rase de rien ; posés au
-    début, ils ne serviraient jamais de plancher. C'est entre les deux que
-    leurs deux effets se voient.
-    """
-    if tirage.random() < 0.3:
-        return {}
-    ids = sorted(s["id"] for s in seances)
-    milieu = ids[len(ids) // 2] if ids else 0
-    return {
-        nom: {
-            "niveau": tirage.randint(1, 40),
-            "date": "15/03/2026 08:00",
-            "apres_seance_id": tirage.choice([0, milieu, max(ids, default=0)]),
-            "raison": "harnais",
-        }
-        for nom in tirage.sample(noms, k=min(3, len(noms)))
-    }
-
-
 def main():
     tirage = random.Random(GRAINE)
     noms = list(paliers.exercices_suivis())
@@ -141,13 +53,11 @@ def main():
 
     with DESTINATION.open("w", encoding="utf-8") as fichier:
         for nom_inventaire, inventaire in INVENTAIRES.items():
-            materiel.materiel_du_profil = (
-                lambda _=None, brut=inventaire: materiel.normaliser(brut)
-            )
+            injecter_inventaire(inventaire)
 
             for numero in range(HISTORIQUES):
-                seances = _historique(tirage, noms)
-                ancrages = _ancrages(tirage, noms, seances)
+                seances = tirer_historique(tirage, noms)
+                ancrages = tirer_ancrages(tirage, noms, seances)
 
                 # `etats_niveaux` ne prend pas les ancrages en argument : il
                 # les lit en base. On detourne cette lecture, sinon l'oracle
@@ -187,15 +97,9 @@ def main():
 
 
 def _serialiser(objet):
-    """Les paliers sont des dataclasses : on les rend sous la forme que le JS produit."""
+    """Les paliers sont des dataclasses : le module partage sait les rendre."""
     if isinstance(objet, paliers.Palier):
-        return {
-            "niveau": objet.niveau,
-            "poids": objet.poids,
-            "series": objet.series,
-            "cible": objet.cible,
-            "unite": objet.unite,
-        }
+        return palier_serialisable(objet)
     raise TypeError(f"Non serialisable : {type(objet)}")
 
 
