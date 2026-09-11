@@ -220,6 +220,7 @@ import { PoseLandmarker, FilesetResolver, DrawingUtils }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
 import { construire_corps } from "../js/landmarks.js";
+import { points_utilises, consigne_de_cadrage } from "../js/cadrage.js";
 import { DETECTIONS } from "../js/detections.js";
 import { CompteurMouvement } from "../js/compteur.js";
 
@@ -261,6 +262,7 @@ const PROBLEMES = [
 
 let catalogue = [];
 let exercice = null;
+let pointsRequis = [];
 let poseLandmarker = null;
 let fileset = null;
 let posesDuDetecteur = null;
@@ -560,6 +562,7 @@ function majResume() {
 
 function ouvrirFiche(fiche) {
   exercice = fiche;
+  pointsRequis = points_utilises(DETECTIONS[fiche.detection]);
   document.getElementById("ficheNom").textContent = fiche.nom;
   document.getElementById("ficheDescription").textContent = fiche.description ?? "";
   remplir("ficheMiseEnPlace", fiche.mise_en_place);
@@ -919,8 +922,19 @@ function preparer(corps, instant) {
     return;
   }
 
-  const bouge = mesurerMouvement(corps, instant);
   const foule = personnesVues > 1 ? ` (${personnesVues} personnes vues, je suis la plus proche)` : "";
+
+  // Le cadrage passe avant l'immobilite : quelqu'un de parfaitement immobile
+  // hors champ est « pret » au sens de mesurerMouvement, et c'est exactement
+  // le cas ou l'exercice entier se joue pour zero repetition.
+  const cadrage = consigne_de_cadrage(corps, pointsRequis);
+  if (cadrage) {
+    debutImmobile = null;
+    afficherConsigne(cadrage + foule);
+    return;
+  }
+
+  const bouge = mesurerMouvement(corps, instant);
 
   if (bouge === null || bouge > SEUIL_IMMOBILE) {
     debutImmobile = null;
