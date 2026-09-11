@@ -11,6 +11,7 @@
 
 import { UNITE_SECONDES } from "./paliers.js";
 import { UNITE_PAR_MODE } from "./niveaux.js";
+import { CIBLE_TEST } from "./calibration.js";
 
 //: Les cinq valeurs stockables. L'interface n'en propose que celles qui
 //: *changent* quelque chose — « facile » et « trop facile » apres une
@@ -97,6 +98,13 @@ export class Ressenti {
         ? exercice.duree_cible || 0
         : exercice.repetitions_cibles || 0;
     if (!series || !cible) return null;
+
+    // Une **serie de test** ne dit rien de l'objectif suivant. Sa cible est un
+    // plafond inatteignable qui part tel quel dans l'historique, et qui s'y
+    // relit comme un objectif tres haut et manque : un test ancre au niveau 9
+    // faisait proposer le niveau 24 a la seance suivante. Le test a deja pose
+    // son ancrage ; c'est lui le repere, pas cette ligne.
+    if (cible === CIBLE_TEST) return null;
 
     return [exercice.poids || 0, series, cible];
   }

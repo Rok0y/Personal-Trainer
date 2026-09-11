@@ -25,6 +25,7 @@ from progression.niveaux import (
     niveau_prouve_par,
     niveaux_par_exercice,
 )
+from progression.calibration import CIBLE_TEST
 from progression.paliers import (
     UNITE_SECONDES,
     est_suivi_par_le_moteur,
@@ -125,6 +126,16 @@ def _cible_visee(exercice):
     else:
         cible = exercice.get("repetitions_cibles") or 0
     if not series or not cible:
+        return None
+
+    # Une **série de test** ne dit rien de l'objectif suivant. Sa cible est un
+    # plafond inatteignable (`CIBLE_TEST`), qui part tel quel dans l'historique
+    # — et qui s'y relit comme un objectif très haut et manqué. Mesuré : un
+    # test ancré au niveau 9 faisait proposer le niveau 24 à la séance
+    # suivante, soit exactement le contraire de ce que la calibration vient
+    # d'établir. Le test a déjà posé son ancrage ; c'est lui le repère, pas
+    # cette ligne.
+    if cible == CIBLE_TEST:
         return None
 
     return exercice.get("poids") or 0, series, cible

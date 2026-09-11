@@ -79,6 +79,8 @@
     color: var(--texte-doux);
   }
   .puce-echauffement { color: var(--accent); }
+  .puce b { color: var(--texte); font-weight: 600; }
+  .puce-tester { color: var(--alerte); }
 
   /* ---------- Seance ---------- */
 
@@ -314,6 +316,12 @@ import { points_utilises, consigne_de_cadrage } from "../js/cadrage.js";
 import * as historique from "../js/historique.js";
 import * as stockage from "../js/stockage.js";
 import { Lecteur } from "../js/lecteur.js";
+import { Baremes } from "../js/paliers.js";
+import { Niveaux } from "../js/niveaux.js";
+import { Ressenti } from "../js/ressenti.js";
+import { Calibration } from "../js/calibration.js";
+import { Objectifs } from "../js/objectifs.js";
+import { UNITE_SECONDES } from "../js/paliers.js";
 
 // Le profil unique de cette version. Les profils multiples arriveront avec la
 // synchronisation : d'ici la, un appareil est une personne, et un identifiant
@@ -339,20 +347,52 @@ const montrer = (id) => {
 let mouvements = {};
 let seances = {};
 let base = historique.base_vide();
+let tables_baremes = null;
+let moteur = null;
 
 async function charger_donnees() {
-  const [m, s, sons] = await Promise.all([
+  const [m, s, sons, baremes] = await Promise.all([
     fetch("../donnees/mouvements.json").then((r) => r.json()),
     fetch("../donnees/seances.json").then((r) => r.json()),
     fetch("../donnees/sons.json").then((r) => r.json()),
+    fetch("../donnees/baremes.json").then((r) => r.json()),
   ]);
   mouvements = m;
   seances = s;
+  tables_baremes = baremes;
   lecteur = new Lecteur("../sons", sons);
   base = await stockage.charger();
   if (!base.utilisateurs.length) {
     historique.creer_utilisateur(base, "Moi");
   }
+  construire_moteur();
+}
+
+/**
+ * Le moteur de progression, reconstruit a chaque changement de materiel.
+ *
+ * Il porte l'inventaire du profil : le recreer est le seul moyen d'en changer,
+ * puisque `Baremes` normalise une fois pour toutes a la construction.
+ */
+function construire_moteur() {
+  const profil = base.utilisateurs.find((u) => u.id === PROFIL);
+  const baremes = new Baremes(tables_baremes, profil?.materiel ?? null);
+  const niveaux = new Niveaux(baremes);
+  const calibration = new Calibration(baremes);
+  moteur = {
+    baremes,
+    niveaux,
+    calibration,
+    objectifs: new Objectifs(baremes, niveaux, new Ressenti(baremes, niveaux), calibration),
+  };
+}
+
+/** L'historique et les ancrages du profil, tels que le moteur les attend. */
+function lecture_du_profil() {
+  return {
+    seances: historique.recuperer_historique(base, PROFIL),
+    ancrages: historique.recuperer_ancrages(base, PROFIL),
+  };
 }
 
 // ---------------------------------------------------------------- son
@@ -383,6 +423,16 @@ let phase_precedente = null;
 async function demarrer(nom) {
   nom_seance = nom;
   seance = circuit_pour(mouvements, seances[nom]);
+  // **Les cibles viennent de l'historique, plus du fichier.** Le JSON ne fait
+  // plus autorite que sur la structure : quel exercice, quel mode, quels
+  // repos, quel entrelacement.
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  moteur.objectifs.appliquer_a_circuit(
+    seance,
+    moteur.objectifs.objectifs_par_exercice(histoire, ancrages),
+    moteur.objectifs.exercices_sans_donnees(histoire, ancrages),
+    PROFIL
+  );
   etat = creer_etat();
   compteur = new CompteurMouvement();
   derniere_rep = 0;
@@ -551,7 +601,44 @@ function jouer_exercice(corps, instant) {
   if (terminee) apres_serie();
 }
 
+/**
+ * Pose l'ancrage d'un test de calibration, si la serie qui vient de finir en
+ * etait un.
+ *
+ * **Ici et pas a la fin de la seance** : la performance vient d'etre mesuree,
+ * et l'ancrage doit exister avant que le moteur ne recalcule quoi que ce soit.
+ * Refaire la serie repose un ancrage, sans dommage — seul le dernier de chaque
+ * exercice compte.
+ */
+async function cloturer_test_eventuel() {
+  const repere = seance._derniere_serie_terminee;
+  if (!repere) return;
+  const bloc = seance.exercices[repere.index_exercice];
+  if (!bloc?.test_max) return;
+
+  const resultat = seance.resultats_series.find(
+    (r) => r.index_exercice === repere.index_exercice && r.serie === repere.serie
+  );
+  if (!resultat) return;
+
+  const nom = bloc.exercice.nom;
+  const maximum =
+    moteur.baremes.unite(nom) === UNITE_SECONDES
+      ? resultat.duree
+      : resultat.repetitions;
+  if (!maximum) return;
+
+  const niveau = moteur.calibration.niveau_a_ancrer(nom, bloc.poids, maximum);
+  historique.enregistrer_ancrage(base, nom, niveau, {
+    raison: "Test en séance",
+    utilisateur_id: PROFIL,
+  });
+  await stockage.sauver(base);
+  etat.consigne = `Niveau de départ enregistré pour ${nom}.`;
+}
+
 function apres_serie() {
+  cloturer_test_eventuel();
   compteur.reset();
   derniere_rep = 0;
   // Un geste neuf : sans ca, `HoldPosition` reste « termine » et la serie
@@ -616,7 +703,13 @@ function rafraichir_affichage() {
     $("cible").textContent = `secondes / ${bloc.duree}`;
   } else {
     $("valeur").textContent = etat.repetitions ?? 0;
-    $("cible").textContent = bloc ? `/ ${bloc.repetitions_par_serie}` : "";
+    // Un test de calibration vise un plafond inatteignable : afficher « / 999 »
+    // donnerait l'impression d'un objectif rate avant meme d'avoir commence.
+    $("cible").textContent = !bloc
+      ? ""
+      : bloc.test_max
+        ? "— fais ton maximum, puis croise les bras"
+        : `/ ${bloc.repetitions_par_serie}`;
   }
 
   const en_repos =
@@ -741,20 +834,41 @@ async function terminer(abandonnee = false) {
 function dessiner_liste() {
   const liste = $("listeSeances");
   liste.innerHTML = "";
+
+  // Les objectifs sont calcules une fois pour toute la liste : chaque calcul
+  // relit l'historique entier, et il y a six seances a afficher.
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  const objectifs = moteur.objectifs.objectifs_par_exercice(histoire, ancrages);
+  const sans_donnees = moteur.objectifs.exercices_sans_donnees(histoire, ancrages);
+
   for (const [nom, blocs] of Object.entries(seances)) {
     const exercices = blocs.filter((b) => b.mode !== "echauffement");
     const echauffements = blocs.length - exercices.length;
     const carte = document.createElement("button");
     carte.className = "carte";
+
+    // Ce que le moteur demandera, exercice par exercice. C'est la seule chose
+    // qui rend sa progression visible avant de commencer.
+    const puces = exercices.slice(0, 5).map((b) => {
+      if (moteur.objectifs.a_calibrer(b.exercice, b.mode, sans_donnees)) {
+        return `<span class="puce puce-tester">${b.exercice} · à tester</span>`;
+      }
+      const palier = moteur.objectifs.objectif_pour(b.exercice, b.mode, objectifs);
+      const cible = palier
+        ? `${palier.series}×${palier.cible}${palier.unite === "secondes" ? " s" : ""}` +
+          (palier.poids ? ` · ${palier.poids} kg` : "")
+        : `${b.series}×${b.repetitions || b.duree}`;
+      return `<span class="puce">${b.exercice} <b>${cible}</b></span>`;
+    });
+
     carte.innerHTML =
       `<div class="carte-titre">${nom}</div>` +
       `<div class="carte-detail">${exercices.length} exercice${exercices.length > 1 ? "s" : ""}` +
       (echauffements ? ` · ${echauffements} échauffement${echauffements > 1 ? "s" : ""}` : "") +
       `</div>` +
-      `<div class="puces">${exercices
-        .slice(0, 4)
-        .map((b) => `<span class="puce">${b.exercice}</span>`)
-        .join("")}${exercices.length > 4 ? `<span class="puce">+${exercices.length - 4}</span>` : ""}</div>`;
+      `<div class="puces">${puces.join("")}` +
+      (exercices.length > 5 ? `<span class="puce">+${exercices.length - 5}</span>` : "") +
+      `</div>`;
     carte.addEventListener("click", () => demarrer(nom));
     liste.appendChild(carte);
   }
