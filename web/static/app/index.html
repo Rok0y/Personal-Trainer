@@ -385,6 +385,34 @@
   .record-ligne b { color: var(--texte); font-weight: 600; }
   .record.hors-bareme .record-niveau { color: var(--alerte); }
 
+  .halteres {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    gap: 0.6rem;
+    margin: 0.9rem 0 1.6rem;
+  }
+  .haltere {
+    background: var(--surface);
+    border: 1px solid var(--trait);
+    border-radius: 10px;
+    padding: 0.6rem 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .haltere span { font-size: 0.86rem; font-weight: 600; }
+  .haltere select {
+    background: var(--surface-haut);
+    color: var(--texte);
+    border: 1px solid var(--trait);
+    border-radius: 7px;
+    padding: 0.35rem 0.4rem;
+    font: inherit;
+    font-size: 0.85rem;
+  }
+  .accessoires { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.9rem 0 1.6rem; }
+  .accessoires label { display: flex; align-items: center; gap: 0.45rem; font-size: 0.93rem; }
+
   .vide {
     color: var(--texte-doux);
     font-size: 0.9rem;
@@ -419,8 +447,28 @@
     appareil.
   </p>
   <p class="muet" style="margin-top:1.4rem">
-    <a href="../demo/">Banc d'essai — tester un exercice isolé</a>
+    <button class="onglet" id="boutonMateriel" style="padding:0">Mon matériel</button>
+    · <a href="../demo/">Banc d'essai — tester un exercice isolé</a>
   </p>
+</section>
+
+<!-- ====================== MATERIEL ====================== -->
+<section class="ecran defile" id="ecranMateriel">
+  <h1>Mon matériel</h1>
+  <p class="sous-titre">
+    Ce que tu possèdes décide des charges que le barème peut te proposer. Une
+    paire de 8 kg n'est pas la même chose qu'un seul haltère de 8 kg : les
+    mouvements à deux bras ont besoin des deux.
+  </p>
+  <h1 style="font-size:1.05rem;margin-top:1.4rem">Haltères</h1>
+  <div class="halteres" id="listeHalteres"></div>
+  <h1 style="font-size:1.05rem">Accessoires</h1>
+  <div class="accessoires" id="listeAccessoires"></div>
+  <div class="actions" style="justify-content:flex-start">
+    <button class="bouton" id="boutonEnregistrerMateriel">Enregistrer</button>
+    <button class="bouton secondaire" id="boutonAnnulerMateriel">Retour</button>
+  </div>
+  <p class="muet" id="etatMateriel" style="margin-top:0.9rem"></p>
 </section>
 
 <!-- ====================== HISTORIQUE ====================== -->
@@ -518,6 +566,7 @@ import { Niveaux } from "../js/niveaux.js";
 import { Ressenti } from "../js/ressenti.js";
 import { Calibration } from "../js/calibration.js";
 import { Objectifs } from "../js/objectifs.js";
+import { normaliser } from "../js/materiel.js";
 import { UNITE_SECONDES } from "../js/paliers.js";
 
 // Le profil unique de cette version. Les profils multiples arriveront avec la
@@ -1027,7 +1076,76 @@ async function terminer(abandonnee = false) {
 }
 
 
+
+// ---------------------------------------------------------------- materiel
+
+/**
+ * Le questionnaire de materiel, jumeau de celui du site.
+ *
+ * Un `<select>` par poids plutot que deux cases : « une paire » et « un
+ * haltere seul » ne sont pas deux options independantes, c'est une quantite.
+ * Le formuler autrement laisserait cocher « paire » sans « seul », ce qui n'a
+ * pas de sens et que `normaliser` devrait rattraper.
+ */
+function dessiner_materiel() {
+  const inventaire = normaliser(tables_baremes, profil_courant()?.materiel ?? null);
+
+  $("listeHalteres").innerHTML = tables_baremes.echelles.reference
+    .map((poids) => {
+      const quantite = inventaire.halteres[poids] || 0;
+      const option = (valeur, libelle) =>
+        `<option value="${valeur}"${quantite === valeur || (valeur === 2 && quantite >= 2) ? " selected" : ""}>${libelle}</option>`;
+      return (
+        `<label class="haltere"><span>${poids} kg</span>` +
+        `<select data-poids="${poids}">` +
+        option(0, "Aucun") + option(1, "Un") + option(2, "Une paire") +
+        `</select></label>`
+      );
+    })
+    .join("");
+
+  $("listeAccessoires").innerHTML = Object.entries(tables_baremes.accessoires)
+    .map(
+      ([cle, libelle]) =>
+        `<label><input type="checkbox" data-accessoire="${cle}"` +
+        `${inventaire.accessoires.includes(cle) ? " checked" : ""}> ${libelle}</label>`
+    )
+    .join("");
+
+  $("etatMateriel").textContent = "";
+}
+
+function profil_courant() {
+  return base.utilisateurs.find((u) => u.id === PROFIL) ?? null;
+}
+
+async function enregistrer_materiel() {
+  const halteres = {};
+  for (const select of $("listeHalteres").querySelectorAll("select")) {
+    const quantite = Number(select.value) || 0;
+    if (quantite > 0) halteres[select.dataset.poids] = quantite;
+  }
+  const accessoires = [...$("listeAccessoires").querySelectorAll("input:checked")].map(
+    (input) => input.dataset.accessoire
+  );
+
+  const profil = profil_courant();
+  if (!profil) return;
+  profil.materiel = { halteres, accessoires };
+
+  const ecrit = await stockage.sauver(base);
+  // **Le moteur porte l'inventaire** : `Baremes` le normalise une fois pour
+  // toutes a la construction, donc il faut le refaire. Sans ca les cibles
+  // resteraient calculees sur l'ancien materiel, en silence.
+  construire_moteur();
+  dessiner_liste();
+  $("etatMateriel").textContent = ecrit
+    ? "Matériel enregistré. Tes objectifs ont été recalculés."
+    : "Le stockage a refusé l'écriture : le matériel n'est pas retenu.";
+}
+
 // ---------------------------------------------------------------- historique
+
 
 const echapper = (texte) =>
   String(texte).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -1202,7 +1320,18 @@ function dessiner_liste() {
 
 // ---------------------------------------------------------------- commandes
 
+$("boutonMateriel").addEventListener("click", () => {
+  dessiner_materiel();
+  montrer("ecranMateriel");
+});
+$("boutonEnregistrerMateriel").addEventListener("click", enregistrer_materiel);
+$("boutonAnnulerMateriel").addEventListener("click", () => {
+  dessiner_liste();
+  montrer("ecranSeances");
+});
+
 for (const onglet of document.querySelectorAll(".onglet")) {
+  if (!onglet.dataset.ecran) continue;
   onglet.addEventListener("click", () => {
     const cible = onglet.dataset.ecran;
     if (cible === "ecranHistorique") dessiner_historique();
