@@ -313,6 +313,7 @@ import { texte, libelle_etape } from "../js/messages.js";
 import { points_utilises, consigne_de_cadrage } from "../js/cadrage.js";
 import * as historique from "../js/historique.js";
 import * as stockage from "../js/stockage.js";
+import { Lecteur } from "../js/lecteur.js";
 
 // Le profil unique de cette version. Les profils multiples arriveront avec la
 // synchronisation : d'ici la, un appareil est une personne, et un identifiant
@@ -337,7 +338,6 @@ const montrer = (id) => {
 
 let mouvements = {};
 let seances = {};
-let table_des_sons = {};
 let base = historique.base_vide();
 
 async function charger_donnees() {
@@ -348,7 +348,7 @@ async function charger_donnees() {
   ]);
   mouvements = m;
   seances = s;
-  table_des_sons = sons;
+  lecteur = new Lecteur("../sons", sons);
   base = await stockage.charger();
   if (!base.utilisateurs.length) {
     historique.creer_utilisateur(base, "Moi");
@@ -357,56 +357,12 @@ async function charger_donnees() {
 
 // ---------------------------------------------------------------- son
 
-let contexte = null;
-const tampons = new Map();
-
-/**
- * Prepare le son sur un geste de l'utilisateur.
- *
- * iOS refuse de jouer quoi que ce soit tant qu'un contexte audio n'a pas ete
- * cree pendant un evenement tactile : c'est pour ca que ca vit dans le clic
- * sur une seance, et pas au chargement de la page.
- */
-async function preparer_son() {
-  contexte = contexte ?? new (window.AudioContext ?? window.webkitAudioContext)();
-  await contexte.resume().catch(() => {});
-}
-
-async function charger_son(fichier) {
-  if (tampons.has(fichier)) return tampons.get(fichier);
-  const promesse = fetch(`../sons/${fichier}`)
-    .then((r) => r.arrayBuffer())
-    .then((donnees) => contexte.decodeAudioData(donnees))
-    .catch(() => null);
-  tampons.set(fichier, promesse);
-  return promesse;
-}
-
-/**
- * Le coach : une cle, un son.
- *
- * La table vient du Python (`donnees/sons.json`), elle n'est pas reecrite ici.
- * Deux cas particuliers : `compteur` annonce un nombre, et la bibliotheque
- * s'arrete a vingt — au-dela on bipe plutot que d'inventer. Un son manquant
- * est un silence, jamais une exception : on est dans la boucle image.
- */
-async function coach(cle, valeur = null) {
-  if (!contexte) return;
-  let fichier;
-  if (cle === "compteur") {
-    fichier = valeur > 0 && valeur <= 20 ? `${valeur}.wav` : "bip.wav";
-  } else {
-    const variantes = table_des_sons[cle];
-    if (!variantes?.length) return;
-    fichier = variantes[Math.floor(Math.random() * variantes.length)];
-  }
-  const tampon = await charger_son(fichier);
-  if (!tampon) return;
-  const source = contexte.createBufferSource();
-  source.buffer = tampon;
-  source.connect(contexte.destination);
-  source.start();
-}
+// Le lecteur porte la file d'attente a priorites du desktop : un son a la
+// fois, le plus urgent d'abord, et un evenement important vide les petits
+// sons en attente. Sans lui les annonces se chevauchaient — « le compte se
+// marche un peu dessus ».
+let lecteur = null;
+const coach = (cle, valeur = null) => lecteur?.coach(cle, valeur);
 
 // ---------------------------------------------------------------- seance
 
@@ -435,7 +391,13 @@ async function demarrer(nom) {
   geste_preparation = new HoldPosition(bras_en_x, TENUE_GESTE);
   geste_fin = new HoldPosition(bras_en_x, TENUE_GESTE);
 
-  await preparer_son();
+  // Le contexte audio se cree pendant le clic, jamais avant : iOS refuse de
+  // jouer quoi que ce soit sans geste de l'utilisateur.
+  await lecteur.preparer();
+  // Les nombres et les bips sont demandes des la premiere repetition : les
+  // charger d'avance evite une annonce en retard, ou muette.
+  lecteur.precharger([...Array(21).keys()].slice(1).map(String)
+    .concat(["bip", "debut_serie", "preparation", "fin_serie", "repos"]));
   $("sousTitre").textContent = "Préparation de la caméra…";
 
   try {
@@ -723,6 +685,8 @@ function dessiner_progression() {
 async function terminer(abandonnee = false) {
   en_cours = false;
   camera.suspendre();
+  // La seance est finie : ce qui restait a annoncer ne veut plus rien dire.
+  lecteur.taire();
 
   const resultats = resultats_par_exercice(seance);
   let seance_id = null;

@@ -102,8 +102,8 @@ def exporter_pour_application():
     return mouvements, _lire_seances_personnalisees()
 
 
-def table_des_sons():
-    """La table cle -> fichiers du coach vocal, **lue sans importer le module**.
+def tables_du_coach():
+    """Les trois tables du coach vocal, **lues sans importer le module**.
 
     `audio/coach.py` importe `audio.lecteur`, donc pygame, que le workflow de
     deploiement n'installe pas — il n'installe que numpy, parce que ce script
@@ -114,12 +114,19 @@ def table_des_sons():
     Python et jamais recopiee a la main, ce qui est la regle du projet, et le
     jour ou une cle y est ajoutee elle apparait ici toute seule.
     """
+    voulues = {"messages": "fichiers", "priorites": "priorites",
+               "DELAIS_ENTRE_ANNONCES": "delais"}
     arbre = ast.parse((RACINE / "audio" / "coach.py").read_text(encoding="utf-8"))
+    tables = {}
     for noeud in arbre.body:
         cibles = getattr(noeud, "targets", [])
-        if cibles and getattr(cibles[0], "id", None) == "messages":
-            return ast.literal_eval(noeud.value)
-    raise RuntimeError("Table `messages` introuvable dans audio/coach.py")
+        nom = getattr(cibles[0], "id", None) if cibles else None
+        if nom in voulues:
+            tables[voulues[nom]] = ast.literal_eval(noeud.value)
+    manquantes = set(voulues.values()) - set(tables)
+    if manquantes:
+        raise RuntimeError(f"Tables introuvables dans audio/coach.py : {manquantes}")
+    return tables
 
 
 def copier_sons():
@@ -137,9 +144,9 @@ def copier_sons():
     # La demo se contente du socle : le bip et les nombres annonces. L'appli
     # joue en plus les evenements de seance (« encore 3 », « repos »…), donc
     # tout ce que la table du coach designe.
-    table = table_des_sons()
+    tables = tables_du_coach()
     fichiers_application = {f"{n}.wav" for n in SONS_DEMO}
-    for variantes in table.values():
+    for variantes in tables["fichiers"].values():
         fichiers_application.update(variantes)
 
     copies, manquants = 0, []
@@ -153,10 +160,12 @@ def copier_sons():
             shutil.copy2(source, demo / fichier)
         copies += 1
 
-    # La table part avec les sons : le JS choisit un fichier par cle comme le
-    # Python, au lieu de refaire l'association dans son coin.
+    # Les trois tables partent avec les sons : le JS choisit un fichier, une
+    # priorite et un delai comme le Python, au lieu de refaire ces decisions
+    # dans son coin — ce qui est exactement ce qui faisait se chevaucher les
+    # annonces avant que la file d'attente ne soit portee.
     (DONNEES / "sons.json").write_text(
-        json.dumps(table, ensure_ascii=False, indent=1), encoding="utf-8"
+        json.dumps(tables, ensure_ascii=False, indent=1), encoding="utf-8"
     )
     return copies, manquants
 
