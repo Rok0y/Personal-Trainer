@@ -16,10 +16,10 @@ from session.circuit import (
 INTERVALLE_MAX = 0.5
 
 
-def executer_mode(seance, corps, compteur, state, coach, derniere_rep):
+def executer_mode(seance, corps, compteur, etat, coach, derniere_rep):
 
     bloc = seance.bloc_actuel
-    state.mode = bloc.mode
+    etat.mode = bloc.mode
 
     if bloc.mode == MODE_REPETITIONS:
 
@@ -29,18 +29,18 @@ def executer_mode(seance, corps, compteur, state, coach, derniere_rep):
             bloc=bloc,
             seance=seance,
             compteur=compteur,
-            state=state,
+            etat=etat,
             coach=coach,
             derniere_rep=derniere_rep,
         )
     elif bloc.mode == MODE_MAINTIEN:
 
         return gerer_mode_maintien(
-            corps=corps, bloc=bloc, seance=seance, state=state, coach=coach
+            corps=corps, bloc=bloc, seance=seance, etat=etat, coach=coach
         )
     elif bloc.mode == MODE_CHRONO:
 
-        return gerer_mode_chrono(bloc=bloc, seance=seance, state=state)
+        return gerer_mode_chrono(bloc=bloc, seance=seance, etat=etat)
     elif bloc.mode == MODE_AMRAP:
 
         return gerer_mode_amrap(
@@ -48,14 +48,14 @@ def executer_mode(seance, corps, compteur, state, coach, derniere_rep):
             bloc=bloc,
             compteur=compteur,
             seance=seance,
-            state=state,
+            etat=etat,
             coach=coach,
             derniere_rep=derniere_rep,
         )
     elif bloc.mode == MODE_ECHAUFFEMENT:
 
         return gerer_mode_echauffement(
-            corps=corps, bloc=bloc, seance=seance, state=state
+            corps=corps, bloc=bloc, seance=seance, etat=etat
         )
 
     raise NotImplementedError(f"Mode inconnu : {bloc.mode}")
@@ -70,7 +70,7 @@ COMPTEUR_DUREE_PAR_MODE = {
 }
 
 
-def duree_realisee(bloc, state):
+def duree_realisee(bloc, etat):
     """Durée courante du bloc, lue dans le compteur de **son** mode.
 
     À n'employer que pour terminer une série à la main (geste bras en X ou
@@ -86,10 +86,10 @@ def duree_realisee(bloc, state):
     """
     if bloc is None:
         return 0
-    return getattr(state, COMPTEUR_DUREE_PAR_MODE.get(bloc.mode, ""), 0) or 0
+    return getattr(etat, COMPTEUR_DUREE_PAR_MODE.get(bloc.mode, ""), 0) or 0
 
 
-def oublier_durees(state):
+def oublier_durees(etat):
     """Remet à zéro les compteurs de durée partagés entre les séries.
 
     `Circuit.reinitialiser_etat_serie` fait le ménage côté bloc, mais les
@@ -97,11 +97,11 @@ def oublier_durees(state):
     l'autre et d'un exercice au suivant, prêts à être relus par erreur.
     """
     for attribut in COMPTEUR_DUREE_PAR_MODE.values():
-        setattr(state, attribut, 0)
-    state.chrono_termine = False
+        setattr(etat, attribut, 0)
+    etat.chrono_termine = False
 
 
-def _finaliser_serie(seance, state, bloc):
+def _finaliser_serie(seance, etat, bloc):
     """Termine la série en cours et réinitialise les champs temporels du bloc.
 
     Factorise ce que les quatre gerer_mode_* répétaient (terminer_serie +
@@ -110,12 +110,12 @@ def _finaliser_serie(seance, state, bloc):
     connaît la liste de ces attributs.
     """
     seance.terminer_serie()
-    mettre_a_jour_prochain_exercice(seance, state)
+    mettre_a_jour_prochain_exercice(seance, etat)
     seance.reinitialiser_etat_serie(bloc)
-    oublier_durees(state)
+    oublier_durees(etat)
 
 
-def mettre_a_jour_erreur(exercice, corps, state):
+def mettre_a_jour_erreur(exercice, corps, etat):
     """Publie la première faute de forme détectée, ou efface le bandeau.
 
     Les fonctions de vérification retournent une **clé** de `core.messages`, pas
@@ -127,25 +127,25 @@ def mettre_a_jour_erreur(exercice, corps, state):
         (cle for verifier in exercice.erreurs if (cle := verifier(corps))),
         None,
     )
-    state.erreur = texte(cle) if cle else None
+    etat.erreur = texte(cle) if cle else None
 
 
-def poser_etape(state, jeton):
+def poser_etape(etat, jeton):
     """Publie l'étape du mouvement, sous sa forme brute et sous sa forme lisible.
 
     Les deux, parce qu'elles ne servent pas au même public : le jeton reste la
     donnée du détecteur (et les modes s'en servent), le libellé est ce que lit
     l'utilisateur.
     """
-    state.stage = jeton
-    state.etape_libelle = libelle_etape(jeton)
+    etat.stage = jeton
+    etat.etape_libelle = libelle_etape(jeton)
 
 
 def gerer_mode_repetitions(
-    corps, exercice, bloc, seance, compteur, state, coach, derniere_rep
+    corps, exercice, bloc, seance, compteur, etat, coach, derniere_rep
 ):
     serie_terminee = False
-    mettre_a_jour_erreur(exercice, corps, state)
+    mettre_a_jour_erreur(exercice, corps, etat)
     stage_detecte = exercice.detection(corps)
 
     stage, repetitions = compteur.mettre_a_jour(stage_detecte)
@@ -157,17 +157,17 @@ def gerer_mode_repetitions(
 
         derniere_rep = repetitions
 
-    poser_etape(state, stage)
-    state.repetitions = repetitions
+    poser_etape(etat, stage)
+    etat.repetitions = repetitions
 
     if repetitions >= bloc.repetitions_par_serie:
         seance.enregistrer_resultat_serie(
             repetitions=repetitions,
             completee=True,
         )
-        _finaliser_serie(seance, state, bloc)
+        _finaliser_serie(seance, etat, bloc)
         compteur.reset()
-        state.repetitions = 0
+        etat.repetitions = 0
         derniere_rep = 0
 
         serie_terminee = True
@@ -175,9 +175,9 @@ def gerer_mode_repetitions(
     return derniere_rep, repetitions, serie_terminee
 
 
-def gerer_mode_maintien(corps, bloc, seance, state, coach):
+def gerer_mode_maintien(corps, bloc, seance, etat, coach):
 
-    mettre_a_jour_erreur(bloc.exercice, corps, state)
+    mettre_a_jour_erreur(bloc.exercice, corps, etat)
     position = bloc.exercice.detection(corps)
     if position == "maintien":
         bloc.position_maintien_validee = True
@@ -202,10 +202,10 @@ def gerer_mode_maintien(corps, bloc, seance, state, coach):
         coach("bip")
 
     annoncer_temps_restant(bloc, bloc.duree - bloc.temps_maintien)
-    state.repetitions = 0
-    poser_etape(state, position)
-    state.temps_maintien = bloc.temps_maintien
-    state.duree_maintien = bloc.duree
+    etat.repetitions = 0
+    poser_etape(etat, position)
+    etat.temps_maintien = bloc.temps_maintien
+    etat.duree_maintien = bloc.duree
 
     if bloc.temps_maintien >= bloc.duree:
 
@@ -213,17 +213,17 @@ def gerer_mode_maintien(corps, bloc, seance, state, coach):
             duree=bloc.temps_maintien,
             completee=True,
         )
-        _finaliser_serie(seance, state, bloc)
+        _finaliser_serie(seance, etat, bloc)
         return 0, 0, True
 
     return 0, 0, False
 
 
-def gerer_mode_chrono(bloc, seance, state):
+def gerer_mode_chrono(bloc, seance, etat):
     # Un chrono ne juge pas la forme : il n'a aucune faute à signaler, mais il
     # doit effacer celle du bloc précédent, sinon le bandeau reste affiché
     # pendant toute la durée du mouvement.
-    state.erreur = None
+    etat.erreur = None
     maintenant = seance.maintenant()
 
     if not hasattr(bloc, "debut_chrono"):
@@ -233,26 +233,26 @@ def gerer_mode_chrono(bloc, seance, state):
     annoncer_temps_restant(bloc, bloc.duree - bloc.temps_chrono)
     if bloc.temps_chrono >= bloc.duree:
         bloc.temps_chrono = bloc.duree
-        state.temps_chrono = bloc.temps_chrono
-        state.chrono_termine = True
+        etat.temps_chrono = bloc.temps_chrono
+        etat.chrono_termine = True
 
         seance.enregistrer_resultat_serie(
             duree=bloc.temps_chrono,
             completee=True,
         )
-        _finaliser_serie(seance, state, bloc)
+        _finaliser_serie(seance, etat, bloc)
 
         return 0, 0, True
 
-    state.temps_chrono = bloc.temps_chrono
-    state.chrono_termine = False
+    etat.temps_chrono = bloc.temps_chrono
+    etat.chrono_termine = False
 
     return 0, 0, False
 
 
-def gerer_mode_amrap(corps, bloc, compteur, seance, state, coach, derniere_rep):
+def gerer_mode_amrap(corps, bloc, compteur, seance, etat, coach, derniere_rep):
 
-    mettre_a_jour_erreur(bloc.exercice, corps, state)
+    mettre_a_jour_erreur(bloc.exercice, corps, etat)
     maintenant = seance.maintenant()
 
     if not hasattr(bloc, "debut_amrap"):
@@ -273,10 +273,10 @@ def gerer_mode_amrap(corps, bloc, compteur, seance, state, coach, derniere_rep):
         derniere_rep = repetitions
 
     # affichage web
-    poser_etape(state, stage)
-    state.repetitions = repetitions
+    poser_etape(etat, stage)
+    etat.repetitions = repetitions
 
-    state.temps_amrap_restant = max(0, bloc.duree - bloc.temps_amrap)
+    etat.temps_amrap_restant = max(0, bloc.duree - bloc.temps_amrap)
 
     # fin du défi
     if bloc.temps_amrap >= bloc.duree:
@@ -285,7 +285,7 @@ def gerer_mode_amrap(corps, bloc, compteur, seance, state, coach, derniere_rep):
             repetitions=repetitions,
             completee=True,
         )
-        _finaliser_serie(seance, state, bloc)
+        _finaliser_serie(seance, etat, bloc)
         compteur.reset()
         derniere_rep = 0
         return derniere_rep, repetitions, True
@@ -293,7 +293,7 @@ def gerer_mode_amrap(corps, bloc, compteur, seance, state, coach, derniere_rep):
     return derniere_rep, repetitions, False
 
 
-def gerer_mode_echauffement(corps, bloc, seance, state):
+def gerer_mode_echauffement(corps, bloc, seance, etat):
     """Mouvement d'échauffement : un chrono guidé, la détection est un bonus.
 
     Deux différences volontaires avec `gerer_mode_chrono` :
@@ -318,30 +318,30 @@ def gerer_mode_echauffement(corps, bloc, seance, state):
     bloc.temps_echauffement += min(delta, INTERVALLE_MAX)
 
     if bloc.exercice.detection is not None:
-        mettre_a_jour_erreur(bloc.exercice, corps, state)
-        poser_etape(state, bloc.exercice.detection(corps))
+        mettre_a_jour_erreur(bloc.exercice, corps, etat)
+        poser_etape(etat, bloc.exercice.detection(corps))
     else:
-        state.erreur = None
-        poser_etape(state, "echauffement")
+        etat.erreur = None
+        poser_etape(etat, "echauffement")
 
     annoncer_temps_restant(bloc, bloc.duree - bloc.temps_echauffement)
 
     # affichage web
-    state.repetitions = 0
-    state.temps_echauffement = bloc.temps_echauffement
-    state.duree_echauffement = bloc.duree
+    etat.repetitions = 0
+    etat.temps_echauffement = bloc.temps_echauffement
+    etat.duree_echauffement = bloc.duree
 
     # fin du mouvement
     if bloc.temps_echauffement >= bloc.duree:
 
         bloc.temps_echauffement = bloc.duree
-        state.temps_echauffement = bloc.duree
+        etat.temps_echauffement = bloc.duree
 
         seance.enregistrer_resultat_serie(
             duree=bloc.temps_echauffement,
             completee=True,
         )
-        _finaliser_serie(seance, state, bloc)
+        _finaliser_serie(seance, etat, bloc)
         return 0, 0, True
 
     return 0, 0, False
@@ -368,14 +368,14 @@ def decrire_prochaine_etape(bloc, serie_actuelle, nombre_total_series=None):
     }
 
 
-def mettre_a_jour_prochain_exercice(circuit, state):
+def mettre_a_jour_prochain_exercice(circuit, etat):
     # La fiche du prochain exercice suit le même calcul que son libellé : elle
     # n'a de sens qu'entre deux exercices, et se recalcule ici plutôt que dans
     # un second parcours du circuit.
-    state.fiche_suivante = None
+    etat.fiche_suivante = None
     if circuit.phase in ("preparation", "exercice"):
         bloc = circuit.bloc_actuel
-        state.prochaine_etape = decrire_prochaine_etape(
+        etat.prochaine_etape = decrire_prochaine_etape(
             bloc,
             circuit.serie_actuelle,
             bloc.nombre_series if bloc else 0,
@@ -392,7 +392,7 @@ def mettre_a_jour_prochain_exercice(circuit, state):
 
         if bloc:
 
-            state.prochaine_etape = decrire_prochaine_etape(
+            etat.prochaine_etape = decrire_prochaine_etape(
                 bloc,
                 circuit.serie_actuelle,
                 bloc.nombre_series,
@@ -410,10 +410,10 @@ def mettre_a_jour_prochain_exercice(circuit, state):
         prochain = circuit.prochain_bloc()
 
         if prochain:
-            state.prochaine_etape = decrire_prochaine_etape(
+            etat.prochaine_etape = decrire_prochaine_etape(
                 prochain, 1, prochain.nombre_series
             )
-            state.fiche_suivante = prochain.exercice.fiche()
+            etat.fiche_suivante = prochain.exercice.fiche()
 
             return
 
@@ -421,4 +421,4 @@ def mettre_a_jour_prochain_exercice(circuit, state):
     # Pas de prochain exercice
     # --------------------------------------
 
-    state.prochaine_etape = None
+    etat.prochaine_etape = None
