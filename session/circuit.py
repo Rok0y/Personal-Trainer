@@ -627,6 +627,8 @@ class Circuit:
 
     def remettre_serie_a_zero(self):
         """Efface la progression de la série courante sans changer d'index."""
+        if self.bloc_actuel is None:
+            return
         self.reinitialiser_etat_serie()
         if self.phase not in ("termine", "preparation"):
             self.phase = "exercice"
@@ -634,6 +636,8 @@ class Circuit:
 
     def recommencer_serie(self):
         """Relance entièrement la série courante depuis son état initial."""
+        if self.bloc_actuel is None:
+            return
         self.reinitialiser_etat_serie()
         self.phase = "exercice"
         self.debut_repos = None
@@ -753,7 +757,7 @@ class Circuit:
         filtre de `progression.niveaux.performance_realisee` n'avait jusqu'ici
         jamais rien à écarter.
         """
-        if self.phase != "exercice":
+        if self.phase != "exercice" or self.bloc_actuel is None:
             return False
 
         self.enregistrer_resultat_serie(
@@ -770,6 +774,11 @@ class Circuit:
         Appelée lorsque le nombre de répétitions
         demandé pour la série est atteint.
         """
+        # Même garde que `commencer_exercice` : plus aucun bloc courant, donc
+        # plus rien à terminer. Les lectures de `bloc_actuel.repos_apres` plus
+        # bas la supposent déjà.
+        if self.bloc_actuel is None:
+            return
 
         # Photographier la série qui vient de s'achever *avant* de bouger quoi
         # que ce soit : à la sortie de cette méthode, l'information n'est plus
@@ -866,6 +875,14 @@ class Circuit:
             self.passer_exercice_suivant()
 
     def commencer_exercice(self):
+        # Ne pas ouvrir un exercice qui n'existe pas : la séance terminée,
+        # l'index dépasse le dernier bloc, et poser « exercice » y laissait un
+        # état impossible — phase active, `bloc_actuel` à None — dans lequel
+        # `terminer_serie` levait. `main.py` s'en protégeait par un test de
+        # phase ; le portage web appellera la classe directement, donc la règle
+        # descend ici, là où elle ne peut plus être oubliée.
+        if self.bloc_actuel is None:
+            return
         self.phase = "exercice"
 
     def passer_exercice_suivant(self):

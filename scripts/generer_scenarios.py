@@ -97,6 +97,25 @@ def observer(circuit):
         "nombre_series_echauffement": circuit.nombre_series_echauffement,
         "series_echauffement_terminees": circuit.series_echauffement_terminees,
         "peut_refaire": circuit.peut_refaire_derniere_serie(),
+        # Les deux états internes qui pilotent les cas délicats. Sans eux, un
+        # sabotage volontaire de `refaire_derniere_serie` — oublier de
+        # restaurer l'entrelacement, la ligne même que `CLAUDE.md` signale
+        # comme indispensable — traversait les 141 312 comparaisons sans être
+        # vu : leurs conséquences n'apparaissent que dans une fenêtre étroite
+        # qu'une marche aléatoire touche rarement, alors que l'état, lui, est
+        # faux immédiatement. Observer la cause plutôt que d'attendre l'effet.
+        "entrelace_en_cours": (
+            None if circuit._exercice_precedent_entrelace is None
+            else dict(circuit._exercice_precedent_entrelace)
+        ),
+        "repere_derniere_serie": (
+            None if circuit._derniere_serie_terminee is None
+            else {
+                "index_exercice": circuit._derniere_serie_terminee["index_exercice"],
+                "serie": circuit._derniere_serie_terminee["serie"],
+                "entrelace": circuit._derniere_serie_terminee["entrelace"],
+            }
+        ),
         "resultats": len(circuit.resultats_series),
         "a_des_resultats": circuit.a_des_resultats(),
     }
@@ -176,6 +195,16 @@ def jouer(circuit, horloge, nom, arguments):
     if nom == "avancer":
         horloge["t"] += arguments["secondes"]
         return None, None
+    if nom == "aller_au_superset":
+        # Commande du harnais, pas du circuit : elle amène à la première paire
+        # entrelacée de la séance. Pilotée par les données et non par un
+        # nombre de sauts en dur, pour qu'un superset déplacé dans une séance
+        # ne rende pas le scénario muet sans prévenir.
+        for _ in range(len(circuit.exercices)):
+            if circuit.bloc_actuel is None or circuit._est_entrelace(circuit.index_exercice):
+                break
+            circuit.passer_exercice_suivant()
+        return None, None
     try:
         resultat = getattr(circuit, nom)(**arguments)
     except Exception as erreur:  # noqa: BLE001 - le type est la donnée
@@ -219,6 +248,29 @@ SCENARIOS_NOMMES = {
         ("remettre_serie_a_zero", None),
         ("passer_exercice_suivant", None),
         ("serie_precedente", None),
+    ],
+    # Le chemin que la marche aléatoire n'atteint jamais : refaire une série
+    # au milieu d'un aller-retour de superset. Mesuré avant de l'écrire — sur
+    # 408 « refaire » réussis tirés au hasard, zéro n'avait d'entrelacement à
+    # restaurer, et 13 pas sur 6144 seulement passaient au milieu d'un
+    # superset. C'est pourtant la ligne que `CLAUDE.md` désigne comme
+    # indispensable, et un sabotage volontaire de cette ligne traversait tout
+    # le harnais sans être vu.
+    "superset_refaire": [
+        ("aller_au_superset", None),
+        ("commencer_exercice", None),
+        ("terminer_serie_manuellement", None),   # part chez le partenaire
+        ("passer_pause", None),
+        ("terminer_serie_manuellement", None),   # revient : repère entrelacé
+        ("refaire_derniere_serie", None),
+        ("terminer_serie_manuellement", None),
+        ("refaire_derniere_serie", None),
+        ("passer_pause", None),
+        ("terminer_serie_manuellement", None),
+        ("passer_pause", None),
+        ("terminer_serie_manuellement", None),
+        ("refaire_derniere_serie", None),
+        ("terminer_serie_manuellement", None),
     ],
     "sauter_les_repos": [
         ("commencer_exercice", None),
