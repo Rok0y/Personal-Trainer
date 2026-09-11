@@ -254,6 +254,12 @@ class Circuit:
 
     @property
     def poids(self):
+        # Seule des cinq lectures de `bloc_actuel` à ne pas se protéger, elle
+        # levait un AttributeError dès que l'index dépassait le dernier bloc.
+        # Ses voisines rendent toutes 0 ou None dans ce cas, et `main.py` lit
+        # `seance.poids` à chaque image : une exception y gèle le flux vidéo.
+        if self.bloc_actuel is None:
+            return 0
         return self.bloc_actuel.poids
 
     @property
