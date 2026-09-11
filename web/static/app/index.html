@@ -153,6 +153,119 @@
     font-variant-numeric: tabular-nums;
   }
 
+
+  /* ---------- HUD de seance, repris du site desktop ----------
+     Memes informations et meme hierarchie : badges en haut, anneau de geste
+     au centre, compteur et barre de progression en bas. Les proportions sont
+     adaptees a un ecran de telephone tenu a deux metres. */
+
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.55rem;
+  }
+  .badge {
+    background: #0d1520cc;
+    border: 1px solid var(--trait);
+    border-radius: 9px;
+    padding: 0.32rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 0;
+  }
+  .badge .etiquette {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--texte-doux);
+  }
+  .badge .valeur {
+    font-size: 0.92rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* L'anneau du geste : la seule chose qui dit « c'est en train de compter ».
+     Sans lui, tenir les bras croises ne donne aucun retour, et on ne sait pas
+     si le geste est pris ou si l'on s'y prend mal. */
+  .anneau-geste {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .anneau-geste.actif { display: flex; }
+  .anneau-geste svg { width: 150px; height: 150px; transform: rotate(-90deg); }
+  .anneau-fond { fill: none; stroke: #ffffff1f; stroke-width: 6; }
+  .anneau-avance {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 439.8;
+    stroke-dashoffset: 439.8;
+    transition: stroke-dashoffset 0.12s linear;
+  }
+  .anneau-texte {
+    position: absolute;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--texte);
+    text-align: center;
+    max-width: 9rem;
+    line-height: 1.3;
+  }
+
+  .piste {
+    height: 5px;
+    border-radius: 99px;
+    background: #ffffff1f;
+    overflow: hidden;
+    margin-top: 0.45rem;
+  }
+  .piste-remplie {
+    height: 100%;
+    width: 0%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--accent), #8ec5ff);
+    transition: width 0.3s ease;
+  }
+
+  .cartes-etat {
+    display: flex;
+    gap: 0.45rem;
+    margin-top: 0.55rem;
+  }
+  .carte-etat {
+    background: #0d1520cc;
+    border: 1px solid var(--trait);
+    border-radius: 9px;
+    padding: 0.35rem 0.6rem;
+    flex: 1;
+    min-width: 0;
+  }
+  .carte-etat .etiquette {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--texte-doux);
+    display: block;
+  }
+  .carte-etat .valeur {
+    font-size: 0.84rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   /* ---------- Voile de repos ---------- */
 
   .voile {
@@ -508,13 +621,30 @@
     <button class="bouton-discret" id="boutonAbandonner">Arrêter</button>
   </div>
 
+  <!-- L'anneau du geste, au centre de l'image : c'est la seule chose qui dit
+       « ton bras en X est pris en compte ». -->
+  <div class="anneau-geste" id="anneauGeste">
+    <svg viewBox="0 0 160 160" aria-hidden="true">
+      <circle class="anneau-fond" cx="80" cy="80" r="70"></circle>
+      <circle class="anneau-avance" id="anneauAvance" cx="80" cy="80" r="70"></circle>
+    </svg>
+    <div class="anneau-texte" id="anneauTexte"></div>
+  </div>
+
   <div class="bandeau-bas">
-    <div class="nom-exercice" id="nomExercice"></div>
-    <div class="serie" id="serie"></div>
+    <div class="badges">
+      <div class="badge"><span class="etiquette">Exercice</span><span class="valeur" id="nomExercice">—</span></div>
+      <div class="badge"><span class="etiquette">Série</span><span class="valeur" id="serie">—</span></div>
+      <div class="badge"><span class="etiquette">Charge</span><span class="valeur" id="charge">—</span></div>
+    </div>
     <div class="erreur" id="erreur"></div>
     <div class="consigne" id="consigne"></div>
     <div class="compteur"><b id="valeur">0</b> <span id="cible"></span></div>
-    <div class="etape" id="etape"></div>
+    <div class="piste"><div class="piste-remplie" id="pisteRemplie"></div></div>
+    <div class="cartes-etat">
+      <div class="carte-etat"><span class="etiquette">Étape</span><span class="valeur" id="etape">—</span></div>
+      <div class="carte-etat"><span class="etiquette">Temps de séance</span><span class="valeur" id="dureeSeance">0 min</span></div>
+    </div>
     <!-- Filet de securite : personne ne doit rester bloque parce que le geste
          ne se declenche pas chez lui. Visible pendant la preparation seulement,
          pour ne pas encombrer l'ecran pendant l'effort. -->
@@ -931,32 +1061,46 @@ function peindre(pose, nombre) {
 
 function rafraichir_affichage() {
   const bloc = seance.bloc_actuel;
-  $("nomExercice").textContent = bloc ? bloc.exercice.nom : "";
+
+  $("nomExercice").textContent = bloc ? bloc.exercice.nom : "—";
   $("serie").textContent = bloc
-    ? `Série ${seance.serie_actuelle} / ${seance.nombre_series}` +
-      (bloc.poids ? ` · ${bloc.poids} kg` : "")
-    : "";
-  $("boutonCommencer").hidden = seance.phase !== "preparation";
+    ? `${seance.serie_actuelle} / ${seance.nombre_series}`
+    : "—";
+  $("charge").textContent = bloc && bloc.poids ? `${bloc.poids} kg` : "poids du corps";
   $("erreur").textContent = etat.erreur ?? "";
   $("consigne").textContent = etat.consigne ?? "";
-  $("etape").textContent = etat.etape_libelle ?? "";
+  $("etape").textContent = etat.etape_libelle ?? "—";
+  $("dureeSeance").textContent = `${Math.floor(seance.duree_totale / 60)} min`;
 
-  const maintien = bloc && (bloc.mode === "maintien" || bloc.mode === "chrono" || bloc.mode === "echauffement");
-  if (maintien) {
-    const fait =
-      etat.temps_maintien || etat.temps_chrono || etat.temps_echauffement || 0;
+  // Le mode decide de ce qu'on compte, et il se deduit du bloc — pas d'une
+  // metadonnee a declarer.
+  const au_temps =
+    bloc && (bloc.mode === "maintien" || bloc.mode === "chrono" || bloc.mode === "echauffement");
+  let fait = 0;
+  let cible = 0;
+  if (au_temps) {
+    fait = etat.temps_maintien || etat.temps_chrono || etat.temps_echauffement || 0;
+    cible = bloc.duree;
     $("valeur").textContent = Math.floor(fait);
-    $("cible").textContent = `secondes / ${bloc.duree}`;
+    $("cible").textContent = `secondes / ${cible}`;
   } else {
-    $("valeur").textContent = etat.repetitions ?? 0;
-    // Un test de calibration vise un plafond inatteignable : afficher « / 999 »
-    // donnerait l'impression d'un objectif rate avant meme d'avoir commence.
+    fait = etat.repetitions ?? 0;
+    cible = bloc ? bloc.repetitions_par_serie : 0;
+    $("valeur").textContent = fait;
+    // Un test de calibration vise un plafond inatteignable : afficher
+    // « / 999 » donnerait l'impression d'un objectif rate avant d'avoir
+    // commence.
     $("cible").textContent = !bloc
       ? ""
       : bloc.test_max
         ? "— fais ton maximum, puis croise les bras"
-        : `/ ${bloc.repetitions_par_serie}`;
+        : `/ ${cible}`;
   }
+  // La barre reste vide pendant un test : il n'y a pas d'objectif a remplir.
+  const part = bloc && !bloc.test_max && cible ? Math.min(100, (fait / cible) * 100) : 0;
+  $("pisteRemplie").style.width = `${part}%`;
+
+  majAnneau();
 
   const en_repos =
     seance.phase === "recuperation_serie" || seance.phase === "repos_exercice";
@@ -972,6 +1116,44 @@ function rafraichir_affichage() {
     remplir_fiche(etat.fiche_suivante ?? etat.fiche);
   }
   $("boutonRefaire").hidden = !seance.peut_refaire_derniere_serie();
+  $("boutonCommencer").hidden = seance.phase !== "preparation";
+}
+
+//: Circonference du cercle de l'anneau (r = 70). Le trait se remplit en
+//: reduisant `stroke-dashoffset` de cette valeur a zero.
+const CIRCONFERENCE = 2 * Math.PI * 70;
+
+/**
+ * L'anneau de progression du geste bras en X.
+ *
+ * Il repond a un defaut d'usage reel : tenir les bras croises sans aucun
+ * retour ne dit pas si le geste est pris ou si l'on s'y prend mal. Le desktop
+ * a toujours eu cet anneau ; l'application en etait depourvue, et le premier
+ * test s'est solde par « mes bras en croix n'ont rien lance du tout ».
+ */
+function majAnneau() {
+  const geste = seance.phase === "preparation" ? geste_preparation : geste_fin;
+  const progression = geste?.debut === null || geste?.debut === undefined
+    ? 0
+    : Math.min(100, ((geste.horloge() - geste.debut) / geste.duree) * 100);
+
+  // Pendant le decompte, l'anneau montre le compte a rebours plutot que le
+  // geste : c'est ce que l'on attend a ce moment-la.
+  const en_decompte = seance.phase === "preparation" && fin_decompte !== null;
+  const visible = en_decompte || progression > 0;
+
+  $("anneauGeste").classList.toggle("actif", visible);
+  if (!visible) return;
+
+  if (en_decompte) {
+    $("anneauAvance").style.strokeDashoffset = 0;
+    $("anneauTexte").textContent = dernier_decompte ?? "";
+    return;
+  }
+  $("anneauAvance").style.strokeDashoffset =
+    CIRCONFERENCE * (1 - progression / 100);
+  $("anneauTexte").textContent =
+    seance.phase === "preparation" ? "Ne bouge plus" : "Terminer la série";
 }
 
 function remplir_fiche(fiche) {
