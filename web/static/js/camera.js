@@ -13,6 +13,7 @@
 import {
   PoseLandmarker,
   FilesetResolver,
+  DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
 export const VERSION_WASM =
@@ -251,4 +252,21 @@ export class Camera {
       this._verrou_ecran = null;
     }
   }
+}
+
+/**
+ * Dessine le squelette d'une pose sur un contexte 2D.
+ *
+ * Ici et pas dans la page : MediaPipe est deja importe par ce module, et le
+ * refaire ailleurs ajoutait une **attente reseau bloquante au demarrage
+ * d'une seance** — un CDN lent, et plus personne ne pouvait s'entrainer.
+ * Aucune page n'a besoin de connaitre MediaPipe.
+ */
+export function dessiner_squelette(ctx, pose) {
+  const utils = new DrawingUtils(ctx);
+  utils.drawConnectors(pose, PoseLandmarker.POSE_CONNECTIONS, {
+    color: "#4b9bff",
+    lineWidth: 4,
+  });
+  utils.drawLandmarks(pose, { color: "#e8eef6", radius: 3 });
 }

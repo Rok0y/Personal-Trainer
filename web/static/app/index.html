@@ -268,6 +268,10 @@
     <div class="consigne" id="consigne"></div>
     <div class="compteur"><b id="valeur">0</b> <span id="cible"></span></div>
     <div class="etape" id="etape"></div>
+    <!-- Filet de securite : personne ne doit rester bloque parce que le geste
+         ne se declenche pas chez lui. Visible pendant la preparation seulement,
+         pour ne pas encombrer l'ecran pendant l'effort. -->
+    <button class="bouton" id="boutonCommencer" hidden>Je commence</button>
   </div>
 
   <div class="voile" id="voile">
@@ -296,7 +300,7 @@
 </section>
 
 <script type="module">
-import { Camera, POSES_SEUL, POSES_ENTOURE } from "../js/camera.js";
+import { Camera, POSES_SEUL, dessiner_squelette } from "../js/camera.js";
 import { construire_corps } from "../js/landmarks.js";
 import { DETECTIONS } from "../js/detections.js";
 import { circuit_pour, resultats_par_exercice } from "../js/seance.js";
@@ -413,12 +417,12 @@ let etat = creer_etat();
 let compteur = new CompteurMouvement();
 let derniere_rep = 0;
 let points_requis = [];
-let geste_x = null;
+let geste_preparation = null;
+let geste_fin = null;
 let fin_decompte = null;
 let dernier_decompte = null;
 let en_cours = false;
 let phase_precedente = null;
-let dessin = null;
 
 async function demarrer(nom) {
   nom_seance = nom;
@@ -428,6 +432,8 @@ async function demarrer(nom) {
   derniere_rep = 0;
   phase_precedente = null;
   fin_decompte = null;
+  geste_preparation = new HoldPosition(bras_en_x, TENUE_GESTE);
+  geste_fin = new HoldPosition(bras_en_x, TENUE_GESTE);
 
   await preparer_son();
   $("sousTitre").textContent = "Préparation de la caméra…";
@@ -441,11 +447,6 @@ async function demarrer(nom) {
     $("sousTitre").textContent = `Impossible de démarrer : ${erreur.message}`;
     return;
   }
-
-  const { PoseLandmarker, DrawingUtils } = await import(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14"
-  );
-  dessin = { PoseLandmarker, DrawingUtils };
 
   montrer("ecranSeance");
   dessiner_progression();
@@ -461,7 +462,6 @@ function changer_exercice() {
   points_requis = bloc.exercice.detection
     ? points_utilises(bloc.exercice.detection)
     : [];
-  geste_x = new HoldPosition(bras_en_x, TENUE_GESTE);
   compteur.reset();
   derniere_rep = 0;
   etat.fiche = bloc.exercice.fiche();
@@ -473,18 +473,23 @@ function boucle(horodatage) {
 
   const poses = camera.detecter(horodatage);
   const corps_brut = camera.choisir(poses);
-  peindre(corps_brut, poses.length);
+  peindre(corps_brut);
 
   // L'horloge de la seance avance toujours : c'est elle qui fait expirer un
   // repos, meme si personne n'est devant la camera.
   const avant = seance.phase;
   seance.update();
 
+  // Meme decoupage que la boucle camera du desktop : la **preparation est une
+  // phase du circuit**, pas une porte a l'interieur de l'exercice. Les
+  // confondre laissait la seance bloquee en `preparation`, ou rien ne
+  // tournait — ni cadrage, ni geste, ni meme un message.
   if (corps_brut) {
     const corps = construire_corps(corps_brut);
-    if (seance.phase === "exercice") jouer_exercice(corps, instant);
+    if (seance.phase === "preparation") preparer(corps, instant);
+    else if (seance.phase === "exercice") jouer_exercice(corps, instant);
     else etat.consigne = null;
-  } else if (seance.phase === "exercice") {
+  } else if (seance.phase === "preparation" || seance.phase === "exercice") {
     etat.consigne = texte("corps_absent");
   }
 
@@ -501,12 +506,18 @@ function boucle(horodatage) {
   requestAnimationFrame(boucle);
 }
 
-function jouer_exercice(corps, instant) {
-  const bloc = seance.bloc_actuel;
-  if (!bloc) return;
-
-  // --- preparation : cadrage, puis geste, puis decompte ---
-  if (fin_decompte === null && !geste_x.termine) {
+/**
+ * La phase de preparation : cadrage, geste bras en X, puis decompte.
+ *
+ * Elle n'a lieu **qu'une fois par seance** : apres un repos, `update()`
+ * repasse directement en `exercice`, et `passer_exercice_suivant` aussi. Ne
+ * pas la rearmer entre deux series — ca obligerait a refaire le geste a
+ * chaque fois, alors qu'on est deja en place.
+ */
+function preparer(corps, instant) {
+  // Le cadrage passe avant le geste, pour la meme raison que dans la demo :
+  // quelqu'un d'immobile hors champ franchirait toutes les etapes suivantes.
+  if (fin_decompte === null) {
     const cadrage = points_requis.length
       ? consigne_de_cadrage(corps, points_requis)
       : null;
@@ -514,39 +525,48 @@ function jouer_exercice(corps, instant) {
       etat.consigne = cadrage;
       return;
     }
-    const [progression, valide] = geste_x.update(corps);
+
+    const [progression, valide] = geste_preparation.update(corps);
     etat.progression_preparation = progression;
-    if (valide) {
-      fin_decompte = instant + DECOMPTE;
-      dernier_decompte = null;
-      coach("preparation");
+    if (!valide) {
+      etat.consigne = texte("preparation_bras_en_x");
       return;
     }
-    etat.consigne = texte("preparation_bras_en_x");
+    fin_decompte = instant + DECOMPTE;
+    dernier_decompte = null;
+  }
+
+  const restant = Math.ceil(fin_decompte - instant);
+  if (restant > 0) {
+    if (restant !== dernier_decompte) {
+      dernier_decompte = restant;
+      coach("bip");
+    }
+    etat.consigne = `${texte("preparation_decompte")} ${restant}…`;
     return;
   }
 
-  if (fin_decompte !== null) {
-    const restant = Math.ceil(fin_decompte - instant);
-    if (restant > 0) {
-      if (restant !== dernier_decompte) {
-        dernier_decompte = restant;
-        coach("bip");
-      }
-      etat.consigne = `${texte("preparation_decompte")} ${restant}…`;
-      return;
-    }
-    fin_decompte = null;
-    coach("debut_serie");
-    etat.consigne = null;
-  }
+  lancer_effort();
+}
 
-  // --- effort ---
+/** Sortie unique de la preparation — le bouton de secours passe par ici aussi. */
+function lancer_effort() {
+  fin_decompte = null;
+  etat.consigne = null;
+  coach("debut_serie");
+  seance.commencer_exercice();
+  geste_fin = new HoldPosition(bras_en_x, TENUE_GESTE);
+}
+
+function jouer_exercice(corps, instant) {
+  const bloc = seance.bloc_actuel;
+  if (!bloc) return;
+
   // Le geste bras en X termine la serie a la main, et c'est le seul chemin
-  // qui peut produire une serie non reussie : `objectif_serie_atteint` en
-  // decide, on ne force jamais `completee`.
-  const [, valide_x] = geste_x.update(corps);
-  if (valide_x) {
+  // qui peut produire une serie **non reussie** : `objectif_serie_atteint` en
+  // decide, on ne force jamais `completee` a vrai.
+  const [, valide] = geste_fin.update(corps);
+  if (valide) {
     seance.terminer_serie_manuellement({
       repetitions: etat.repetitions,
       duree: duree_realisee(bloc, etat),
@@ -572,8 +592,9 @@ function jouer_exercice(corps, instant) {
 function apres_serie() {
   compteur.reset();
   derniere_rep = 0;
-  geste_x = new HoldPosition(bras_en_x, TENUE_GESTE);
-  fin_decompte = null;
+  // Un geste neuf : sans ca, `HoldPosition` reste « termine » et la serie
+  // suivante s'arreterait a la premiere image ou les bras sont encore croises.
+  geste_fin = new HoldPosition(bras_en_x, TENUE_GESTE);
   dessiner_progression();
   if (seance.bloc_actuel) changer_exercice();
 }
@@ -609,14 +630,7 @@ function peindre(pose, nombre) {
     ctx.scale(-1, 1);
   }
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  if (pose && dessin) {
-    const utils = new dessin.DrawingUtils(ctx);
-    utils.drawConnectors(pose, dessin.PoseLandmarker.POSE_CONNECTIONS, {
-      color: "#4b9bff",
-      lineWidth: 4,
-    });
-    utils.drawLandmarks(pose, { color: "#e8eef6", radius: 3 });
-  }
+  if (pose) dessiner_squelette(ctx, pose);
   ctx.restore();
 }
 
@@ -627,6 +641,7 @@ function rafraichir_affichage() {
     ? `Série ${seance.serie_actuelle} / ${seance.nombre_series}` +
       (bloc.poids ? ` · ${bloc.poids} kg` : "")
     : "";
+  $("boutonCommencer").hidden = seance.phase !== "preparation";
   $("erreur").textContent = etat.erreur ?? "";
   $("consigne").textContent = etat.consigne ?? "";
   $("etape").textContent = etat.etape_libelle ?? "";
@@ -787,6 +802,9 @@ function dessiner_liste() {
 
 // ---------------------------------------------------------------- commandes
 
+$("boutonCommencer").addEventListener("click", () => {
+  if (seance && seance.phase === "preparation") lancer_effort();
+});
 $("boutonAbandonner").addEventListener("click", () => {
   if (en_cours) terminer(true);
 });

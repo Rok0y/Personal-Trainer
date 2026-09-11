@@ -32,6 +32,7 @@ Sortie : scripts/fixtures_seances.jsonl (un pas par ligne),
          scripts/fixtures_catalogue.json (les mouvements utilisés).
 """
 
+import hashlib
 import json
 import random
 from pathlib import Path
@@ -72,6 +73,9 @@ PAS_PAR_SEANCE = 900
 #: comptent, mais une valeur non nulle attrape un code qui confondrait
 #: « instant » et « durée ».
 INSTANT_INITIAL = 1000.0
+
+#: Rempli par `main()` avant la première écriture (voir `empreinte`).
+EMPREINTE = None
 
 
 #: Ce que le moteur ecrit dans l'etat, releve au meme titre que le circuit.
@@ -397,6 +401,7 @@ def _ecrire(fichier, seance, scenario, pas, nom, arguments, circuit, horloge,
     annonces = list(boucle["annonces"])
     boucle["annonces"].clear()
     fichier.write(json.dumps({
+        "empreinte_seances": EMPREINTE,
         "seance": seance,
         "scenario": scenario,
         "pas": pas,
@@ -430,7 +435,21 @@ def _arguments(commande, circuit, tirage):
 
 
 def main():
-    seances = json.loads(SEANCES.read_text(encoding="utf-8"))
+    texte_des_seances = SEANCES.read_text(encoding="utf-8")
+    seances = json.loads(texte_des_seances)
+    # Empreinte du fichier de séances, relue par le comparateur. Sans elle, une
+    # séance modifiée entre la génération et la comparaison — ce qui arrive dès
+    # qu'on joue une séance, la fin de séance réécrivant ce fichier — produit un
+    # diff parfaitement authentique et parfaitement trompeur (« poids 5 contre
+    # 6 »), qu'on met un moment à reconnaître pour ce qu'il est : des fixtures
+    # périmées, pas un portage infidèle.
+    # Les retours chariot sont retires avant de hacher : Python les traduit a
+    # la lecture, Node les garde, et l'empreinte porterait sinon sur les fins
+    # de ligne autant que sur le contenu — deux verdicts opposes sur un fichier
+    # identique.
+    empreinte = hashlib.sha256(
+        texte_des_seances.replace("\r", "").encode("utf-8")
+    ).hexdigest()[:16]
     tirage = random.Random(GRAINE)
 
     # La banque de poses est écrite avant tout le reste, et tirée sur la même
@@ -458,6 +477,9 @@ def main():
         }
         for nom, exercice in mouvements.items()
     }, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    global EMPREINTE
+    EMPREINTE = empreinte
 
     lignes = 0
     with DESTINATION.open("w", encoding="utf-8") as fichier:

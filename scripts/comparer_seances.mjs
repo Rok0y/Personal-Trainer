@@ -10,6 +10,7 @@
 // Usage : node scripts/comparer_seances.mjs
 // Prealable : python -m scripts.generer_scenarios
 
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -243,7 +244,8 @@ function comparer(attendu, obtenu) {
 }
 
 function main() {
-  const seances = JSON.parse(readFileSync(SEANCES, "utf-8"));
+  const texte_des_seances = readFileSync(SEANCES, "utf-8");
+  const seances = JSON.parse(texte_des_seances);
   const catalogue = catalogue_pour(JSON.parse(readFileSync(CATALOGUE, "utf-8")));
   const banque = readFileSync(POSES, "utf-8")
     .split("\n")
@@ -253,6 +255,24 @@ function main() {
     .split("\n")
     .filter((ligne) => ligne.trim())
     .map((ligne) => JSON.parse(ligne));
+
+  // Les seances sont reecrites a chaque fin de seance jouee : des fixtures
+  // generees avant produiraient un diff authentique et trompeur. On le dit
+  // plutot que de laisser chercher.
+  const empreinte = createHash("sha256")
+    // Voir le commentaire jumeau cote Python : sans ce nettoyage, les fins de
+    // ligne suffisent a faire diverger deux empreintes du meme contenu.
+    .update(texte_des_seances.replaceAll("\r", ""), "utf-8")
+    .digest("hex")
+    .slice(0, 16);
+  if (pas[0]?.empreinte_seances && pas[0].empreinte_seances !== empreinte) {
+    console.log(
+      "Les seances ont change depuis la generation des fixtures.\n" +
+        "Relance : python -m scripts.generer_scenarios"
+    );
+    process.exitCode = 1;
+    return;
+  }
 
   let circuit = null;
   let horloge = null;
