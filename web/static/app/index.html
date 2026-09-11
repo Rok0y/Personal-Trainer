@@ -227,12 +227,181 @@
   .ok { background: #16302a; color: var(--reussite); }
   .pasok { background: #3a1f1c; color: var(--erreur); }
 
+
+  /* ---------- Onglets ---------- */
+
+  .onglets {
+    display: flex;
+    gap: 0.4rem;
+    margin: 0 0 1.3rem;
+    border-bottom: 1px solid var(--trait);
+    padding-bottom: 0.6rem;
+  }
+  .onglet {
+    background: transparent;
+    border: 0;
+    color: var(--texte-doux);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .onglet.actif { background: var(--surface-haut); color: var(--texte); }
+
+  /* ---------- Historique et records ----------
+     Les formes viennent du site desktop (`web/templates/historique.html`) :
+     memes classes, memes proportions, variables de l'app. Reprendre son
+     langage visuel plutot qu'en inventer un second evite que les deux
+     n'aient l'air de deux applications differentes. */
+
+  .fiche-seance {
+    background: var(--surface);
+    border: 1px solid var(--trait);
+    border-radius: 14px;
+    padding: 1rem 1.05rem;
+    margin-bottom: 0.7rem;
+  }
+  .fiche-seance > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.8rem;
+  }
+  .fiche-seance > summary::-webkit-details-marker { display: none; }
+  .fiche-seance summary b { font-size: 1.02rem; }
+
+  .statut {
+    text-transform: uppercase;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--reussite);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex: none;
+  }
+  .statut::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--reussite);
+  }
+  .statut.abandonnee { color: var(--alerte); }
+  .statut.abandonnee::before { background: var(--alerte); }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 1rem;
+    color: var(--texte-doux);
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
+  }
+
+  .exercice-fait {
+    margin-top: 0.7rem;
+    padding: 0.65rem 0.8rem;
+    border-radius: 10px;
+    background: #ffffff08;
+    border: 1px solid var(--trait);
+    border-left: 3px solid #4b9bff73;
+  }
+  .exercice-ligne {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+  }
+  .exercice-ligne strong { font-size: 0.95rem; }
+  .exercice-ligne > span {
+    color: var(--texte-doux);
+    font-size: 0.82rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .series-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+  }
+  .serie-puce {
+    font-size: 0.73rem;
+    padding: 0.12rem 0.4rem;
+    border-radius: 5px;
+    background: var(--surface-haut);
+    color: var(--texte-doux);
+    font-variant-numeric: tabular-nums;
+  }
+  .serie-puce.ratee { color: var(--alerte); }
+
+  .montee {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.6rem;
+    padding: 0.22rem 0.6rem;
+    border-radius: 99px;
+    background: #64c79c1a;
+    border: 1px solid #64c79c47;
+    color: var(--reussite);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .record {
+    background: var(--surface);
+    border: 1px solid var(--trait);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .record-titre {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.7rem;
+  }
+  .record-titre b { font-size: 0.98rem; }
+  .record-niveau {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    flex: none;
+  }
+  .record-ligne { font-size: 0.85rem; color: var(--texte-doux); }
+  .record-ligne b { color: var(--texte); font-weight: 600; }
+  .record.hors-bareme .record-niveau { color: var(--alerte); }
+
+  .vide {
+    color: var(--texte-doux);
+    font-size: 0.9rem;
+    padding: 1.5rem 0;
+  }
+
   .muet { color: var(--texte-doux); font-size: 0.84rem; }
   a { color: var(--accent); }
 </style>
 
 <!-- ====================== LISTE DES SEANCES ====================== -->
 <section class="ecran actif defile" id="ecranSeances">
+  <div class="onglets">
+    <button class="onglet actif" data-ecran="ecranSeances">Séances</button>
+    <button class="onglet" data-ecran="ecranHistorique">Historique</button>
+    <button class="onglet" data-ecran="ecranRecords">Records</button>
+  </div>
   <h1>Ta séance</h1>
   <p class="sous-titre" id="sousTitre">Choisis ce que tu fais aujourd'hui.</p>
   <div id="listeSeances"></div>
@@ -252,6 +421,34 @@
   <p class="muet" style="margin-top:1.4rem">
     <a href="../demo/">Banc d'essai — tester un exercice isolé</a>
   </p>
+</section>
+
+<!-- ====================== HISTORIQUE ====================== -->
+<section class="ecran defile" id="ecranHistorique">
+  <div class="onglets">
+    <button class="onglet" data-ecran="ecranSeances">Séances</button>
+    <button class="onglet actif" data-ecran="ecranHistorique">Historique</button>
+    <button class="onglet" data-ecran="ecranRecords">Records</button>
+  </div>
+  <h1>Historique</h1>
+  <p class="sous-titre" id="resumeHistorique"></p>
+  <div id="listeHistorique"></div>
+</section>
+
+<!-- ====================== RECORDS ====================== -->
+<section class="ecran defile" id="ecranRecords">
+  <div class="onglets">
+    <button class="onglet" data-ecran="ecranSeances">Séances</button>
+    <button class="onglet" data-ecran="ecranHistorique">Historique</button>
+    <button class="onglet actif" data-ecran="ecranRecords">Records</button>
+  </div>
+  <h1>Records</h1>
+  <p class="sous-titre">
+    Le niveau est le plus haut palier <em>jamais</em> validé — toutes les séries,
+    sans exception. L'objectif de la prochaine séance peut passer en dessous :
+    c'est un délestage, pas une régression.
+  </p>
+  <div id="listeRecords"></div>
 </section>
 
 <!-- ====================== SEANCE ====================== -->
@@ -829,7 +1026,132 @@ async function terminer(abandonnee = false) {
   montrer("ecranFin");
 }
 
+
+// ---------------------------------------------------------------- historique
+
+const echapper = (texte) =>
+  String(texte).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/**
+ * Une seance, telle que le site desktop la presente : un `<details>` replie,
+ * son statut, et ses exercices avec le detail des series.
+ *
+ * Le detail des series compte plus qu'il n'en a l'air : c'est lui qui montre
+ * **le maillon faible**. « 12, 12, 10, 12 » prouve 10, et une ligne agregee
+ * (« 46 repetitions ») ne permet pas de le voir.
+ */
+function dessiner_seance(seance, montees) {
+  const minutes = Math.floor((seance.duree || 0) / 60);
+  const abandonnee = seance.statut === "abandoned";
+  const montee = montees[seance.id] ?? {};
+
+  const exercices = seance.exercices
+    .map((exercice) => {
+      const unite = exercice.mode === "maintien" || exercice.mode === "chrono";
+      const fait = unite
+        ? `${Math.round(exercice.duree)} s`
+        : `${exercice.repetitions} reps`;
+      const charge = exercice.poids ? ` · ${exercice.poids} kg` : "";
+
+      const series = exercice.series_detaillees
+        .map((serie) => {
+          const valeur = unite ? `${Math.round(serie.duree)} s` : serie.repetitions;
+          return `<span class="serie-puce${serie.completee ? "" : " ratee"}">${valeur}</span>`;
+        })
+        .join("");
+
+      const gain = montee[exercice.nom];
+      const badge = gain
+        ? `<div class="montee">Niveau ${gain.depuis ?? "—"} → ${gain.vers}</div>`
+        : "";
+
+      return (
+        `<div class="exercice-fait">` +
+        `<div class="exercice-ligne"><strong>${echapper(exercice.nom)}</strong>` +
+        `<span>${exercice.series} séries · ${fait}${charge}</span></div>` +
+        `<div class="series-detail">${series}</div>${badge}</div>`
+      );
+    })
+    .join("");
+
+  return (
+    `<details class="fiche-seance">` +
+    `<summary><b>${echapper(seance.nom ?? "Séance")}</b>` +
+    `<span class="statut${abandonnee ? " abandonnee" : ""}">` +
+    `${abandonnee ? "abandonnée" : "terminée"}</span></summary>` +
+    `<div class="meta"><span>${echapper(seance.date)}</span><span>${minutes} min</span>` +
+    `<span>${seance.exercices.length} exercice${seance.exercices.length > 1 ? "s" : ""}</span></div>` +
+    exercices +
+    `</details>`
+  );
+}
+
+function dessiner_historique() {
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  const montees = moteur.niveaux.montees_de_niveau(histoire, ancrages);
+
+  $("resumeHistorique").textContent = histoire.length
+    ? `${histoire.length} séance${histoire.length > 1 ? "s" : ""} sur cet appareil.`
+    : "";
+  $("listeHistorique").innerHTML = histoire.length
+    ? histoire.map((seance) => dessiner_seance(seance, montees)).join("")
+    : `<p class="vide">Aucune séance enregistrée pour l'instant.</p>`;
+}
+
+// ---------------------------------------------------------------- records
+
+/**
+ * Les trois situations que `etat_niveau` distingue, et qu'un affichage ne
+ * doit pas confondre : hors bareme (`niveau` nul, ce qui n'est **pas**
+ * « niveau 0 »), bareme epuise (plus rien au-dessus), et le cas ordinaire.
+ */
+function dessiner_records() {
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  const etats = moteur.niveaux.etats_niveaux(histoire, ancrages);
+  const resume = (p) =>
+    p ? `${p.series}×${p.cible}${p.unite === "secondes" ? " s" : ""}${p.poids ? ` à ${p.poids} kg` : ""}` : null;
+
+  const lignes = Object.entries(etats)
+    .sort(([a], [b]) => a.localeCompare(b, "fr"))
+    .map(([nom, etat]) => {
+      if (etat.niveau === null) {
+        return (
+          `<div class="record hors-bareme"><div class="record-titre">` +
+          `<b>${echapper(nom)}</b><span class="record-niveau">à tester</span></div>` +
+          `<div class="record-ligne">Rien ne prouve encore ton niveau. ` +
+          `Premier palier : <b>${resume(etat.premier)}</b></div></div>`
+        );
+      }
+      // Le palier suivant peut demander **moins** de repetitions que le
+      // courant, quand il s'accompagne d'une hausse de poids : la note
+      // l'explique, sinon une progression ressemble a un recul.
+      const recul =
+        etat.suivant && etat.actuel && etat.suivant.cible < etat.actuel.cible
+          ? ` <span class="muet">(moins de répétitions, mais plus lourd)</span>`
+          : "";
+      const suite = etat.suivant
+        ? `<div class="record-ligne">Suivant : <b>${resume(etat.suivant)}</b>${recul}</div>`
+        : `<div class="record-ligne">Barème épuisé.</div>`;
+      const source = etat.ancre
+        ? `<div class="record-ligne muet">Recalé à la main${etat.date ? ` le ${echapper(etat.date)}` : ""}</div>`
+        : etat.date
+          ? `<div class="record-ligne muet">Établi le ${echapper(etat.date)}</div>`
+          : "";
+      return (
+        `<div class="record"><div class="record-titre"><b>${echapper(nom)}</b>` +
+        `<span class="record-niveau">Niveau ${etat.niveau}</span></div>` +
+        `<div class="record-ligne">Acquis : <b>${resume(etat.actuel)}</b></div>` +
+        suite + source + `</div>`
+      );
+    });
+
+  $("listeRecords").innerHTML = lignes.length
+    ? lignes.join("")
+    : `<p class="vide">Aucun exercice suivi.</p>`;
+}
+
 // ---------------------------------------------------------------- ecran d'accueil
+
 
 function dessiner_liste() {
   const liste = $("listeSeances");
@@ -879,6 +1201,16 @@ function dessiner_liste() {
 }
 
 // ---------------------------------------------------------------- commandes
+
+for (const onglet of document.querySelectorAll(".onglet")) {
+  onglet.addEventListener("click", () => {
+    const cible = onglet.dataset.ecran;
+    if (cible === "ecranHistorique") dessiner_historique();
+    else if (cible === "ecranRecords") dessiner_records();
+    else dessiner_liste();
+    montrer(cible);
+  });
+}
 
 $("boutonCommencer").addEventListener("click", () => {
   if (seance && seance.phase === "preparation") lancer_effort();
