@@ -8,7 +8,6 @@ import cv2
 import session.seances
 from audio.coach import annoncer_prochaine_etape, annoncer_temps_repos, coach
 from audio.lecteur import jouer
-from core import state
 from core.messages import texte
 from historique.database import enregistrer_seance, initialiser
 from mouvements.compteur import CompteurMouvement
@@ -28,7 +27,7 @@ from session.moteur import (
 )
 from vision.dessin import dessiner_squelette
 from vision.detector import PoseDetector
-from web.app import controleur, lancer_site, ouvrir_navigateur
+from web.app import controleur, flux, lancer_site, ouvrir_navigateur
 
 # Définition des variables
 cap = cv2.VideoCapture(0)
@@ -37,6 +36,10 @@ cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 QUALITE_JPEG = [cv2.IMWRITE_JPEG_QUALITY, 70]
+# L'etat de la seance appartient au controleur, qui est l'objet « une
+# session ». On en garde une reference : il est remis a zero, jamais
+# remplace.
+etat = controleur.etat_seance
 compteur = CompteurMouvement()
 hold_bras_x = HoldPosition(bras_en_x, 3)
 hold_deux_bras_leves = HoldPosition(deux_bras_leves, 3)
@@ -67,18 +70,18 @@ def publier_fin_de_seance(seance):
     """
     controleur.marquer_terminee()
 
-    state.phase = seance.phase
-    state.serie_actuelle = 0
-    state.nombre_series = 0
-    state.repetitions_cibles = 0
-    state.temps_repos_restant = 0
-    state.poids = 0
-    state.exercice_actuel = "Séance terminée"
-    poser_etape(state, "termine")
-    state.consigne = None
-    state.test_max = False
-    state.fiche = None
-    state.fiche_suivante = None
+    etat.phase = seance.phase
+    etat.serie_actuelle = 0
+    etat.nombre_series = 0
+    etat.repetitions_cibles = 0
+    etat.temps_repos_restant = 0
+    etat.poids = 0
+    etat.exercice_actuel = "Séance terminée"
+    poser_etape(etat, "termine")
+    etat.consigne = None
+    etat.test_max = False
+    etat.fiche = None
+    etat.fiche_suivante = None
 
     if seance.historique_enregistre or not seance.a_des_resultats():
         return
@@ -151,68 +154,68 @@ try:
         # DETECTION DU CORPS
         corps = detection.detect(frame) if controleur.statut == "running" else None
         if corps is None:
-            state.erreur = None
+            etat.erreur = None
             # Sans ce message, une sortie du champ fige l'affichage sans rien
             # dire : compteurs gelés, dernière étape figée, indistinguable de
             # quelqu'un qui ne bouge simplement plus.
-            state.consigne = (
+            etat.consigne = (
                 texte("corps_absent") if controleur.statut == "running" else None
             )
         else:
-            state.consigne = None
+            etat.consigne = None
         """cette variable dit si il y a un corps à l'écran ou non"""
 
         if seance is not None and controleur.statut == "running" and corps is None:
             seance.update()
-            mettre_a_jour_prochain_exercice(seance, state)
+            mettre_a_jour_prochain_exercice(seance, etat)
 
         if controleur.statut == "paused":
-            state.phase = "pause"
-            poser_etape(state, "pause")
-            state.consigne = texte("pause")
+            etat.phase = "pause"
+            poser_etape(etat, "pause")
+            etat.consigne = texte("pause")
             corps = None
         if corps is not None:
             """soit si il détecte un corps à l'écran"""
 
             # Détection des positions de controle
             if deux_bras_leves(corps):
-                state.position_actuelle = "Deux bras levés"
+                etat.position_actuelle = "Deux bras levés"
             elif bras_droit_leve(corps):
-                state.position_actuelle = "Bras droit levé"
+                etat.position_actuelle = "Bras droit levé"
             elif bras_gauche_leve(corps):
-                state.position_actuelle = "Bras gauche levé"
+                etat.position_actuelle = "Bras gauche levé"
             elif bras_en_x(corps):
-                state.position_actuelle = "Bras en X"
+                etat.position_actuelle = "Bras en X"
             else:
-                state.position_actuelle = "Aucune"
+                etat.position_actuelle = "Aucune"
 
             # Bras en X valide une série uniquement pendant l'exercice.
             progression_x, termine_x = hold_bras_x.update(corps)
-            state.progression_maintien = progression_x
-            state.maintien_termine = termine_x
+            etat.progression_maintien = progression_x
+            etat.maintien_termine = termine_x
 
             # Deux bras levés réinitialisent la série sans valider le résultat.
             _, reset = hold_deux_bras_leves.update(corps)
             if reset and seance.phase == "exercice":
                 compteur.reset()
-                state.repetitions = 0
+                etat.repetitions = 0
                 derniere_rep = 0
 
             if termine_x and seance.phase == "exercice":
                 seance.terminer_serie_manuellement(
-                    repetitions=state.repetitions,
-                    duree=duree_realisee(seance.bloc_actuel, state),
+                    repetitions=etat.repetitions,
+                    duree=duree_realisee(seance.bloc_actuel, etat),
                 )
-                oublier_durees(state)
+                oublier_durees(etat)
                 compteur.reset()
-                state.repetitions = 0
+                etat.repetitions = 0
                 derniere_rep = 0
 
             # ==================================
             # MACHINE DU CIRCUIT
             # ==================================
             seance.update()
-            mettre_a_jour_prochain_exercice(seance, state)
+            mettre_a_jour_prochain_exercice(seance, etat)
 
             # ==================================
             # Le coach (une seule fois par changement de phase)
@@ -241,7 +244,7 @@ try:
                     coach("repos")
 
                     annoncer_prochaine_etape(
-                        state.prochaine_etape, "changement_exercice"
+                        etat.prochaine_etape, "changement_exercice"
                     )
 
                     seance.repos_restant_precedent = int(seance.temps_restant)
@@ -253,11 +256,11 @@ try:
             ancienne_phase = seance.phase
 
             if seance.phase == "recuperation_serie":
-                annoncer_temps_repos(seance, state, annoncer_exercice=False)
+                annoncer_temps_repos(seance, etat, annoncer_exercice=False)
 
             elif seance.phase == "repos_exercice":
 
-                annoncer_temps_repos(seance, state, annoncer_exercice=False)
+                annoncer_temps_repos(seance, etat, annoncer_exercice=False)
             # ==================================
             # SEANCE EN COURS
             # (la fin de séance est traitée plus bas, hors du bloc
@@ -266,12 +269,12 @@ try:
 
             if seance.phase not in ("termine", "abandonne"):
 
-                state.phase = seance.phase
-                state.serie_actuelle = seance.serie_actuelle
-                state.nombre_series = seance.nombre_series
-                state.repetitions_cibles = seance.repetitions_cibles
-                state.temps_repos_restant = seance.temps_restant
-                state.poids = seance.poids
+                etat.phase = seance.phase
+                etat.serie_actuelle = seance.serie_actuelle
+                etat.nombre_series = seance.nombre_series
+                etat.repetitions_cibles = seance.repetitions_cibles
+                etat.temps_repos_restant = seance.temps_restant
+                etat.poids = seance.poids
 
                 # ----------------------------------
                 # PREPARATION (doit tourner à CHAQUE frame
@@ -283,22 +286,22 @@ try:
                     if fin_preparation is None:
                         # Étape 1 : on attend que le maintien bras en X soit validé
                         progression, termine = preparation.update(corps)
-                        state.progression_preparation = progression
-                        poser_etape(state, "preparation")
-                        state.consigne = texte("preparation_bras_en_x")
+                        etat.progression_preparation = progression
+                        poser_etape(etat, "preparation")
+                        etat.consigne = texte("preparation_bras_en_x")
 
                         if termine:
                             annoncer_prochaine_etape(
-                                state.prochaine_etape, "debut_serie"
+                                etat.prochaine_etape, "debut_serie"
                             )
                             fin_preparation = time.time()
 
                     else:
                         # Étape 2 : compte à rebours avant de vraiment démarrer
                         temps_ecoule = time.time() - fin_preparation
-                        state.progression_preparation = 100
-                        poser_etape(state, "preparation_prete")
-                        state.consigne = texte("preparation_decompte")
+                        etat.progression_preparation = 100
+                        poser_etape(etat, "preparation_prete")
+                        etat.consigne = texte("preparation_decompte")
 
                         if temps_ecoule >= DELAI_AVANT_EXERCICE:
                             coach("debut_serie")
@@ -310,7 +313,7 @@ try:
                 # ----------------------------------
                 # Ne vaut que pour la phase exercice : sans cette remise à
                 # zéro le drapeau survivrait aux repos et à l'exercice suivant.
-                state.test_max = False
+                etat.test_max = False
 
                 if seance.phase == "exercice":
                     exercice = seance.exercice_actuel
@@ -318,28 +321,28 @@ try:
                     if exercice is not None:
 
                         # NOM DE L'EXERCICE
-                        state.exercice_actuel = exercice.nom
+                        etat.exercice_actuel = exercice.nom
                         # Les consignes du mouvement existent depuis toujours
                         # dans le catalogue ; c'est ici qu'elles atteignent
                         # enfin l'écran.
-                        state.fiche = exercice.fiche()
+                        etat.fiche = exercice.fiche()
 
                         # Sur un test de calibration la cible affichée est un
                         # plafond hors d'atteinte : sans cette consigne, l'écran
                         # demanderait 999 répétitions sans expliquer pourquoi.
                         bloc = seance.bloc_actuel
-                        state.test_max = bool(
+                        etat.test_max = bool(
                             bloc is not None and getattr(bloc, "test_max", False)
                         )
-                        if state.test_max:
-                            state.consigne = texte("test_calibration")
+                        if etat.test_max:
+                            etat.consigne = texte("test_calibration")
 
                         # Execution du moteur d'exo
                         derniere_rep, repetitions, serie_terminee = executer_mode(
                             seance=seance,
                             corps=corps,
                             compteur=compteur,
-                            state=state,
+                            etat=etat,
                             coach=coach,
                             derniere_rep=derniere_rep,
                         )
@@ -353,16 +356,16 @@ try:
                 # ----------------------------------
 
                 elif seance.phase == "recuperation_serie":
-                    state.exercice_actuel = "Récupération"
-                    poser_etape(state, "recuperation")
+                    etat.exercice_actuel = "Récupération"
+                    poser_etape(etat, "recuperation")
 
                 # ----------------------------------
                 # REPOS ENTRE EXERCICES
                 # ----------------------------------
 
                 elif seance.phase == "repos_exercice":
-                    state.exercice_actuel = "Repos"
-                    poser_etape(state, "repos")
+                    etat.exercice_actuel = "Repos"
+                    poser_etape(etat, "repos")
 
             # ==================================
             # DESSIN DU SQUELETTE
@@ -381,8 +384,8 @@ try:
         succes, buffer = cv2.imencode(".jpg", frame, QUALITE_JPEG)
 
         if succes:
-            state.latest_frame = buffer.tobytes()
-            state.frame_id += 1
+            flux.latest_frame = buffer.tobytes()
+            flux.frame_id += 1
 
 
 # ==========================================

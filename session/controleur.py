@@ -1,5 +1,6 @@
 import threading
 
+from core.state import EtatSeance
 from core.utilisateur import identifiant_connecte
 from progression.objectifs import marquer_cibles_manuelles
 from session.seances import (
@@ -20,6 +21,13 @@ class SessionManager:
     def __init__(self, reset_progression=None):
         self._verrou = threading.RLock()
         self._reset_progression = reset_progression
+        # L'etat que la boucle camera ecrit et que `/etat` publie. Il vit ici
+        # parce que c'est cet objet qui *est* une session : il detient deja la
+        # seance, le statut et le verrou. Nomme `etat_seance` et non `etat`,
+        # la methode `etat()` decrivant le statut du controleur lui-meme.
+        # Jamais remplace, seulement remis a zero : la boucle camera en garde
+        # une reference des le demarrage.
+        self.etat_seance = EtatSeance()
         self.nom_selectionne = None
         self.seance = None
         self.statut = "idle"

@@ -14,7 +14,7 @@ from flask import (
     request,
 )
 
-from core import state
+from core.flux import FluxVideo
 from core.utilisateur import (
     connecter,
     deconnecter,
@@ -84,6 +84,8 @@ logging.getLogger("werkzeug").addFilter(FiltreEtat())
 
 app = Flask(__name__)
 controleur = SessionManager()
+#: Une camera par processus, alimentee par la boucle de `main.py`.
+flux = FluxVideo()
 
 #: Points d'entrée accessibles sans profil connecté : l'écran de connexion
 #: lui-même et ce qu'il appelle. Tout le reste passe par `_exiger_un_profil`.
@@ -408,43 +410,44 @@ def index():
 def etat():
 
     etat_session = controleur.etat()
+    etat = controleur.etat_seance
 
     return jsonify(
         {
-            "position_actuelle": state.position_actuelle,
-            "exercice_actuel": state.exercice_actuel,
+            "position_actuelle": etat.position_actuelle,
+            "exercice_actuel": etat.exercice_actuel,
             "commentaire_exercice": (
                 controleur.seance.bloc_actuel.commentaire
                 if controleur.seance and controleur.seance.bloc_actuel
                 else ""
             ),
-            "poids": state.poids,
-            "stage": state.stage,
-            "etape_libelle": state.etape_libelle,
-            "erreur": state.erreur,
-            "consigne": state.consigne,
-            "fiche": state.fiche,
-        "fiche_suivante": state.fiche_suivante,
-            "repetitions": state.repetitions,
-            "repetitions_cibles": state.repetitions_cibles,
-            "test_max": state.test_max,
-            "serie_actuelle": state.serie_actuelle,
-            "nombre_series": state.nombre_series,
-            "phase": state.phase,
-            "temps_repos_restant": state.temps_repos_restant,
+            "poids": etat.poids,
+            "stage": etat.stage,
+            "etape_libelle": etat.etape_libelle,
+            "erreur": etat.erreur,
+            "consigne": etat.consigne,
+            "fiche": etat.fiche,
+        "fiche_suivante": etat.fiche_suivante,
+            "repetitions": etat.repetitions,
+            "repetitions_cibles": etat.repetitions_cibles,
+            "test_max": etat.test_max,
+            "serie_actuelle": etat.serie_actuelle,
+            "nombre_series": etat.nombre_series,
+            "phase": etat.phase,
+            "temps_repos_restant": etat.temps_repos_restant,
             "duree_session": controleur.seance.duree_totale if controleur.seance else 0,
-            "temps_amrap_restant": state.temps_amrap_restant,
-            "maintien_termine": state.maintien_termine,
-            "progression_maintien": state.progression_maintien,
-            "progression_preparation": state.progression_preparation,
-            "mode": state.mode,
-            "temps_maintien": state.temps_maintien,
-            "duree_maintien": state.duree_maintien,
-            "temps_chrono": state.temps_chrono,
-            "chrono_termine": state.chrono_termine,
-            "temps_echauffement": state.temps_echauffement,
-            "duree_echauffement": state.duree_echauffement,
-            "prochaine_etape": state.prochaine_etape,
+            "temps_amrap_restant": etat.temps_amrap_restant,
+            "maintien_termine": etat.maintien_termine,
+            "progression_maintien": etat.progression_maintien,
+            "progression_preparation": etat.progression_preparation,
+            "mode": etat.mode,
+            "temps_maintien": etat.temps_maintien,
+            "duree_maintien": etat.duree_maintien,
+            "temps_chrono": etat.temps_chrono,
+            "chrono_termine": etat.chrono_termine,
+            "temps_echauffement": etat.temps_echauffement,
+            "duree_echauffement": etat.duree_echauffement,
+            "prochaine_etape": etat.prochaine_etape,
             "statut_session": etat_session["statut"],
             "seance_id": etat_session["seance_id"],
             "series_terminees": etat_session["series_terminees"],
@@ -596,13 +599,14 @@ def commander_serie(commande):
         return jsonify({"ok": False, "erreur": "Commande inconnue"}), 404
     donnees = request.get_json(silent=True) or {}
     if commande == "terminer":
-        repetitions = donnees.get("repetitions", state.repetitions)
+        repetitions = donnees.get("repetitions", controleur.etat_seance.repetitions)
         # Même règle que le geste bras en X : la durée se lit dans le compteur
         # du mode courant, jamais dans le premier compteur non nul venu.
         duree = donnees.get(
             "duree",
             duree_realisee(
-                controleur.seance.bloc_actuel if controleur.seance else None, state
+                controleur.seance.bloc_actuel if controleur.seance else None,
+                controleur.etat_seance,
             ),
         )
         return executer_commande(
@@ -646,17 +650,17 @@ def generer_video():
 
     while True:
 
-        frame = state.latest_frame
+        frame = flux.latest_frame
 
         # Sans ce garde-fou, la même image est renvoyée en boucle aussi vite
         # que possible : le flux sature et la vidéo prend du retard.
-        if frame is None or state.frame_id == dernier_id:
+        if frame is None or flux.frame_id == dernier_id:
 
             time.sleep(0.005)
 
             continue
 
-        dernier_id = state.frame_id
+        dernier_id = flux.frame_id
 
         yield (
             b"--frame\r\n"
