@@ -97,6 +97,9 @@
   .compteur { font-size: 60px; font-weight: 700; line-height: 1;
               font-variant-numeric: tabular-nums; }
   .compteur span { font-size: 20px; color: #c3d0e0; font-weight: 600; }
+  .banc { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    color: #9fb3c8; margin-top: 8px; line-height: 1.5; white-space: pre; }
+  .banc b { color: #e8eef6; }
   .nomExercice { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
   .consigne { color: var(--alerte); min-height: 22px; margin-bottom: 8px; font-weight: 600; }
   .jauge { height: 8px; background: rgba(255,255,255,.2); border-radius: 4px; overflow: hidden; }
@@ -211,6 +214,7 @@
     <div class="nomExercice" id="nomExercice"></div>
     <div class="consigne" id="consigne"></div>
     <div class="compteur"><b id="compteur">0</b> <span id="compteurCible"></span></div>
+    <div class="banc" id="banc" hidden></div>
     <div class="jauge" style="margin-top:10px"><div id="jauge"></div></div>
   </div>
 </section>
@@ -263,6 +267,13 @@ const PROBLEMES = [
 let catalogue = [];
 let exercice = null;
 let pointsRequis = [];
+
+// Banc d'essai (`?banc=1`), pour repondre a « pourquoi ca ne compte pas ? »
+// autrement qu'en le devinant. Derriere un parametre d'URL comme `?poses=N` :
+// un testeur ordinaire n'a que faire de voir passer « milieu ».
+const banc = new URLSearchParams(location.search).has("banc");
+let tenuesParJeton = {};
+let jetonPrecedent = null;
 let poseLandmarker = null;
 let fileset = null;
 let posesDuDetecteur = null;
@@ -868,8 +879,38 @@ function afficherConsigne(texte) {
   document.getElementById("consigne").textContent = texte;
 }
 
+// Le temps passe dans chaque jeton, et non le nombre d'images : c'est du
+// temps que parle quelqu'un qui teste (« je suis reste en bas deux secondes
+// et rien »), et une cadence qui varie de 16 a 36 images/s rendrait un
+// comptage d'images incomparable d'un appareil a l'autre.
+function mesurerBanc(jeton, instant) {
+  if (jetonPrecedent !== null) {
+    const delta = Math.min(instant - jetonPrecedent.instant, INTERVALLE_MAX);
+    tenuesParJeton[jetonPrecedent.jeton] = (tenuesParJeton[jetonPrecedent.jeton] ?? 0) + delta;
+  }
+  jetonPrecedent = { jeton, instant };
+
+  const total = Object.values(tenuesParJeton).reduce((a, b) => a + b, 0);
+  const parts = Object.entries(tenuesParJeton)
+    .sort((a, b) => b[1] - a[1])
+    .map(([nom, t]) => `${nom} ${Math.round((t / total) * 100)}%`)
+    .join("  ");
+
+  // L'etat du compteur est la vraie reponse : un squat filme avec une barre
+  // reste sur « fin » et ne s'arme jamais, donc ne compte rien — ce que le
+  // seul jeton courant ne dit pas.
+  const arme = modeMaintien
+    ? ""
+    : `
+  compteur ${compteur.stage === "debut" ? "armé" : compteur.stage === "fin" ? "désarmé (attend « debut »)" : "jamais armé"}`;
+
+  document.getElementById("banc").innerHTML = `  <b>${jeton}</b>${arme}
+  ${parts}`;
+}
+
 function traiter(corps, instant) {
   const jeton = DETECTIONS[exercice.detection](corps);
+  if (banc && phase === "comptage") mesurerBanc(jeton, instant);
 
   // Le mode se deduit du jeton plutot que d'une metadonnee : une detection
   // qui parle de "maintien" mesure un temps, les autres comptent des
@@ -979,6 +1020,9 @@ function mesurerMouvement(corps, instant) {
 function lancerComptage() {
   phase = "comptage";
   compteur.reset();
+  tenuesParJeton = {};
+  jetonPrecedent = null;
+  document.getElementById("banc").hidden = !banc;
   secondesTenues = 0;
   dernierInstant = null;
   derniereValeur = 0;
