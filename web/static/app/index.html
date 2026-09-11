@@ -1,0 +1,835 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0c1117">
+<title>Coach</title>
+
+<style>
+  :root {
+    --fond: #0c1117;
+    --surface: #141c26;
+    --surface-haut: #1c2734;
+    --trait: #253242;
+    --texte: #e8eef6;
+    --texte-doux: #9fb3c8;
+    --accent: #4b9bff;
+    --alerte: #ffb347;
+    --erreur: #ff6b5e;
+    --reussite: #64c79c;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--fond);
+    color: var(--texte);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+
+  .ecran { display: none; height: 100%; }
+  .ecran.actif { display: flex; flex-direction: column; }
+
+  /* ---------- Liste des seances ---------- */
+
+  .defile {
+    overflow-y: auto;
+    padding: max(1.2rem, env(safe-area-inset-top)) 1.1rem 2.5rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  h1 {
+    font-size: 1.55rem;
+    letter-spacing: -0.02em;
+    margin: 0.3rem 0 0.2rem;
+  }
+
+  .sous-titre { color: var(--texte-doux); font-size: 0.92rem; margin: 0 0 1.4rem; }
+
+  .carte {
+    background: var(--surface);
+    border: 1px solid var(--trait);
+    border-radius: 12px;
+    padding: 1rem 1.05rem;
+    margin-bottom: 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .carte:active { background: var(--surface-haut); }
+
+  .carte-titre { font-size: 1.06rem; font-weight: 600; }
+  .carte-detail { color: var(--texte-doux); font-size: 0.85rem; }
+
+  .puces { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .puce {
+    font-size: 0.74rem;
+    padding: 0.16rem 0.45rem;
+    border-radius: 99px;
+    background: var(--surface-haut);
+    color: var(--texte-doux);
+  }
+  .puce-echauffement { color: var(--accent); }
+
+  /* ---------- Seance ---------- */
+
+  #ecranSeance { position: relative; background: #000; }
+
+  #rendu {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .bandeau-haut {
+    position: relative;
+    padding: max(0.7rem, env(safe-area-inset-top)) 0.9rem 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    background: linear-gradient(#000c, #0000);
+  }
+
+  .progression {
+    flex: 1;
+    height: 5px;
+    border-radius: 99px;
+    background: #ffffff26;
+    overflow: hidden;
+    display: flex;
+    gap: 2px;
+  }
+  .segment { flex: 1; background: #ffffff2e; border-radius: 99px; }
+  .segment.faite { background: var(--reussite); }
+  .segment.echauffement.faite { background: var(--accent); }
+
+  .bouton-discret {
+    background: #ffffff1f;
+    border: 0;
+    color: var(--texte);
+    font: inherit;
+    font-size: 0.82rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: 99px;
+    cursor: pointer;
+  }
+
+  .bandeau-bas {
+    position: relative;
+    margin-top: auto;
+    padding: 1rem 0.9rem max(1rem, env(safe-area-inset-bottom));
+    background: linear-gradient(#0000, #000d 35%);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .nom-exercice { font-size: 1.12rem; font-weight: 600; }
+  .serie { color: var(--texte-doux); font-size: 0.86rem; }
+
+  .consigne { color: var(--alerte); font-weight: 600; min-height: 1.3em; }
+  .erreur { color: var(--erreur); font-weight: 600; min-height: 1.3em; }
+
+  .compteur { display: flex; align-items: baseline; gap: 0.5rem; }
+  .compteur b { font-size: 3.4rem; line-height: 1; font-weight: 700; }
+  .compteur span { font-size: 1rem; color: var(--texte-doux); font-weight: 600; }
+
+  .etape {
+    font-size: 0.8rem;
+    color: var(--texte-doux);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- Voile de repos ---------- */
+
+  .voile {
+    position: absolute;
+    inset: 0;
+    background: #060a0ee6;
+    backdrop-filter: blur(3px);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.9rem;
+    padding: 1.6rem 1.3rem;
+    text-align: center;
+  }
+  .voile.actif { display: flex; }
+  .voile-titre { font-size: 0.9rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--texte-doux); }
+  .voile-compte { font-size: 4.2rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .voile-suite { font-size: 1.05rem; font-weight: 600; }
+
+  .fiche {
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--trait);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    max-height: 34vh;
+    overflow-y: auto;
+  }
+  .fiche h3 { margin: 0 0 0.4rem; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--texte-doux); }
+  .fiche ul { margin: 0; padding-left: 1.1rem; font-size: 0.9rem; color: var(--texte-doux); }
+  .fiche li { margin-bottom: 0.2rem; }
+
+  .actions { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
+
+  /* ---------- Boutons ---------- */
+
+  .bouton {
+    background: var(--accent);
+    border: 0;
+    color: #06101d;
+    font: inherit;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 0.8rem 1.2rem;
+    border-radius: 11px;
+    cursor: pointer;
+  }
+  .bouton:disabled { opacity: 0.5; }
+  .bouton.secondaire { background: var(--surface-haut); color: var(--texte); font-weight: 600; }
+
+  /* ---------- Fin ---------- */
+
+  .resume { display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 1.2rem; }
+  .ligne-resume {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--trait);
+    border-radius: 10px;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.93rem;
+  }
+  .ligne-resume b { font-variant-numeric: tabular-nums; }
+
+  .etat-sauvegarde {
+    font-size: 0.88rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+  }
+  .ok { background: #16302a; color: var(--reussite); }
+  .pasok { background: #3a1f1c; color: var(--erreur); }
+
+  .muet { color: var(--texte-doux); font-size: 0.84rem; }
+  a { color: var(--accent); }
+</style>
+
+<!-- ====================== LISTE DES SEANCES ====================== -->
+<section class="ecran actif defile" id="ecranSeances">
+  <h1>Ta séance</h1>
+  <p class="sous-titre" id="sousTitre">Choisis ce que tu fais aujourd'hui.</p>
+  <div id="listeSeances"></div>
+
+  <h1 style="margin-top:2rem;font-size:1.1rem">Sauvegarde</h1>
+  <p class="sous-titre" id="etatBase">Chargement…</p>
+  <div class="actions" style="justify-content:flex-start">
+    <button class="bouton secondaire" id="boutonExporter">Exporter mes séances</button>
+    <button class="bouton secondaire" id="boutonImporter">Importer un fichier</button>
+  </div>
+  <input type="file" id="fichierImport" accept="application/json,.json" hidden>
+  <p class="muet" style="margin-top:0.9rem">
+    Tes séances restent sur cet appareil. Exporte-les de temps en temps : c'est
+    ta sauvegarde, et c'est aussi comme ça qu'elles passent sur un autre
+    appareil.
+  </p>
+  <p class="muet" style="margin-top:1.4rem">
+    <a href="../demo/">Banc d'essai — tester un exercice isolé</a>
+  </p>
+</section>
+
+<!-- ====================== SEANCE ====================== -->
+<section class="ecran" id="ecranSeance">
+  <canvas id="rendu"></canvas>
+
+  <div class="bandeau-haut">
+    <div class="progression" id="progression"></div>
+    <button class="bouton-discret" id="boutonAbandonner">Arrêter</button>
+  </div>
+
+  <div class="bandeau-bas">
+    <div class="nom-exercice" id="nomExercice"></div>
+    <div class="serie" id="serie"></div>
+    <div class="erreur" id="erreur"></div>
+    <div class="consigne" id="consigne"></div>
+    <div class="compteur"><b id="valeur">0</b> <span id="cible"></span></div>
+    <div class="etape" id="etape"></div>
+  </div>
+
+  <div class="voile" id="voile">
+    <div class="voile-titre" id="voileTitre">Récupération</div>
+    <div class="voile-compte" id="voileCompte">0</div>
+    <div class="voile-suite" id="voileSuite"></div>
+    <div class="fiche" id="voileFiche" hidden></div>
+    <div class="actions">
+      <button class="bouton secondaire" id="boutonPasserRepos">Passer le repos</button>
+      <button class="bouton secondaire" id="boutonRefaire">Refaire cette série</button>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== FIN ====================== -->
+<section class="ecran defile" id="ecranFin">
+  <h1>Séance terminée</h1>
+  <p class="sous-titre" id="resumeDuree"></p>
+  <div class="etat-sauvegarde" id="etatSauvegarde"></div>
+  <div class="resume" id="resume"></div>
+  <div class="actions" style="justify-content:flex-start">
+    <button class="bouton" id="boutonRetour">Retour aux séances</button>
+    <button class="bouton secondaire" id="boutonExporterFin">Exporter</button>
+  </div>
+  <p class="muet" style="margin-top:1.2rem" id="noteCamera"></p>
+</section>
+
+<script type="module">
+import { Camera, POSES_SEUL, POSES_ENTOURE } from "../js/camera.js";
+import { construire_corps } from "../js/landmarks.js";
+import { DETECTIONS } from "../js/detections.js";
+import { circuit_pour, resultats_par_exercice } from "../js/seance.js";
+import { executer_mode, duree_realisee, oublier_durees, mettre_a_jour_prochain_exercice } from "../js/moteur.js";
+import { CompteurMouvement } from "../js/compteur.js";
+import { HoldPosition } from "../js/outils.js";
+import { bras_en_x } from "../js/positions.js";
+import { creer_etat } from "../js/etat.js";
+import { texte, libelle_etape } from "../js/messages.js";
+import { points_utilises, consigne_de_cadrage } from "../js/cadrage.js";
+import * as historique from "../js/historique.js";
+import * as stockage from "../js/stockage.js";
+
+// Le profil unique de cette version. Les profils multiples arriveront avec la
+// synchronisation : d'ici la, un appareil est une personne, et un identifiant
+// fixe evite d'inventer un ecran de connexion dont personne n'a besoin.
+const PROFIL = 1;
+
+// Duree du geste « bras en X » pour lancer une serie, puis du decompte qui
+// suit. Memes valeurs que `main.py` : le geste doit etre tenu assez longtemps
+// pour ne pas se declencher en s'installant, et le decompte laisse le temps de
+// redescendre les bras.
+const TENUE_GESTE = 1.5;
+const DECOMPTE = 3;
+
+const $ = (id) => document.getElementById(id);
+const montrer = (id) => {
+  for (const ecran of document.querySelectorAll(".ecran")) {
+    ecran.classList.toggle("actif", ecran.id === id);
+  }
+};
+
+// ---------------------------------------------------------------- donnees
+
+let mouvements = {};
+let seances = {};
+let table_des_sons = {};
+let base = historique.base_vide();
+
+async function charger_donnees() {
+  const [m, s, sons] = await Promise.all([
+    fetch("../donnees/mouvements.json").then((r) => r.json()),
+    fetch("../donnees/seances.json").then((r) => r.json()),
+    fetch("../donnees/sons.json").then((r) => r.json()),
+  ]);
+  mouvements = m;
+  seances = s;
+  table_des_sons = sons;
+  base = await stockage.charger();
+  if (!base.utilisateurs.length) {
+    historique.creer_utilisateur(base, "Moi");
+  }
+}
+
+// ---------------------------------------------------------------- son
+
+let contexte = null;
+const tampons = new Map();
+
+/**
+ * Prepare le son sur un geste de l'utilisateur.
+ *
+ * iOS refuse de jouer quoi que ce soit tant qu'un contexte audio n'a pas ete
+ * cree pendant un evenement tactile : c'est pour ca que ca vit dans le clic
+ * sur une seance, et pas au chargement de la page.
+ */
+async function preparer_son() {
+  contexte = contexte ?? new (window.AudioContext ?? window.webkitAudioContext)();
+  await contexte.resume().catch(() => {});
+}
+
+async function charger_son(fichier) {
+  if (tampons.has(fichier)) return tampons.get(fichier);
+  const promesse = fetch(`../sons/${fichier}`)
+    .then((r) => r.arrayBuffer())
+    .then((donnees) => contexte.decodeAudioData(donnees))
+    .catch(() => null);
+  tampons.set(fichier, promesse);
+  return promesse;
+}
+
+/**
+ * Le coach : une cle, un son.
+ *
+ * La table vient du Python (`donnees/sons.json`), elle n'est pas reecrite ici.
+ * Deux cas particuliers : `compteur` annonce un nombre, et la bibliotheque
+ * s'arrete a vingt — au-dela on bipe plutot que d'inventer. Un son manquant
+ * est un silence, jamais une exception : on est dans la boucle image.
+ */
+async function coach(cle, valeur = null) {
+  if (!contexte) return;
+  let fichier;
+  if (cle === "compteur") {
+    fichier = valeur > 0 && valeur <= 20 ? `${valeur}.wav` : "bip.wav";
+  } else {
+    const variantes = table_des_sons[cle];
+    if (!variantes?.length) return;
+    fichier = variantes[Math.floor(Math.random() * variantes.length)];
+  }
+  const tampon = await charger_son(fichier);
+  if (!tampon) return;
+  const source = contexte.createBufferSource();
+  source.buffer = tampon;
+  source.connect(contexte.destination);
+  source.start();
+}
+
+// ---------------------------------------------------------------- seance
+
+const camera = new Camera(POSES_SEUL);
+let seance = null;
+let nom_seance = null;
+let etat = creer_etat();
+let compteur = new CompteurMouvement();
+let derniere_rep = 0;
+let points_requis = [];
+let geste_x = null;
+let fin_decompte = null;
+let dernier_decompte = null;
+let en_cours = false;
+let phase_precedente = null;
+let dessin = null;
+
+async function demarrer(nom) {
+  nom_seance = nom;
+  seance = circuit_pour(mouvements, seances[nom]);
+  etat = creer_etat();
+  compteur = new CompteurMouvement();
+  derniere_rep = 0;
+  phase_precedente = null;
+  fin_decompte = null;
+
+  await preparer_son();
+  $("sousTitre").textContent = "Préparation de la caméra…";
+
+  try {
+    if (!camera.vivante()) await camera.ouvrir();
+    else await camera.reprendre();
+    await camera.preparer();
+    await camera.garder_ecran_allume();
+  } catch (erreur) {
+    $("sousTitre").textContent = `Impossible de démarrer : ${erreur.message}`;
+    return;
+  }
+
+  const { PoseLandmarker, DrawingUtils } = await import(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14"
+  );
+  dessin = { PoseLandmarker, DrawingUtils };
+
+  montrer("ecranSeance");
+  dessiner_progression();
+  changer_exercice();
+  en_cours = true;
+  requestAnimationFrame(boucle);
+}
+
+/** Ce qui doit etre refait a chaque fois que le bloc courant change. */
+function changer_exercice() {
+  const bloc = seance.bloc_actuel;
+  if (!bloc) return;
+  points_requis = bloc.exercice.detection
+    ? points_utilises(bloc.exercice.detection)
+    : [];
+  geste_x = new HoldPosition(bras_en_x, TENUE_GESTE);
+  compteur.reset();
+  derniere_rep = 0;
+  etat.fiche = bloc.exercice.fiche();
+}
+
+function boucle(horodatage) {
+  if (!en_cours) return;
+  const instant = horodatage / 1000;
+
+  const poses = camera.detecter(horodatage);
+  const corps_brut = camera.choisir(poses);
+  peindre(corps_brut, poses.length);
+
+  // L'horloge de la seance avance toujours : c'est elle qui fait expirer un
+  // repos, meme si personne n'est devant la camera.
+  const avant = seance.phase;
+  seance.update();
+
+  if (corps_brut) {
+    const corps = construire_corps(corps_brut);
+    if (seance.phase === "exercice") jouer_exercice(corps, instant);
+    else etat.consigne = null;
+  } else if (seance.phase === "exercice") {
+    etat.consigne = texte("corps_absent");
+  }
+
+  if (seance.phase !== avant || seance.phase !== phase_precedente) {
+    annoncer_changement(avant);
+  }
+
+  rafraichir_affichage();
+
+  if (seance.phase === "termine") {
+    terminer();
+    return;
+  }
+  requestAnimationFrame(boucle);
+}
+
+function jouer_exercice(corps, instant) {
+  const bloc = seance.bloc_actuel;
+  if (!bloc) return;
+
+  // --- preparation : cadrage, puis geste, puis decompte ---
+  if (fin_decompte === null && !geste_x.termine) {
+    const cadrage = points_requis.length
+      ? consigne_de_cadrage(corps, points_requis)
+      : null;
+    if (cadrage) {
+      etat.consigne = cadrage;
+      return;
+    }
+    const [progression, valide] = geste_x.update(corps);
+    etat.progression_preparation = progression;
+    if (valide) {
+      fin_decompte = instant + DECOMPTE;
+      dernier_decompte = null;
+      coach("preparation");
+      return;
+    }
+    etat.consigne = texte("preparation_bras_en_x");
+    return;
+  }
+
+  if (fin_decompte !== null) {
+    const restant = Math.ceil(fin_decompte - instant);
+    if (restant > 0) {
+      if (restant !== dernier_decompte) {
+        dernier_decompte = restant;
+        coach("bip");
+      }
+      etat.consigne = `${texte("preparation_decompte")} ${restant}…`;
+      return;
+    }
+    fin_decompte = null;
+    coach("debut_serie");
+    etat.consigne = null;
+  }
+
+  // --- effort ---
+  // Le geste bras en X termine la serie a la main, et c'est le seul chemin
+  // qui peut produire une serie non reussie : `objectif_serie_atteint` en
+  // decide, on ne force jamais `completee`.
+  const [, valide_x] = geste_x.update(corps);
+  if (valide_x) {
+    seance.terminer_serie_manuellement({
+      repetitions: etat.repetitions,
+      duree: duree_realisee(bloc, etat),
+    });
+    oublier_durees(etat);
+    apres_serie();
+    return;
+  }
+
+  const [rep, , terminee] = executer_mode({
+    seance,
+    corps,
+    compteur,
+    etat,
+    coach,
+    derniere_rep,
+    messages: { texte, libelle_etape },
+  });
+  derniere_rep = rep;
+  if (terminee) apres_serie();
+}
+
+function apres_serie() {
+  compteur.reset();
+  derniere_rep = 0;
+  geste_x = new HoldPosition(bras_en_x, TENUE_GESTE);
+  fin_decompte = null;
+  dessiner_progression();
+  if (seance.bloc_actuel) changer_exercice();
+}
+
+function annoncer_changement(avant) {
+  const phase = seance.phase;
+  if (phase === phase_precedente) return;
+  phase_precedente = phase;
+  mettre_a_jour_prochain_exercice(seance, etat);
+  if (phase === "recuperation_serie") coach("repos");
+  else if (phase === "repos_exercice") coach("changement_exercice");
+  else if (phase === "termine") coach("fin_seance");
+  if (avant === "recuperation_serie" || avant === "repos_exercice") {
+    // On revient a l'effort : la preparation recommence a zero.
+    if (phase === "exercice") changer_exercice();
+  }
+}
+
+// ---------------------------------------------------------------- affichage
+
+function peindre(pose, nombre) {
+  const canvas = $("rendu");
+  const video = camera.video;
+  if (!video?.videoWidth) return;
+  if (canvas.width !== video.videoWidth) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+  }
+  const ctx = canvas.getContext("2d");
+  ctx.save();
+  if (camera.miroir) {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  if (pose && dessin) {
+    const utils = new dessin.DrawingUtils(ctx);
+    utils.drawConnectors(pose, dessin.PoseLandmarker.POSE_CONNECTIONS, {
+      color: "#4b9bff",
+      lineWidth: 4,
+    });
+    utils.drawLandmarks(pose, { color: "#e8eef6", radius: 3 });
+  }
+  ctx.restore();
+}
+
+function rafraichir_affichage() {
+  const bloc = seance.bloc_actuel;
+  $("nomExercice").textContent = bloc ? bloc.exercice.nom : "";
+  $("serie").textContent = bloc
+    ? `Série ${seance.serie_actuelle} / ${seance.nombre_series}` +
+      (bloc.poids ? ` · ${bloc.poids} kg` : "")
+    : "";
+  $("erreur").textContent = etat.erreur ?? "";
+  $("consigne").textContent = etat.consigne ?? "";
+  $("etape").textContent = etat.etape_libelle ?? "";
+
+  const maintien = bloc && (bloc.mode === "maintien" || bloc.mode === "chrono" || bloc.mode === "echauffement");
+  if (maintien) {
+    const fait =
+      etat.temps_maintien || etat.temps_chrono || etat.temps_echauffement || 0;
+    $("valeur").textContent = Math.floor(fait);
+    $("cible").textContent = `secondes / ${bloc.duree}`;
+  } else {
+    $("valeur").textContent = etat.repetitions ?? 0;
+    $("cible").textContent = bloc ? `/ ${bloc.repetitions_par_serie}` : "";
+  }
+
+  const en_repos =
+    seance.phase === "recuperation_serie" || seance.phase === "repos_exercice";
+  $("voile").classList.toggle("actif", en_repos);
+  if (en_repos) {
+    $("voileTitre").textContent =
+      seance.phase === "recuperation_serie" ? "Récupération" : "Exercice suivant";
+    $("voileCompte").textContent = Math.ceil(seance.temps_restant);
+    const suite = etat.prochaine_etape;
+    $("voileSuite").textContent = suite
+      ? `${suite.exercice} — série ${suite.serie_actuelle} / ${suite.nombre_total_series}`
+      : "";
+    remplir_fiche(etat.fiche_suivante ?? etat.fiche);
+  }
+  $("boutonRefaire").hidden = !seance.peut_refaire_derniere_serie();
+}
+
+function remplir_fiche(fiche) {
+  const bloc = $("voileFiche");
+  if (!fiche) {
+    bloc.hidden = true;
+    return;
+  }
+  const sections = [
+    ["Mise en place", fiche.mise_en_place],
+    ["Exécution", fiche.instructions],
+  ].filter(([, lignes]) => lignes?.length);
+  bloc.hidden = !sections.length;
+  bloc.innerHTML = sections
+    .map(
+      ([titre, lignes]) =>
+        `<h3>${titre}</h3><ul>${lignes.map((l) => `<li>${l}</li>`).join("")}</ul>`
+    )
+    .join("");
+}
+
+/**
+ * Les segments de progression.
+ *
+ * Deux barres, jamais deux en meme temps : `dans_echauffement` decide
+ * laquelle — c'est ce drapeau et non « reste-t-il des echauffements ? »,
+ * puisqu'une seance qui n'en a aucun doit montrer celle des exercices des la
+ * premiere image.
+ */
+function dessiner_progression() {
+  const echauffement = seance.dans_echauffement;
+  const total = echauffement
+    ? seance.nombre_series_echauffement
+    : seance.nombre_series_total;
+  const faites = echauffement
+    ? seance.series_echauffement_terminees
+    : seance.series_terminees;
+  const barre = $("progression");
+  barre.innerHTML = "";
+  for (let i = 0; i < total; i++) {
+    const segment = document.createElement("div");
+    segment.className =
+      "segment" + (echauffement ? " echauffement" : "") + (i < faites ? " faite" : "");
+    barre.appendChild(segment);
+  }
+}
+
+// ---------------------------------------------------------------- fin
+
+async function terminer(abandonnee = false) {
+  en_cours = false;
+  camera.suspendre();
+
+  const resultats = resultats_par_exercice(seance);
+  let seance_id = null;
+  let enregistree = false;
+
+  if (resultats.length) {
+    seance_id = historique.enregistrer_seance(base, {
+      duree: seance.duree_totale,
+      exercices: resultats,
+      statut: abandonnee ? "abandoned" : "finished",
+      nom_seance,
+      utilisateur_id: PROFIL,
+    });
+    enregistree = await stockage.sauver(base);
+  }
+
+  $("resumeDuree").textContent =
+    `${nom_seance} · ${Math.round(seance.duree_totale / 60)} min` +
+    (abandonnee ? " · arrêtée en cours" : "");
+
+  const etat_sauvegarde = $("etatSauvegarde");
+  if (!resultats.length) {
+    etat_sauvegarde.className = "etat-sauvegarde pasok";
+    etat_sauvegarde.textContent =
+      "Aucune série terminée : rien n'a été enregistré.";
+  } else if (enregistree) {
+    etat_sauvegarde.className = "etat-sauvegarde ok";
+    etat_sauvegarde.textContent = `Séance enregistrée sur cet appareil (n°${seance_id}).`;
+  } else {
+    etat_sauvegarde.className = "etat-sauvegarde pasok";
+    etat_sauvegarde.textContent =
+      "Le stockage de cet appareil a refusé l'écriture. Exporte cette séance maintenant, sinon elle sera perdue.";
+  }
+
+  $("resume").innerHTML = resultats
+    .map((exercice) => {
+      const fait = exercice.mode === "maintien" || exercice.mode === "chrono"
+        ? `${Math.round(exercice.duree)} s`
+        : `${exercice.repetitions} reps`;
+      return `<div class="ligne-resume"><span>${exercice.nom}</span><b>${exercice.series} × · ${fait}</b></div>`;
+    })
+    .join("");
+
+  $("noteCamera").textContent =
+    "La caméra reste autorisée tant que tu ne quittes pas la page — son voyant peut rester allumé.";
+
+  montrer("ecranFin");
+}
+
+// ---------------------------------------------------------------- ecran d'accueil
+
+function dessiner_liste() {
+  const liste = $("listeSeances");
+  liste.innerHTML = "";
+  for (const [nom, blocs] of Object.entries(seances)) {
+    const exercices = blocs.filter((b) => b.mode !== "echauffement");
+    const echauffements = blocs.length - exercices.length;
+    const carte = document.createElement("button");
+    carte.className = "carte";
+    carte.innerHTML =
+      `<div class="carte-titre">${nom}</div>` +
+      `<div class="carte-detail">${exercices.length} exercice${exercices.length > 1 ? "s" : ""}` +
+      (echauffements ? ` · ${echauffements} échauffement${echauffements > 1 ? "s" : ""}` : "") +
+      `</div>` +
+      `<div class="puces">${exercices
+        .slice(0, 4)
+        .map((b) => `<span class="puce">${b.exercice}</span>`)
+        .join("")}${exercices.length > 4 ? `<span class="puce">+${exercices.length - 4}</span>` : ""}</div>`;
+    carte.addEventListener("click", () => demarrer(nom));
+    liste.appendChild(carte);
+  }
+  const faites = historique.recuperer_historique(base, PROFIL).length;
+  $("etatBase").textContent = faites
+    ? `${faites} séance${faites > 1 ? "s" : ""} enregistrée${faites > 1 ? "s" : ""} sur cet appareil.`
+    : "Aucune séance enregistrée pour l'instant.";
+}
+
+// ---------------------------------------------------------------- commandes
+
+$("boutonAbandonner").addEventListener("click", () => {
+  if (en_cours) terminer(true);
+});
+$("boutonPasserRepos").addEventListener("click", () => {
+  seance.passer_pause();
+  changer_exercice();
+});
+$("boutonRefaire").addEventListener("click", () => {
+  if (seance.refaire_derniere_serie()) {
+    apres_serie();
+    dessiner_progression();
+  }
+});
+$("boutonRetour").addEventListener("click", () => {
+  dessiner_liste();
+  montrer("ecranSeances");
+});
+
+for (const id of ["boutonExporter", "boutonExporterFin"]) {
+  $(id).addEventListener("click", () => stockage.telecharger(base));
+}
+$("boutonImporter").addEventListener("click", () => $("fichierImport").click());
+$("fichierImport").addEventListener("change", async (evenement) => {
+  const fichier = evenement.target.files?.[0];
+  if (!fichier) return;
+  try {
+    base = await stockage.lire_fichier(fichier);
+    await stockage.sauver(base);
+    dessiner_liste();
+    $("etatBase").textContent = "Sauvegarde importée.";
+  } catch (erreur) {
+    $("etatBase").textContent = erreur.message;
+  }
+  evenement.target.value = "";
+});
+
+// Rendre la camera en quittant : sans ca, le voyant reste allume apres
+// fermeture de l'onglet sur certains appareils.
+window.addEventListener("pagehide", () => camera.liberer());
+
+charger_donnees()
+  .then(dessiner_liste)
+  .catch((erreur) => {
+    $("sousTitre").textContent = `Chargement impossible : ${erreur.message}`;
+  });
+</script>
