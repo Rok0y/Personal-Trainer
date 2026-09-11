@@ -44,6 +44,12 @@ def exporter_catalogue():
             continue
         fiche = exercice.fiche()
         fiche["detection"] = exercice.detection.__name__
+        # Les vérifications de forme temps réel, exportées par *nom* comme la
+        # détection. Elles ne passent pas par `Exercice.fiche()`, qui décrit ce
+        # qu'on affiche d'un mouvement : `erreurs` est une liste de fonctions
+        # qui s'exécutent, à ne pas confondre avec `erreurs_frequentes`, qui
+        # est de la pédagogie écrite. Six exercices sur vingt-trois en ont.
+        fiche["erreurs"] = [verifier.__name__ for verifier in exercice.erreurs]
         exercices.append(fiche)
 
     exercices.sort(key=lambda f: f["nom"])

@@ -90,3 +90,5 @@ web/static/demo/sons/
 # dupliquées ici uniquement parce qu'un serveur statique ne sert jamais
 # au-dessus de sa racine.
 spike/sons/scripts/fixtures_seances.jsonl
+scripts/fixtures_poses.jsonl
+scripts/fixtures_catalogue.json

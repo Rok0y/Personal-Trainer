@@ -14,12 +14,24 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { Circuit, BlocExercice, MODE_REPETITIONS } from "../web/static/js/circuit.js";
+import { Circuit, BlocExercice, Exercice, MODE_REPETITIONS } from "../web/static/js/circuit.js";
+import { DETECTIONS } from "../web/static/js/detections.js";
+import { construire_corps } from "../web/static/js/landmarks.js";
+import { CompteurMouvement } from "../web/static/js/compteur.js";
+import { creer_etat } from "../web/static/js/etat.js";
+import { executer_mode } from "../web/static/js/moteur.js";
+import { texte, libelle_etape } from "../web/static/js/messages.js";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const RACINE = join(ICI, "..");
 const FIXTURES = join(ICI, "fixtures_seances.jsonl");
 const SEANCES = join(RACINE, "session", "seances_personnalisees.json");
+const POSES = join(ICI, "fixtures_poses.jsonl");
+// Le catalogue exporte par `preparer_demo` : il donne, pour chaque exercice,
+// le *nom* de sa fonction de detection et celui de ses verifications de
+// forme. Les fonctions elles-memes vivent dans `detections.js` et portent les
+// memes noms — c'est ce qui evite une table de correspondance a maintenir.
+const CATALOGUE = join(ICI, "fixtures_catalogue.json");
 
 // Doit valoir INSTANT_INITIAL cote Python : les instants sont releves en
 // *ecart* depuis cette valeur, mais `debut` est pose dessus.
@@ -86,12 +98,12 @@ function observer(circuit) {
  * noms d'exercices. Un exercice se reduit donc a son nom, seule chose que
  * `observer` en lit.
  */
-function circuit_pour(blocs, horloge) {
+function circuit_pour(blocs, horloge, catalogue) {
   const circuit = new Circuit(
     blocs.map(
       (bloc) =>
         new BlocExercice({
-          exercice: { nom: bloc.exercice },
+          exercice: catalogue[bloc.exercice],
           poids: bloc.poids ?? 0,
           mode: bloc.mode ?? MODE_REPETITIONS,
           nombre_series: bloc.series ?? 1,
@@ -110,12 +122,64 @@ function circuit_pour(blocs, horloge) {
   return circuit;
 }
 
+/**
+ * Le catalogue JS : nom d'exercice vers un `Exercice` porteur de sa detection
+ * et de ses verifications de forme, retrouvees dans `detections.js` par leur
+ * nom.
+ */
+function catalogue_pour(fiches) {
+  const table = {};
+  for (const fiche of Object.values(fiches)) {
+    table[fiche.nom] = new Exercice({
+      nom: fiche.nom,
+      detection: DETECTIONS[fiche.detection] ?? null,
+      description: fiche.description,
+      instructions: fiche.instructions,
+      mise_en_place: fiche.mise_en_place,
+      erreurs_frequentes: fiche.erreurs_frequentes,
+      erreurs: (fiche.erreurs ?? []).map((nom) => DETECTIONS[nom]),
+      variante_facile: fiche.variante_facile,
+      variante_difficile: fiche.variante_difficile,
+    });
+  }
+  return table;
+}
+
 /** Meme contrat que `jouer()` cote Python : une exception est une donnee. */
-function jouer(circuit, horloge, nom, arguments_) {
+function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
   if (nom === "avancer") {
     horloge.t += arguments_.secondes;
     return [null, null];
   }
+  if (nom === "image") {
+    // Meme garde que `main.py` : les modes ne tournent que pendant la phase
+    // « exercice » et sur un bloc existant.
+    if (circuit.phase !== "exercice" || circuit.bloc_actuel === null) {
+      return [null, null];
+    }
+    const corps = banque[arguments_.pose];
+    let triplet;
+    try {
+      triplet = executer_mode({
+        seance: circuit,
+        corps,
+        compteur: boucle.compteur,
+        etat: boucle.etat,
+        coach: boucle.coach,
+        derniere_rep: boucle.derniere_rep,
+        messages: { texte, libelle_etape },
+      });
+    } catch (erreur) {
+      return [null, erreur.constructor.name];
+    }
+    boucle.derniere_rep = triplet[0];
+    if (triplet[2]) {
+      boucle.compteur.reset();
+      boucle.derniere_rep = 0;
+    }
+    return [triplet, null];
+  }
+
   if (nom === "aller_au_superset") {
     // Commande du harnais, pas du circuit — jumelle de celle du Python.
     for (let i = 0; i < circuit.exercices.length; i++) {
@@ -145,6 +209,29 @@ function jouer(circuit, horloge, nom, arguments_) {
   return [resultat.constructor.name, null];
 }
 
+// Jumeau de CHAMPS_ETAT cote Python : la surface verifiee du portage de
+// `moteur.js`. Les deux listes se modifient ensemble.
+const CHAMPS_ETAT = [
+  "mode", "stage", "etape_libelle", "erreur", "repetitions",
+  "temps_maintien", "duree_maintien", "temps_chrono", "chrono_termine",
+  "temps_echauffement", "duree_echauffement", "temps_amrap_restant",
+  "prochaine_etape", "fiche_suivante",
+];
+
+function observer_etat(etat) {
+  const releve = {};
+  for (const champ of CHAMPS_ETAT) {
+    const valeur = etat[champ];
+    // Meme arrondi que cote Python : deux langages ne s'accordent pas au
+    // dernier bit sur un flottant accumule image par image.
+    releve[champ] =
+      typeof valeur === "number" && !Number.isInteger(valeur)
+        ? Math.round(valeur * 1e6) / 1e6
+        : valeur;
+  }
+  return releve;
+}
+
 function comparer(attendu, obtenu) {
   const ecarts = [];
   for (const champ of Object.keys(attendu)) {
@@ -157,6 +244,11 @@ function comparer(attendu, obtenu) {
 
 function main() {
   const seances = JSON.parse(readFileSync(SEANCES, "utf-8"));
+  const catalogue = catalogue_pour(JSON.parse(readFileSync(CATALOGUE, "utf-8")));
+  const banque = readFileSync(POSES, "utf-8")
+    .split("\n")
+    .filter((ligne) => ligne.trim())
+    .map((ligne) => construire_corps(JSON.parse(ligne)));
   const pas = readFileSync(FIXTURES, "utf-8")
     .split("\n")
     .filter((ligne) => ligne.trim())
@@ -164,25 +256,53 @@ function main() {
 
   let circuit = null;
   let horloge = null;
+  let boucle = null;
   let cle_courante = null;
   let compares = 0;
   let valeurs = 0;
+  let images = 0;
   const echecs = [];
 
   for (const ligne of pas) {
     const cle = `${ligne.seance} / ${ligne.scenario}`;
     if (cle !== cle_courante) {
       horloge = { t: INSTANT_INITIAL };
-      circuit = circuit_pour(seances[ligne.seance], horloge);
+      circuit = circuit_pour(seances[ligne.seance], horloge, catalogue);
+      // Le compteur, l'etat et `derniere_rep` survivent d'une image a l'autre
+      // et d'une serie a l'autre, comme dans la boucle camera : les recreer a
+      // chaque pas masquerait la moitie de ce que le moteur doit gerer.
+      const annonces = [];
+      boucle = {
+        compteur: new CompteurMouvement(),
+        etat: creer_etat(),
+        annonces,
+        coach: (cle_son, valeur = null) => annonces.push([cle_son, valeur]),
+        derniere_rep: 0,
+      };
       cle_courante = cle;
     }
 
-    const [resultat, erreur] = jouer(circuit, horloge, ligne.commande, ligne.arguments);
+    const [resultat, erreur] = jouer(
+      circuit, horloge, ligne.commande, ligne.arguments, boucle, banque
+    );
     const obtenu = observer(circuit);
+    const obtenu_etat = observer_etat(boucle.etat);
+    const annonces = boucle.annonces.splice(0);
+    if (ligne.commande === "image") images += 1;
     compares += 1;
-    valeurs += Object.keys(obtenu).length;
+    valeurs += Object.keys(obtenu).length + Object.keys(obtenu_etat).length + 1;
 
-    const ecarts = comparer(ligne.etat, obtenu);
+    const ecarts = [
+      ...comparer(ligne.etat, obtenu),
+      ...comparer(ligne.etat_seance, obtenu_etat),
+    ];
+    if (JSON.stringify(ligne.annonces) !== JSON.stringify(annonces)) {
+      ecarts.push({
+        champ: "(annonces du coach)",
+        attendu: JSON.stringify(ligne.annonces),
+        obtenu: JSON.stringify(annonces),
+      });
+    }
     if (JSON.stringify(ligne.resultat) !== JSON.stringify(resultat)) {
       ecarts.push({
         champ: "(valeur de retour)",
@@ -201,19 +321,21 @@ function main() {
     if (ecarts.length) echecs.push({ ligne, ecarts });
   }
 
-  console.log(`${compares} pas rejoues, ${valeurs} valeurs comparees`);
+  console.log(`${compares} pas rejoues (dont ${images} images), ${valeurs} valeurs comparees`);
 
   if (!echecs.length) {
-    console.log("\nAucun ecart : le portage du circuit est fidele.");
+    console.log("\nAucun ecart : le portage du circuit et du moteur est fidele.");
     return;
   }
 
-  console.log(`\n${echecs.length} pas divergent. Les ${ECARTS_DETAILLES} premiers :\n`);
+  console.log(`
+${echecs.length} pas divergent. Les ${ECARTS_DETAILLES} premiers :
+`);
   for (const { ligne, ecarts } of echecs.slice(0, ECARTS_DETAILLES)) {
     console.log(`  ${ligne.seance} / ${ligne.scenario} / pas ${ligne.pas}`);
     console.log(`    commande : ${ligne.commande}(${JSON.stringify(ligne.arguments)})`);
     for (const e of ecarts) {
-      console.log(`    ${e.champ.padEnd(30)} python=${e.attendu}  js=${e.obtenu}`);
+      console.log(`    ${e.champ.padEnd(26)} python=${e.attendu}  js=${e.obtenu}`);
     }
     console.log();
   }

@@ -1,4 +1,4 @@
-"""Oracle Python du portage de `session/circuit.py` en JavaScript.
+"""Oracle Python du portage de `session/circuit.py` et `session/moteur.py`.
 
 Pendant du harnais des détections, pour une classe qui a de la mémoire.
 `generer_fixtures.py` peut tirer des poses au hasard parce qu'une détection est
@@ -27,18 +27,38 @@ cibles changeraient à chaque séance jouée — un oracle doit rendre deux fois
 même verdict.
 
 Usage : `python -m scripts.generer_scenarios`
-Sortie : scripts/fixtures_seances.jsonl, un pas par ligne.
+Sortie : scripts/fixtures_seances.jsonl (un pas par ligne),
+         scripts/fixtures_poses.jsonl (la banque de poses partagée),
+         scripts/fixtures_catalogue.json (les mouvements utilisés).
 """
 
 import json
 import random
 from pathlib import Path
 
-from session.seances import construire_circuit
+import audio.coach
+
+from mouvements.compteur import CompteurMouvement
+from scripts.generer_fixtures import pose_au_hasard, serialiser
+from session.moteur import executer_mode
+from session.seances import catalogue_mouvements, construire_circuit
+from core.state import EtatSeance
 
 RACINE = Path(__file__).resolve().parent.parent
 SEANCES = RACINE / "session" / "seances_personnalisees.json"
 DESTINATION = Path(__file__).parent / "fixtures_seances.jsonl"
+#: Banque de poses partagee avec le JS. Les poses ne sont pas recopiees dans
+#: chaque pas (132 flottants la piece) mais referencees par index : le fichier
+#: reste lisible, et les deux langages travaillent forcement sur les memes
+#: images.
+POSES = Path(__file__).parent / "fixtures_poses.jsonl"
+NOMBRE_DE_POSES = 400
+#: Catalogue propre au harnais : les séances contiennent aussi des
+#: échauffements, absents du `catalogue.json` de la démo — qui, lui, ne liste
+#: que les exercices testables et n'a pas à changer pour nous. Il porte le nom
+#: des fonctions (détection et vérifications de forme), le JS retrouvant les
+#: siennes dans `detections.js` sous les mêmes noms.
+CATALOGUE = Path(__file__).parent / "fixtures_catalogue.json"
 
 #: Graine fixe : deux exécutions doivent produire exactement le même fichier,
 #: sinon le diff JavaScript compare des histoires différentes.
@@ -52,6 +72,27 @@ PAS_PAR_SEANCE = 900
 #: comptent, mais une valeur non nulle attrape un code qui confondrait
 #: « instant » et « durée ».
 INSTANT_INITIAL = 1000.0
+
+
+#: Ce que le moteur ecrit dans l'etat, releve au meme titre que le circuit.
+#: C'est la surface verifiee du portage de `moteur.py`.
+CHAMPS_ETAT = (
+    "mode", "stage", "etape_libelle", "erreur", "repetitions",
+    "temps_maintien", "duree_maintien", "temps_chrono", "chrono_termine",
+    "temps_echauffement", "duree_echauffement", "temps_amrap_restant",
+    "prochaine_etape", "fiche_suivante",
+)
+
+
+def observer_etat(etat):
+    releve = {}
+    for champ in CHAMPS_ETAT:
+        valeur = getattr(etat, champ)
+        # Les flottants accumules image par image ne s'accordent pas au
+        # dernier bit entre deux langages : la milliseconde suffit largement,
+        # et c'est bien plus fin que ce que l'utilisateur percoit.
+        releve[champ] = round(valeur, 6) if isinstance(valeur, float) else valeur
+    return releve
 
 
 def observer(circuit):
@@ -149,6 +190,7 @@ def _performance(circuit, tirage):
 def _commandes(circuit, tirage):
     return [
         ("update", {}),
+        ("image", {"secondes": 0}),
         # Faire avancer l'horloge est une commande comme une autre : c'est elle
         # qui fait expirer un repos, et donc qui déclenche les transitions que
         # `update` se contente de constater.
@@ -170,6 +212,7 @@ def _commandes(circuit, tirage):
 #: que c'est ainsi qu'une séance se déroule vraiment ; les commandes de
 #: navigation restent rares, comme dans l'usage, mais jamais absentes.
 POIDS = {
+    "image": 30,
     "update": 5,
     "avancer": 6,
     "commencer_exercice": 2,
@@ -185,7 +228,8 @@ POIDS = {
 }
 
 
-def jouer(circuit, horloge, nom, arguments):
+def jouer(circuit, horloge, nom, arguments, contexte=None,
+          compteur=None, etat=None, coach=None, banque_corps=None):
     """Exécute un pas et rend ce qu'il a produit.
 
     Une exception est un comportement, pas un incident : si Python refuse une
@@ -195,6 +239,31 @@ def jouer(circuit, horloge, nom, arguments):
     if nom == "avancer":
         horloge["t"] += arguments["secondes"]
         return None, None
+    if nom == "image":
+        # Une image complete de la boucle camera : detection, comptage, voix,
+        # avancement du mode. C'est ce qui verifie `moteur.py`, la ou les
+        # autres commandes ne verifient que `circuit.py`.
+        #
+        # Le garde reproduit celui de `main.py` : les modes ne tournent que
+        # pendant la phase « exercice » et sur un bloc existant. Sans lui, le
+        # harnais testerait un appel que l'application ne fait jamais.
+        if circuit.phase != "exercice" or circuit.bloc_actuel is None:
+            return None, None
+        corps = banque_corps[arguments["pose"]]
+        try:
+            triplet = executer_mode(
+                circuit, corps, compteur, etat, coach, contexte["derniere_rep"]
+            )
+        except Exception as erreur:  # noqa: BLE001 - le type est la donnee
+            return None, type(erreur).__name__
+        contexte["derniere_rep"] = triplet[0]
+        if triplet[2]:
+            # Serie terminee : `main.py` remet le compteur a zero, faute de
+            # quoi la serie suivante demarrerait deja armee.
+            compteur.reset()
+            contexte["derniere_rep"] = 0
+        return list(triplet), None
+
     if nom == "aller_au_superset":
         # Commande du harnais, pas du circuit : elle amène à la première paire
         # entrelacée de la séance. Pilotée par les données et non par un
@@ -281,14 +350,52 @@ SCENARIOS_NOMMES = {
 
 
 def _nouveau_circuit(blocs):
+    """Un circuit neuf, plus tout ce que la boucle caméra transporte avec lui.
+
+    Le compteur, l'état et `derniere_rep` survivent d'une image à l'autre et
+    d'une série à l'autre — c'est précisément ce que `main.py` fait, et ce qui
+    rend les défauts de réinitialisation visibles. Les recréer à chaque pas
+    masquerait la moitié de ce que le moteur doit gérer.
+    """
     circuit = construire_circuit(blocs)
     horloge = {"t": INSTANT_INITIAL}
     circuit.maintenant = lambda: horloge["t"]
     circuit.debut = horloge["t"]
-    return circuit, horloge
+    annonces = []
+
+    def coach(cle, valeur=None):
+        # Asymétrie assumée entre les deux implémentations, et relevée ici
+        # parce qu'elle se voit mal autrement : `session/moteur.py` reçoit un
+        # `coach` en paramètre, mais `annoncer_progression` et
+        # `annoncer_temps_restant`, importées d'`audio.coach`, appellent le
+        # coach **global de leur module**. Le harnais détourne donc les deux
+        # chemins vers la même liste (voir `audio.coach.coach` remplacé plus
+        # bas), sinon ces annonces-là joueraient réellement — ce qui fait
+        # planter un processus sans carte son — et surtout n'apparaîtraient
+        # nulle part dans la comparaison. Côté JavaScript les deux fonctions
+        # vivent dans `moteur.js` et reçoivent le coach injecté : *quand*
+        # annoncer est une décision, *comment* jouer n'en est pas une.
+        # Le coach est enregistré, jamais joué : *quand* l'application parle
+        # est une décision qui doit coïncider entre les deux langages, alors
+        # que jouer le son ne l'est pas. C'est aussi la seule façon de vérifier
+        # « encore 3 » ou le bip de chaque seconde.
+        annonces.append([cle, valeur])
+
+    audio.coach.coach = coach
+
+    return circuit, horloge, {
+        "compteur": CompteurMouvement(),
+        "etat": EtatSeance(),
+        "coach": coach,
+        "annonces": annonces,
+        "contexte": {"derniere_rep": 0},
+    }
 
 
-def _ecrire(fichier, seance, scenario, pas, nom, arguments, circuit, horloge, resultat, erreur):
+def _ecrire(fichier, seance, scenario, pas, nom, arguments, circuit, horloge,
+            resultat, erreur, boucle):
+    annonces = list(boucle["annonces"])
+    boucle["annonces"].clear()
     fichier.write(json.dumps({
         "seance": seance,
         "scenario": scenario,
@@ -298,45 +405,91 @@ def _ecrire(fichier, seance, scenario, pas, nom, arguments, circuit, horloge, re
         "instant": round(horloge["t"] - INSTANT_INITIAL, 3),
         "resultat": resultat,
         "erreur": erreur,
+        "annonces": annonces,
         "etat": observer(circuit),
+        "etat_seance": observer_etat(boucle["etat"]),
     }, ensure_ascii=False) + "\n")
+
+
+def _jouer(circuit, horloge, commande, arguments, boucle, banque):
+    return jouer(
+        circuit, horloge, commande, arguments,
+        contexte=boucle["contexte"], compteur=boucle["compteur"],
+        etat=boucle["etat"], coach=boucle["coach"], banque_corps=banque,
+    )
+
+
+def _arguments(commande, circuit, tirage):
+    if commande == "avancer":
+        return {"secondes": 40}
+    if commande == "image":
+        return {"pose": tirage.randrange(NOMBRE_DE_POSES)}
+    if commande == "terminer_serie_manuellement":
+        return _performance(circuit, tirage)
+    return {}
 
 
 def main():
     seances = json.loads(SEANCES.read_text(encoding="utf-8"))
     tirage = random.Random(GRAINE)
-    lignes = 0
 
+    # La banque de poses est écrite avant tout le reste, et tirée sur la même
+    # graine : le JS lit ce fichier plutôt que de retirer les siennes.
+    poses = random.Random(GRAINE + 1)
+    banque = [pose_au_hasard(poses) for _ in range(NOMBRE_DE_POSES)]
+    with POSES.open("w", encoding="utf-8") as fichier:
+        for corps in banque:
+            fichier.write(json.dumps(serialiser(corps)) + "\n")
+
+    mouvements = catalogue_mouvements()
+    CATALOGUE.write_text(json.dumps({
+        nom: {
+            "nom": exercice.nom,
+            "detection": (
+                None if exercice.detection is None else exercice.detection.__name__
+            ),
+            "erreurs": [verifier.__name__ for verifier in exercice.erreurs],
+            "description": exercice.description,
+            "instructions": list(exercice.instructions),
+            "mise_en_place": list(exercice.mise_en_place),
+            "erreurs_frequentes": list(exercice.erreurs_frequentes),
+            "variante_facile": exercice.variante_facile,
+            "variante_difficile": exercice.variante_difficile,
+        }
+        for nom, exercice in mouvements.items()
+    }, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    lignes = 0
     with DESTINATION.open("w", encoding="utf-8") as fichier:
         for nom_seance, blocs in seances.items():
 
             # --- Scénarios écrits ---
             for nom_scenario, etapes in SCENARIOS_NOMMES.items():
-                circuit, horloge = _nouveau_circuit(blocs)
+                circuit, horloge, boucle = _nouveau_circuit(blocs)
                 for pas, (commande, _) in enumerate(etapes):
-                    arguments = ({"secondes": 40} if commande == "avancer"
-                                 else _performance(circuit, tirage)
-                                 if commande == "terminer_serie_manuellement" else {})
-                    resultat, erreur = jouer(circuit, horloge, commande, arguments)
+                    args = _arguments(commande, circuit, tirage)
+                    resultat, erreur = _jouer(circuit, horloge, commande, args, boucle, banque)
                     _ecrire(fichier, nom_seance, nom_scenario, pas, commande,
-                            arguments, circuit, horloge, resultat, erreur)
+                            args, circuit, horloge, resultat, erreur, boucle)
                     lignes += 1
 
             # --- Marche aléatoire ---
-            circuit, horloge = _nouveau_circuit(blocs)
+            circuit, horloge, boucle = _nouveau_circuit(blocs)
             noms = list(POIDS)
             poids = [POIDS[n] for n in noms]
             for pas in range(PAS_PAR_SEANCE):
                 commande = tirage.choices(noms, weights=poids)[0]
-                arguments = dict(_commandes(circuit, tirage))[commande]
-                resultat, erreur = jouer(circuit, horloge, commande, arguments)
+                args = _arguments(commande, circuit, tirage)
+                resultat, erreur = _jouer(circuit, horloge, commande, args, boucle, banque)
                 _ecrire(fichier, nom_seance, "hasard", pas, commande,
-                        arguments, circuit, horloge, resultat, erreur)
+                        args, circuit, horloge, resultat, erreur, boucle)
                 lignes += 1
 
-    champs = len(observer(_nouveau_circuit(next(iter(seances.values())))[0]))
+    circuit, _, boucle = _nouveau_circuit(next(iter(seances.values())))
+    champs = len(observer(circuit)) + len(observer_etat(boucle["etat"]))
     print(f"{len(seances)} seances x ({len(SCENARIOS_NOMMES)} scenarios ecrits "
           f"+ {PAS_PAR_SEANCE} pas au hasard)")
+    print(f"{NOMBRE_DE_POSES} poses dans la banque partagee")
     print(f"{lignes} pas, {champs} champs par pas, {lignes * champs} valeurs a comparer")
     print(f"Ecrit dans {DESTINATION.relative_to(RACINE).as_posix()}")
 

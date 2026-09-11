@@ -19,7 +19,8 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "crunches_detection"
+    "detection": "crunches_detection",
+    "erreurs": []
   },
   {
     "nom": "Curl biceps droit",
@@ -42,7 +43,10 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "curl_biceps_droit_detection"
+    "detection": "curl_biceps_droit_detection",
+    "erreurs": [
+      "coude_avance_curl_droit"
+    ]
   },
   {
     "nom": "Curl biceps gauche",
@@ -65,7 +69,10 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "curl_biceps_gauche_detection"
+    "detection": "curl_biceps_gauche_detection",
+    "erreurs": [
+      "coude_avance_curl_gauche"
+    ]
   },
   {
     "nom": "Developpé couché altères",
@@ -88,7 +95,8 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "developpe_couche_sol_detection"
+    "detection": "developpe_couche_sol_detection",
+    "erreurs": []
   },
   {
     "nom": "Développé épaule",
@@ -111,7 +119,8 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "developpe_epaule_detection"
+    "detection": "developpe_epaule_detection",
+    "erreurs": []
   },
   {
     "nom": "Elevations latérales",
@@ -132,7 +141,8 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "elevation_laterale_detection"
+    "detection": "elevation_laterale_detection",
+    "erreurs": []
   },
   {
     "nom": "Extension Triceps",
@@ -155,7 +165,8 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "extension_triceps_au_dessus_de_la_tete_detection"
+    "detection": "extension_triceps_au_dessus_de_la_tete_detection",
+    "erreurs": []
   },
   {
     "nom": "Fente droite",
@@ -179,7 +190,8 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "fente_droite_detection"
+    "detection": "fente_droite_detection",
+    "erreurs": []
   },
   {
     "nom": "Fente gauche",
@@ -203,7 +215,8 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "fente_gauche_detection"
+    "detection": "fente_gauche_detection",
+    "erreurs": []
   },
   {
     "nom": "Gainage planche",
@@ -226,7 +239,8 @@
     "variante_facile": "Gainage sur les genoux",
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "detection_gainage"
+    "detection": "detection_gainage",
+    "erreurs": []
   },
   {
     "nom": "Gainage planche laterale droite",
@@ -249,7 +263,8 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "detection_gainage_laterale_droite"
+    "detection": "detection_gainage_laterale_droite",
+    "erreurs": []
   },
   {
     "nom": "Gainage planche laterale gauche",
@@ -272,7 +287,8 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "detection_gainage_laterale_gauche"
+    "detection": "detection_gainage_laterale_gauche",
+    "erreurs": []
   },
   {
     "nom": "Gainage sur les genoux",
@@ -294,7 +310,8 @@
     "variante_facile": null,
     "variante_difficile": "Gainage planche",
     "analyse_la_pose": true,
-    "detection": "detection_gainage"
+    "detection": "detection_gainage",
+    "erreurs": []
   },
   {
     "nom": "Oiseau",
@@ -319,7 +336,10 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "oiseau_detection"
+    "detection": "oiseau_detection",
+    "erreurs": [
+      "oiseau_erreur_coudes"
+    ]
   },
   {
     "nom": "Pompes",
@@ -342,7 +362,8 @@
     "variante_facile": "Pompes sur les genoux",
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "pompe_detection"
+    "detection": "pompe_detection",
+    "erreurs": []
   },
   {
     "nom": "Pompes inclinées",
@@ -365,7 +386,8 @@
     "variante_facile": null,
     "variante_difficile": "Pompes sur les genoux",
     "analyse_la_pose": true,
-    "detection": "pompe_detection"
+    "detection": "pompe_detection",
+    "erreurs": []
   },
   {
     "nom": "Pompes sur les genoux",
@@ -387,7 +409,8 @@
     "variante_facile": "Pompes inclinées",
     "variante_difficile": "Pompes",
     "analyse_la_pose": true,
-    "detection": "pompe_detection"
+    "detection": "pompe_detection",
+    "erreurs": []
   },
   {
     "nom": "Rowing penche",
@@ -414,7 +437,11 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "rowing_penche_detection"
+    "detection": "rowing_penche_detection",
+    "erreurs": [
+      "rowing_penche_erreur_buste",
+      "rowing_penche_erreur_genoux"
+    ]
   },
   {
     "nom": "Rowing unilateral droit",
@@ -439,7 +466,10 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "rowing_unilateral_droit_detection"
+    "detection": "rowing_unilateral_droit_detection",
+    "erreurs": [
+      "rowing_unilateral_droit_erreur_buste"
+    ]
   },
   {
     "nom": "Rowing unilateral gauche",
@@ -464,7 +494,10 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "rowing_unilateral_gauche_detection"
+    "detection": "rowing_unilateral_gauche_detection",
+    "erreurs": [
+      "rowing_unilateral_gauche_erreur_buste"
+    ]
   },
   {
     "nom": "Souleve de terre roumain",
@@ -489,7 +522,8 @@
     "variante_facile": null,
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "souleve_de_terre_roumain_detection"
+    "detection": "souleve_de_terre_roumain_detection",
+    "erreurs": []
   },
   {
     "nom": "Squat",
@@ -513,7 +547,8 @@
     "variante_facile": "Squat sur chaise",
     "variante_difficile": null,
     "analyse_la_pose": true,
-    "detection": "squat_detection"
+    "detection": "squat_detection",
+    "erreurs": []
   },
   {
     "nom": "Squat sur chaise",
@@ -536,6 +571,7 @@
     "variante_facile": null,
     "variante_difficile": "Squat",
     "analyse_la_pose": true,
-    "detection": "squat_sur_chaise_detection"
+    "detection": "squat_sur_chaise_detection",
+    "erreurs": []
   }
 ]
