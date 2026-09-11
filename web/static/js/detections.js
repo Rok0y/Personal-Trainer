@@ -130,8 +130,15 @@ export function developpe_epaule_detection(corps) {
     corps.coude_droit,
     corps.poignet_droit
   );
+  // Un developpe epaule se termine *au-dessus de la tete*, et l'angle du
+  // coude seul ne le dit pas : bras baisses et tendus le long du corps, il
+  // depasse aussi 150 degres.
+  const mains_en_haut =
+    corps.poignet_gauche.y < corps.epaule_gauche.y &&
+    corps.poignet_droit.y < corps.epaule_droite.y;
   if (angle_coude_droit < 40 && angle_coude_gauche < 40) return "debut";
-  else if (angle_coude_droit > 150 && angle_coude_gauche > 150) return "fin";
+  else if (angle_coude_droit > 150 && angle_coude_gauche > 150 && mains_en_haut)
+    return "fin";
   return "milieu";
 }
 

@@ -82,14 +82,23 @@ function bord_franchi(point) {
   return null;
 }
 
-// Hauteur du corps, en fraction de l'image, sous laquelle la personne est trop
-// loin pour que les angles soient exploitables.
-const HAUTEUR_MINIMALE = 0.35;
+// Il n'y a volontairement aucun controle de distance. Il y en a eu un, et il
+// se trompait a peu pres tout le temps : il mesurait l'etendue *verticale*
+// des points, ce qui n'est un indice de distance que pour quelqu'un debout.
+// Une planche parfaitement cadree, qui remplit l'image en largeur, mesure
+// 0,13 de hauteur — et s'entendait dire « approche-toi ».
+//
+// La regle qui en sort vaut bien au-dela de ce reglage : **ne parler que
+// lorsque la detection ne peut pas travailler**. Etre loin ne l'empeche pas,
+// MediaPipe suit tres bien un corps petit dans l'image ; etre hors champ
+// l'empeche, parce que le landmark est alors une invention du modele. Une
+// consigne qui se declenche a tort est pire qu'absente : elle apprend a ne
+// plus la lire.
 
 /**
  * Mesure, sans rien decider : rend la liste des problemes constates.
- * Chaque entree vaut { partie, bord }, ou bord est un cote de l'image, ou
- * "loin" pour la silhouette entiere.
+ * Chaque entree vaut { partie, bord }, ou bord est le cote de l'image par
+ * lequel cette partie est sortie.
  */
 export function problemes_de_cadrage(corps, points_requis) {
   const requis = new Set(points_requis);
@@ -102,13 +111,6 @@ export function problemes_de_cadrage(corps, points_requis) {
     const bords = concernes.map((p) => bord_franchi(corps[p]));
     if (bords.some((b) => b === null)) continue;
     problemes.push({ partie, bord: bords[0] });
-  }
-
-  if (!problemes.length) {
-    const ys = points_requis.map((p) => corps[p].y);
-    if (Math.max(...ys) - Math.min(...ys) < HAUTEUR_MINIMALE) {
-      problemes.push({ partie: "tout", bord: "loin" });
-    }
   }
 
   return problemes;
@@ -131,7 +133,6 @@ export const CE_QUI_MANQUE = {
 
 export const QUOI_FAIRE = {
   recule: "recule, tu ne tiens pas dans l’image",
-  approche: "approche-toi, tu es trop loin",
   baisse_camera: "baisse la caméra ou incline-la vers le bas",
   monte_camera: "monte la caméra ou incline-la vers le haut",
   // Volontairement sans gauche ni droite : l'image de la demo est affichee en
@@ -146,7 +147,6 @@ const ACTION_DU_BORD = {
   haut: "monte_camera",
   gauche: "centre",
   droite: "centre",
-  loin: "approche",
 };
 
 // Rang vertical approximatif, de la tete aux pieds. Il sert a nommer, parmi
@@ -158,14 +158,11 @@ const RANG = Object.fromEntries(PARTIES.map(([partie], i) => [partie, i]));
 
 /**
  * Choisit le seul probleme a annoncer. Rend null si le cadrage convient, sinon
- * { partie, action } — deux cles, jamais du texte. `partie` vaut null quand
- * aucune n'explique le probleme a elle seule.
+ * { partie, action } — deux cles, jamais du texte. `partie` vaut null dans le
+ * seul cas ou aucune ne suffit a l'expliquer : coupe en haut *et* en bas.
  */
 export function message_de_cadrage(problemes) {
   if (!problemes.length) return null;
-
-  const trop_loin = problemes.find((p) => p.bord === "loin");
-  if (trop_loin) return { partie: null, action: "approche" };
 
   // Coupe en haut *et* en bas : ni monter ni baisser la camera n'y change
   // quoi que ce soit, il n'y a pas assez de champ. C'est le seul cas ou

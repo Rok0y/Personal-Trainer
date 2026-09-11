@@ -272,9 +272,19 @@ def developpe_epaule_detection(corps):
     angle_coude_gauche = calculer_angle(
         corps.epaule_droite, corps.coude_droit, corps.poignet_droit
     )
+    # Un développé épaule se termine *au-dessus de la tête*, et l'angle du
+    # coude seul ne le dit pas : bras baissés et tendus le long du corps, il
+    # dépasse aussi 150 degrés. Un testeur comptait donc une répétition en
+    # abandonnant sa série, « comme si retendre les bras sous les épaules
+    # comptait pour un ». Ce qui fait la position haute, c'est que les
+    # poignets sont passés au-dessus des épaules.
+    mains_en_haut = (
+        corps.poignet_gauche.y < corps.epaule_gauche.y
+        and corps.poignet_droit.y < corps.epaule_droite.y
+    )
     if angle_coude_droit < 40 and angle_coude_gauche < 40:
         return "debut"
-    elif angle_coude_droit > 150 and angle_coude_gauche > 150:
+    elif angle_coude_droit > 150 and angle_coude_gauche > 150 and mains_en_haut:
         return "fin"
     return "milieu"
 
