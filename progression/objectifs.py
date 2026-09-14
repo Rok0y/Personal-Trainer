@@ -304,20 +304,35 @@ def appliquer_a_circuit(circuit, objectifs=None, sans_donnees=None):
     return circuit
 
 
-def marquer_cibles_manuelles(blocs, objectifs=None):
+def marquer_cibles_manuelles(blocs, objectifs=None, sans_donnees=None):
     """Repère les cibles saisies à la main, en les comparant au moteur.
 
     L'utilisateur n'a pas à déclarer qu'il fait une exception : éditer une
     cible, c'est s'écarter de ce que le moteur propose, et c'est cet écart qui
     est détecté. Corriger la valeur pour la remettre sur le palier proposé
     efface la marque et rebranche le bloc sur le moteur.
+
+    **Un exercice à calibrer n'est jamais une cible manuelle**, et l'oublier
+    produisait un blocage définitif et silencieux. `appliquer_a_blocs` laisse
+    ses valeurs telles quelles — celles du fichier — parce qu'il n'a rien à
+    proposer tant que rien n'est mesuré ; les comparer au palier calculé les
+    déclarait donc *toujours* différentes. Conséquence : enregistrer le
+    formulaire d'objectifs sans rien modifier figeait tout exercice pas encore
+    testé, et `appliquer_a_circuit` écartant les cibles manuelles avant tout le
+    reste, son test de calibration ne se déclenchait plus jamais.
     """
     objectifs = objectifs_par_exercice() if objectifs is None else objectifs
+    sans_donnees = (
+        exercices_sans_donnees() if sans_donnees is None else sans_donnees
+    )
 
     for bloc in blocs:
-        palier_vise = objectif_pour(
-            _nom_exercice(bloc), bloc.get("mode"), objectifs
-        )
+        nom = _nom_exercice(bloc)
+        if a_calibrer(nom, bloc.get("mode"), sans_donnees):
+            _ecrire_cible_manuelle(bloc, False)
+            continue
+
+        palier_vise = objectif_pour(nom, bloc.get("mode"), objectifs)
         if palier_vise is None:
             _ecrire_cible_manuelle(bloc, False)
             continue

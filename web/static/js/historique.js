@@ -48,6 +48,14 @@ export function base_vide() {
     exercices: [],
     series_realisees: [],
     corrections_niveaux: [],
+    // **Pas une table SQLite** : les seances editees sur cet appareil. Cote
+    // Python elles vivent dans `seances_personnalisees.json`, que seul le
+    // poste fixe sait ecrire ; un site statique n'a pas de disque a modifier,
+    // donc l'appareil les garde avec le reste de sa base.
+    //
+    // Un objet et non un tableau, parce que c'est la forme du fichier qu'il
+    // remplace : un nom de seance vers sa liste de blocs.
+    seances_locales: {},
   };
 }
 
@@ -360,6 +368,38 @@ export function supprimer_ancrages(base, nom_exercice, utilisateur_id) {
  * bienveillance de Safari. C'est aussi le transfert d'un appareil a l'autre
  * tant qu'aucun serveur n'existe.
  */
+// ==========================================
+// SEANCES EDITEES SUR L'APPAREIL
+// ==========================================
+
+/**
+ * Enregistre une seance editee ici.
+ *
+ * Elle **masque** desormais celle du fichier exporte, exactement comme
+ * `seances_personnalisees.json` masque le catalogue Python. La difference est
+ * qu'on ne peut pas renvoyer le resultat au fichier : un site statique n'a
+ * pas de serveur a qui ecrire. C'est le prix assume de pouvoir modifier une
+ * seance depuis l'appareil, et l'ecran doit le rendre visible plutot que de
+ * laisser croire que la modification remontera.
+ */
+export function enregistrer_seance_locale(base, nom, blocs) {
+  base.seances_locales = { ...(base.seances_locales ?? {}), [nom]: blocs };
+  return nom;
+}
+
+/** Rend une seance au fichier : la version deployee redevient la bonne. */
+export function oublier_seance_locale(base, nom) {
+  if (!base.seances_locales) return false;
+  const existait = nom in base.seances_locales;
+  delete base.seances_locales[nom];
+  return existait;
+}
+
+/** Cette seance a-t-elle ete modifiee sur cet appareil ? */
+export function est_seance_locale(base, nom) {
+  return Boolean(base.seances_locales && nom in base.seances_locales);
+}
+
 export function exporter(base) {
   return JSON.stringify({ ...base, exporte_le: horodatage() }, null, 1);
 }
@@ -392,6 +432,15 @@ export function importer(texte) {
       throw new Error(`Sauvegarde incomplète : « ${collection} » manque.`);
     }
     base[collection] = contenu[collection];
+  }
+
+  // **Une collection ajoutee apres coup est optionnelle**, et c'est une regle
+  // et non une tolerance : l'exiger rendrait illisible *toutes* les
+  // sauvegardes deja faites, c'est-a-dire precisement celles qu'on voudra
+  // relire le jour ou l'appareil aura ete efface. Le refus bruyant vaut pour
+  // ce qu'on ne sait pas lire, pas pour ce qui n'existait pas encore.
+  if (contenu.seances_locales && typeof contenu.seances_locales === "object") {
+    base.seances_locales = contenu.seances_locales;
   }
   // Les compteurs sont recalcules plutot que relus : un export bricole a la
   // main, ou tronque, redonnerait sinon des identifiants deja pris.

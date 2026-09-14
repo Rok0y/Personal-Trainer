@@ -242,6 +242,15 @@ def main():
                     "circuit_apres": _decrire_circuit(
                         objectifs.appliquer_a_circuit(circuit, objs, sans)
                     ),
+                    # `marquer_cibles_manuelles` n'etait compare par rien, et
+                    # c'est exactement la ou un defaut s'est cache : un
+                    # exercice a calibrer y etait declare « cible manuelle »,
+                    # ce qui le figeait pour toujours et empechait son test de
+                    # se declencher. Une fonction qui ecrit une marque
+                    # **collante** merite d'etre verifiee comme les autres.
+                    "marques": objectifs.marquer_cibles_manuelles(
+                        copy.deepcopy(blocs_avant), objs, sans
+                    ),
                 }, ensure_ascii=False, default=_serialiser) + "\n")
                 lignes += 1
 

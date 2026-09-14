@@ -183,6 +183,14 @@ function main() {
       moteur.appliquer_a_blocs(blocs, objs, sans, PROFIL)
     );
 
+    verifier(
+      `${ou} / marques`,
+      ligne.marques,
+      moteur.marquer_cibles_manuelles(
+        structuredClone(ligne.blocs_avant), objs, sans, PROFIL
+      )
+    );
+
     const circuit = circuit_depuis(ligne.blocs_avant);
     verifier(
       `${ou} / circuit_apres`,

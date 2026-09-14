@@ -12,6 +12,8 @@ import {
   BlocExercice,
   Circuit,
   Exercice,
+  MODES_AVEC_DETECTION_OBLIGATOIRE,
+  MODES_CONNUS,
   MODE_REPETITIONS,
   est_echauffement,
 } from "./circuit.js";
@@ -192,4 +194,62 @@ export function payload_etat(seance, etat, statut = "running", utilisateur_id = 
       abandonner: en_marche,
     },
   };
+}
+
+
+/**
+ * Le catalogue reellement joue : le fichier, puis ce que l'appareil a modifie.
+ *
+ * **L'appareil gagne**, et c'est un arbitrage. Le fichier exporte reste la
+ * source de depart, mais une seance modifiee ici ne doit pas etre reecrite au
+ * prochain deploiement : l'edition a ete faite en connaissance de cause,
+ * souvent loin de l'ordinateur, et la perdre sans prevenir serait le pire des
+ * deux mondes. C'est la meme precedence que `seances_personnalisees.json` sur
+ * le catalogue Python — le disque masque le code — appliquee un cran plus
+ * loin.
+ *
+ * Corollaire a rendre visible a l'ecran : une correction faite sur
+ * l'ordinateur n'atteindra plus cette seance tant qu'elle est locale. D'ou
+ * `oublier_seance_locale`, qui la rend au fichier.
+ */
+export function catalogue_effectif(du_fichier, locales) {
+  return { ...du_fichier, ...(locales ?? {}) };
+}
+
+/**
+ * Refuse une liste de blocs que la seance ne saurait pas jouer.
+ *
+ * Jumeau des verifications de `construire_circuit` : mieux vaut un refus a
+ * l'enregistrement qu'une erreur en pleine seance, quand on est a deux metres
+ * de l'ecran et deja echauffe. Les trois refus sont ceux du Python — un
+ * exercice inconnu, un mode inconnu, et un mode qui exige une detection sur un
+ * mouvement qui n'en a pas.
+ *
+ * Rend la liste des problemes plutot que de lever au premier : un formulaire
+ * doit pouvoir tout signaler d'un coup.
+ */
+export function problemes_des_blocs(mouvements, blocs) {
+  const problemes = [];
+  if (!blocs.length) problemes.push("Au moins un exercice est requis.");
+
+  for (const bloc of blocs) {
+    const nom = bloc.exercice;
+    const fiche = mouvements[nom];
+    if (!fiche) {
+      problemes.push(`Exercice inconnu : ${nom}`);
+      continue;
+    }
+    const mode = bloc.mode ?? MODE_REPETITIONS;
+    if (!MODES_CONNUS.includes(mode)) {
+      problemes.push(`Mode inconnu : ${mode}`);
+      continue;
+    }
+    if (MODES_AVEC_DETECTION_OBLIGATOIRE.includes(mode) && !fiche.detection) {
+      problemes.push(
+        `${nom} n'a pas de detection de pose : le mode « ${mode} » ne peut pas ` +
+          "l'utiliser. Passe-le en chrono ou en echauffement."
+      );
+    }
+  }
+  return problemes;
 }

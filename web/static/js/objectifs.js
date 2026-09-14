@@ -12,7 +12,7 @@
 import { UNITE_SECONDES } from "./paliers.js";
 import { UNITE_PAR_MODE } from "./niveaux.js";
 import { CIBLE_TEST } from "./calibration.js";
-import { est_cible_manuelle } from "./cible_manuelle.js";
+import { definir_cible_manuelle, est_cible_manuelle } from "./cible_manuelle.js";
 
 export {
   profils_cible_manuelle,
@@ -145,6 +145,52 @@ export class Objectifs {
       bloc.series = palier_vise.series;
       if (palier_vise.unite === UNITE_SECONDES) bloc.duree = palier_vise.cible;
       else bloc.repetitions = palier_vise.cible;
+    }
+    return blocs;
+  }
+
+  /**
+   * Repere les cibles saisies a la main, en les comparant au moteur.
+   *
+   * **L'utilisateur n'a pas a declarer qu'il fait une exception** : editer une
+   * cible, c'est s'ecarter de ce que le moteur propose, et c'est cet ecart qui
+   * est detecte. Remettre la valeur sur le palier propose efface la marque et
+   * rebranche le bloc sur le moteur, sans rien a cocher.
+   *
+   * A n'appeler que depuis une edition d'utilisateur. L'appeler a la fin d'une
+   * seance comparerait des valeurs posees par le moteur a un objectif qui a pu
+   * changer entre-temps, et marquerait manuel tout ce qui a progresse.
+   */
+  marquer_cibles_manuelles(blocs, objectifs, sans_donnees, utilisateur_id) {
+    for (const bloc of blocs) {
+      const nom = _nom_exercice(bloc);
+
+      // **Un exercice a calibrer n'est jamais une cible manuelle.**
+      // `appliquer_a_blocs` laisse ses valeurs telles quelles — celles du
+      // fichier — parce qu'il n'a rien a proposer tant que rien n'est mesure ;
+      // les comparer au palier calcule les declarerait *toujours*
+      // differentes, et le bloc serait fige pour toujours. Comme
+      // `appliquer_a_circuit` ecarte les cibles manuelles avant tout le reste,
+      // son test de calibration ne se declencherait alors plus jamais.
+      const a_tester = this.a_calibrer(nom, bloc.mode, sans_donnees);
+      const palier_vise = a_tester ? null : this.objectif_pour(nom, bloc.mode, objectifs);
+
+      let manuelle = false;
+      if (palier_vise !== null) {
+        const cible =
+          palier_vise.unite === UNITE_SECONDES ? bloc.duree || 0 : bloc.repetitions || 0;
+        manuelle = !(
+          (bloc.poids || 0) === palier_vise.poids &&
+          (bloc.series || 0) === palier_vise.series &&
+          cible === palier_vise.cible
+        );
+      }
+
+      const valeur = definir_cible_manuelle(
+        bloc.cible_manuelle ?? null, manuelle, utilisateur_id
+      );
+      if (valeur === null) delete bloc.cible_manuelle;
+      else bloc.cible_manuelle = valeur;
     }
     return blocs;
   }

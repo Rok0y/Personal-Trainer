@@ -124,6 +124,54 @@
   }
   .carte-active { border-color: var(--orange); }
 
+  .barre-carte {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: -0.4rem 0 0.9rem;
+    flex-wrap: wrap;
+  }
+  .barre-carte .bouton { padding: 0.35rem 0.8rem; font-size: 0.8rem; }
+
+  .bloc-editeur {
+    background: var(--surface);
+    border: 1px solid var(--trait);
+    border-radius: 12px;
+    padding: 0.8rem 0.9rem;
+    margin-bottom: 0.7rem;
+  }
+  .bloc-entete { display: flex; gap: 0.6rem; align-items: center; }
+  .bloc-entete select { flex: 1; }
+  .bloc-actions { display: flex; gap: 0.3rem; }
+  .bloc-actions button {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 8px;
+    border: 1px solid var(--trait);
+    background: transparent;
+    color: var(--texte-doux);
+    font: inherit;
+    cursor: pointer;
+  }
+  .bloc-actions button:hover { border-color: var(--orange); color: var(--orange); }
+  .bloc-champs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 0.7rem;
+  }
+  .bloc-champs select,
+  .bloc-champs input {
+    padding: 0.4rem 0.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--trait);
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--texte);
+    font: inherit;
+    font-size: 0.85rem;
+    min-width: 5rem;
+  }
+
   .detail-seance {
     margin: -0.4rem 0 0.8rem;
     padding: 0 0.3rem;
@@ -483,6 +531,27 @@
   <div id="listeRecords"></div>
 </section>
 
+<!-- ====================== EDITEUR ====================== -->
+<!-- L'editeur de seances. Il n'ecrit pas dans `seances_personnalisees.json` —
+     un site statique n'a pas de serveur a qui ecrire —, mais dans la base de
+     l'appareil, qui **masque** alors le fichier deploye. L'ecran le dit
+     explicitement : c'est la seule facon que la precedence ne soit pas une
+     surprise au prochain deploiement. -->
+<section class="ecran defile" id="ecranEditeur">
+  <button class="bouton secondaire" id="retourEditeur">← Retour aux séances</button>
+  <h1 id="titreEditeur">Modifier</h1>
+  <p class="sous-titre" id="sousTitreEditeur"></p>
+  <div id="blocsEditeur"></div>
+  <div class="actions" style="justify-content:flex-start;margin-top:1rem">
+    <button class="bouton secondaire" id="ajouterBloc">+ Ajouter un exercice</button>
+  </div>
+  <p class="retour-ancrage" id="retourEditeurMessage"></p>
+  <div class="actions" style="justify-content:flex-start;margin-top:1rem">
+    <button class="bouton" id="enregistrerSeance">Enregistrer</button>
+    <button class="bouton secondaire" id="rendreAuFichier" hidden>Revenir à la version du fichier</button>
+  </div>
+</section>
+
 <!-- ====================== PROFILS ====================== -->
 <!-- L'ecran « Qui s'entraine ? » du poste fixe. Il ne s'impose jamais au
      lancement : l'application rouvre sur le dernier profil utilise, et ce
@@ -786,7 +855,13 @@
 import { Camera, POSES_SEUL, dessiner_squelette } from "../js/camera.js";
 import { construire_corps } from "../js/landmarks.js";
 import { DETECTIONS } from "../js/detections.js";
-import { circuit_pour, payload_etat, resultats_par_exercice } from "../js/seance.js";
+import {
+  catalogue_effectif,
+  circuit_pour,
+  payload_etat,
+  problemes_des_blocs,
+  resultats_par_exercice,
+} from "../js/seance.js";
 import { brancher_commandes, peindre_hud } from "../js/hud.js";
 import { executer_mode, duree_realisee, oublier_durees, mettre_a_jour_prochain_exercice, poser_etape } from "../js/moteur.js";
 import { CompteurMouvement } from "../js/compteur.js";
@@ -878,6 +953,9 @@ let seances = {};
 let base = historique.base_vide();
 let tables_baremes = null;
 let programmes_declares = {};
+//: Le catalogue tel qu'il est deploye, avant les modifications locales.
+//: Le garder a part est ce qui permet de rendre une seance au fichier.
+let seances_du_fichier = {};
 let moteur = null;
 
 async function charger_donnees() {
@@ -889,7 +967,7 @@ async function charger_donnees() {
     fetch("../donnees/programmes.json").then((r) => r.json()),
   ]);
   mouvements = m;
-  seances = s;
+  seances_du_fichier = s;
   tables_baremes = baremes;
   programmes_declares = progs;
   lecteur = new Lecteur("../sons", sons);
@@ -903,6 +981,8 @@ async function charger_donnees() {
   const retenu = profil_retenu();
   const connu = base.utilisateurs.some((u) => u.id === retenu);
   retenir_profil(connu ? retenu : base.utilisateurs[0].id);
+  // Le fichier d'abord, puis ce que l'appareil a modifie par-dessus.
+  seances = catalogue_effectif(seances_du_fichier, base.seances_locales);
   construire_moteur();
 }
 
@@ -1604,6 +1684,233 @@ function dessiner_historique() {
     });
 }
 
+// ---------------------------------------------------------------- editeur
+
+//: Les modes proposes, avec leur libelle. `MODES_CONNUS` vit dans
+//: `circuit.js` ; ici on n'en donne que la traduction, et l'ordre dans lequel
+//: on veut les voir.
+const LIBELLES_MODE = {
+  repetitions: "Répétitions",
+  maintien: "Maintien (secondes)",
+  chrono: "Chrono (secondes)",
+  amrap: "AMRAP",
+  echauffement: "Échauffement",
+};
+
+//: Les modes dont la cible se compte en secondes. Meme regle que `MODES_DUREE`
+//: cote gabarits, et meme piege : un mode absent de cette liste verrait sa
+//: duree remise a zero a l'enregistrement.
+const MODES_DUREE = ["maintien", "chrono", "amrap", "echauffement"];
+
+//: La seance en cours d'edition, et ses blocs de travail. Une **copie** : tant
+//: qu'on n'a pas enregistre, rien ne doit bouger dans le catalogue affiche.
+let seance_editee = null;
+let blocs_edites = [];
+
+function ouvrir_editeur(nom) {
+  seance_editee = nom;
+  blocs_edites = blocs_a_editer(nom);
+  $("titreEditeur").textContent = nom;
+  dessiner_editeur("");
+  montrer("ecranEditeur");
+}
+
+/**
+ * Les blocs tels que le moteur les jouerait, et non tels que le fichier les
+ * ecrit.
+ *
+ * **C'est indispensable, et le contraire produit un defaut silencieux.**
+ * `marquer_cibles_manuelles` fige tout bloc dont la cible s'ecarte de ce que
+ * le moteur propose ; si l'editeur affiche les valeurs brutes du fichier — qui
+ * datent d'avant plusieurs seances —, alors *enregistrer sans rien toucher*
+ * fige tous les exercices d'un coup, y compris ceux qui ont progresse. Mesure :
+ * modifier une seule cible marquait les deux blocs de la seance « bras ».
+ *
+ * Le poste fixe n'a pas ce probleme parce que son formulaire est rendu depuis
+ * `catalogue()`, qui applique deja le moteur. L'application doit faire le meme
+ * geste, explicitement.
+ */
+function blocs_a_editer(nom) {
+  const blocs = structuredClone(seances[nom] ?? []);
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  return moteur.objectifs.appliquer_a_blocs(
+    blocs,
+    moteur.objectifs.objectifs_par_exercice(histoire, ancrages),
+    moteur.objectifs.exercices_sans_donnees(histoire, ancrages),
+    PROFIL
+  );
+}
+
+function dessiner_editeur(message = null) {
+  const locale = historique.est_seance_locale(base, seance_editee);
+  $("sousTitreEditeur").innerHTML = locale
+    ? "Cette séance est <b>modifiée sur cet appareil</b> : les mises à jour " +
+      "faites sur l'ordinateur ne l'atteignent plus tant qu'elle l'est."
+    : "Enregistrer ici garde la modification <b>sur cet appareil</b>. Le " +
+      "fichier de l'ordinateur ne sera pas mis à jour, et cette séance cessera " +
+      "de suivre ses futures versions.";
+  $("rendreAuFichier").hidden = !locale;
+  // `null` veut dire « laisse ce qui est affiche » : redessiner apres un
+  // enregistrement effacerait sinon la confirmation au moment ou elle apparait.
+  if (message !== null) $("retourEditeurMessage").textContent = message;
+
+  const conteneur = $("blocsEditeur");
+  conteneur.replaceChildren();
+  blocs_edites.forEach((bloc, index) => conteneur.appendChild(ligne_editeur(bloc, index)));
+}
+
+/** Les mouvements proposes, exercices et echauffements separes comme ailleurs. */
+function options_mouvements(courant) {
+  const noms = Object.keys(mouvements).sort((a, b) => a.localeCompare(b, "fr"));
+  const groupe = (titre, liste) =>
+    `<optgroup label="${titre}">` +
+    liste
+      .map(
+        (n) =>
+          `<option value="${echapper(n)}"${n === courant ? " selected" : ""}>${echapper(n)}</option>`
+      )
+      .join("") +
+    `</optgroup>`;
+
+  // Un nom orphelin — venu d'un fichier plus recent, ou renomme — doit rester
+  // selectionne : sans cette option, le navigateur choisirait la premiere et
+  // remplacerait silencieusement l'exercice a l'enregistrement.
+  const inconnu = courant && !(courant in mouvements)
+    ? groupe("Inconnu", [courant])
+    : "";
+
+  return (
+    inconnu +
+    groupe("Exercices", noms.filter((n) => !mouvements[n].est_echauffement)) +
+    groupe("Échauffements", noms.filter((n) => mouvements[n].est_echauffement))
+  );
+}
+
+function ligne_editeur(bloc, index) {
+  const ligne = document.createElement("div");
+  ligne.className = "bloc-editeur";
+  const au_temps = MODES_DUREE.includes(bloc.mode);
+
+  ligne.innerHTML =
+    `<div class="bloc-entete">` +
+    `<select class="champ-exercice">${options_mouvements(bloc.exercice)}</select>` +
+    `<div class="bloc-actions">` +
+    `<button type="button" data-monter title="Monter">↑</button>` +
+    `<button type="button" data-descendre title="Descendre">↓</button>` +
+    `<button type="button" data-retirer title="Retirer">✕</button>` +
+    `</div></div>` +
+    `<div class="bloc-champs">` +
+    `<span class="champ"><label>Mode</label><select class="champ-mode">` +
+    Object.entries(LIBELLES_MODE)
+      .map(
+        ([valeur, libelle]) =>
+          `<option value="${valeur}"${valeur === bloc.mode ? " selected" : ""}>${libelle}</option>`
+      )
+      .join("") +
+    `</select></span>` +
+    `<span class="champ"><label>Séries</label>` +
+    `<input type="number" min="1" class="champ-series" value="${bloc.series ?? 1}"></span>` +
+    `<span class="champ"><label>${au_temps ? "Secondes" : "Répétitions"}</label>` +
+    `<input type="number" min="0" class="champ-cible" value="${au_temps ? bloc.duree ?? 0 : bloc.repetitions ?? 0}"></span>` +
+    `<span class="champ"><label>Charge (kg)</label>` +
+    `<input type="number" min="0" step="0.5" class="champ-poids" value="${bloc.poids ?? 0}"></span>` +
+    `<span class="champ"><label>Repos série (s)</label>` +
+    `<input type="number" min="0" class="champ-repos" value="${bloc.repos_entre_series ?? 0}"></span>` +
+    `<span class="champ"><label>Repos après (s)</label>` +
+    `<input type="number" min="0" class="champ-repos-apres" value="${bloc.repos_apres ?? 0}"></span>` +
+    `<span class="champ champ-large"><label>Note</label>` +
+    `<input type="text" class="champ-commentaire" value="${echapper(bloc.commentaire ?? "")}"></span>` +
+    `</div>`;
+
+  // Chaque saisie est recopiee dans le bloc immediatement : redessiner la
+  // liste sans ca perdrait ce qui vient d'etre tape.
+  const lire = () => {
+    bloc.exercice = ligne.querySelector(".champ-exercice").value;
+    bloc.mode = ligne.querySelector(".champ-mode").value;
+    bloc.series = Number(ligne.querySelector(".champ-series").value) || 1;
+    bloc.poids = Number(ligne.querySelector(".champ-poids").value) || 0;
+    bloc.repos_entre_series = Number(ligne.querySelector(".champ-repos").value) || 0;
+    bloc.repos_apres = Number(ligne.querySelector(".champ-repos-apres").value) || 0;
+    bloc.commentaire = ligne.querySelector(".champ-commentaire").value;
+
+    // **La cible va dans le champ du mode**, jamais dans les deux : c'est le
+    // piege documente des editeurs de seance, ou une duree se retrouvait
+    // remise a zero au premier enregistrement.
+    const valeur = Number(ligne.querySelector(".champ-cible").value) || 0;
+    if (MODES_DUREE.includes(bloc.mode)) {
+      bloc.duree = valeur;
+      bloc.repetitions = 0;
+    } else {
+      bloc.repetitions = valeur;
+      bloc.duree = 0;
+    }
+  };
+
+  for (const champ of ligne.querySelectorAll("input, select")) {
+    champ.addEventListener("change", () => {
+      const ancien_mode = bloc.mode;
+      lire();
+      // Changer de mode change l'unite de la cible : la ligne se redessine
+      // pour que l'etiquette ne mente pas.
+      if (bloc.mode !== ancien_mode) dessiner_editeur();
+    });
+  }
+
+  ligne.querySelector("[data-retirer]").addEventListener("click", () => {
+    blocs_edites.splice(index, 1);
+    dessiner_editeur();
+  });
+  ligne.querySelector("[data-monter]").addEventListener("click", () => {
+    if (index === 0) return;
+    [blocs_edites[index - 1], blocs_edites[index]] = [blocs_edites[index], blocs_edites[index - 1]];
+    dessiner_editeur();
+  });
+  ligne.querySelector("[data-descendre]").addEventListener("click", () => {
+    if (index >= blocs_edites.length - 1) return;
+    [blocs_edites[index + 1], blocs_edites[index]] = [blocs_edites[index], blocs_edites[index + 1]];
+    dessiner_editeur();
+  });
+
+  return ligne;
+}
+
+/**
+ * Enregistre la seance editee sur l'appareil.
+ *
+ * Deux choses se font ici et nulle part ailleurs. La **validation**, jumelle
+ * de `construire_circuit` : un refus a l'enregistrement vaut mieux qu'une
+ * erreur en pleine seance. Et le **marquage des cibles manuelles** : une cible
+ * qui s'ecarte de ce que le moteur propose est figee, sans que l'utilisateur
+ * ait rien a declarer — c'est l'ecart qui est detecte.
+ */
+async function enregistrer_seance_editee() {
+  const retour = $("retourEditeurMessage");
+  const problemes = problemes_des_blocs(mouvements, blocs_edites);
+  if (problemes.length) {
+    retour.className = "retour-ancrage erreur";
+    retour.textContent = problemes[0];
+    return;
+  }
+
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  moteur.objectifs.marquer_cibles_manuelles(
+    blocs_edites,
+    moteur.objectifs.objectifs_par_exercice(histoire, ancrages),
+    moteur.objectifs.exercices_sans_donnees(histoire, ancrages),
+    PROFIL
+  );
+
+  historique.enregistrer_seance_locale(base, seance_editee, blocs_edites);
+  const ecrit = await stockage.sauver(base);
+  seances = catalogue_effectif(seances_du_fichier, base.seances_locales);
+
+  dessiner_editeur();
+  retour.className = "retour-ancrage" + (ecrit ? "" : " erreur");
+  retour.textContent = ecrit
+    ? "Enregistrée sur cet appareil."
+    : "Le stockage a refusé l'écriture : la modification n'est pas conservée.";
+}
+
 // ---------------------------------------------------------------- profils
 
 /**
@@ -2218,6 +2525,23 @@ function dessiner_liste() {
     carte.addEventListener("click", () => demarrer(nom));
     liste.appendChild(carte);
 
+    // Le crayon vit **a cote** de la carte : celle-ci est un bouton qui lance
+    // la seance, et un bouton dans un bouton est invalide.
+    const barre = document.createElement("div");
+    barre.className = "barre-carte";
+    if (historique.est_seance_locale(base, nom)) {
+      const marque = document.createElement("span");
+      marque.className = "puce puce-manuelle";
+      marque.textContent = "modifiée sur cet appareil";
+      barre.appendChild(marque);
+    }
+    const editer = document.createElement("button");
+    editer.className = "bouton secondaire";
+    editer.textContent = "Modifier";
+    editer.addEventListener("click", () => ouvrir_editeur(nom));
+    barre.appendChild(editer);
+    liste.appendChild(barre);
+
     // Un <details> **a cote** de la carte et non dedans : la carte est un
     // <button> qui lance la seance, et imbriquer un <details> dans un bouton
     // est invalide — le navigateur deplacerait le noeud en silence.
@@ -2308,6 +2632,34 @@ brancher_commandes((nom) => {
   if (!en_cours || !COMMANDES[nom]) return;
   COMMANDES[nom]();
   rafraichir_affichage();
+});
+$("retourEditeur").addEventListener("click", () => {
+  dessiner_liste();
+  montrer("ecranSeances");
+});
+$("ajouterBloc").addEventListener("click", () => {
+  const premier = Object.keys(mouvements).sort((a, b) => a.localeCompare(b, "fr"))[0];
+  blocs_edites.push({
+    exercice: premier,
+    mode: "repetitions",
+    series: 3,
+    repetitions: 10,
+    duree: 0,
+    poids: 0,
+    repos_entre_series: 45,
+    repos_apres: 60,
+    commentaire: "",
+    entrelace_avec: null,
+  });
+  dessiner_editeur();
+});
+$("enregistrerSeance").addEventListener("click", enregistrer_seance_editee);
+$("rendreAuFichier").addEventListener("click", async () => {
+  historique.oublier_seance_locale(base, seance_editee);
+  await stockage.sauver(base);
+  seances = catalogue_effectif(seances_du_fichier, base.seances_locales);
+  blocs_edites = blocs_a_editer(seance_editee);
+  dessiner_editeur("Rendue au fichier : elle suivra de nouveau l'ordinateur.");
 });
 $("ongletProfil").addEventListener("click", () => {
   dessiner_profils();
