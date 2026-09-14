@@ -225,6 +225,7 @@ import { PoseLandmarker, FilesetResolver, DrawingUtils }
 
 import { construire_corps } from "../js/landmarks.js";
 import { points_utilises, consigne_de_cadrage } from "../js/cadrage.js";
+import { VerrouEcran } from "../js/veille.js";
 import { DETECTIONS } from "../js/detections.js";
 import { CompteurMouvement } from "../js/compteur.js";
 
@@ -677,7 +678,9 @@ async function listerCameras() {
 
 // ----- seance -----
 
-let verrouEcran = null;
+// Le verrou est repris a chaque retour au premier plan : le systeme le
+// relache des que la page devient invisible, et il ne revient pas seul.
+const verrouEcran = new VerrouEcran();
 
 async function demarrer() {
   const bouton = document.getElementById("boutonDemarrer");
@@ -696,11 +699,7 @@ async function demarrer() {
 
     await preparerDetecteur();
 
-    try {
-      verrouEcran = await navigator.wakeLock.request("screen");
-    } catch {
-      // L'ecran s'eteindra peut-etre : genant, pas bloquant.
-    }
+    verrouEcran.tenir();
 
     chargerSons();
     reinitialiser();
@@ -1086,10 +1085,7 @@ function dessinerProblemes() {
 function arreterCapture() {
   enCours = false;
   for (const piste of flux?.getTracks() ?? []) piste.enabled = false;
-  if (verrouEcran) {
-    verrouEcran.release().catch(() => {});
-    verrouEcran = null;
-  }
+  verrouEcran.relacher();
 }
 
 function cameraVivante() {

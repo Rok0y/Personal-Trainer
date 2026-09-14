@@ -450,3 +450,86 @@ export function importer(texte) {
   }
   return base;
 }
+
+/**
+ * Records et progression de chaque exercice — jumeau de `statistiques_exercices`.
+ *
+ * Calcule uniquement sur les seances **terminees** et les series **menees au
+ * bout** : une serie interrompue ne prouve rien, et une seance abandonnee non
+ * plus. C'est la meme regle que partout ailleurs, et c'est pour ca que les
+ * chiffres d'ici et ceux d'un niveau ne se contredisent jamais.
+ *
+ * `pb` — le record qui compte pour cet exercice — depend de ce qu'il mesure :
+ * la duree pour un maintien, le volume des qu'il y a de la charge, les
+ * repetitions au poids du corps. Un record de volume serait en effet
+ * structurellement nul sur des pompes.
+ *
+ * `progression` garde une entree par seance, dans l'ordre ou l'historique les
+ * rend — le plus recent en tete. C'est a l'affichage d'inverser.
+ */
+export function statistiques_exercices(seances) {
+  const statistiques = {};
+
+  for (const seance of seances) {
+    if (seance.statut === "abandoned") continue;
+
+    for (const exercice of seance.exercices ?? []) {
+      const series = (exercice.series_detaillees ?? []).filter((s) => s.completee);
+      if (!series.length) continue;
+
+      const nom = exercice.nom;
+      const poids = Math.max(...series.map((s) => s.poids || 0));
+      const repetitions = series.reduce((total, s) => total + (s.repetitions || 0), 0);
+      const volume = series.reduce(
+        (total, s) => total + (s.poids || 0) * (s.repetitions || 0),
+        0
+      );
+      const duree = series.reduce((total, s) => total + (s.duree || 0), 0);
+
+      const entree = (statistiques[nom] ??= {
+        nom,
+        mode: exercice.mode ?? "repetitions",
+        seances: 0,
+        series: 0,
+        repetitions: 0,
+        volume: 0,
+        duree: 0,
+        meilleure_charge: { valeur: 0, seance_id: null, date: null },
+        meilleures_repetitions: { valeur: 0, seance_id: null, date: null },
+        meilleur_volume: { valeur: 0, seance_id: null, date: null },
+        meilleure_duree: { valeur: 0, seance_id: null, date: null },
+        progression: [],
+      });
+
+      entree.seances += 1;
+      entree.series += series.length;
+      entree.repetitions += repetitions;
+      entree.volume += volume;
+      entree.duree += duree;
+      entree.progression.push({
+        seance_id: seance.id,
+        date: seance.date,
+        repetitions,
+        volume,
+        duree,
+      });
+
+      for (const [cle, valeur] of [
+        ["meilleure_charge", poids],
+        ["meilleures_repetitions", repetitions],
+        ["meilleur_volume", volume],
+        ["meilleure_duree", duree],
+      ]) {
+        if (valeur > entree[cle].valeur) {
+          entree[cle] = { valeur, seance_id: seance.id, date: seance.date };
+        }
+      }
+
+      if (["maintien", "chrono"].includes(exercice.mode)) entree.pb = entree.meilleure_duree;
+      else if (poids > 0) entree.pb = entree.meilleur_volume;
+      else entree.pb = entree.meilleures_repetitions;
+    }
+  }
+
+  return statistiques;
+}

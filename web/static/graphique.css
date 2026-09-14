@@ -1,0 +1,19 @@
+/* ==========================================================================
+   Le graphique de progression, partage par les deux applications.
+
+   Un point par seance, relie du plus ancien au plus recent. La regle qu'il
+   porte : l'axe vertical part **toujours de zero** et se cale sur le maximum
+   de la serie, jamais sur son minimum. Un graphe qui commence a la plus
+   mauvaise valeur transforme une variation de trois pour cent en falaise, et
+   c'est exactement ce qu'on ne veut pas raconter sur un entrainement.
+   ========================================================================== */
+
+.chart-container { width:100%; }
+.progression-svg { width:100%; height:auto; display:block; overflow:visible; max-height:60vh; }
+.chart-area { fill:var(--teal); opacity:.10; }
+.chart-line { fill:none; stroke:var(--teal); stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; }
+.chart-point circle { fill:#0f1420; stroke:var(--teal); stroke-width:2.5; transition:r .15s ease, fill .15s ease; cursor:pointer; }
+.chart-point:hover circle { fill:var(--teal); r:8; }
+.chart-point:focus circle { fill:var(--orange); stroke:var(--orange); }
+.chart-axis-label { fill:var(--muted); font:14px 'Space Grotesk', sans-serif; }
+.chart-date-label { fill:var(--muted); font:13px 'Space Grotesk', sans-serif; }

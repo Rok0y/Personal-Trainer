@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="../programmes.css">
 <link rel="stylesheet" href="../exercices.css">
 <link rel="stylesheet" href="../ancrages.css">
+<link rel="stylesheet" href="../graphique.css">
 
 <style>
   /* Les ecrans de liste (seances, historique, records, fin) ont leur propre
@@ -123,6 +124,19 @@
     border-color: var(--orange);
   }
   .carte-active { border-color: var(--orange); }
+
+  .progression-record { margin-top: 0.7rem; }
+  .progression-record summary {
+    cursor: pointer;
+    color: var(--texte-doux);
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.3rem 0;
+  }
+  .progression-record summary:hover { color: var(--accent); }
+  .progression-record .chart-container { margin-top: 0.5rem; }
 
   .barre-carte {
     display: flex;
@@ -365,6 +379,9 @@
     font-variant-numeric: tabular-nums;
   }
   .serie-puce.ratee { color: var(--alerte); }
+  /* La charge est plus discrete que la repetition : c'est elle qu'on lit
+     en premier, le poids ne fait que la qualifier. */
+  .serie-puce i { font-style: normal; color: var(--texte-doux); }
 
   .montee {
     display: inline-flex;
@@ -885,6 +902,8 @@ import { construire_ligne } from "../js/ressentis_ui.js";
 import { Calibration } from "../js/calibration.js";
 import { Objectifs } from "../js/objectifs.js";
 import { normaliser } from "../js/materiel.js";
+import { VerrouEcran } from "../js/veille.js";
+import { cle_de_progression, graphique_progression } from "../js/graphique.js";
 import { etats_programmes, prochaine_seance, resume_palier } from "../js/programmes.js";
 import { est_cible_manuelle } from "../js/cible_manuelle.js";
 import { UNITE_SECONDES } from "../js/paliers.js";
@@ -1045,6 +1064,11 @@ const geste_reset = new HoldPosition(deux_bras_leves, TENUE_VALIDATION);
 let fin_decompte = null;
 let dernier_decompte = null;
 let en_cours = false;
+//: L'appareil ne doit pas s'endormir pendant une seance. L'objet retient
+//: ce qu'on lui a demande et **redemande le verrou a chaque retour au
+//: premier plan** : le systeme le relache des que la page devient
+//: invisible, et il ne revient pas tout seul.
+const verrou_ecran = new VerrouEcran();
 //: « running » ou « paused ». Jumeau du statut de `SessionManager` :
 //: l'application n'a pas de controleur, mais elle a les memes commandes.
 let statut = "running";
@@ -1093,6 +1117,9 @@ async function demarrer(nom) {
   montrer("ecranSeance");
   changer_exercice();
   en_cours = true;
+  // Apres le geste de demarrage : certains navigateurs refusent le verrou
+  // hors interaction utilisateur.
+  verrou_ecran.tenir();
   requestAnimationFrame(boucle);
 }
 
@@ -1395,6 +1422,7 @@ function rafraichir_affichage() {
 
 async function terminer(abandonnee = false) {
   en_cours = false;
+  verrou_ecran.relacher();
   camera.suspendre();
   // La seance est finie : ce qui restait a annoncer ne veut plus rien dire.
   lecteur.taire();
@@ -1598,7 +1626,16 @@ function dessiner_seance(seance, montees) {
       const series = exercice.series_detaillees
         .map((serie) => {
           const valeur = unite ? `${Math.round(serie.duree)} s` : serie.repetitions;
-          return `<span class="serie-puce${serie.completee ? "" : " ratee"}">${valeur}</span>`;
+          // **La charge est portee par la serie, pas par l'exercice**, et c'est
+          // ce qui rend le detail lisible : on baisse souvent d'un cran en
+          // cours de seance, et « 13 13 13 13 » ne dit pas si les quatre ont
+          // ete faites au meme poids. `historique.js` stocke bien un poids par
+          // serie, il n'etait simplement pas affiche.
+          const charge = serie.poids ? `<i>×${serie.poids}</i>` : "";
+          return (
+            `<span class="serie-puce${serie.completee ? "" : " ratee"}">` +
+            `${valeur}${charge}</span>`
+          );
         })
         .join("");
 
@@ -2194,6 +2231,9 @@ function dessiner_exigence(ligne) {
 function dessiner_records() {
   const { seances: histoire, ancrages } = lecture_du_profil();
   const etats = moteur.niveaux.etats_niveaux(histoire, ancrages);
+  // Un seul parcours de l'historique pour les vingt-trois fiches : chaque
+  // appel le relit en entier.
+  const statistiques = historique.statistiques_exercices(histoire);
   const lignes = Object.entries(etats)
     .sort(([a], [b]) => a.localeCompare(b, "fr"))
     .map(([nom, etat]) => {
@@ -2203,6 +2243,7 @@ function dessiner_records() {
           `<b>${echapper(nom)}</b><span class="record-niveau">à tester</span></div>` +
           `<div class="record-ligne">Rien ne prouve encore ton niveau. ` +
           `Premier palier : <b>${resume_palier(etat.premier)}</b></div>` +
+          bloc_graphique(nom, statistiques[nom]) +
           bloc_recalage(nom, etat) + `</div>`
         );
       }
@@ -2225,7 +2266,7 @@ function dessiner_records() {
         `<div class="record"><div class="record-titre"><b>${echapper(nom)}</b>` +
         `<span class="record-niveau">Niveau ${etat.niveau}</span></div>` +
         `<div class="record-ligne">Acquis : <b>${resume_palier(etat.actuel)}</b></div>` +
-        suite + source + bloc_recalage(nom, etat) + `</div>`
+        suite + source + bloc_graphique(nom, statistiques[nom]) + bloc_recalage(nom, etat) + `</div>`
       );
     });
 
@@ -2233,6 +2274,36 @@ function dessiner_records() {
     ? lignes.join("")
     : `<p class="vide">Aucun exercice suivi.</p>`;
   brancher_recalages();
+}
+
+/**
+ * Le graphique de progression d'un exercice.
+ *
+ * **Replie par defaut** : un niveau repond a « ou j'en suis », le graphe a
+ * « comment j'y suis arrive », et les deux questions ne se posent pas au meme
+ * moment. Vingt-trois graphes ouverts feraient de l'ecran des records une
+ * page a faire defiler plutot qu'a consulter.
+ *
+ * Un seul point ne fait pas une progression : on l'annonce plutot que de
+ * tracer une ligne horizontale qui n'apprend rien.
+ */
+function bloc_graphique(nom, statistique) {
+  const points = statistique?.progression ?? [];
+  if (points.length < 2) return "";
+
+  // Ce qu'on trace depend du mode, exactement comme le `pb` : le volume est
+  // structurellement nul au poids du corps, la duree n'a de sens qu'en
+  // maintien.
+  const { cle, unite } = cle_de_progression(
+    statistique.mode,
+    statistique.meilleure_charge.valeur > 0
+  );
+
+  return (
+    `<details class="progression-record"><summary>Progression · ${points.length} séances</summary>` +
+    `<div class="chart-container">${graphique_progression(points, { cle, unite })}</div>` +
+    `</details>`
+  );
 }
 
 /**

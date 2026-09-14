@@ -17,7 +17,7 @@ import { dirname, join } from "node:path";
 import {
   base_vide, creer_utilisateur, enregistrer_seance, enregistrer_ressentis,
   enregistrer_ancrage, supprimer_seance, recuperer_historique,
-  recuperer_ancrages, exporter, importer,
+  recuperer_ancrages, statistiques_exercices, exporter, importer,
 } from "../web/static/js/historique.js";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
@@ -96,6 +96,16 @@ function main() {
       if (JSON.stringify(attendu) !== JSON.stringify(obtenu)) {
         ecarts.push({
           champ: `ancrages du profil ${profil}`,
+          attendu: JSON.stringify(attendu).slice(0, 260),
+          obtenu: JSON.stringify(obtenu).slice(0, 260),
+        });
+      }
+    }
+    for (const [profil, attendu] of Object.entries(ligne.statistiques ?? {})) {
+      const obtenu = statistiques_exercices(recuperer_historique(base, Number(profil)));
+      if (JSON.stringify(attendu) !== JSON.stringify(obtenu)) {
+        ecarts.push({
+          champ: `statistiques du profil ${profil}`,
           attendu: JSON.stringify(attendu).slice(0, 260),
           obtenu: JSON.stringify(obtenu).slice(0, 260),
         });

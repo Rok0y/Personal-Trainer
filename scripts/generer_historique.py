@@ -144,6 +144,19 @@ def main():
                         str(profil): base_de_donnees.recuperer_ancrages(profil)
                         for profil in profils
                     },
+                    # Les records et la progression sont **derives** de
+                    # l'historique, mais par une fonction a part, avec ses
+                    # propres regles : series menees au bout, seances non
+                    # abandonnees, et choix du record qui compte selon le mode.
+                    # Une fonction derivee se verifie comme les autres — elle
+                    # peut diverger sans que `recuperer_historique` bouge d'un
+                    # iota.
+                    "statistiques": {
+                        str(profil): base_de_donnees.statistiques_exercices(
+                            base_de_donnees.recuperer_historique(profil)
+                        )
+                        for profil in profils
+                    },
                 }, ensure_ascii=False) + "\n")
 
             for pas, (commande, arguments) in enumerate(ecritures):
