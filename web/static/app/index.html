@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="../palette.css">
 <link rel="stylesheet" href="../hud.css">
 <link rel="stylesheet" href="../ressentis.css">
+<link rel="stylesheet" href="../programmes.css">
 
 <style>
   /* Les ecrans de liste (seances, historique, records, fin) ont leur propre
@@ -113,6 +114,15 @@
   /* La zone de ressenti est habillee par `ressentis.css`, partagee avec le
      poste fixe ; il ne reste ici que son insertion dans les cartes. */
   .exercice-fait .feedback { margin-top: 0.6rem; }
+
+  /* Propre a l'application : le poste fixe annonce la prochaine seance du
+     programme sur son accueil, que cette page remplace ici. */
+  .programme-suite {
+    margin: 0.9rem 0 0;
+    font-size: 0.9rem;
+    color: var(--texte-doux);
+  }
+  .programme-suite b { color: var(--texte); }
   .supprimer-seance { margin-top: 0.8rem; align-self: flex-start; }
 
   /* ---------- Boutons ---------- */
@@ -357,6 +367,7 @@
     <button class="onglet actif" data-ecran="ecranSeances">Séances</button>
     <button class="onglet" data-ecran="ecranHistorique">Historique</button>
     <button class="onglet" data-ecran="ecranRecords">Records</button>
+    <button class="onglet" data-ecran="ecranProgrammes">Programmes</button>
   </div>
   <h1>Ta séance</h1>
   <p class="sous-titre" id="sousTitre">Choisis ce que tu fais aujourd'hui.</p>
@@ -405,6 +416,7 @@
     <button class="onglet" data-ecran="ecranSeances">Séances</button>
     <button class="onglet actif" data-ecran="ecranHistorique">Historique</button>
     <button class="onglet" data-ecran="ecranRecords">Records</button>
+    <button class="onglet" data-ecran="ecranProgrammes">Programmes</button>
   </div>
   <h1>Historique</h1>
   <p class="sous-titre" id="resumeHistorique"></p>
@@ -417,6 +429,7 @@
     <button class="onglet" data-ecran="ecranSeances">Séances</button>
     <button class="onglet" data-ecran="ecranHistorique">Historique</button>
     <button class="onglet actif" data-ecran="ecranRecords">Records</button>
+    <button class="onglet" data-ecran="ecranProgrammes">Programmes</button>
   </div>
   <h1>Records</h1>
   <p class="sous-titre">
@@ -425,6 +438,23 @@
     c'est un délestage, pas une régression.
   </p>
   <div id="listeRecords"></div>
+</section>
+
+<!-- ====================== PROGRAMMES ====================== -->
+<section class="ecran defile" id="ecranProgrammes">
+  <div class="onglets">
+    <button class="onglet" data-ecran="ecranSeances">Séances</button>
+    <button class="onglet" data-ecran="ecranHistorique">Historique</button>
+    <button class="onglet" data-ecran="ecranRecords">Records</button>
+    <button class="onglet actif" data-ecran="ecranProgrammes">Programmes</button>
+  </div>
+  <h1>Programmes</h1>
+  <p class="sous-titre">
+    Un programme ne stocke aucune progression : il déclare une performance à
+    atteindre par exercice, et l'écart avec ton niveau se recalcule à chaque
+    ouverture. Les programmes s'écrivent sur l'ordinateur, comme les séances.
+  </p>
+  <div id="listeProgrammes"></div>
 </section>
 
 <!-- L'ecran de seance est **le HUD du poste fixe**, aux memes classes et aux
@@ -681,6 +711,7 @@ import { construire_ligne } from "../js/ressentis_ui.js";
 import { Calibration } from "../js/calibration.js";
 import { Objectifs } from "../js/objectifs.js";
 import { normaliser } from "../js/materiel.js";
+import { etats_programmes, prochaine_seance, resume_palier } from "../js/programmes.js";
 import { UNITE_SECONDES } from "../js/paliers.js";
 
 // Le profil unique de cette version. Les profils multiples arriveront avec la
@@ -714,18 +745,21 @@ let mouvements = {};
 let seances = {};
 let base = historique.base_vide();
 let tables_baremes = null;
+let programmes_declares = {};
 let moteur = null;
 
 async function charger_donnees() {
-  const [m, s, sons, baremes] = await Promise.all([
+  const [m, s, sons, baremes, progs] = await Promise.all([
     fetch("../donnees/mouvements.json").then((r) => r.json()),
     fetch("../donnees/seances.json").then((r) => r.json()),
     fetch("../donnees/sons.json").then((r) => r.json()),
     fetch("../donnees/baremes.json").then((r) => r.json()),
+    fetch("../donnees/programmes.json").then((r) => r.json()),
   ]);
   mouvements = m;
   seances = s;
   tables_baremes = baremes;
+  programmes_declares = progs;
   lecteur = new Lecteur("../sons", sons);
   base = await stockage.charger();
   if (!base.utilisateurs.length) {
@@ -1432,6 +1466,97 @@ function dessiner_historique() {
     });
 }
 
+// ---------------------------------------------------------------- programmes
+
+/**
+ * Les programmes et leur avancement.
+ *
+ * Tout se recalcule ici : le niveau requis vient du bareme, le niveau acquis
+ * de l'historique local, et l'ecart des deux. Rien n'est stocke, donc rien ne
+ * peut se perimer — c'est le principe du module cote Python.
+ */
+function dessiner_programmes() {
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
+  const etats = etats_programmes(moteur.baremes, programmes_declares, niveaux);
+
+  const cles = Object.keys(etats);
+  if (!cles.length) {
+    $("listeProgrammes").innerHTML =
+      `<p class="vide">Aucun programme défini. Ils s'écrivent depuis l'ordinateur.</p>`;
+    return;
+  }
+
+  $("listeProgrammes").innerHTML = cles
+    .map((cle) => dessiner_programme(etats[cle], programmes_declares[cle], histoire))
+    .join("");
+}
+
+function dessiner_programme(etat, declare, histoire) {
+  const suite = prochaine_seance(declare, histoire, seances);
+  const prochaine = suite
+    ? `<p class="programme-suite">À enchaîner : <b>${echapper(suite.libelle)}</b>` +
+      (suite.seance ? ` · séance <b>${echapper(suite.seance)}</b>` : " · aucune séance liée") +
+      ` <span class="muet">(${suite.position} / ${suite.total})</span></p>`
+    : "";
+
+  const groupes = Object.entries(etat.seances)
+    .map(([libelle, lignes]) => {
+      const items = lignes.map((ligne) => dessiner_exigence(ligne)).join("");
+      return `<h3>${echapper(libelle)}</h3><ul class="exigences">${items}</ul>`;
+    })
+    .join("");
+
+  return (
+    `<section class="programme${etat.battu ? " battu" : ""}">` +
+    `<div class="entete"><h2>${echapper(etat.nom)}</h2>` +
+    `<span class="compte">${
+      etat.battu ? "Programme battu !" : `${etat.pourcentage} % de progression`
+    }</span></div>` +
+    (etat.description ? `<p class="description">${echapper(etat.description)}</p>` : "") +
+    `<div class="jauge"><span style="width:${etat.pourcentage}%"></span></div>` +
+    `<p class="description">Moyenne de l'avancement sur les ${etat.total} exigences · ` +
+    `<b>${etat.atteintes}</b> entièrement atteinte${etat.atteintes > 1 ? "s" : ""}.</p>` +
+    prochaine +
+    groupes +
+    `</section>`
+  );
+}
+
+/**
+ * Une exigence : ce qui est prescrit, sa traduction sur le bareme, et l'ecart.
+ *
+ * **Les deux valeurs s'affichent**, et c'est indispensable : n'afficher que la
+ * traduction rendait la page incomprehensible — on saisit « 6x15 » et on relit
+ * « 4x23 » sans que rien ne relie les deux. La seconde est masquee quand elle
+ * est identique, ce qui est le cas normal depuis que l'enregistrement cale
+ * chaque exigence sur un palier.
+ */
+function dessiner_exigence(ligne) {
+  const palier = resume_palier(ligne.palier_requis);
+  const etiquette = ligne.hors_atteinte
+    ? `<span class="etat bloque">Matériel insuffisant</span>`
+    : ligne.atteint
+      ? `<span class="etat ok">Atteint</span>`
+      : `<span class="etat attente">${ligne.avancement} %</span>`;
+
+  const detail = ligne.palier_requis
+    ? `Objectif <strong>${echapper(ligne.prescription)}</strong>` +
+      (palier !== ligne.prescription ? ` · soit <strong>${echapper(palier)}</strong> sur ton barème` : "") +
+      ` · actuellement ${
+        ligne.actuel_resume ? `<strong>${echapper(ligne.actuel_resume)}</strong>` : "rien de validé"
+      }` +
+      (ligne.restant ? ` · encore ${ligne.restant} niveau${ligne.restant > 1 ? "x" : ""}` : "")
+    : `Objectif <strong>${echapper(ligne.prescription)}</strong> · hors de ton barème actuel`;
+
+  return (
+    `<li class="exigence${ligne.atteint ? " faite" : ""}">` +
+    `<div class="exigence-titre"><span class="exigence-nom">${echapper(ligne.exercice)}</span>${etiquette}</div>` +
+    `<div class="exigence-barre"><span style="width:${ligne.avancement}%"></span></div>` +
+    `<p class="exigence-detail">${detail}</p></li>`
+  );
+}
+
 // ---------------------------------------------------------------- records
 
 /**
@@ -1442,9 +1567,6 @@ function dessiner_historique() {
 function dessiner_records() {
   const { seances: histoire, ancrages } = lecture_du_profil();
   const etats = moteur.niveaux.etats_niveaux(histoire, ancrages);
-  const resume = (p) =>
-    p ? `${p.series}×${p.cible}${p.unite === "secondes" ? " s" : ""}${p.poids ? ` à ${p.poids} kg` : ""}` : null;
-
   const lignes = Object.entries(etats)
     .sort(([a], [b]) => a.localeCompare(b, "fr"))
     .map(([nom, etat]) => {
@@ -1453,7 +1575,7 @@ function dessiner_records() {
           `<div class="record hors-bareme"><div class="record-titre">` +
           `<b>${echapper(nom)}</b><span class="record-niveau">à tester</span></div>` +
           `<div class="record-ligne">Rien ne prouve encore ton niveau. ` +
-          `Premier palier : <b>${resume(etat.premier)}</b></div></div>`
+          `Premier palier : <b>${resume_palier(etat.premier)}</b></div></div>`
         );
       }
       // Le palier suivant peut demander **moins** de repetitions que le
@@ -1464,7 +1586,7 @@ function dessiner_records() {
           ? ` <span class="muet">(moins de répétitions, mais plus lourd)</span>`
           : "";
       const suite = etat.suivant
-        ? `<div class="record-ligne">Suivant : <b>${resume(etat.suivant)}</b>${recul}</div>`
+        ? `<div class="record-ligne">Suivant : <b>${resume_palier(etat.suivant)}</b>${recul}</div>`
         : `<div class="record-ligne">Barème épuisé.</div>`;
       const source = etat.ancre
         ? `<div class="record-ligne muet">Recalé à la main${etat.date ? ` le ${echapper(etat.date)}` : ""}</div>`
@@ -1474,7 +1596,7 @@ function dessiner_records() {
       return (
         `<div class="record"><div class="record-titre"><b>${echapper(nom)}</b>` +
         `<span class="record-niveau">Niveau ${etat.niveau}</span></div>` +
-        `<div class="record-ligne">Acquis : <b>${resume(etat.actuel)}</b></div>` +
+        `<div class="record-ligne">Acquis : <b>${resume_palier(etat.actuel)}</b></div>` +
         suite + source + `</div>`
       );
     });
@@ -1552,6 +1674,7 @@ for (const onglet of document.querySelectorAll(".onglet")) {
     const cible = onglet.dataset.ecran;
     if (cible === "ecranHistorique") dessiner_historique();
     else if (cible === "ecranRecords") dessiner_records();
+    else if (cible === "ecranProgrammes") dessiner_programmes();
     else dessiner_liste();
     montrer(cible);
   });

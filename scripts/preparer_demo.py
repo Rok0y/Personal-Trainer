@@ -82,6 +82,26 @@ def decrire(nom, mouvement):
     return fiche
 
 
+def exporter_programmes():
+    """Les programmes, tels quels, pour l'application du navigateur.
+
+    Aucune transformation : le fichier est deja la seule source de verite
+    (`PROGRAMMES` est vide cote code), et l'application n'en porte que la
+    **lecture** — l'editeur reste sur le poste fixe, comme pour les seances.
+    Exporter la structure brute plutot qu'un etat calcule est indispensable :
+    l'avancement depend de l'historique *local* et des halteres declares sur
+    l'appareil, donc il se recalcule la-bas, jamais ici.
+
+    Import differe comme celui des baremes : ce module n'a que des imports de
+    bibliotheque standard en tete de fichier, mais le garder hors du niveau
+    module rend visible que l'export ne tire rien de lourd — c'est ce qui
+    permet au workflow de deploiement de n'installer que numpy.
+    """
+    from progression.programmes import tous_les_programmes
+
+    return tous_les_programmes()
+
+
 def exporter_baremes():
     """Les baremes de progression, exportes tels que le Python les definit.
 
@@ -234,6 +254,10 @@ def main():
     (DONNEES / "baremes.json").write_text(
         json.dumps(baremes, ensure_ascii=False, indent=1), encoding="utf-8"
     )
+    programmes = exporter_programmes()
+    (DONNEES / "programmes.json").write_text(
+        json.dumps(programmes, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
 
     copies, manquants = copier_sons()
 
@@ -242,6 +266,7 @@ def main():
         print(f"  ecartes (pas de detection de pose) : {', '.join(sans_detection)}")
     print(f"{len(mouvements)} mouvements et {len(seances)} seances vers {DONNEES}")
     print(f"{len(baremes['specs'])} baremes exportes")
+    print(f"{len(programmes)} programmes exportes")
     print(f"{copies} sons copies (demo + application)")
     if manquants:
         print(f"  manquants : {', '.join(manquants)}")
