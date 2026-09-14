@@ -115,6 +115,15 @@
      Meme couleur que le badge de l'accueil du poste fixe. */
   .puce-manuelle { color: var(--orange); border-color: var(--orange); }
 
+  /* Le profil actif est un onglet a part, pousse a droite : c'est une
+     identite, pas une section de l'application. */
+  .onglet-profil {
+    margin-left: auto;
+    color: var(--orange);
+    border-color: var(--orange);
+  }
+  .carte-active { border-color: var(--orange); }
+
   .detail-seance {
     margin: -0.4rem 0 0.8rem;
     padding: 0 0.3rem;
@@ -395,6 +404,7 @@
 <section class="ecran actif defile" id="ecranSeances">
   <div class="onglets">
     <button class="onglet actif" data-ecran="ecranSeances">Séances</button>
+    <button class="onglet onglet-profil" id="ongletProfil" title="Changer de profil"></button>
     <button class="onglet" data-ecran="ecranHistorique">Historique</button>
     <button class="onglet" data-ecran="ecranRecords">Records</button>
     <button class="onglet" data-ecran="ecranProgrammes">Programmes</button>
@@ -471,6 +481,35 @@
     c'est un délestage, pas une régression.
   </p>
   <div id="listeRecords"></div>
+</section>
+
+<!-- ====================== PROFILS ====================== -->
+<!-- L'ecran « Qui s'entraine ? » du poste fixe. Il ne s'impose jamais au
+     lancement : l'application rouvre sur le dernier profil utilise, et ce
+     n'est qu'en le demandant qu'on arrive ici. Un appareil personnel ne doit
+     pas faire choisir son proprietaire a chaque seance ; un appareil prete a
+     quelqu'un le doit, et c'est le meme ecran. -->
+<section class="ecran defile" id="ecranProfils">
+  <h1>Qui s'entraîne ?</h1>
+  <p class="sous-titre">
+    Chaque profil garde son historique, ses records et ses niveaux. Les séances
+    et les programmes, eux, sont communs.
+  </p>
+  <div id="listeProfils"></div>
+  <h2 style="font-size:1rem;margin-top:1.6rem">Nouveau profil</h2>
+  <p class="sous-titre">
+    Il démarre sans historique : ses niveaux se construiront à partir de ses
+    séances, ou d'un recalage depuis la page Records.
+  </p>
+  <form class="form-ancrage" id="formProfil">
+    <span class="champ champ-large"><label>Prénom</label>
+      <input type="text" id="nomProfil" placeholder="Prénom" autocomplete="off"></span>
+    <button type="submit">Créer</button>
+    <span class="retour-ancrage" id="retourProfil"></span>
+  </form>
+  <div class="actions" style="justify-content:flex-start;margin-top:1.4rem">
+    <button class="bouton secondaire" id="retourDepuisProfils">Retour aux séances</button>
+  </div>
 </section>
 
 <!-- ====================== PROGRAMMES ====================== -->
@@ -775,10 +814,42 @@ import { etats_programmes, prochaine_seance, resume_palier } from "../js/program
 import { est_cible_manuelle } from "../js/cible_manuelle.js";
 import { UNITE_SECONDES } from "../js/paliers.js";
 
-// Le profil unique de cette version. Les profils multiples arriveront avec la
-// synchronisation : d'ici la, un appareil est une personne, et un identifiant
-// fixe evite d'inventer un ecran de connexion dont personne n'a besoin.
-const PROFIL = 1;
+//: Ou le dernier profil choisi est retenu. `localStorage` et non la base :
+//: c'est une **commodite de cet appareil**, pas une donnee d'entrainement —
+//: elle n'a rien a faire dans une sauvegarde qu'on reimporte ailleurs, ou
+//: elle designerait un identifiant qui n'existe peut-etre pas.
+const CLE_PROFIL = "coach.profil";
+
+//: Le profil dont on lit et ecrit l'historique. Variable et non constante
+//: depuis l'ecran de profils — tout le cloisonnement etait deja en place
+//: (`historique.js` filtre comme le fait SQLite), seule cette valeur figee
+//: empechait d'en avoir plusieurs.
+let PROFIL = 1;
+
+/**
+ * Retient le profil courant, sans jamais faire echouer le reste.
+ *
+ * `localStorage` peut lever — navigation privee, stockage refuse, quota —, et
+ * ne pas se souvenir du profil est un desagrement, pas une panne : on retombe
+ * alors sur le premier profil au prochain lancement.
+ */
+function retenir_profil(id) {
+  PROFIL = id;
+  try {
+    localStorage.setItem(CLE_PROFIL, String(id));
+  } catch {
+    /* rien a faire : on redemandera au prochain lancement */
+  }
+}
+
+function profil_retenu() {
+  try {
+    const valeur = Number(localStorage.getItem(CLE_PROFIL));
+    return Number.isInteger(valeur) && valeur > 0 ? valeur : null;
+  } catch {
+    return null;
+  }
+}
 
 // Duree du geste « bras en X » pour lancer une serie, puis du decompte qui
 // suit. Memes valeurs que `main.py` : le geste doit etre tenu assez longtemps
@@ -826,6 +897,12 @@ async function charger_donnees() {
   if (!base.utilisateurs.length) {
     historique.creer_utilisateur(base, "Moi");
   }
+  // Le dernier profil utilise, s'il existe encore — il a pu etre remplace par
+  // un import. A defaut, le premier : ne jamais rester sans profil, sinon
+  // toute lecture d'historique porterait sur un identifiant fantome.
+  const retenu = profil_retenu();
+  const connu = base.utilisateurs.some((u) => u.id === retenu);
+  retenir_profil(connu ? retenu : base.utilisateurs[0].id);
   construire_moteur();
 }
 
@@ -1527,6 +1604,55 @@ function dessiner_historique() {
     });
 }
 
+// ---------------------------------------------------------------- profils
+
+/**
+ * L'ecran de choix de profil.
+ *
+ * Tout le cloisonnement etait deja en place : `historique.js` filtre par
+ * `utilisateur_id` exactement comme SQLite, et `progression/` retombe dessus
+ * par en dessous. Seul `PROFIL`, fige a 1, empechait d'en avoir plusieurs —
+ * c'etait un choix provisoire assume, pas une limite de structure.
+ *
+ * Changer de profil **reconstruit le moteur** : `Baremes` porte l'inventaire
+ * du profil et le normalise une fois pour toutes a la construction. Sans ca,
+ * le second profil verrait les objectifs calcules sur les halteres du premier,
+ * en silence — exactement le piege du questionnaire de materiel.
+ */
+function dessiner_profils() {
+  const liste = $("listeProfils");
+  liste.replaceChildren();
+
+  for (const utilisateur of base.utilisateurs) {
+    const seances = historique.recuperer_historique(base, utilisateur.id).length;
+    const carte = document.createElement("button");
+    carte.className = "carte" + (utilisateur.id === PROFIL ? " carte-active" : "");
+    carte.innerHTML =
+      `<div class="carte-titre">${echapper(utilisateur.nom)}</div>` +
+      `<div class="carte-detail">` +
+      (seances ? `${seances} séance${seances > 1 ? "s" : ""}` : "aucune séance") +
+      ` · depuis ${echapper(utilisateur.cree_le ?? "—")}` +
+      (utilisateur.id === PROFIL ? " · profil actif" : "") +
+      `</div>`;
+    carte.addEventListener("click", () => choisir_profil(utilisateur.id));
+    liste.appendChild(carte);
+  }
+}
+
+function choisir_profil(id) {
+  retenir_profil(id);
+  construire_moteur();
+  majOngletProfil();
+  dessiner_liste();
+  montrer("ecranSeances");
+}
+
+/** Le bouton d'acces porte le prenom : on voit pour qui on enregistre. */
+function majOngletProfil() {
+  const utilisateur = base.utilisateurs.find((u) => u.id === PROFIL);
+  $("ongletProfil").textContent = utilisateur ? utilisateur.nom : "Profil";
+}
+
 // ---------------------------------------------------------------- exercices
 
 /**
@@ -2098,6 +2224,7 @@ function dessiner_liste() {
     const detail = detail_seance(nom, blocs, dernieres);
     if (detail) liste.appendChild(detail);
   }
+  majOngletProfil();
   const faites = historique.recuperer_historique(base, PROFIL).length;
   $("etatBase").textContent = faites
     ? `${faites} séance${faites > 1 ? "s" : ""} enregistrée${faites > 1 ? "s" : ""} sur cet appareil.`
@@ -2181,6 +2308,31 @@ brancher_commandes((nom) => {
   if (!en_cours || !COMMANDES[nom]) return;
   COMMANDES[nom]();
   rafraichir_affichage();
+});
+$("ongletProfil").addEventListener("click", () => {
+  dessiner_profils();
+  montrer("ecranProfils");
+});
+$("retourDepuisProfils").addEventListener("click", () => {
+  dessiner_liste();
+  montrer("ecranSeances");
+});
+$("formProfil").addEventListener("submit", async (evenement) => {
+  evenement.preventDefault();
+  const retour = $("retourProfil");
+  try {
+    const cree = historique.creer_utilisateur(base, $("nomProfil").value);
+    await stockage.sauver(base);
+    $("nomProfil").value = "";
+    retour.className = "retour-ancrage";
+    retour.textContent = "";
+    // On bascule tout de suite dessus : creer un profil sans s'en servir n'a
+    // aucun sens, et l'ecran de seances le confirme visuellement.
+    choisir_profil(cree.id);
+  } catch (erreur) {
+    retour.className = "retour-ancrage erreur";
+    retour.textContent = erreur.message;
+  }
 });
 $("retourExercices").addEventListener("click", () => {
   dessiner_exercices();
