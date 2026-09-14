@@ -1127,7 +1127,6 @@ async function demarrer(nom) {
     if (!camera.vivante()) await camera.ouvrir();
     else await camera.reprendre();
     await camera.preparer();
-    await camera.garder_ecran_allume();
   } catch (erreur) {
     $("sousTitre").textContent = `Impossible de démarrer : ${erreur.message}`;
     return;
@@ -1136,9 +1135,10 @@ async function demarrer(nom) {
   montrer("ecranSeance");
   changer_exercice();
   en_cours = true;
-  // Apres le geste de demarrage : certains navigateurs refusent le verrou
-  // hors interaction utilisateur.
-  verrou_ecran.tenir();
+  // Le repli video s'arme maintenant : il a besoin du flux, qui vient
+  // seulement d'etre ouvert. Le verrou, lui, a deja ete demande au clic.
+  veille_annoncee = null;
+  await verrou_ecran.tenir(camera.flux);
   requestAnimationFrame(boucle);
 }
 
@@ -1429,8 +1429,40 @@ function peindre(pose, nombre) {
  * l'effort — cote Flask, la meme information passe par `progression_maintien`,
  * que le serveur calcule.
  */
+/**
+ * Previent quand l'ecran risque de s'eteindre.
+ *
+ * **Un echec silencieux se paie en seance** : l'ecran s'eteint au milieu d'un
+ * gainage, on ne sait pas pourquoi, et on ne peut rien y faire. Le dire permet
+ * au moins de poser le doigt sur l'ecran, ou de sortir du mode economie
+ * d'energie — qui est la cause la plus frequente sur iOS, et que le message du
+ * navigateur ne nomme jamais.
+ */
+//: Dernier etat annonce, pour ne pas reecrire le bandeau a chaque image.
+let veille_annoncee = null;
+
+function signaler_veille() {
+  // **Pas dans `consigne`** : la boucle la reecrit a chaque image, et
+  // l'avertissement aurait clignote une fois avant de disparaitre. Le voyant
+  // de statut du HUD, lui, est libre — il annonce « connexion perdue » sur le
+  // poste fixe, et le navigateur n'a aucune connexion a perdre. Le detourner
+  // ici lui rend un sens : « quelque chose ne va pas dans cette seance ».
+  const tenu = verrou_ecran.tenu;
+  if (tenu === veille_annoncee) return;
+  veille_annoncee = tenu;
+
+  const point = $("statusDot");
+  const texte = $("statusText");
+  point.classList.toggle("offline", !tenu);
+  texte.textContent = tenu ? "Écran gardé allumé" : "L'écran peut s'éteindre";
+  texte.title = tenu ? "" : (verrou_ecran.raison ?? "");
+}
+
 function rafraichir_affichage() {
   peindre_hud(payload_etat(seance, etat, statut, PROFIL));
+  // Reevalue a chaque image, et n'ecrit que si l'etat a change : un verrou
+  // perdu en cours de seance est exactement le cas qu'on cherche a voir.
+  signaler_veille();
 
   // Le geste de fin de serie reutilise la bulle de maintien du HUD : c'est le
   // meme retour visuel, pour le meme genre d'action tenue.
@@ -2696,6 +2728,7 @@ function dessiner_resume_programme() {
   conteneur.appendChild(carte);
 
   carte.querySelector("#demarrerProgramme")?.addEventListener("click", (evenement) => {
+    verrou_ecran.tenir();
     demarrer(evenement.currentTarget.dataset.seance);
   });
   carte.querySelector("#versProgrammes").addEventListener("click", () => {
@@ -2770,7 +2803,14 @@ function dessiner_liste() {
       `<div class="puces">${puces.join("")}` +
       (exercices.length > 5 ? `<span class="puce">+${exercices.length - 5}</span>` : "") +
       `</div>`;
-    carte.addEventListener("click", () => demarrer(nom));
+    carte.addEventListener("click", () => {
+      // **Au plus pres du clic, avant tout `await`.** L'activation de
+      // l'utilisateur ne survit pas a la preparation de l'audio, a
+      // l'autorisation camera et au chargement du modele — plusieurs secondes,
+      // au bout desquelles Safari peut refuser.
+      verrou_ecran.tenir();
+      demarrer(nom);
+    });
     liste.appendChild(carte);
 
     // Le crayon vit **a cote** de la carte : celle-ci est un bouton qui lance

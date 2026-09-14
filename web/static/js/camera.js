@@ -238,20 +238,11 @@ export class Camera {
     this.relacher_ecran();
   }
 
-  async garder_ecran_allume() {
-    try {
-      this._verrou_ecran = await navigator.wakeLock.request("screen");
-    } catch {
-      // L'ecran s'eteindra peut-etre : genant, pas bloquant.
-    }
-  }
-
-  relacher_ecran() {
-    if (this._verrou_ecran) {
-      this._verrou_ecran.release().catch(() => {});
-      this._verrou_ecran = null;
-    }
-  }
+  // La lutte contre la veille vivait ici, en second exemplaire : un verrou
+  // demande une fois, jamais repris, et un `relacher_ecran` que personne
+  // n'appelait. Elle vit desormais dans `veille.js`, qui gere aussi le repli
+  // video — deux verrous concurrents sur la meme page sont surtout deux
+  // facons de croire qu'on tient l'ecran.
 }
 
 /**
