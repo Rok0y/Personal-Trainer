@@ -65,7 +65,6 @@ export class Camera {
     this._preparation = Promise.resolve();
 
     this._sujet = null;
-    this._verrou_ecran = null;
   }
 
   // ----- detecteur -----
@@ -223,7 +222,6 @@ export class Camera {
    */
   suspendre() {
     for (const piste of this.flux?.getTracks() ?? []) piste.enabled = false;
-    this.relacher_ecran();
   }
 
   async reprendre() {
@@ -235,14 +233,15 @@ export class Camera {
   liberer() {
     for (const piste of this.flux?.getTracks() ?? []) piste.stop();
     this.flux = null;
-    this.relacher_ecran();
   }
 
-  // La lutte contre la veille vivait ici, en second exemplaire : un verrou
-  // demande une fois, jamais repris, et un `relacher_ecran` que personne
-  // n'appelait. Elle vit desormais dans `veille.js`, qui gere aussi le repli
-  // video — deux verrous concurrents sur la meme page sont surtout deux
-  // facons de croire qu'on tient l'ecran.
+  // **La lutte contre la veille ne vit plus ici.** Cette classe en portait un
+  // second exemplaire — un verrou demande une fois, jamais repris — et deux
+  // verrous concurrents sur la meme page sont surtout deux facons de croire
+  // qu'on tient l'ecran. Tout est dans `veille.js`, qui gere aussi le repli
+  // video, et c'est la page qui le pilote : elle seule sait quand une seance
+  // commence et se termine, la ou la camera ne fait que s'allumer et
+  // s'eteindre entre deux exercices.
 }
 
 /**

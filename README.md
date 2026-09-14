@@ -157,6 +157,9 @@ alimente `comparer_seances` — et les fixtures **ne sont pas versionnées** : u
 comparateur lancé sans son générateur compare de vieilles réponses.
 `python -m scripts.verifier_hud` vérifie en plus que les deux montages de
 l'écran de séance portent les mêmes points d'accroche.
+`node scripts/verifier_methodes.mjs` signale les `this.methode()` appelées
+mais inexistantes — une erreur que la syntaxe ne révèle pas et qui n'apparaît
+qu'à l'exécution, donc souvent en séance.
 
 Ces harnais prouvent que deux codes s'accordent, **pas qu'ils ont raison** : un
 défaut présent des deux côtés y passe inaperçu, et c'est arrivé. C'est pourquoi
