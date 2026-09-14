@@ -23,6 +23,8 @@
 <link rel="stylesheet" href="../exercices.css">
 <link rel="stylesheet" href="../ancrages.css">
 <link rel="stylesheet" href="../graphique.css">
+<link rel="stylesheet" href="../editeur.css">
+<link rel="stylesheet" href="../programme_resume.css">
 
 <style>
   /* Les ecrans de liste (seances, historique, records, fin) ont leur propre
@@ -125,6 +127,19 @@
   }
   .carte-active { border-color: var(--orange); }
 
+  /* Le poste fixe en fait un <a>, l'application un <button> — meme role,
+     donc meme allure : on lui retire l'habillage de bouton plutot que de
+     lui inventer un style a part. */
+  #resumeProgramme .resume-lien {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
   .progression-record { margin-top: 0.7rem; }
   .progression-record summary {
     cursor: pointer;
@@ -147,43 +162,40 @@
   }
   .barre-carte .bouton { padding: 0.35rem 0.8rem; font-size: 0.8rem; }
 
-  .bloc-editeur {
-    background: var(--surface);
-    border: 1px solid var(--trait);
-    border-radius: 12px;
-    padding: 0.8rem 0.9rem;
-    margin-bottom: 0.7rem;
-  }
-  .bloc-entete { display: flex; gap: 0.6rem; align-items: center; }
-  .bloc-entete select { flex: 1; }
-  .bloc-actions { display: flex; gap: 0.3rem; }
-  .bloc-actions button {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 8px;
-    border: 1px solid var(--trait);
-    background: transparent;
-    color: var(--texte-doux);
-    font: inherit;
-    cursor: pointer;
-  }
-  .bloc-actions button:hover { border-color: var(--orange); color: var(--orange); }
-  .bloc-champs {
+  /* L'editeur reprend `editeur.css`, la feuille des deux pages d'edition du
+     poste fixe : memes classes, meme pastille de mode, meme liseret
+     d'entrelacement. Ne reste ici que la mise en page etroite.
+
+     La grille du bureau aligne onze colonnes sur une ligne — elle suppose un
+     ecran large, et un iPad ne l'a qu'en paysage. En portrait on empile : les
+     commandes en haut, l'exercice en pleine largeur, puis les nombres a deux
+     par ligne. C'est la meme information, dans le meme ordre. */
+  #ecranEditeur .bloc {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.6rem;
-    margin-top: 0.7rem;
+    align-items: flex-end;
+    gap: 0.55rem;
   }
-  .bloc-champs select,
-  .bloc-champs input {
-    padding: 0.4rem 0.5rem;
-    border-radius: 8px;
-    border: 1px solid var(--trait);
-    background: rgba(0, 0, 0, 0.25);
-    color: var(--texte);
-    font: inherit;
-    font-size: 0.85rem;
-    min-width: 5rem;
+  #ecranEditeur .bloc > button { order: -1; }
+  /* L'exercice et le mode passent la ligne : ce sont eux qu'on lit d'abord. */
+  #ecranEditeur .bloc .champ:nth-of-type(1),
+  #ecranEditeur .bloc .champ:nth-of-type(2) { flex: 1 1 100%; }
+  #ecranEditeur .bloc .champ { flex: 1 1 5.5rem; }
+  #ecranEditeur .bloc .sup-btn { order: 99; margin-left: auto; }
+  /* Sur une ligne, l'unite gaspille une ligne de hauteur par champ. */
+  #ecranEditeur .champ label span { display: inline; margin-left: 0.25rem; }
+
+  @media (min-width: 900px) {
+    #ecranEditeur .bloc {
+      display: grid;
+      grid-template-columns: 34px 34px 40px 2fr repeat(6, 1fr) 40px;
+      align-items: end;
+    }
+    #ecranEditeur .bloc > button,
+    #ecranEditeur .bloc .sup-btn { order: 0; margin-left: 0; }
+    #ecranEditeur .bloc .champ:nth-of-type(1),
+    #ecranEditeur .bloc .champ:nth-of-type(2) { flex: none; }
+    #ecranEditeur .champ label span { display: block; margin-left: 0; }
   }
 
   .detail-seance {
@@ -469,12 +481,13 @@
 <section class="ecran actif defile" id="ecranSeances">
   <div class="onglets">
     <button class="onglet actif" data-ecran="ecranSeances">Séances</button>
-    <button class="onglet onglet-profil" id="ongletProfil" title="Changer de profil"></button>
     <button class="onglet" data-ecran="ecranHistorique">Historique</button>
     <button class="onglet" data-ecran="ecranRecords">Records</button>
     <button class="onglet" data-ecran="ecranProgrammes">Programmes</button>
     <button class="onglet" data-ecran="ecranExercices">Exercices</button>
+    <button class="onglet onglet-profil" id="ongletProfil" title="Changer de profil"></button>
   </div>
+  <div id="resumeProgramme"></div>
   <h1>Ta séance</h1>
   <p class="sous-titre" id="sousTitre">Choisis ce que tu fais aujourd'hui.</p>
   <div id="listeSeances"></div>
@@ -904,7 +917,13 @@ import { Objectifs } from "../js/objectifs.js";
 import { normaliser } from "../js/materiel.js";
 import { VerrouEcran } from "../js/veille.js";
 import { cle_de_progression, graphique_progression } from "../js/graphique.js";
-import { etats_programmes, prochaine_seance, resume_palier } from "../js/programmes.js";
+import {
+  etat_programme,
+  etats_programmes,
+  liaison_seances,
+  prochaine_seance,
+  resume_palier,
+} from "../js/programmes.js";
 import { est_cible_manuelle } from "../js/cible_manuelle.js";
 import { UNITE_SECONDES } from "../js/paliers.js";
 
@@ -1734,10 +1753,6 @@ const LIBELLES_MODE = {
   echauffement: "Échauffement",
 };
 
-//: Les modes dont la cible se compte en secondes. Meme regle que `MODES_DUREE`
-//: cote gabarits, et meme piege : un mode absent de cette liste verrait sa
-//: duree remise a zero a l'enregistrement.
-const MODES_DUREE = ["maintien", "chrono", "amrap", "echauffement"];
 
 //: La seance en cours d'edition, et ses blocs de travail. Une **copie** : tant
 //: qu'on n'a pas enregistre, rien ne doit bouger dans le catalogue affiche.
@@ -1793,7 +1808,34 @@ function dessiner_editeur(message = null) {
 
   const conteneur = $("blocsEditeur");
   conteneur.replaceChildren();
-  blocs_edites.forEach((bloc, index) => conteneur.appendChild(ligne_editeur(bloc, index)));
+
+  blocs_edites.forEach((bloc, index) => {
+    const suivant = blocs_edites[index + 1];
+    // **Le dernier bloc ne peut pas etre entrelace** : il n'a pas de suivant.
+    // La regle se reapplique a chaque redessin, donc deplacer un bloc en
+    // derniere position defait son entrelacement de lui-meme.
+    if (!suivant) bloc.entrelace_avec = null;
+    else if (bloc.entrelace_avec) bloc.entrelace_avec = suivant.exercice;
+
+    const ligne = ligne_editeur(bloc, index);
+    ligne.classList.toggle("entrelace", Boolean(bloc.entrelace_avec));
+    ligne.querySelector('.move-btn[data-sens="-1"]').disabled = index === 0;
+    ligne.querySelector('.move-btn[data-sens="1"]').disabled =
+      index === blocs_edites.length - 1;
+    ligne.querySelector(".entrelace-btn").title = bloc.entrelace_avec
+      ? `Entrelacé avec : ${bloc.entrelace_avec}`
+      : "Entrelacer avec l'exercice suivant";
+    conteneur.appendChild(ligne);
+
+    // La paire se lit sous la ligne, comme sur le poste fixe : « ⟷ » seul ne
+    // dit pas avec quoi.
+    if (bloc.entrelace_avec) {
+      const paire = document.createElement("p");
+      paire.className = "paire";
+      paire.textContent = `⟷ séries alternées avec ${bloc.entrelace_avec}`;
+      conteneur.appendChild(paire);
+    }
+  });
 }
 
 /** Les mouvements proposes, exercices et echauffements separes comme ailleurs. */
@@ -1823,92 +1865,120 @@ function options_mouvements(courant) {
   );
 }
 
+/**
+ * Une ligne d'edition, aux memes classes que celles du poste fixe.
+ *
+ * `editeur.css` l'habille, y compris la **pastille de couleur du mode** et le
+ * liseret d'entrelacement : ce sont des reperes qu'on lit d'un coup d'oeil, et
+ * les redessiner autrement ici aurait donne deux editeurs qui ne se
+ * ressemblent pas.
+ */
 function ligne_editeur(bloc, index) {
   const ligne = document.createElement("div");
-  ligne.className = "bloc-editeur";
-  const au_temps = MODES_DUREE.includes(bloc.mode);
+  ligne.className = "bloc";
+  ligne.dataset.mode = bloc.mode ?? "repetitions";
+
+  const champ = (classe, libelle, unite, valeur, attributs = 'type="number" min="0"') =>
+    `<div class="champ"><label>${libelle}` +
+    (unite ? `<span>${unite}</span>` : "") +
+    `</label><input class="${classe}" ${attributs} value="${valeur}"></div>`;
 
   ligne.innerHTML =
-    `<div class="bloc-entete">` +
-    `<select class="champ-exercice">${options_mouvements(bloc.exercice)}</select>` +
-    `<div class="bloc-actions">` +
-    `<button type="button" data-monter title="Monter">↑</button>` +
-    `<button type="button" data-descendre title="Descendre">↓</button>` +
-    `<button type="button" data-retirer title="Retirer">✕</button>` +
-    `</div></div>` +
-    `<div class="bloc-champs">` +
-    `<span class="champ"><label>Mode</label><select class="champ-mode">` +
+    `<button type="button" class="move-btn" data-sens="-1" title="Monter">▲</button>` +
+    `<button type="button" class="move-btn" data-sens="1" title="Descendre">▼</button>` +
+    `<button type="button" class="entrelace-btn" title="Entrelacer avec l'exercice suivant">⟷</button>` +
+    `<div class="champ"><label>Exercice</label>` +
+    `<select class="exercice">${options_mouvements(bloc.exercice)}</select></div>` +
+    `<div class="champ"><label><span class="mode-pastille"></span> Mode</label>` +
+    `<select class="mode">` +
     Object.entries(LIBELLES_MODE)
       .map(
         ([valeur, libelle]) =>
           `<option value="${valeur}"${valeur === bloc.mode ? " selected" : ""}>${libelle}</option>`
       )
       .join("") +
-    `</select></span>` +
-    `<span class="champ"><label>Séries</label>` +
-    `<input type="number" min="1" class="champ-series" value="${bloc.series ?? 1}"></span>` +
-    `<span class="champ"><label>${au_temps ? "Secondes" : "Répétitions"}</label>` +
-    `<input type="number" min="0" class="champ-cible" value="${au_temps ? bloc.duree ?? 0 : bloc.repetitions ?? 0}"></span>` +
-    `<span class="champ"><label>Charge (kg)</label>` +
-    `<input type="number" min="0" step="0.5" class="champ-poids" value="${bloc.poids ?? 0}"></span>` +
-    `<span class="champ"><label>Repos série (s)</label>` +
-    `<input type="number" min="0" class="champ-repos" value="${bloc.repos_entre_series ?? 0}"></span>` +
-    `<span class="champ"><label>Repos après (s)</label>` +
-    `<input type="number" min="0" class="champ-repos-apres" value="${bloc.repos_apres ?? 0}"></span>` +
-    `<span class="champ champ-large"><label>Note</label>` +
-    `<input type="text" class="champ-commentaire" value="${echapper(bloc.commentaire ?? "")}"></span>` +
-    `</div>`;
+    `</select></div>` +
+    champ("poids", "Poids", "en kg", bloc.poids ?? 0, 'type="number" min="0" step="0.5"') +
+    champ("series", "Séries", "", bloc.series ?? 1, 'type="number" min="1"') +
+    champ("repetitions", "Répétitions", "", bloc.repetitions ?? 0) +
+    champ("duree", "Durée", "secondes", bloc.duree ?? 0) +
+    champ("reposEntre", "Repos série", "secondes", bloc.repos_entre_series ?? 0) +
+    champ("reposApres", "Repos exercice", "secondes", bloc.repos_apres ?? 0) +
+    `<button type="button" class="sup-btn" aria-label="Supprimer cet exercice">X</button>`;
 
-  // Chaque saisie est recopiee dans le bloc immediatement : redessiner la
-  // liste sans ca perdrait ce qui vient d'etre tape.
-  const lire = () => {
-    bloc.exercice = ligne.querySelector(".champ-exercice").value;
-    bloc.mode = ligne.querySelector(".champ-mode").value;
-    bloc.series = Number(ligne.querySelector(".champ-series").value) || 1;
-    bloc.poids = Number(ligne.querySelector(".champ-poids").value) || 0;
-    bloc.repos_entre_series = Number(ligne.querySelector(".champ-repos").value) || 0;
-    bloc.repos_apres = Number(ligne.querySelector(".champ-repos-apres").value) || 0;
-    bloc.commentaire = ligne.querySelector(".champ-commentaire").value;
+  // Le commentaire se modifie depuis la liste des seances : on le transporte
+  // tel quel pour ne pas l'effacer en enregistrant depuis ici.
+  ligne.dataset.commentaire = bloc.commentaire ?? "";
 
-    // **La cible va dans le champ du mode**, jamais dans les deux : c'est le
-    // piege documente des editeurs de seance, ou une duree se retrouvait
-    // remise a zero au premier enregistrement.
-    const valeur = Number(ligne.querySelector(".champ-cible").value) || 0;
-    if (MODES_DUREE.includes(bloc.mode)) {
-      bloc.duree = valeur;
-      bloc.repetitions = 0;
-    } else {
-      bloc.repetitions = valeur;
-      bloc.duree = 0;
+  // **L'entrelacement est un drapeau « avec le bloc suivant »**, pas un nom.
+  // Le partenaire est recalcule a l'enregistrement, ce qui lui permet de
+  // survivre a un reordonnancement — deplacer un bloc ne doit pas laisser un
+  // entrelacement pointant vers un exercice qui n'est plus a cote.
+  const entrelace = ligne.querySelector(".entrelace-btn");
+  if (bloc.entrelace_avec) entrelace.classList.add("active");
+  entrelace.addEventListener("click", () => {
+    if (!entrelace.classList.contains("active") && index >= blocs_edites.length - 1) {
+      alert("Aucun exercice suivant à entrelacer.");
+      return;
     }
-  };
+    lire_ligne(ligne, bloc);
+    bloc.entrelace_avec = entrelace.classList.contains("active") ? null : "?";
+    dessiner_editeur();
+  });
 
-  for (const champ of ligne.querySelectorAll("input, select")) {
-    champ.addEventListener("change", () => {
-      const ancien_mode = bloc.mode;
-      lire();
-      // Changer de mode change l'unite de la cible : la ligne se redessine
-      // pour que l'etiquette ne mente pas.
-      if (bloc.mode !== ancien_mode) dessiner_editeur();
+  for (const bouton of ligne.querySelectorAll(".move-btn")) {
+    bouton.addEventListener("click", () => {
+      const sens = Number(bouton.dataset.sens);
+      const vers = index + sens;
+      if (vers < 0 || vers >= blocs_edites.length) return;
+      lire_ligne(ligne, bloc);
+      [blocs_edites[index], blocs_edites[vers]] = [blocs_edites[vers], blocs_edites[index]];
+      dessiner_editeur();
     });
   }
-
-  ligne.querySelector("[data-retirer]").addEventListener("click", () => {
+  ligne.querySelector(".sup-btn").addEventListener("click", () => {
     blocs_edites.splice(index, 1);
     dessiner_editeur();
   });
-  ligne.querySelector("[data-monter]").addEventListener("click", () => {
-    if (index === 0) return;
-    [blocs_edites[index - 1], blocs_edites[index]] = [blocs_edites[index], blocs_edites[index - 1]];
-    dessiner_editeur();
-  });
-  ligne.querySelector("[data-descendre]").addEventListener("click", () => {
-    if (index >= blocs_edites.length - 1) return;
-    [blocs_edites[index + 1], blocs_edites[index]] = [blocs_edites[index], blocs_edites[index + 1]];
-    dessiner_editeur();
-  });
+
+  for (const element of ligne.querySelectorAll("input, select")) {
+    element.addEventListener("change", () => {
+      const ancien_mode = bloc.mode;
+      lire_ligne(ligne, bloc);
+      // La pastille et la couleur du mode suivent le <select> sans redessiner.
+      ligne.dataset.mode = bloc.mode;
+      // Changer d'exercice change le libelle affiche sur le bloc precedent
+      // s'il est entrelace avec celui-ci.
+      if (bloc.mode !== ancien_mode || element.classList.contains("exercice")) {
+        dessiner_editeur();
+      }
+    });
+  }
 
   return ligne;
+}
+
+/**
+ * Recopie la saisie dans le bloc.
+ *
+ * Appelee avant **tout** redessin, sans quoi ce qui vient d'etre tape est
+ * perdu : la ligne est reconstruite a chaque reordonnancement.
+ *
+ * `repetitions` et `duree` sont deux champs distincts, comme sur le poste
+ * fixe, et tous deux conserves : c'est ce qui permet de passer d'un mode a
+ * l'autre sans perdre la valeur de l'autre unite. Le mode decide seulement
+ * lequel sera *joue*.
+ */
+function lire_ligne(ligne, bloc) {
+  bloc.exercice = ligne.querySelector(".exercice").value;
+  bloc.mode = ligne.querySelector(".mode").value;
+  bloc.poids = Number(ligne.querySelector(".poids").value) || 0;
+  bloc.series = Math.max(1, Number(ligne.querySelector(".series").value) || 1);
+  bloc.repetitions = Number(ligne.querySelector(".repetitions").value) || 0;
+  bloc.duree = Number(ligne.querySelector(".duree").value) || 0;
+  bloc.repos_entre_series = Number(ligne.querySelector(".reposEntre").value) || 0;
+  bloc.repos_apres = Number(ligne.querySelector(".reposApres").value) || 0;
+  bloc.commentaire = ligne.dataset.commentaire ?? "";
 }
 
 /**
@@ -2546,7 +2616,114 @@ function detail_seance(nom, blocs, dernieres) {
   return detail.children.length > 1 ? detail : null;
 }
 
+// ------------------------------------------------------ resume de programme
+
+/**
+ * La carte du programme suivi, en tete de l'ecran des seances.
+ *
+ * **Un seul programme y figure**, celui qu'on suit en ce moment : on n'en suit
+ * qu'un a la fois, et l'onglet Programmes reste celui qui les liste tous.
+ *
+ * `programme_choisi` est une preference **du profil**, stockee sur son
+ * enregistrement comme le materiel. `null` veut dire « aucun choix », et on
+ * retombe alors sur le premier programme disponible **sans rien ecrire** : un
+ * repli n'est pas un choix, et l'inscrire priverait l'utilisateur de la
+ * distinction.
+ */
+function dessiner_resume_programme() {
+  const conteneur = $("resumeProgramme");
+  conteneur.replaceChildren();
+
+  const cles = Object.keys(programmes_declares);
+  if (!cles.length) return;
+
+  const profil = base.utilisateurs.find((u) => u.id === PROFIL);
+  const choisi = profil?.programme_choisi;
+  const cle = cles.includes(choisi) ? choisi : cles[0];
+  const declare = programmes_declares[cle];
+
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
+  const etat = etat_programme(moteur.baremes, cle, declare, niveaux);
+  const suite = prochaine_seance(declare, histoire, seances);
+  const liaison = liaison_seances(declare, seances);
+  const liees = Object.entries(liaison).filter(([, nom]) => nom);
+
+  const carte = document.createElement("section");
+  carte.className = "programme-resume";
+  carte.innerHTML =
+    `<div class="resume-entete"><h2>${echapper(etat.nom)}</h2>` +
+    `<span class="resume-compte">${
+      etat.battu ? "Programme battu !" : `${etat.pourcentage} % de progression`
+    }</span></div>` +
+    `<div class="resume-jauge"><span style="width:${etat.pourcentage}%"></span></div>` +
+    `<p class="resume-detail">${etat.atteintes} exigence${etat.atteintes > 1 ? "s" : ""} ` +
+    `sur ${etat.total} entièrement remplie${etat.atteintes > 1 ? "s" : ""}.</p>` +
+    (suite && suite.seance
+      ? `<div class="resume-prochaine">` +
+        `<div><span class="resume-etiquette">Séance choisie ` +
+        `(<span id="positionProgramme">${suite.position}</span>/${suite.total})</span>` +
+        `<strong id="libelleProgramme">${echapper(suite.seance)}</strong></div>` +
+        `<button type="button" class="resume-demarrer" id="demarrerProgramme" ` +
+        `data-seance="${echapper(suite.seance)}">Commencer</button></div>`
+      : `<p class="resume-detail">Aucune séance de ce programme n'est liée à une séance jouable.</p>`) +
+    (liees.length > 1
+      ? `<label class="resume-bascule">Commencer plutôt par <select id="choixSeanceProgramme">` +
+        liees
+          .map(
+            ([libelle, nom], index) =>
+              `<option value="${echapper(nom)}" data-position="${index + 1}"` +
+              `${nom === suite?.seance ? " selected" : ""}>${echapper(libelle)}</option>`
+          )
+          .join("") +
+        `</select></label>`
+      : "") +
+    `<div class="resume-pied">` +
+    `<button type="button" class="resume-lien" id="versProgrammes">Voir le détail du programme</button>` +
+    (cles.length > 1
+      ? `<label class="resume-bascule">Changer de programme <select id="choixProgramme">` +
+        cles
+          .map(
+            (autre) =>
+              `<option value="${echapper(autre)}"${autre === cle ? " selected" : ""}>` +
+              `${echapper(programmes_declares[autre].nom)}</option>`
+          )
+          .join("") +
+        `</select></label>`
+      : "") +
+    `</div>`;
+
+  conteneur.appendChild(carte);
+
+  carte.querySelector("#demarrerProgramme")?.addEventListener("click", (evenement) => {
+    demarrer(evenement.currentTarget.dataset.seance);
+  });
+  carte.querySelector("#versProgrammes").addEventListener("click", () => {
+    dessiner_programmes();
+    montrer("ecranProgrammes");
+  });
+
+  // **Bascule ponctuelle** : elle ne stocke rien et ne fait que reecrire la
+  // cible du bouton. La proposition automatique reprend la main au prochain
+  // affichage — c'est « pour aujourd'hui », pas « desormais ».
+  carte.querySelector("#choixSeanceProgramme")?.addEventListener("change", (evenement) => {
+    const option = evenement.target.selectedOptions[0];
+    $("demarrerProgramme").dataset.seance = evenement.target.value;
+    $("libelleProgramme").textContent = evenement.target.value;
+    $("positionProgramme").textContent = option.dataset.position;
+  });
+
+  // **Preference persistante**, elle : changer de programme se retient.
+  carte.querySelector("#choixProgramme")?.addEventListener("change", async (evenement) => {
+    const utilisateur = base.utilisateurs.find((u) => u.id === PROFIL);
+    if (utilisateur) utilisateur.programme_choisi = evenement.target.value;
+    await stockage.sauver(base);
+    dessiner_liste();
+  });
+}
+
 function dessiner_liste() {
+  dessiner_resume_programme();
   const liste = $("listeSeances");
   liste.innerHTML = "";
 
@@ -2717,8 +2894,8 @@ $("ajouterBloc").addEventListener("click", () => {
     repetitions: 10,
     duree: 0,
     poids: 0,
-    repos_entre_series: 45,
-    repos_apres: 60,
+    repos_entre_series: 30,
+    repos_apres: 30,
     commentaire: "",
     entrelace_avec: null,
   });
