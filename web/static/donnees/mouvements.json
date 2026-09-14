@@ -23,7 +23,9 @@
   "detection": "curl_biceps_droit_detection",
   "erreurs": [
    "coude_avance_curl_droit"
-  ]
+  ],
+  "materiel": "Un haltère",
+  "est_echauffement": false
  },
  "Curl biceps gauche": {
   "nom": "Curl biceps gauche",
@@ -49,7 +51,9 @@
   "detection": "curl_biceps_gauche_detection",
   "erreurs": [
    "coude_avance_curl_gauche"
-  ]
+  ],
+  "materiel": "Un haltère",
+  "est_echauffement": false
  },
  "Elevations latérales": {
   "nom": "Elevations latérales",
@@ -71,7 +75,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "elevation_laterale_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Deux haltères",
+  "est_echauffement": false
  },
  "Pompes": {
   "nom": "Pompes",
@@ -95,7 +101,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "pompe_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": false
  },
  "Extension Triceps": {
   "nom": "Extension Triceps",
@@ -119,7 +127,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "extension_triceps_au_dessus_de_la_tete_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Un haltère",
+  "est_echauffement": false
  },
  "Developpé couché altères": {
   "nom": "Developpé couché altères",
@@ -143,7 +153,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "developpe_couche_sol_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Deux haltères et un tapis",
+  "est_echauffement": false
  },
  "Développé épaule": {
   "nom": "Développé épaule",
@@ -167,7 +179,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "developpe_epaule_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Deux haltères",
+  "est_echauffement": false
  },
  "Crunches": {
   "nom": "Crunches",
@@ -190,7 +204,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "crunches_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Un tapis",
+  "est_echauffement": false
  },
  "Gainage planche": {
   "nom": "Gainage planche",
@@ -214,7 +230,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "detection_gainage",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Un tapis",
+  "est_echauffement": false
  },
  "Squat": {
   "nom": "Squat",
@@ -239,7 +257,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "squat_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Deux haltères et un tapis",
+  "est_echauffement": false
  },
  "Fente droite": {
   "nom": "Fente droite",
@@ -264,7 +284,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "fente_droite_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Deux haltères et un tapis",
+  "est_echauffement": false
  },
  "Fente gauche": {
   "nom": "Fente gauche",
@@ -289,7 +311,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "fente_gauche_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Deux haltères et un tapis",
+  "est_echauffement": false
  },
  "Souleve de terre roumain": {
   "nom": "Souleve de terre roumain",
@@ -315,7 +339,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "souleve_de_terre_roumain_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Deux haltères",
+  "est_echauffement": false
  },
  "Gainage planche laterale droite": {
   "nom": "Gainage planche laterale droite",
@@ -339,7 +365,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "detection_gainage_laterale_droite",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Un tapis",
+  "est_echauffement": false
  },
  "Gainage planche laterale gauche": {
   "nom": "Gainage planche laterale gauche",
@@ -363,7 +391,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "detection_gainage_laterale_gauche",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Un tapis",
+  "est_echauffement": false
  },
  "Rowing unilateral droit": {
   "nom": "Rowing unilateral droit",
@@ -391,7 +421,9 @@
   "detection": "rowing_unilateral_droit_detection",
   "erreurs": [
    "rowing_unilateral_droit_erreur_buste"
-  ]
+  ],
+  "materiel": "Un haltère et une chaise",
+  "est_echauffement": false
  },
  "Rowing unilateral gauche": {
   "nom": "Rowing unilateral gauche",
@@ -419,7 +451,9 @@
   "detection": "rowing_unilateral_gauche_detection",
   "erreurs": [
    "rowing_unilateral_gauche_erreur_buste"
-  ]
+  ],
+  "materiel": "Un haltère et une chaise",
+  "est_echauffement": false
  },
  "Rowing penche": {
   "nom": "Rowing penche",
@@ -450,7 +484,9 @@
   "erreurs": [
    "rowing_penche_erreur_buste",
    "rowing_penche_erreur_genoux"
-  ]
+  ],
+  "materiel": "Deux haltères",
+  "est_echauffement": false
  },
  "Oiseau": {
   "nom": "Oiseau",
@@ -478,7 +514,9 @@
   "detection": "oiseau_detection",
   "erreurs": [
    "oiseau_erreur_coudes"
-  ]
+  ],
+  "materiel": "Deux haltères",
+  "est_echauffement": false
  },
  "Pompes inclinées": {
   "nom": "Pompes inclinées",
@@ -502,7 +540,9 @@
   "variante_difficile": "Pompes sur les genoux",
   "analyse_la_pose": true,
   "detection": "pompe_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Une chaise",
+  "est_echauffement": false
  },
  "Pompes sur les genoux": {
   "nom": "Pompes sur les genoux",
@@ -525,7 +565,9 @@
   "variante_difficile": "Pompes",
   "analyse_la_pose": true,
   "detection": "pompe_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Un tapis",
+  "est_echauffement": false
  },
  "Gainage sur les genoux": {
   "nom": "Gainage sur les genoux",
@@ -548,7 +590,9 @@
   "variante_difficile": "Gainage planche",
   "analyse_la_pose": true,
   "detection": "detection_gainage",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Un tapis",
+  "est_echauffement": false
  },
  "Squat sur chaise": {
   "nom": "Squat sur chaise",
@@ -572,7 +616,9 @@
   "variante_difficile": "Squat",
   "analyse_la_pose": true,
   "detection": "squat_sur_chaise_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "Une chaise",
+  "est_echauffement": false
  },
  "Rotation du cou": {
   "nom": "Rotation du cou",
@@ -587,7 +633,9 @@
   "variante_difficile": null,
   "analyse_la_pose": false,
   "detection": null,
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Rotation des épaules": {
   "nom": "Rotation des épaules",
@@ -602,7 +650,9 @@
   "variante_difficile": null,
   "analyse_la_pose": false,
   "detection": null,
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Rotation des coudes": {
   "nom": "Rotation des coudes",
@@ -617,7 +667,9 @@
   "variante_difficile": null,
   "analyse_la_pose": false,
   "detection": null,
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Rotation des poignets": {
   "nom": "Rotation des poignets",
@@ -632,7 +684,9 @@
   "variante_difficile": null,
   "analyse_la_pose": false,
   "detection": null,
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Élévations latérales à vide": {
   "nom": "Élévations latérales à vide",
@@ -647,7 +701,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "elevation_laterale_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Pompes lentes": {
   "nom": "Pompes lentes",
@@ -662,7 +718,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "pompe_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Jumping jacks": {
   "nom": "Jumping jacks",
@@ -678,7 +736,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "jumping_jacks_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Squat de prière": {
   "nom": "Squat de prière",
@@ -693,7 +753,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "squat_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Squat lent": {
   "nom": "Squat lent",
@@ -708,7 +770,9 @@
   "variante_difficile": null,
   "analyse_la_pose": true,
   "detection": "squat_detection",
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Rotation des genoux": {
   "nom": "Rotation des genoux",
@@ -723,7 +787,9 @@
   "variante_difficile": null,
   "analyse_la_pose": false,
   "detection": null,
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Rotation des chevilles": {
   "nom": "Rotation des chevilles",
@@ -738,7 +804,9 @@
   "variante_difficile": null,
   "analyse_la_pose": false,
   "detection": null,
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Hanches en avant en arrière": {
   "nom": "Hanches en avant en arrière",
@@ -753,7 +821,9 @@
   "variante_difficile": null,
   "analyse_la_pose": false,
   "detection": null,
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Abducteurs": {
   "nom": "Abducteurs",
@@ -768,7 +838,9 @@
   "variante_difficile": null,
   "analyse_la_pose": false,
   "detection": null,
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Hip thrust": {
   "nom": "Hip thrust",
@@ -783,7 +855,9 @@
   "variante_difficile": null,
   "analyse_la_pose": false,
   "detection": null,
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Extensions de mollets": {
   "nom": "Extensions de mollets",
@@ -798,7 +872,9 @@
   "variante_difficile": null,
   "analyse_la_pose": false,
   "detection": null,
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  },
  "Montées de genou": {
   "nom": "Montées de genou",
@@ -813,6 +889,8 @@
   "variante_difficile": null,
   "analyse_la_pose": false,
   "detection": null,
-  "erreurs": []
+  "erreurs": [],
+  "materiel": "",
+  "est_echauffement": true
  }
 }

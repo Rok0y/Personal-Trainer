@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="../hud.css">
 <link rel="stylesheet" href="../ressentis.css">
 <link rel="stylesheet" href="../programmes.css">
+<link rel="stylesheet" href="../exercices.css">
 
 <style>
   /* Les ecrans de liste (seances, historique, records, fin) ont leur propre
@@ -368,6 +369,7 @@
     <button class="onglet" data-ecran="ecranHistorique">Historique</button>
     <button class="onglet" data-ecran="ecranRecords">Records</button>
     <button class="onglet" data-ecran="ecranProgrammes">Programmes</button>
+    <button class="onglet" data-ecran="ecranExercices">Exercices</button>
   </div>
   <h1>Ta séance</h1>
   <p class="sous-titre" id="sousTitre">Choisis ce que tu fais aujourd'hui.</p>
@@ -417,6 +419,7 @@
     <button class="onglet actif" data-ecran="ecranHistorique">Historique</button>
     <button class="onglet" data-ecran="ecranRecords">Records</button>
     <button class="onglet" data-ecran="ecranProgrammes">Programmes</button>
+    <button class="onglet" data-ecran="ecranExercices">Exercices</button>
   </div>
   <h1>Historique</h1>
   <p class="sous-titre" id="resumeHistorique"></p>
@@ -430,6 +433,7 @@
     <button class="onglet" data-ecran="ecranHistorique">Historique</button>
     <button class="onglet actif" data-ecran="ecranRecords">Records</button>
     <button class="onglet" data-ecran="ecranProgrammes">Programmes</button>
+    <button class="onglet" data-ecran="ecranExercices">Exercices</button>
   </div>
   <h1>Records</h1>
   <p class="sous-titre">
@@ -447,6 +451,7 @@
     <button class="onglet" data-ecran="ecranHistorique">Historique</button>
     <button class="onglet" data-ecran="ecranRecords">Records</button>
     <button class="onglet actif" data-ecran="ecranProgrammes">Programmes</button>
+    <button class="onglet" data-ecran="ecranExercices">Exercices</button>
   </div>
   <h1>Programmes</h1>
   <p class="sous-titre">
@@ -455,6 +460,32 @@
     ouverture. Les programmes s'écrivent sur l'ordinateur, comme les séances.
   </p>
   <div id="listeProgrammes"></div>
+</section>
+
+<!-- ====================== EXERCICES ====================== -->
+<section class="ecran defile" id="ecranExercices">
+  <div class="onglets">
+    <button class="onglet" data-ecran="ecranSeances">Séances</button>
+    <button class="onglet" data-ecran="ecranHistorique">Historique</button>
+    <button class="onglet" data-ecran="ecranRecords">Records</button>
+    <button class="onglet" data-ecran="ecranProgrammes">Programmes</button>
+    <button class="onglet actif" data-ecran="ecranExercices">Exercices</button>
+  </div>
+  <h1>Les exercices</h1>
+  <p class="sous-titre">
+    Chaque fiche explique comment se placer, comment exécuter le mouvement et ce
+    qu'il faut éviter. Les variantes assistées sont là pour commencer : elles
+    comptent et progressent comme les autres.
+  </p>
+  <div id="listeExercices"></div>
+</section>
+
+<!-- La fiche d'un mouvement. Un ecran et non une page : le poste fixe a des
+     URL (`/exercice/<nom>`), l'application n'en a qu'une. Le bouton retour
+     remplace donc le bouton precedent du navigateur. -->
+<section class="ecran defile" id="ecranFiche">
+  <button class="bouton secondaire" id="retourExercices">← Tous les exercices</button>
+  <div id="contenuFiche"></div>
 </section>
 
 <!-- L'ecran de seance est **le HUD du poste fixe**, aux memes classes et aux
@@ -1466,6 +1497,139 @@ function dessiner_historique() {
     });
 }
 
+// ---------------------------------------------------------------- exercices
+
+/**
+ * Le catalogue des mouvements.
+ *
+ * **Exercices et echauffements restent separes**, comme partout ailleurs dans
+ * le projet : les premiers ont un niveau, un record, une progression ; les
+ * seconds n'apparaissent dans aucune statistique. Les melanger ferait croire
+ * qu'une rotation d'epaules compte quelque part.
+ */
+function dessiner_exercices() {
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
+
+  const noms = Object.keys(mouvements).sort((a, b) => a.localeCompare(b, "fr"));
+  const exercices = noms.filter((n) => !mouvements[n].est_echauffement);
+  const echauffements = noms.filter((n) => mouvements[n].est_echauffement);
+
+  $("listeExercices").innerHTML =
+    `<h2>Exercices</h2><div class="grid">` +
+    exercices.map((nom) => carte_exercice(nom, niveaux[nom])).join("") +
+    `</div>` +
+    `<h2>Échauffements</h2>` +
+    `<p class="sous-titre">Ils préparent la séance sans compter nulle part : ` +
+    `ni niveau, ni record, ni historique.</p>` +
+    `<div class="grid">` +
+    echauffements.map((nom) => carte_exercice(nom, null)).join("") +
+    `</div>`;
+
+  for (const carte of $("listeExercices").querySelectorAll("[data-mouvement]")) {
+    carte.addEventListener("click", () => dessiner_fiche(carte.dataset.mouvement));
+  }
+}
+
+function carte_exercice(nom, etat) {
+  const fiche = mouvements[nom];
+  const etiquettes = [];
+
+  if (etat) {
+    etiquettes.push(
+      etat.niveau
+        ? `<span class="etiquette niveau">Niveau ${etat.niveau} · ${echapper(resume_palier(etat.actuel))}</span>`
+        : `<span class="etiquette debut">À découvrir · ${echapper(resume_palier(etat.premier) ?? "")}</span>`
+    );
+  }
+  if (fiche.materiel) etiquettes.push(`<span class="etiquette">${echapper(fiche.materiel)}</span>`);
+  if (fiche.variante_facile) {
+    etiquettes.push(`<span class="etiquette">Version plus facile disponible</span>`);
+  }
+  if (!fiche.analyse_la_pose) {
+    etiquettes.push(`<span class="etiquette sans-pose">Sans analyse de la caméra</span>`);
+  }
+
+  return (
+    `<button type="button" class="carte" data-mouvement="${echapper(nom)}">` +
+    `<h3>${echapper(nom)}</h3><p>${echapper(fiche.description ?? "")}</p>` +
+    (etiquettes.length ? `<div class="etiquettes">${etiquettes.join("")}</div>` : "") +
+    `</button>`
+  );
+}
+
+/** La fiche d'un mouvement : comment le faire, et ou j'en suis dessus. */
+function dessiner_fiche(nom) {
+  const fiche = mouvements[nom];
+  if (!fiche) return;
+
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  // Un echauffement n'a pas de bareme : `etat_niveau` n'a rien a en dire, et
+  // le bloc « ou j'en suis » n'a pas lieu d'etre.
+  const etat = moteur.baremes.est_suivi_par_le_moteur(nom)
+    ? moteur.niveaux.etats_niveaux(histoire, ancrages)[nom]
+    : null;
+
+  const liste = (titre, lignes, balise = "ol", classe = "") =>
+    lignes?.length
+      ? `<div class="bloc${classe}"><h2>${titre}</h2><${balise}>` +
+        lignes.map((l) => `<li>${echapper(l)}</li>`).join("") +
+        `</${balise}></div>`
+      : "";
+
+  const meta = [];
+  if (fiche.materiel) meta.push(`<span class="etiquette">${echapper(fiche.materiel)}</span>`);
+  if (!fiche.analyse_la_pose) {
+    meta.push(`<span class="etiquette">La caméra ne compte pas ce mouvement : suis le chrono</span>`);
+  }
+
+  const variantes = [fiche.variante_facile, fiche.variante_difficile]
+    .map((autre, index) =>
+      autre
+        ? `<button type="button" class="btn" data-variante="${echapper(autre)}">` +
+          `${index ? "Plus dur" : "Plus facile"} : ${echapper(autre)}</button>`
+        : ""
+    )
+    .join("");
+
+  $("contenuFiche").innerHTML =
+    `<p class="kicker">${fiche.est_echauffement ? "Échauffement" : "Exercice"}</p>` +
+    `<h1>${echapper(nom)}</h1>` +
+    `<p class="resume">${echapper(fiche.description ?? "")}</p>` +
+    (meta.length ? `<div class="meta">${meta.join("")}</div>` : "") +
+    (etat ? bloc_niveau(etat) : "") +
+    liste("Se mettre en place", fiche.mise_en_place) +
+    liste("Exécution", fiche.instructions) +
+    liste("À éviter", fiche.erreurs_frequentes, "ul", " attention") +
+    (variantes
+      ? `<div class="bloc"><h2>Adapter la difficulté</h2><div class="variantes">${variantes}</div></div>`
+      : "");
+
+  for (const bouton of $("contenuFiche").querySelectorAll("[data-variante]")) {
+    bouton.addEventListener("click", () => dessiner_fiche(bouton.dataset.variante));
+  }
+  montrer("ecranFiche");
+}
+
+function bloc_niveau(etat) {
+  const cases = [
+    `<div><span>Niveau</span><strong>${etat.niveau ?? "—"}</strong></div>`,
+    `<div><span>${etat.niveau ? "Palier acquis" : "Premier palier"}</span>` +
+      `<strong>${echapper(resume_palier(etat.actuel ?? etat.premier) ?? "—")}</strong></div>`,
+  ];
+  if (etat.suivant) {
+    cases.push(
+      `<div><span>Palier suivant</span><strong>${echapper(resume_palier(etat.suivant))}</strong></div>`
+    );
+  }
+  const note = etat.niveau
+    ? ""
+    : `<p class="sous-titre" style="margin-top:14px">Rien dans l'historique n'atteint ` +
+      `encore le premier palier. Le test de calibration, ou simplement une première ` +
+      `séance, posera le niveau.</p>`;
+  return `<div class="bloc"><h2>Où j'en suis</h2><div class="niveau">${cases.join("")}</div>${note}</div>`;
+}
+
 // ---------------------------------------------------------------- programmes
 
 /**
@@ -1675,6 +1839,7 @@ for (const onglet of document.querySelectorAll(".onglet")) {
     if (cible === "ecranHistorique") dessiner_historique();
     else if (cible === "ecranRecords") dessiner_records();
     else if (cible === "ecranProgrammes") dessiner_programmes();
+    else if (cible === "ecranExercices") dessiner_exercices();
     else dessiner_liste();
     montrer(cible);
   });
@@ -1732,6 +1897,10 @@ brancher_commandes((nom) => {
   if (!en_cours || !COMMANDES[nom]) return;
   COMMANDES[nom]();
   rafraichir_affichage();
+});
+$("retourExercices").addEventListener("click", () => {
+  dessiner_exercices();
+  montrer("ecranExercices");
 });
 $("boutonRetour").addEventListener("click", () => {
   dessiner_liste();

@@ -74,11 +74,19 @@ def decrire(nom, mouvement):
     deriverait. `detection` peut valoir None — un echauffement guide sans
     analyse de pose, et `circuit.js` le sait.
     """
+    from session.seances import CATALOGUE_ECHAUFFEMENTS, materiel_exercice
+
     fiche = mouvement.fiche()
     fiche["detection"] = (
         None if mouvement.detection is None else mouvement.detection.__name__
     )
     fiche["erreurs"] = [verifier.__name__ for verifier in mouvement.erreurs]
+    # Les deux champs que `fiche_mouvement` ajoute cote Flask, et dont les
+    # fiches de l'application ont besoin : quel materiel il faut, et si le
+    # mouvement compte quelque part. Un echauffement n'a ni niveau, ni record,
+    # ni ligne d'historique — l'ecran doit pouvoir le dire.
+    fiche["materiel"] = materiel_exercice(nom, 0)
+    fiche["est_echauffement"] = nom in CATALOGUE_ECHAUFFEMENTS
     return fiche
 
 

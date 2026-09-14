@@ -1,0 +1,77 @@
+/* ==========================================================================
+   Les fiches de mouvement, partagees par les deux applications.
+
+   Meme decoupage que `hud.css`, `ressentis.css` et `programmes.css` : le
+   catalogue (`/exercices`) et la fiche (`/exercice/<nom>`) montrent la meme
+   chose que les ecrans correspondants de l'application, donc ils partagent
+   leur habillage.
+
+   Une regle d'affichage y est portee et ne doit pas etre defaite : le
+   catalogue **separe les exercices des echauffements**, comme partout
+   ailleurs. Les premiers ont un niveau, un record, une progression ; les
+   seconds n'apparaissent dans aucune statistique. Les melanger ferait croire
+   qu'une rotation d'epaules compte quelque part.
+   ========================================================================== */
+
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+
+/* La carte du catalogue. Le selecteur est deliberement sans element : le
+   poste fixe en fait un <a> vers `/exercice/<nom>`, l'application un
+   <button> qui change d'ecran — la carte est la meme, son element
+   porteur non. */
+.carte {
+    display:block; padding:18px; border-radius:12px; font-size:inherit; font-weight:inherit;
+    background:var(--glass); border:1px solid var(--border-strong); color:var(--text);
+    backdrop-filter:blur(18px); transition:border-color .2s ease, transform .2s ease;
+}
+
+.carte:hover { border-color:var(--teal); text-decoration:none; transform:translateY(-2px); }
+
+.carte h3 { margin:0 0 6px; font:700 16px 'Space Grotesk',sans-serif; }
+
+.carte p { margin:0; color:var(--muted); font-size:13px; line-height:1.5; }
+
+.etiquettes { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+
+.etiquette {
+    padding:3px 9px; border-radius:999px; border:1px solid var(--border-strong);
+    color:var(--muted); font:700 11px 'Space Grotesk',sans-serif; letter-spacing:.04em;
+}
+
+.etiquette.niveau { color:var(--teal); border-color:var(--teal); }
+
+.etiquette.debut { color:var(--mode-echauffement); border-color:var(--mode-echauffement); }
+
+.etiquette.sans-pose { color:var(--muted); }
+
+.bloc {
+    background:var(--glass); border:1px solid var(--border-strong); border-radius:12px;
+    padding:20px 22px; margin-bottom:14px; backdrop-filter:blur(18px);
+}
+
+.bloc h2 {
+    margin:0 0 12px; font:700 12px 'Space Grotesk',sans-serif;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--muted);
+}
+
+.bloc.attention { border-color:var(--orange); }
+
+.bloc.attention h2 { color:var(--orange); }
+
+li { margin-bottom:4px; }
+
+.resume { font-size:16px; line-height:1.6; margin:0 0 18px; color:var(--text); }
+
+.niveau { display:flex; flex-wrap:wrap; gap:22px; }
+
+.niveau div { min-width:120px; }
+
+.niveau span { display:block; color:var(--muted); font:700 11px 'Space Grotesk',sans-serif; letter-spacing:.12em; text-transform:uppercase; margin-bottom:4px; }
+
+.niveau strong { font:400 26px 'Bebas Neue','Space Grotesk',sans-serif; letter-spacing:.02em; }
+
+.variantes { display:flex; flex-wrap:wrap; gap:10px; }
+
+.variantes a.btn { text-transform:none; letter-spacing:0; }
+
+.meta { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
