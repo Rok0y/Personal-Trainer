@@ -1,0 +1,41 @@
+/* ==========================================================================
+   Le recalage de niveau, partage par les deux applications.
+
+   Un ancrage recale un niveau que l'historique ne peut pas prouver : seance
+   faite sans l'app, reprise apres blessure, demarrage d'un nouvel
+   utilisateur. Il agit **de deux facons a la fois** — il fait table rase de
+   l'historique anterieur *et* sert de plancher ; c'est la table rase qui lui
+   permet de corriger un niveau vers le bas.
+
+   La regle d'interface qui compte : **on ne demande jamais un numero de
+   niveau**, personne ne sait ce que vaut « niveau 27 ». On demande une
+   performance, et le bareme en deduit le niveau — la meme forme que prend le
+   test de calibration.
+
+   Le journal complet est un `<details>` separe du formulaire, et ce n'est pas
+   cosmetique : le formulaire agit sur le **dernier** ancrage, le journal sur
+   une entree precise. Supprimer une entree qui n'est pas la derniere ne change
+   aucun niveau, par construction — c'est un nettoyage, pas une correction.
+   ========================================================================== */
+
+.niveau-note { font-size:12px !important; font-style:italic; }
+.recalage { margin-top:12px; }
+.recalage summary { cursor:pointer; color:var(--teal); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+.form-ancrage { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-top:10px; }
+.champ { display:flex; flex-direction:column; gap:4px; }
+.champ-large { flex:1 1 180px; }
+.champ label { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
+.champ input { width:100%; min-width:70px; padding:7px 9px; border-radius:8px; border:1px solid var(--border-strong); background:rgba(0,0,0,.25); color:var(--text); font-family:inherit; font-size:13px; }
+.form-ancrage button { padding:8px 14px; border-radius:8px; border:1px solid var(--teal); background:transparent; color:var(--teal); font-family:inherit; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; }
+.form-ancrage button:hover { background:rgba(27,232,196,.12); }
+.form-ancrage .bouton-secondaire { border-color:var(--border-strong); color:var(--muted); }
+.retour-ancrage { font-size:12px; color:var(--muted); align-self:center; }
+.retour-ancrage.erreur { color:var(--orange); }
+.journal-ancrages { margin-top:10px; }
+.journal-ancrages summary { cursor:pointer; color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+.journal-ancrages summary:hover { color:var(--teal); }
+.liste-ancrages { list-style:none; margin:8px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; }
+.liste-ancrages li { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:7px 10px; border-radius:8px; background:rgba(0,0,0,.2); border:1px solid var(--border); font-size:12px; color:var(--muted); }
+.liste-ancrages strong { color:var(--text); }
+.liste-ancrages button { flex:0 0 auto; padding:4px 9px; border-radius:6px; border:1px solid var(--border-strong); background:transparent; color:var(--muted); font-family:inherit; font-size:11px; cursor:pointer; }
+.liste-ancrages button:hover { border-color:var(--orange); color:var(--orange); }

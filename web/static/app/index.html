@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="../ressentis.css">
 <link rel="stylesheet" href="../programmes.css">
 <link rel="stylesheet" href="../exercices.css">
+<link rel="stylesheet" href="../ancrages.css">
 
 <style>
   /* Les ecrans de liste (seances, historique, records, fin) ont leur propre
@@ -109,6 +110,34 @@
   .puce-echauffement { color: var(--accent); }
   .puce b { color: var(--texte); font-weight: 600; }
   .puce-tester { color: var(--alerte); }
+
+  /* Le decrochage d'une cible figee doit se voir, sinon il est silencieux.
+     Meme couleur que le badge de l'accueil du poste fixe. */
+  .puce-manuelle { color: var(--orange); border-color: var(--orange); }
+
+  .detail-seance {
+    margin: -0.4rem 0 0.8rem;
+    padding: 0 0.3rem;
+    font-size: 0.86rem;
+  }
+  .detail-seance summary {
+    cursor: pointer;
+    color: var(--texte-doux);
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.4rem 0;
+  }
+  .detail-ligne {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.45rem 0;
+    border-top: 1px solid var(--trait);
+  }
+  .detail-ligne span { color: var(--texte-doux); }
+  .detail-ligne i { color: var(--alerte); font-style: normal; }
 
   .actions { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
 
@@ -743,6 +772,7 @@ import { Calibration } from "../js/calibration.js";
 import { Objectifs } from "../js/objectifs.js";
 import { normaliser } from "../js/materiel.js";
 import { etats_programmes, prochaine_seance, resume_palier } from "../js/programmes.js";
+import { est_cible_manuelle } from "../js/cible_manuelle.js";
 import { UNITE_SECONDES } from "../js/paliers.js";
 
 // Le profil unique de cette version. Les profils multiples arriveront avec la
@@ -1739,7 +1769,8 @@ function dessiner_records() {
           `<div class="record hors-bareme"><div class="record-titre">` +
           `<b>${echapper(nom)}</b><span class="record-niveau">à tester</span></div>` +
           `<div class="record-ligne">Rien ne prouve encore ton niveau. ` +
-          `Premier palier : <b>${resume_palier(etat.premier)}</b></div></div>`
+          `Premier palier : <b>${resume_palier(etat.premier)}</b></div>` +
+          bloc_recalage(nom, etat) + `</div>`
         );
       }
       // Le palier suivant peut demander **moins** de repetitions que le
@@ -1761,17 +1792,255 @@ function dessiner_records() {
         `<div class="record"><div class="record-titre"><b>${echapper(nom)}</b>` +
         `<span class="record-niveau">Niveau ${etat.niveau}</span></div>` +
         `<div class="record-ligne">Acquis : <b>${resume_palier(etat.actuel)}</b></div>` +
-        suite + source + `</div>`
+        suite + source + bloc_recalage(nom, etat) + `</div>`
       );
     });
 
   $("listeRecords").innerHTML = lignes.length
     ? lignes.join("")
     : `<p class="vide">Aucun exercice suivi.</p>`;
+  brancher_recalages();
+}
+
+/**
+ * Le formulaire de recalage d'un niveau.
+ *
+ * **On ne demande jamais un numero de niveau** — personne ne sait ce que vaut
+ * « niveau 27 ». On demande une performance, et le bareme en deduit le
+ * niveau : c'est la meme forme que prend le test de calibration, et c'est ce
+ * qui rend la saisie honnete.
+ *
+ * Un ancrage agit **de deux facons a la fois** — il fait table rase de
+ * l'historique anterieur *et* sert de plancher. C'est la table rase qui lui
+ * permet de corriger un niveau vers le bas ; un simple plancher ne saurait
+ * que le relever.
+ *
+ * Les valeurs par defaut viennent du palier acquis, ou du premier : elles
+ * donnent l'unite attendue et l'ordre de grandeur sans rien suggerer de plus.
+ */
+function bloc_recalage(nom, etat) {
+  const depart = etat.actuel ?? etat.premier;
+  if (!depart) return "";
+  const libelle = depart.unite === "secondes" ? "Secondes" : "Répétitions";
+
+  return (
+    `<details class="recalage"><summary>Recaler mon niveau</summary>` +
+    `<p class="niveau-note">Indique une performance que tu sais tenir sur toutes ` +
+    `les séries. Le barème en déduit ton niveau, et l'historique antérieur cesse ` +
+    `de compter pour cet exercice.</p>` +
+    `<form class="form-ancrage" data-exercice="${echapper(nom)}">` +
+    `<span class="champ"><label>Séries</label>` +
+    `<input type="number" min="1" class="champ-series" value="${depart.series}"></span>` +
+    `<span class="champ"><label>${libelle}</label>` +
+    `<input type="number" min="1" class="champ-cible" value="${depart.cible}"></span>` +
+    `<span class="champ"><label>Charge (kg)</label>` +
+    `<input type="number" min="0" step="0.5" class="champ-poids" value="${depart.poids}"></span>` +
+    `<span class="champ champ-large"><label>Pourquoi ?</label>` +
+    `<input type="text" class="champ-raison" placeholder="Séance faite sans l'app…"></span>` +
+    `<button type="submit">Recaler</button>` +
+    (etat.ancre
+      ? `<button type="button" class="bouton-secondaire" data-supprimer>Supprimer l'ancrage</button>`
+      : "") +
+    `<span class="retour-ancrage"></span></form>` +
+    `<details class="journal-ancrages" data-exercice="${echapper(nom)}">` +
+    `<summary>Historique des ancrages ▾</summary><p class="vide">Chargement…</p>` +
+    `</details></details>`
+  );
+}
+
+/**
+ * Branche les formulaires de recalage.
+ *
+ * La difference avec le poste fixe est ou vit la base : il POSTe sur
+ * `/api/niveaux/<nom>/ancrage` et laisse Flask deduire le niveau, le
+ * navigateur appelle `niveau_pour` sur place puis ecrit dans sa propre base.
+ * Le refus est le meme des deux cotes — une performance qui n'atteint pas le
+ * premier palier n'ancre rien, plutot que d'ancrer un niveau invente.
+ */
+function brancher_recalages() {
+  for (const form of $("listeRecords").querySelectorAll(".form-ancrage")) {
+    const nom = form.dataset.exercice;
+    const retour = form.querySelector(".retour-ancrage");
+
+    form.addEventListener("submit", async (evenement) => {
+      evenement.preventDefault();
+      const series = Number(form.querySelector(".champ-series").value) || 0;
+      const cible = Number(form.querySelector(".champ-cible").value) || 0;
+      const poids = Number(form.querySelector(".champ-poids").value) || 0;
+
+      const niveau = moteur.baremes.niveau_pour(nom, poids, series, cible);
+      if (niveau === null) {
+        const premier = resume_palier(moteur.baremes.palier(nom, 1));
+        retour.className = "retour-ancrage erreur";
+        retour.textContent = `Cette performance n'atteint pas le premier palier (${premier}).`;
+        return;
+      }
+
+      historique.enregistrer_ancrage(base, nom, niveau, {
+        raison: form.querySelector(".champ-raison").value,
+        utilisateur_id: PROFIL,
+      });
+      await stockage.sauver(base);
+      dessiner_records();
+    });
+
+    form.querySelector("[data-supprimer]")?.addEventListener("click", async () => {
+      // `supprimer_ancrages` purge **tout** l'historique d'ancrages de
+      // l'exercice, la ou le journal ci-dessous retire une entree precise.
+      // Ce sont deux gestes differents, comme sur le poste fixe.
+      historique.supprimer_ancrages(base, nom, PROFIL);
+      await stockage.sauver(base);
+      dessiner_records();
+    });
+  }
+
+  // Le journal se remplit a l'ouverture : il n'a aucune raison d'etre calcule
+  // pour les vingt-trois exercices a chaque affichage de l'ecran.
+  for (const journal of $("listeRecords").querySelectorAll(".journal-ancrages")) {
+    journal.addEventListener("toggle", () => {
+      if (journal.open) remplir_journal_ancrages(journal);
+    });
+  }
+}
+
+/**
+ * Le journal complet des ancrages d'un exercice.
+ *
+ * Seul le **dernier** ancrage compte pour le niveau calcule : supprimer une
+ * entree anterieure ne change donc rien, par construction. C'est un nettoyage
+ * du journal, pas une correction de niveau — et c'est pour ca que ce bouton
+ * est distinct de « Supprimer l'ancrage », qui purge tout.
+ */
+function remplir_journal_ancrages(journal) {
+  const nom = journal.dataset.exercice;
+  const entrees = historique.recuperer_historique_ancrages(base, nom, PROFIL);
+  const sommaire = journal.querySelector("summary");
+
+  journal.replaceChildren(sommaire);
+  if (!entrees.length) {
+    const vide = document.createElement("p");
+    vide.className = "vide";
+    vide.textContent = "Aucun recalage posé sur cet exercice.";
+    journal.appendChild(vide);
+    return;
+  }
+
+  const liste = document.createElement("ul");
+  liste.className = "liste-ancrages";
+  for (const entree of entrees) {
+    const item = document.createElement("li");
+    const palier = resume_palier(moteur.baremes.palier(nom, entree.niveau));
+    const texte = document.createElement("span");
+    texte.innerHTML =
+      `<strong>Niveau ${entree.niveau}</strong> · ${echapper(palier ?? "")} · ` +
+      `${echapper(entree.date)}${entree.raison ? ` · ${echapper(entree.raison)}` : ""}`;
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.textContent = "Annuler";
+    bouton.addEventListener("click", async () => {
+      historique.supprimer_ancrage(base, entree.id);
+      await stockage.sauver(base);
+      dessiner_records();
+    });
+    item.append(texte, bouton);
+    liste.appendChild(item);
+  }
+  journal.appendChild(liste);
 }
 
 // ---------------------------------------------------------------- ecran d'accueil
 
+
+//: Les ressentis qui **signalent un ecart**. `ok` et `dur` n'y sont pas :
+//: ils valent l'absence de reponse, et un drapeau neutre n'apprend rien.
+const LIBELLES_RESSENTI = {
+  trop_dur: "trop dur",
+  facile: "facile",
+  trop_facile: "trop facile",
+};
+
+/**
+ * La derniere performance de chaque exercice, seance par seance.
+ *
+ * Jumeau du calcul que `web/app.py` fait pour l'accueil : pour chaque nom de
+ * seance, la plus recente **non abandonnee**, et pour chaque exercice ses
+ * series menees au bout. L'historique arrivant du plus recent au plus ancien,
+ * la premiere rencontree est la bonne.
+ *
+ * Seules les series `completee` sont retenues : une serie interrompue ne dit
+ * pas ce qu'on a tenu, et l'afficher ferait croire a une contre-performance.
+ */
+function dernieres_series(histoire) {
+  const par_seance = {};
+  for (const seance of histoire) {
+    const nom = seance.nom;
+    if (!nom || nom in par_seance || seance.statut === "abandoned") continue;
+    if (!(nom in seances)) continue;
+
+    par_seance[nom] = {};
+    for (const exercice of seance.exercices ?? []) {
+      par_seance[nom][exercice.nom] = {
+        date: seance.date,
+        mode: exercice.mode ?? "repetitions",
+        ressenti: exercice.ressenti || "",
+        series: (exercice.series_detaillees ?? []).filter((s) => s.completee !== false),
+      };
+    }
+  }
+  return par_seance;
+}
+
+/**
+ * Ce que la derniere seance de ce nom a donne, exercice par exercice.
+ *
+ * L'ecran d'accueil du poste fixe le montre sous le formulaire d'objectifs ;
+ * l'application n'a pas d'editeur — le fichier fait autorite — mais elle a
+ * exactement le meme besoin : savoir ce qu'on a tenu la derniere fois avant de
+ * relancer la meme seance.
+ */
+function detail_seance(nom, blocs, dernieres) {
+  const precedent = dernieres[nom];
+  const manuelles = blocs.filter((b) => est_cible_manuelle(b, PROFIL));
+  if (!precedent && !manuelles.length) return null;
+
+  const detail = document.createElement("details");
+  detail.className = "detail-seance";
+
+  const sommaire = document.createElement("summary");
+  sommaire.textContent = precedent ? "Dernière fois" : "Cibles figées";
+  detail.appendChild(sommaire);
+
+  for (const bloc of blocs) {
+    if (bloc.mode === "echauffement") continue;
+    const ligne = precedent?.[bloc.exercice];
+    const fige = est_cible_manuelle(bloc, PROFIL);
+    if (!ligne?.series?.length && !fige) continue;
+
+    const element = document.createElement("div");
+    element.className = "detail-ligne";
+    const au_temps = ligne && (ligne.mode === "maintien" || ligne.mode === "chrono");
+    const valeurs = (ligne?.series ?? [])
+      .map((s) => (au_temps ? `${Math.round(s.duree)} s` : s.repetitions))
+      .join(" · ");
+    const ressenti = LIBELLES_RESSENTI[ligne?.ressenti];
+
+    element.innerHTML =
+      `<b>${echapper(bloc.exercice)}</b>` +
+      (valeurs
+        ? `<span>${echapper(ligne.date)} : ${valeurs}` +
+          (ressenti ? ` <i>(${ressenti})</i>` : "") +
+          `</span>`
+        : `<span class="muet">pas encore joué</span>`) +
+      (fige
+        ? `<span class="muet">Cible figée à la main : le moteur ne la fait plus ` +
+          `évoluer. Elle se débloque depuis l'ordinateur, en remettant les ` +
+          `valeurs que le moteur propose.</span>`
+        : "");
+    detail.appendChild(element);
+  }
+
+  return detail.children.length > 1 ? detail : null;
+}
 
 function dessiner_liste() {
   const liste = $("listeSeances");
@@ -1782,6 +2051,7 @@ function dessiner_liste() {
   const { seances: histoire, ancrages } = lecture_du_profil();
   const objectifs = moteur.objectifs.objectifs_par_exercice(histoire, ancrages);
   const sans_donnees = moteur.objectifs.exercices_sans_donnees(histoire, ancrages);
+  const dernieres = dernieres_series(histoire);
 
   for (const [nom, blocs] of Object.entries(seances)) {
     const exercices = blocs.filter((b) => b.mode !== "echauffement");
@@ -1792,6 +2062,14 @@ function dessiner_liste() {
     // Ce que le moteur demandera, exercice par exercice. C'est la seule chose
     // qui rend sa progression visible avant de commencer.
     const puces = exercices.slice(0, 5).map((b) => {
+      // Une cible figee a la main sort du pilotage : le moteur ne la fait plus
+      // evoluer, et le badge orange est ce qui rend ce decrochage **visible**
+      // plutot que silencieux — c'est tout son objet.
+      if (est_cible_manuelle(b, PROFIL)) {
+        const cible = `${b.series}×${b.repetitions || b.duree}` +
+          (b.poids ? ` · ${b.poids} kg` : "");
+        return `<span class="puce puce-manuelle">${b.exercice} <b>${cible}</b> · figée</span>`;
+      }
       if (moteur.objectifs.a_calibrer(b.exercice, b.mode, sans_donnees)) {
         return `<span class="puce puce-tester">${b.exercice} · à tester</span>`;
       }
@@ -1813,6 +2091,12 @@ function dessiner_liste() {
       `</div>`;
     carte.addEventListener("click", () => demarrer(nom));
     liste.appendChild(carte);
+
+    // Un <details> **a cote** de la carte et non dedans : la carte est un
+    // <button> qui lance la seance, et imbriquer un <details> dans un bouton
+    // est invalide — le navigateur deplacerait le noeud en silence.
+    const detail = detail_seance(nom, blocs, dernieres);
+    if (detail) liste.appendChild(detail);
   }
   const faites = historique.recuperer_historique(base, PROFIL).length;
   $("etatBase").textContent = faites
