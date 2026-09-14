@@ -18,6 +18,7 @@
      largeurs fixes, que cette page n'a aucune raison de subir. -->
 <link rel="stylesheet" href="../palette.css">
 <link rel="stylesheet" href="../hud.css">
+<link rel="stylesheet" href="../ressentis.css">
 
 <style>
   /* Les ecrans de liste (seances, historique, records, fin) ont leur propre
@@ -108,6 +109,11 @@
   .puce-tester { color: var(--alerte); }
 
   .actions { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
+
+  /* La zone de ressenti est habillee par `ressentis.css`, partagee avec le
+     poste fixe ; il ne reste ici que son insertion dans les cartes. */
+  .exercice-fait .feedback { margin-top: 0.6rem; }
+  .supprimer-seance { margin-top: 0.8rem; align-self: flex-start; }
 
   /* ---------- Boutons ---------- */
 
@@ -636,6 +642,10 @@
   <p class="sous-titre" id="resumeDuree"></p>
   <div class="etat-sauvegarde" id="etatSauvegarde"></div>
   <div class="resume" id="resume"></div>
+  <p class="muet" id="aideRessenti" hidden>
+    Dis-moi si c'était trop facile ou trop dur : le moteur avance plus vite ou
+    freine. Ne rien répondre est déjà une réponse — c'est le rythme normal.
+  </p>
   <div class="actions" style="justify-content:flex-start">
     <button class="bouton" id="boutonRetour">Retour aux séances</button>
     <button class="bouton secondaire" id="boutonExporterFin">Exporter</button>
@@ -666,7 +676,8 @@ import * as stockage from "../js/stockage.js";
 import { Lecteur } from "../js/lecteur.js";
 import { Baremes } from "../js/paliers.js";
 import { Niveaux } from "../js/niveaux.js";
-import { Ressenti } from "../js/ressenti.js";
+import { ECHELLE, Ressenti } from "../js/ressenti.js";
+import { construire_ligne } from "../js/ressentis_ui.js";
 import { Calibration } from "../js/calibration.js";
 import { Objectifs } from "../js/objectifs.js";
 import { normaliser } from "../js/materiel.js";
@@ -734,11 +745,16 @@ function construire_moteur() {
   const baremes = new Baremes(tables_baremes, profil?.materiel ?? null);
   const niveaux = new Niveaux(baremes);
   const calibration = new Calibration(baremes);
+  // `Ressenti` est nomme plutot qu'anonyme : les ecrans s'en servent aussi
+  // pour *juger* une seance passee (« reussi » ou « non atteint », et quelles
+  // reponses proposer), pas seulement le moteur pour calculer un objectif.
+  const ressenti = new Ressenti(baremes, niveaux);
   moteur = {
     baremes,
     niveaux,
     calibration,
-    objectifs: new Objectifs(baremes, niveaux, new Ressenti(baremes, niveaux), calibration),
+    ressenti,
+    objectifs: new Objectifs(baremes, niveaux, ressenti, calibration),
   };
 }
 
@@ -1164,14 +1180,24 @@ async function terminer(abandonnee = false) {
       "Le stockage de cet appareil a refusé l'écriture. Exporte cette séance maintenant, sinon elle sera perdue.";
   }
 
-  $("resume").innerHTML = resultats
-    .map((exercice) => {
-      const fait = exercice.mode === "maintien" || exercice.mode === "chrono"
+  $("resume").replaceChildren();
+  for (const exercice of resultats) {
+    const fait =
+      exercice.mode === "maintien" || exercice.mode === "chrono"
         ? `${Math.round(exercice.duree)} s`
         : `${exercice.repetitions} reps`;
-      return `<div class="ligne-resume"><span>${exercice.nom}</span><b>${exercice.series} × · ${fait}</b></div>`;
-    })
-    .join("");
+
+    const ligne = document.createElement("div");
+    ligne.className = "ligne-resume";
+    ligne.innerHTML = `<span>${exercice.nom}</span><b>${exercice.series} × · ${fait}</b>`;
+
+    const retour = document.createElement("div");
+    retour.className = "feedback";
+    $("resume").append(ligne, retour);
+    ligne.after(retour);
+  }
+
+  proposer_ressentis(seance_id);
 
   $("noteCamera").textContent =
     "La caméra reste autorisée tant que tu ne quittes pas la page — son voyant peut rester allumé.";
@@ -1179,6 +1205,48 @@ async function terminer(abandonnee = false) {
   montrer("ecranFin");
 }
 
+
+/**
+ * Propose de declarer un ressenti sur chaque exercice de la seance ecoulee.
+ *
+ * **Le module `ressenti.js` etait porte et branche dans le moteur, mais rien
+ * ne permettait d'y repondre** : le moteur lisait donc toujours « pas de
+ * reponse », c'est-a-dire +1 apres une reussite, pendant que le poste fixe
+ * accelerait a +2 ou +3 et reculait a -1. Les deux versions ne progressaient
+ * pas au meme rythme, et ca ne se voyait sur aucun ecran — seulement trois
+ * seances plus tard, sur un objectif qui n'etait pas le meme.
+ *
+ * La difference avec le poste fixe est ou vit la base : il interroge
+ * `/api/historique/<id>/ressentis`, le navigateur calcule le meme jugement sur
+ * place avec le meme `Ressenti`. Les reponses proposees, elles, viennent du
+ * module partage.
+ *
+ * Une seance sans resultat n'est jamais ecrite : `seance_id` vaut alors null
+ * et il n'y a rien a annoter.
+ */
+function proposer_ressentis(seance_id) {
+  $("aideRessenti").hidden = true;
+  if (seance_id === null) return;
+
+  const { seances: histoire } = lecture_du_profil();
+  const jugements = moteur.ressenti.evaluation_seance(seance_id, histoire);
+
+  let proposees = 0;
+  $("resume")
+    .querySelectorAll(".ligne-resume")
+    .forEach((ligne) => {
+      const nom = ligne.querySelector("span").textContent;
+      const jugement = jugements[nom];
+      if (!jugement) return;
+      proposees += 1;
+      construire_ligne(ligne.nextElementSibling, nom, jugement, async (exercice, valeur) => {
+        historique.enregistrer_ressentis(base, seance_id, { [exercice]: valeur }, ECHELLE);
+        await stockage.sauver(base);
+      });
+    });
+
+  $("aideRessenti").hidden = proposees === 0;
+}
 
 
 // ---------------------------------------------------------------- materiel
@@ -1291,7 +1359,11 @@ function dessiner_seance(seance, montees) {
         `<div class="exercice-fait">` +
         `<div class="exercice-ligne"><strong>${echapper(exercice.nom)}</strong>` +
         `<span>${exercice.series} séries · ${fait}${charge}</span></div>` +
-        `<div class="series-detail">${series}</div>${badge}</div>`
+        `<div class="series-detail">${series}</div>${badge}` +
+        // Rempli apres coup par `construire_ligne` : il faut des ecouteurs,
+        // donc des noeuds, la ou cette fonction rend une chaine.
+        `<div class="feedback" data-seance="${seance.id}" ` +
+        `data-exercice="${echapper(exercice.nom)}"></div></div>`
       );
     })
     .join("");
@@ -1304,6 +1376,8 @@ function dessiner_seance(seance, montees) {
     `<div class="meta"><span>${echapper(seance.date)}</span><span>${minutes} min</span>` +
     `<span>${seance.exercices.length} exercice${seance.exercices.length > 1 ? "s" : ""}</span></div>` +
     exercices +
+    `<button type="button" class="bouton secondaire supprimer-seance" ` +
+    `data-supprimer="${seance.id}">Supprimer cette séance</button>` +
     `</details>`
   );
 }
@@ -1318,6 +1392,44 @@ function dessiner_historique() {
   $("listeHistorique").innerHTML = histoire.length
     ? histoire.map((seance) => dessiner_seance(seance, montees)).join("")
     : `<p class="vide">Aucune séance enregistrée pour l'instant.</p>`;
+
+  // Le ressenti se saisit **aussi a posteriori**, comme sur le poste fixe :
+  // l'ecran de fin est le moment naturel, mais on ne sait pas toujours sur le
+  // coup si c'etait trop dur. `jugements_par_seance` n'ecarte aucune seance,
+  // pas meme une seance abandonnee — on decrit ici ce qui s'est passe, pas ce
+  // qu'il faut viser ensuite.
+  const jugements = moteur.ressenti.jugements_par_seance(histoire);
+  $("listeHistorique")
+    .querySelectorAll(".feedback[data-exercice]")
+    .forEach((zone) => {
+      const { seance, exercice } = zone.dataset;
+      const jugement = jugements[seance]?.[exercice];
+      // Un exercice hors bareme n'a pas d'objectif chiffre : `juger` rend
+      // quand meme un verdict, et le ressenti reste utile.
+      if (!jugement) return;
+      construire_ligne(zone, exercice, jugement, async (nom, valeur) => {
+        historique.enregistrer_ressentis(base, Number(seance), { [nom]: valeur }, ECHELLE);
+        await stockage.sauver(base);
+      });
+    });
+
+  $("listeHistorique")
+    .querySelectorAll("[data-supprimer]")
+    .forEach((bouton) => {
+      bouton.addEventListener("click", async (evenement) => {
+        // Le bouton vit dans un <details> : sans ca, cliquer le replierait.
+        evenement.preventDefault();
+        const id = Number(bouton.dataset.supprimer);
+        const seance = histoire.find((s) => s.id === id);
+        if (!confirm(
+          `Supprimer « ${seance?.nom ?? "cette séance"} » de l'historique ? ` +
+          "Les niveaux et les objectifs seront recalculés sans elle."
+        )) return;
+        historique.supprimer_seance(base, id, PROFIL);
+        await stockage.sauver(base);
+        dessiner_historique();
+      });
+    });
 }
 
 // ---------------------------------------------------------------- records

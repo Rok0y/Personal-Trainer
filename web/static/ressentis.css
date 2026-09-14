@@ -1,0 +1,39 @@
+/* ==========================================================================
+   La saisie du ressenti, partagee par les deux applications.
+
+   Elle vivait dans le <style> de `fin.html`, que seul le poste fixe sert.
+   L'application du navigateur n'avait aucune facon de repondre — alors que
+   `ressenti.js` y etait deja branche dans le moteur. Le moteur lisait donc
+   toujours « pas de reponse », c'est-a-dire +1 apres une reussite, pendant
+   que le poste fixe accelerait a +2 ou +3 : **les deux versions ne
+   progressaient pas au meme rythme**, et rien a l'ecran ne le disait.
+
+   Le comportement des boutons vit dans `js/ressentis_ui.js`, pour la meme
+   raison et selon le meme decoupage que `hud.css` / `hud.js`.
+   ========================================================================== */
+
+/* Ligne de ressenti, injectée par le script une fois la séance écrite
+   en base. Reste vide et invisible tant qu'il n'y a rien à proposer. */
+.feedback {
+    display: none; margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid var(--border);
+    align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.feedback.visible { display: flex; }
+.verdict {
+    font: 700 11px 'Space Grotesk', sans-serif; text-transform: uppercase;
+    letter-spacing: .08em; padding: 5px 12px; border-radius: 999px;
+    border: 1px solid var(--border-strong); margin-right: 4px;
+}
+.verdict.reussi { color: var(--teal); }
+.verdict.echoue { color: var(--orange); }
+.feedback button {
+    padding: 8px 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--border-strong); background: transparent;
+    color: var(--muted); font: 600 12px 'Space Grotesk', sans-serif;
+    transition: border-color .2s ease, color .2s ease;
+}
+.feedback button:hover { border-color: var(--teal); color: var(--teal); }
+.feedback button.actif { border-color: var(--teal); color: var(--teal); background: var(--glass); }
+.feedback button.actif[data-valeur="trop_dur"] { border-color: var(--orange); color: var(--orange); }
+.feedback button:disabled { opacity: .4; cursor: default; }
