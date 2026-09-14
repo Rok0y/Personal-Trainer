@@ -7,9 +7,10 @@
 
 # ATTENTION : ne jamais installer `opencv-python` a cote de celui-ci. Les deux
 # paquets fournissent le meme module `cv2` et s'ecrasent l'un l'autre ; c'est le
-# dernier installe qui gagne, en silence. Cette machine porte encore un
-# `opencv-python==4.11.0.86` residuel, mais c'est bien la 5.0.0 ci-dessous que
-# `import cv2` charge — a desinstaller (`pip uninstall opencv-python`).
+# dernier installe qui gagne, en silence. Le residuel qui trainait sur cette
+# machine a ete desinstalle, et `import cv2` charge bien la 5.0.0 ci-dessous.
+# Verification en cas de doute : `python -c "import cv2; print(cv2.__version__)"`
+# doit rendre la meme version que la ligne du dessous.
 opencv-contrib-python==5.0.0.93
 
 mediapipe==0.10.35
@@ -17,3 +18,20 @@ numpy==2.4.6
 pygame==2.6.1
 Flask==3.1.3
 pydub==0.25.1
+
+
+# --------------------------------------------------------------------------
+# Ce que ce fichier ne couvre PAS, volontairement.
+#
+# 1. Le deploiement du site statique (`.github/workflows/demo.yml`) n'installe
+#    QUE numpy, parce que `scripts/preparer_demo.py` ne touche qu'au catalogue
+#    d'exercices — jamais a `vision/` ni a `audio/`. Installer tout ce fichier
+#    y tirerait opencv et mediapipe pour rien. Si l'arbre d'imports de ce script
+#    s'alourdit un jour, l'etape doit echouer bruyamment plutot que d'avoir ete
+#    blindee a l'avance.
+#
+# 2. Les harnais de comparaison du portage ont besoin de **Node.js**, qui n'est
+#    pas un paquet pip et n'a donc rien a faire ici. L'application elle-meme n'en
+#    a besoin dans aucune de ses deux versions : c'est un outil de verification,
+#    pas une dependance d'execution.
+# --------------------------------------------------------------------------
