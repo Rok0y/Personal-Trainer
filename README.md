@@ -183,6 +183,10 @@ premier.
   que numpy**, parce que l'export ne touche qu'au catalogue : si l'arbre
   d'imports s'alourdit un jour, l'étape doit échouer bruyamment plutôt que
   d'être blindée à l'avance.
+- **Chaque déploiement marque ses ressources** de l'empreinte du commit
+  (`camera.js?v=<sha>`). Un navigateur ne peut donc pas combiner un document
+  neuf avec un module gardé en cache — ce qui fait échouer l'application sur
+  une fonction disparue, en accusant un code déjà corrigé.
 - Cette CI **ne lance aucun harnais de comparaison** : ils restent à lancer à la
   main avant de pousser.
 - **La base de données n'est pas versionnée** et ne doit pas le redevenir : un

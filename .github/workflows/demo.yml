@@ -67,6 +67,17 @@ jobs:
           <p><a href="demo/">Ouvrir la demo</a></p>
           HTML
 
+      # Chaque ressource locale recoit l'empreinte du commit deploye. Sans ca,
+      # un navigateur qui tient encore l'ancien module en cache le combine avec
+      # le nouveau document : l'application echoue sur une fonction disparue et
+      # accuse un code deja corrige. C'est arrive, sur un iPad, au demarrage
+      # d'une seance. Le cache n'est pas en cause — sa granularite l'est, chaque
+      # fichier expirant pour son compte. Changer l'adresse plutot qu'esperer
+      # l'expiration est la seule facon d'etre sur qu'un deploiement est servi
+      # entier.
+      - name: Marquer les ressources avec l'empreinte du commit
+        run: python -m scripts.empreinte_deploiement _site "${{ github.sha }}"
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
