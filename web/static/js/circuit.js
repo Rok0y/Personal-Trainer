@@ -18,6 +18,8 @@
 // sont absentes plutot que vides — une methode qui ment est pire qu'une
 // methode qui manque.
 
+import { est_cible_manuelle } from "./cible_manuelle.js";
+
 export const MODE_REPETITIONS = "repetitions";
 export const MODE_MAINTIEN = "maintien";
 export const MODE_CHRONO = "chrono";
@@ -483,6 +485,37 @@ export class Circuit {
    */
   peut_refaire_derniere_serie() {
     return this._derniere_serie_terminee !== null;
+  }
+
+  /**
+   * Decrit les blocs configures — tous par defaut.
+   *
+   * `blocs` sert aux **deux** barres de progression, qui indexent leurs
+   * segments a plat avec un compteur : celle des exercices recoit
+   * `blocs_comptabilises`, celle de l'echauffement `blocs_echauffement`.
+   * Melanger les deux listes decalerait tous les segments de l'autre — c'est
+   * pour cela que cette methode prend la liste et non un booleen
+   * `inclure_echauffement`, qui ne saurait pas en decrire deux.
+   *
+   * `cible_manuelle` est **resolu** en booleen : cet export alimente
+   * l'affichage, ou la question est « ce bloc est-il fige *pour moi* ? ».
+   * La valeur brute, une liste d'identifiants de profils, ne quitte jamais
+   * l'ecriture sur disque — l'aplatir la effacerait la marque des autres.
+   */
+  exporter_configuration(blocs = null, utilisateur_id = null) {
+    return (blocs === null ? this.exercices : blocs).map((bloc) => ({
+      nom: bloc.exercice.nom,
+      series: bloc.nombre_series,
+      repetitions: bloc.repetitions_par_serie,
+      poids: bloc.poids,
+      mode: bloc.mode,
+      duree: bloc.duree,
+      commentaire: bloc.commentaire,
+      repos_entre_series: bloc.repos_entre_series,
+      repos_apres: bloc.repos_apres,
+      entrelace_avec: bloc.entrelace_avec,
+      cible_manuelle: est_cible_manuelle(bloc, utilisateur_id),
+    }));
   }
 
   /**

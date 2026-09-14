@@ -108,3 +108,88 @@ export function resultats_par_exercice(seance) {
     })),
   }));
 }
+
+//: Les phases pendant lesquelles le nom affiche n'est pas celui d'un
+//: exercice. `main.py` ecrit ces memes libelles dans l'etat ; ils vivent ici
+//: pour que les deux applications les prononcent pareil.
+const LIBELLES_DE_PHASE = {
+  recuperation_serie: "Récupération",
+  repos_exercice: "Repos",
+  termine: "Séance terminée",
+  abandonne: "Séance terminée",
+};
+
+/**
+ * L'etat de seance sous la forme que `/etat` renvoie sur le poste fixe.
+ *
+ * **C'est le contrat entre les deux applications**, et la raison pour laquelle
+ * `hud.js` n'a pas besoin de savoir laquelle l'appelle : Flask serialise
+ * `EtatSeance` et `SessionManager.etat()`, cette fonction fabrique le meme
+ * objet depuis le `Circuit` local.
+ *
+ * Les champs derives du circuit sont **relus ici** plutot que recopies dans
+ * `etat` au fil de la boucle, comme le fait `main.py`. Deux raisons : le
+ * circuit fait autorite, donc une copie ne peut que se perimer ; et la boucle
+ * du navigateur n'a alors rien a tenir a jour pour l'affichage, ce qui retire
+ * une occasion d'oublier un champ.
+ *
+ * `commandes_autorisees` est le jumeau de `SessionManager.etat()` — le seul
+ * morceau de ce fichier qui n'ait pas de source cote circuit, puisque le
+ * controleur n'est pas porte : le navigateur n'a pas de facade thread-safe a
+ * offrir a des requetes HTTP, il appelle le circuit directement.
+ */
+export function payload_etat(seance, etat, statut = "running", utilisateur_id = null) {
+  const bloc = seance.bloc_actuel;
+  const active = !["termine", "abandonne"].includes(seance.phase);
+  const en_marche = ["running", "paused"].includes(statut);
+
+  return {
+    ...etat,
+
+    // --- Ce que le circuit sait mieux que l'etat ---
+    // La pause n'est pas une phase du circuit mais un etat du *pilote* : le
+    // circuit continue d'exister tel quel, on cesse seulement de l'avancer.
+    // `main.py` fait exactement cela — `etat.phase = "pause"` sans rien
+    // toucher a la seance — et l'affichage n'a pas a connaitre la difference.
+    phase: statut === "paused" ? "pause" : seance.phase,
+    serie_actuelle: active ? seance.serie_actuelle : 0,
+    nombre_series: active ? seance.nombre_series : 0,
+    repetitions_cibles: active ? seance.repetitions_cibles : 0,
+    temps_repos_restant: active ? seance.temps_restant : 0,
+    poids: active ? seance.poids : 0,
+    duree_session: seance.duree_totale,
+    commentaire_exercice: bloc ? bloc.commentaire : "",
+    exercice_actuel:
+      LIBELLES_DE_PHASE[seance.phase] ??
+      (seance.exercice_actuel ? seance.exercice_actuel.nom : etat.exercice_actuel),
+
+    // --- Ce que le controleur fournit cote Flask ---
+    statut_session: statut,
+    series_terminees: active ? seance.series_terminees : 0,
+    nombre_series_total: active ? seance.nombre_series_total : 0,
+    exercices: active
+      ? seance.exporter_configuration(seance.blocs_comptabilises, utilisateur_id)
+      : [],
+    echauffements: active
+      ? seance.exporter_configuration(seance.blocs_echauffement, utilisateur_id)
+      : [],
+    echauffements_termines: active ? seance.series_echauffement_terminees : 0,
+    dans_echauffement: active ? seance.dans_echauffement : false,
+    commandes_autorisees: {
+      reset: en_marche,
+      recommencer: en_marche,
+      precedente: en_marche && active && seance.serie_actuelle > 1,
+      suivante: en_marche && active && seance.serie_actuelle < seance.nombre_series,
+      // Independant de la phase et de l'index courant : seule compte
+      // l'existence d'une serie deja terminee.
+      refaire: en_marche && active && seance.peut_refaire_derniere_serie(),
+      terminer: en_marche,
+      passer_pause:
+        en_marche &&
+        active &&
+        ["recuperation_serie", "repos_exercice"].includes(seance.phase),
+      terminer_seance: en_marche,
+      abandonner: en_marche,
+    },
+  };
+}

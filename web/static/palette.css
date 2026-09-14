@@ -1,0 +1,39 @@
+/* ==========================================================================
+   La palette, et rien d'autre.
+
+   Elle vivait dans `base.css`, que seules les pages Flask lient. L'application
+   du navigateur (`app/index.html`) n'a pas de raison de tirer une mise en page
+   de site — conteneurs, onglets, largeurs fixes — mais elle a toutes les
+   raisons d'avoir **les memes couleurs** : deux palettes, c'est deux
+   applications qui se ressemblent de moins en moins a chaque correction.
+
+   `base.css` l'importe, donc les sept gabarits n'ont rien change ; l'app la
+   lie directement. Une couleur s'ajoute ici, jamais en dur ailleurs.
+   ========================================================================== */
+
+:root {
+    --bg: #0a0d13;
+    --glass: rgba(15, 19, 28, 0.6);
+    --glass-strong: rgba(15, 19, 28, 0.82);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --text: #f4f2ec;
+    --muted: #8d97ab;
+    --orange: #ff5a36;
+    --orange-glow: rgba(255, 90, 54, 0.45);
+    --teal: #1be8c4;
+    --teal-glow: rgba(27, 232, 196, 0.45);
+    --blue: #4a9eff;
+    --blue-glow: rgba(74, 158, 255, 0.45);
+
+    /* Couleur d'identité de chaque mode d'exercice. Les trois premières
+       reprennent la palette existante ; violet et ambre sont propres aux
+       modes qui n'en avaient pas. L'ambre de l'échauffement est volontairement
+       chaud — c'est la seule distinction visuelle qui compte vraiment, entre
+       ce qui prépare et ce qui compte dans les statistiques. */
+    --mode-repetitions: var(--orange);
+    --mode-maintien: var(--teal);
+    --mode-chrono: var(--blue);
+    --mode-amrap: #a97bff;
+    --mode-echauffement: #ffb340;
+}

@@ -220,6 +220,13 @@ class SessionManager:
                 and seance_active
                 and self.seance.phase in ("recuperation_serie", "repos_exercice"),
                 "terminer_seance": self.statut in ("running", "paused"),
+                # Absente de ce dictionnaire pendant longtemps, alors que le
+                # bouton « Abandonner » existait : le front grise tout ce qui
+                # n'y figure pas, si bien qu'il n'a jamais pu etre clique. Les
+                # memes conditions que la methode `abandonner`, qui refuse
+                # sinon la commande.
+                "abandonner": self.statut in ("running", "paused")
+                and seance_active,
             }
             return {
                 "statut": self.statut,

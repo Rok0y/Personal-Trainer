@@ -2,37 +2,62 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0c1117">
+<meta name="theme-color" content="#0a0d13">
 <title>Coach</title>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- La palette et le HUD sont **les memes fichiers** que ceux du poste fixe.
+     C'est ce qui remplace la copie qui vivait ici : deux feuilles separees
+     derivaient a chaque correction, et l'ecran de seance avait fini par ne
+     plus rien avoir de commun avec celui du desktop — ni couleurs, ni
+     typographie, ni disposition. `base.css` reste volontairement hors du
+     coup : c'est une mise en page de *site*, avec ses conteneurs et ses
+     largeurs fixes, que cette page n'a aucune raison de subir. -->
+<link rel="stylesheet" href="../palette.css">
+<link rel="stylesheet" href="../hud.css">
+
 <style>
+  /* Les ecrans de liste (seances, historique, records, fin) ont leur propre
+     vocabulaire de couleurs, anterieur au partage de la palette. Le faire
+     pointer sur les variables communes suffit a les aligner, sans avoir a
+     renommer deux cents declarations — et une couleur ne se decide toujours
+     qu'a un seul endroit, `palette.css`. */
   :root {
-    --fond: #0c1117;
-    --surface: #141c26;
-    --surface-haut: #1c2734;
-    --trait: #253242;
-    --texte: #e8eef6;
-    --texte-doux: #9fb3c8;
-    --accent: #4b9bff;
-    --alerte: #ffb347;
-    --erreur: #ff6b5e;
-    --reussite: #64c79c;
+    --fond: var(--bg);
+    --surface: var(--glass);
+    --surface-haut: var(--glass-strong);
+    --trait: var(--border);
+    --texte: var(--text);
+    --texte-doux: var(--muted);
+    --accent: var(--orange);
+    --alerte: var(--mode-echauffement);
+    --erreur: var(--orange);
+    --reussite: var(--teal);
   }
 
-  * { box-sizing: border-box; }
-
   html, body {
-    margin: 0;
     height: 100%;
-    background: var(--fond);
-    color: var(--texte);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
     overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
   }
 
   .ecran { display: none; height: 100%; }
   .ecran.actif { display: flex; flex-direction: column; }
+
+  /* L'ecran de seance est un `.stage` : un calque sur une image plein cadre,
+     dont tous les elements sont positionnes en absolu. La colonne flex des
+     autres ecrans n'a rien a y faire. */
+  #ecranSeance.actif { display: block; }
+
+  /* **`contain` et jamais `cover`**, contrairement au poste fixe. Recadrer
+     masquerait une partie de ce que le modele analyse : on se verrait entier
+     a l'ecran pendant que le controle de cadrage signale un genou hors champ,
+     c'est-a-dire exactement la confusion qu'il est la pour lever. Le poste
+     fixe peut se le permettre, son flux arrive deja au format de l'ecran. */
+  #ecranSeance .video { object-fit: contain; background: #000; }
 
   /* ---------- Liste des seances ---------- */
 
@@ -81,222 +106,6 @@
   .puce-echauffement { color: var(--accent); }
   .puce b { color: var(--texte); font-weight: 600; }
   .puce-tester { color: var(--alerte); }
-
-  /* ---------- Seance ---------- */
-
-  #ecranSeance { position: relative; background: #000; }
-
-  #rendu {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-
-  .bandeau-haut {
-    position: relative;
-    padding: max(0.7rem, env(safe-area-inset-top)) 0.9rem 0.7rem;
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    background: linear-gradient(#000c, #0000);
-  }
-
-  .progression {
-    flex: 1;
-    height: 5px;
-    border-radius: 99px;
-    background: #ffffff26;
-    overflow: hidden;
-    display: flex;
-    gap: 2px;
-  }
-  .segment { flex: 1; background: #ffffff2e; border-radius: 99px; }
-  .segment.faite { background: var(--reussite); }
-  .segment.echauffement.faite { background: var(--accent); }
-
-  .bouton-discret {
-    background: #ffffff1f;
-    border: 0;
-    color: var(--texte);
-    font: inherit;
-    font-size: 0.82rem;
-    padding: 0.35rem 0.7rem;
-    border-radius: 99px;
-    cursor: pointer;
-  }
-
-  .bandeau-bas {
-    position: relative;
-    margin-top: auto;
-    padding: 1rem 0.9rem max(1rem, env(safe-area-inset-bottom));
-    background: linear-gradient(#0000, #000d 35%);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .nom-exercice { font-size: 1.12rem; font-weight: 600; }
-  .serie { color: var(--texte-doux); font-size: 0.86rem; }
-
-  .consigne { color: var(--alerte); font-weight: 600; min-height: 1.3em; }
-  .erreur { color: var(--erreur); font-weight: 600; min-height: 1.3em; }
-
-  .compteur { display: flex; align-items: baseline; gap: 0.5rem; }
-  .compteur b { font-size: 3.4rem; line-height: 1; font-weight: 700; }
-  .compteur span { font-size: 1rem; color: var(--texte-doux); font-weight: 600; }
-
-  .etape {
-    font-size: 0.8rem;
-    color: var(--texte-doux);
-    font-variant-numeric: tabular-nums;
-  }
-
-
-  /* ---------- HUD de seance, repris du site desktop ----------
-     Memes informations et meme hierarchie : badges en haut, anneau de geste
-     au centre, compteur et barre de progression en bas. Les proportions sont
-     adaptees a un ecran de telephone tenu a deux metres. */
-
-  .badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-bottom: 0.55rem;
-  }
-  .badge {
-    background: #0d1520cc;
-    border: 1px solid var(--trait);
-    border-radius: 9px;
-    padding: 0.32rem 0.6rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.05rem;
-    min-width: 0;
-  }
-  .badge .etiquette {
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--texte-doux);
-  }
-  .badge .valeur {
-    font-size: 0.92rem;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* L'anneau du geste : la seule chose qui dit « c'est en train de compter ».
-     Sans lui, tenir les bras croises ne donne aucun retour, et on ne sait pas
-     si le geste est pris ou si l'on s'y prend mal. */
-  .anneau-geste {
-    position: absolute;
-    inset: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-  }
-  .anneau-geste.actif { display: flex; }
-  .anneau-geste svg { width: 150px; height: 150px; transform: rotate(-90deg); }
-  .anneau-fond { fill: none; stroke: #ffffff1f; stroke-width: 6; }
-  .anneau-avance {
-    fill: none;
-    stroke: var(--accent);
-    stroke-width: 6;
-    stroke-linecap: round;
-    stroke-dasharray: 439.8;
-    stroke-dashoffset: 439.8;
-    transition: stroke-dashoffset 0.12s linear;
-  }
-  .anneau-texte {
-    position: absolute;
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: var(--texte);
-    text-align: center;
-    max-width: 9rem;
-    line-height: 1.3;
-  }
-
-  .piste {
-    height: 5px;
-    border-radius: 99px;
-    background: #ffffff1f;
-    overflow: hidden;
-    margin-top: 0.45rem;
-  }
-  .piste-remplie {
-    height: 100%;
-    width: 0%;
-    border-radius: 99px;
-    background: linear-gradient(90deg, var(--accent), #8ec5ff);
-    transition: width 0.3s ease;
-  }
-
-  .cartes-etat {
-    display: flex;
-    gap: 0.45rem;
-    margin-top: 0.55rem;
-  }
-  .carte-etat {
-    background: #0d1520cc;
-    border: 1px solid var(--trait);
-    border-radius: 9px;
-    padding: 0.35rem 0.6rem;
-    flex: 1;
-    min-width: 0;
-  }
-  .carte-etat .etiquette {
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--texte-doux);
-    display: block;
-  }
-  .carte-etat .valeur {
-    font-size: 0.84rem;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* ---------- Voile de repos ---------- */
-
-  .voile {
-    position: absolute;
-    inset: 0;
-    background: #060a0ee6;
-    backdrop-filter: blur(3px);
-    display: none;
-    flex-direction: column;
-    justify-content: center;
-    gap: 0.9rem;
-    padding: 1.6rem 1.3rem;
-    text-align: center;
-  }
-  .voile.actif { display: flex; }
-  .voile-titre { font-size: 0.9rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--texte-doux); }
-  .voile-compte { font-size: 4.2rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
-  .voile-suite { font-size: 1.05rem; font-weight: 600; }
-
-  .fiche {
-    text-align: left;
-    background: var(--surface);
-    border: 1px solid var(--trait);
-    border-radius: 12px;
-    padding: 0.9rem 1rem;
-    max-height: 34vh;
-    overflow-y: auto;
-  }
-  .fiche h3 { margin: 0 0 0.4rem; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--texte-doux); }
-  .fiche ul { margin: 0; padding-left: 1.1rem; font-size: 0.9rem; color: var(--texte-doux); }
-  .fiche li { margin-bottom: 0.2rem; }
 
   .actions { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
 
@@ -612,55 +421,213 @@
   <div id="listeRecords"></div>
 </section>
 
-<!-- ====================== SEANCE ====================== -->
-<section class="ecran" id="ecranSeance">
-  <canvas id="rendu"></canvas>
+<!-- L'ecran de seance est **le HUD du poste fixe**, aux memes classes et aux
+     memes identifiants : `hud.css` l'habille et `hud.js` le peint. La seule
+     difference est la source de l'image — un <canvas> alimente par la camera
+     de l'appareil, la ou le poste fixe recoit un flux MJPEG de Flask. -->
+<section class="ecran stage" id="ecranSeance">
 
-  <div class="bandeau-haut">
-    <div class="progression" id="progression"></div>
-    <button class="bouton-discret" id="boutonAbandonner">Arrêter</button>
+  <canvas class="video" id="rendu"></canvas>
+  <div class="vignette"></div>
+  <div class="scanlines"></div>
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span class="brand-name">Personal<span>Trainer</span></span>
+    </div>
+
+    <div class="topbar-center">
+      <div class="exercise-badge" id="exerciseBadge">
+        <span class="exercise-label">Exercice</span>
+        <span class="exercise-value" id="exercice">Aucun</span>
+      </div>
+
+      <div class="series-badge" id="seriesBadge">
+        <span class="series-label">Série</span>
+        <span class="series-value" id="series">1 / 1</span>
+      </div>
+
+      <div class="weight-badge" id="weightBadge">
+        <span class="weight-label">Poids</span>
+        <span class="weight-value" id="weight">—</span>
+      </div>
+    </div>
+
+    <div class="status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">En direct</span>
+    </div>
+    <div class="duration-badge">
+      <strong id="sessionDuration">0 min</strong>&nbsp;de séance
+    </div>
   </div>
 
-  <!-- L'anneau du geste, au centre de l'image : c'est la seule chose qui dit
-       « ton bras en X est pris en compte ». -->
-  <div class="anneau-geste" id="anneauGeste">
-    <svg viewBox="0 0 160 160" aria-hidden="true">
-      <circle class="anneau-fond" cx="80" cy="80" r="70"></circle>
-      <circle class="anneau-avance" id="anneauAvance" cx="80" cy="80" r="70"></circle>
-    </svg>
-    <div class="anneau-texte" id="anneauTexte"></div>
-  </div>
+  <div class="rest-overlay" id="restOverlay">
+    <span class="rest-title" id="restTitle">Récupération</span>
 
-  <div class="bandeau-bas">
-    <div class="badges">
-      <div class="badge"><span class="etiquette">Exercice</span><span class="valeur" id="nomExercice">—</span></div>
-      <div class="badge"><span class="etiquette">Série</span><span class="valeur" id="serie">—</span></div>
-      <div class="badge"><span class="etiquette">Charge</span><span class="valeur" id="charge">—</span></div>
+    <span class="rest-next-label" id="restNextLabel">Prochain exercice</span>
+    <span class="rest-next-name" id="restNextName">—</span>
+
+    <div class="breathe-circle" id="breatheCircle">
+      <span class="rest-time" id="restTime">0:00</span>
     </div>
-    <div class="erreur" id="erreur"></div>
-    <div class="consigne" id="consigne"></div>
-    <div class="compteur"><b id="valeur">0</b> <span id="cible"></span></div>
-    <div class="piste"><div class="piste-remplie" id="pisteRemplie"></div></div>
-    <div class="cartes-etat">
-      <div class="carte-etat"><span class="etiquette">Étape</span><span class="valeur" id="etape">—</span></div>
-      <div class="carte-etat"><span class="etiquette">Temps de séance</span><span class="valeur" id="dureeSeance">0 min</span></div>
+
+    <div class="prep-ring-wrap" id="prepRingWrap">
+      <svg class="prep-ring" viewBox="0 0 160 160">
+        <circle class="prep-ring-bg" cx="80" cy="80" r="70"></circle>
+        <circle class="prep-ring-progress" id="prepRingProgress" cx="80" cy="80" r="70"></circle>
+      </svg>
+      <span class="prep-percent" id="prepPercent">0%</span>
     </div>
-    <!-- Filet de securite : personne ne doit rester bloque parce que le geste
-         ne se declenche pas chez lui. Visible pendant la preparation seulement,
-         pour ne pas encombrer l'ecran pendant l'effort. -->
+
+    <span class="rest-next" id="restNext">Prochain : —</span>
+    <div class="overlay-session-info">Temps total : <strong id="overlaySessionDuration">0:00</strong></div>
+    <div class="overlay-session-progress" aria-label="Progression de la séance">
+      <div id="overlaySessionProgressSegments"></div>
+    </div>
+
+    <!-- Propre a l'application : personne ne doit rester bloque parce que le
+         geste bras en X ne se declenche pas chez lui. Le poste fixe a un
+         clavier pour ca, une tablette posee par terre n'a rien. -->
     <button class="bouton" id="boutonCommencer" hidden>Je commence</button>
   </div>
 
-  <div class="voile" id="voile">
-    <div class="voile-titre" id="voileTitre">Récupération</div>
-    <div class="voile-compte" id="voileCompte">0</div>
-    <div class="voile-suite" id="voileSuite"></div>
-    <div class="fiche" id="voileFiche" hidden></div>
-    <div class="actions">
-      <button class="bouton secondaire" id="boutonPasserRepos">Passer le repos</button>
-      <button class="bouton secondaire" id="boutonRefaire">Refaire cette série</button>
+  <div class="hold-container" id="holdContainer">
+    <div class="hold-ring-wrap">
+      <svg class="hold-ring" viewBox="0 0 160 160">
+        <circle class="hold-ring-bg" cx="80" cy="80" r="70"></circle>
+        <circle class="hold-ring-progress" id="holdRingProgress" cx="80" cy="80" r="70"></circle>
+      </svg>
+      <div class="hold-bubble" id="holdBubble"></div>
+      <span class="hold-percent" id="holdPercent">0%</span>
+      <div class="burst" id="burst"></div>
     </div>
+    <span class="hold-caption">Maintien</span>
   </div>
+
+  <div class="error-alert" id="errorAlert" role="alert" aria-live="assertive">
+    <span class="error-asset" aria-hidden="true">!</span>
+    <span class="error-message" id="errorMessage"></span>
+  </div>
+
+  <!-- Deux bandeaux et non un : l'erreur reproche une faute de forme, la
+       consigne dit quoi faire (« place-toi devant la camera »). -->
+  <div class="consigne-alert" id="consigneAlert" role="status" aria-live="polite">
+    <span class="consigne-asset" aria-hidden="true">i</span>
+    <span class="consigne-message" id="consigneMessage"></span>
+  </div>
+
+  <div class="side-panel">
+
+    <div class="card position-card">
+      <span class="label">Position</span>
+      <span class="position-value" id="position">Aucune</span>
+    </div>
+
+    <div class="card stage-card">
+      <span class="label">Étape</span>
+      <span class="stage-value" id="stage">Aucune</span>
+    </div>
+
+    <div class="card comment-card" id="commentCard" hidden>
+      <span class="label">Note exercice</span>
+      <span class="stage-value" id="exerciseComment"></span>
+    </div>
+
+  </div>
+
+  <div class="right-column">
+
+    <div class="card fiche-card" id="ficheCard" hidden>
+      <span class="label" id="ficheLabel">Consignes</span>
+      <ol id="ficheInstructions"></ol>
+    </div>
+
+    <div class="hud">
+
+      <div class="card reps-card workout-card" id="workoutCard" data-mode="repetitions">
+
+        <!-- MODE_REPETITIONS : "8 / 12 repetitions" -->
+        <div class="workout-block workout-block--repetitions">
+          <span class="label">Répétitions</span>
+          <div class="reps-value-wrap">
+            <span class="impact-ring" id="ring"></span>
+            <span class="reps-value" id="reps">0</span>
+          </div>
+          <span class="reps-target">objectif : <strong id="repsCible">10</strong></span>
+          <div class="reps-progress-track">
+            <div class="reps-progress-fill" id="repsProgressFill"></div>
+          </div>
+        </div>
+
+        <!-- MODE_MAINTIEN : "7 / 15 secondes" -->
+        <div class="workout-block workout-block--maintien">
+          <span class="label">Maintien</span>
+          <div class="reps-value-wrap">
+            <span class="impact-ring" id="maintienRing"></span>
+            <span class="reps-value" id="maintienTemps">0</span>
+          </div>
+          <span class="reps-target">
+            <strong id="maintienTempsTexte">0</strong> / <span id="maintienDureeTexte">0</span> secondes
+          </span>
+          <div class="reps-progress-track">
+            <div class="reps-progress-fill" id="maintienProgressFill"></div>
+          </div>
+          <span class="maintien-status" id="maintienStatus">Maintenir la position</span>
+        </div>
+
+        <!-- MODE_CHRONO : "45 secondes restantes" -->
+        <div class="workout-block workout-block--chrono">
+          <span class="label">Chrono</span>
+          <span class="chrono-value" id="chronoTemps">0</span>
+          <span class="reps-target">secondes restantes</span>
+        </div>
+
+        <!-- MODE_AMRAP : "12 repetitions en 60 secondes" -->
+        <div class="workout-block workout-block--amrap">
+          <span class="label">AMRAP</span>
+          <div class="amrap-row">
+            <span class="reps-value" id="amrapReps">0</span>
+          </div>
+          <span class="reps-target"><strong id="amrapTempsRestant">60</strong> secondes restantes</span>
+        </div>
+
+        <!-- MODE_ECHAUFFEMENT : "18 / 30 secondes" -->
+        <div class="workout-block workout-block--echauffement">
+          <span class="label">Échauffement</span>
+          <span class="chrono-value" id="echauffementTemps">0</span>
+          <span class="reps-target">
+            <strong id="echauffementTempsTexte">0</strong> / <span id="echauffementDureeTexte">0</span> secondes
+          </span>
+          <div class="reps-progress-track">
+            <div class="reps-progress-fill" id="echauffementProgressFill"></div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <nav class="series-controls" aria-label="Commandes de série">
+    <button type="button" data-contexte="exercice" data-commande="reset">Reset série</button>
+    <button type="button" data-contexte="exercice" data-commande="recommencer">Recommencer</button>
+    <button type="button" data-contexte="exercice" data-commande="precedente">Série précédente</button>
+    <button type="button" data-contexte="exercice" data-commande="suivante">Série suivante</button>
+    <button type="button" data-contexte="exercice" data-commande="terminer">Série terminée</button>
+    <button type="button" data-contexte="exercice" data-commande="pause">Pause</button>
+    <button type="button" data-contexte="pause" data-commande="reprendre">Reprendre</button>
+    <button type="button" data-contexte="pause" data-commande="passer_pause">Passer la pause</button>
+    <button type="button" data-contexte="pause" data-commande="refaire">Refaire cette série</button>
+    <button type="button" data-contexte="pause" data-commande="terminer_seance">Terminer la séance</button>
+    <button type="button" data-contexte="exercice" data-commande="abandonner">Abandonner</button>
+  </nav>
+  <div class="session-progress" aria-label="Progression de la séance">
+    <div id="sessionProgressSegments"></div>
+  </div>
+
 </section>
 
 <!-- ====================== FIN ====================== -->
@@ -680,11 +647,17 @@
 import { Camera, POSES_SEUL, dessiner_squelette } from "../js/camera.js";
 import { construire_corps } from "../js/landmarks.js";
 import { DETECTIONS } from "../js/detections.js";
-import { circuit_pour, resultats_par_exercice } from "../js/seance.js";
-import { executer_mode, duree_realisee, oublier_durees, mettre_a_jour_prochain_exercice } from "../js/moteur.js";
+import { circuit_pour, payload_etat, resultats_par_exercice } from "../js/seance.js";
+import { brancher_commandes, peindre_hud } from "../js/hud.js";
+import { executer_mode, duree_realisee, oublier_durees, mettre_a_jour_prochain_exercice, poser_etape } from "../js/moteur.js";
 import { CompteurMouvement } from "../js/compteur.js";
 import { HoldPosition } from "../js/outils.js";
-import { bras_en_x } from "../js/positions.js";
+import {
+  bras_droit_leve,
+  bras_en_x,
+  bras_gauche_leve,
+  deux_bras_leves,
+} from "../js/positions.js";
 import { creer_etat } from "../js/etat.js";
 import { texte, libelle_etape } from "../js/messages.js";
 import { points_utilises, consigne_de_cadrage } from "../js/cadrage.js";
@@ -708,7 +681,13 @@ const PROFIL = 1;
 // suit. Memes valeurs que `main.py` : le geste doit etre tenu assez longtemps
 // pour ne pas se declencher en s'installant, et le decompte laisse le temps de
 // redescendre les bras.
-const TENUE_GESTE = 1.5;
+//: Combien de temps un geste doit etre tenu. Trois valeurs et non une :
+//: entrer dans la seance est anodin (1,5 s), valider une serie ou la
+//: remettre a zero ne l'est pas (3 s, comme `main.py`). L'application les
+//: confondait a 1,5 s, si bien qu'un bras en X fugace pendant l'effort
+//: pouvait terminer la serie deux fois plus vite que sur le poste fixe.
+const TENUE_PREPARATION = 1.5;
+const TENUE_VALIDATION = 3;
 const DECOMPTE = 3;
 
 const $ = (id) => document.getElementById(id);
@@ -791,9 +770,16 @@ let derniere_rep = 0;
 let points_requis = [];
 let geste_preparation = null;
 let geste_fin = null;
+//: Deux bras leves remettent la serie a zero sans la valider. Tenu 3 s,
+//: comme sur le poste fixe : un geste destructeur ne doit pas partir au
+//: premier etirement.
+const geste_reset = new HoldPosition(deux_bras_leves, TENUE_VALIDATION);
 let fin_decompte = null;
 let dernier_decompte = null;
 let en_cours = false;
+//: « running » ou « paused ». Jumeau du statut de `SessionManager` :
+//: l'application n'a pas de controleur, mais elle a les memes commandes.
+let statut = "running";
 let phase_precedente = null;
 
 async function demarrer(nom) {
@@ -814,8 +800,8 @@ async function demarrer(nom) {
   derniere_rep = 0;
   phase_precedente = null;
   fin_decompte = null;
-  geste_preparation = new HoldPosition(bras_en_x, TENUE_GESTE);
-  geste_fin = new HoldPosition(bras_en_x, TENUE_GESTE);
+  geste_preparation = new HoldPosition(bras_en_x, TENUE_PREPARATION);
+  geste_fin = new HoldPosition(bras_en_x, TENUE_VALIDATION);
 
   // Le contexte audio se cree pendant le clic, jamais avant : iOS refuse de
   // jouer quoi que ce soit sans geste de l'utilisateur.
@@ -837,7 +823,6 @@ async function demarrer(nom) {
   }
 
   montrer("ecranSeance");
-  dessiner_progression();
   changer_exercice();
   en_cours = true;
   requestAnimationFrame(boucle);
@@ -863,6 +848,18 @@ function boucle(horodatage) {
   const corps_brut = camera.choisir(poses);
   peindre(corps_brut);
 
+  // En pause, l'image continue de defiler mais plus rien n'avance : ni le
+  // circuit, ni le comptage. Meme traitement que `main.py`, qui annule le
+  // corps detecte plutot que de sortir de la boucle — c'est ce qui laisse le
+  // flux visible pendant qu'on reprend son souffle.
+  if (statut === "paused") {
+    poser_etape(etat, "pause", libelle_etape);
+    etat.consigne = texte("pause");
+    rafraichir_affichage();
+    requestAnimationFrame(boucle);
+    return;
+  }
+
   // L'horloge de la seance avance toujours : c'est elle qui fait expirer un
   // repos, meme si personne n'est devant la camera.
   const avant = seance.phase;
@@ -874,6 +871,7 @@ function boucle(horodatage) {
   // tournait — ni cadrage, ni geste, ni meme un message.
   if (corps_brut) {
     const corps = construire_corps(corps_brut);
+    observer_gestes(corps);
     if (seance.phase === "preparation") preparer(corps, instant);
     else if (seance.phase === "exercice") jouer_exercice(corps, instant);
     else etat.consigne = null;
@@ -892,6 +890,51 @@ function boucle(horodatage) {
     return;
   }
   requestAnimationFrame(boucle);
+}
+
+/**
+ * Les gestes de controle, releves a **chaque** image quelle que soit la phase.
+ *
+ * Jumeau de la section correspondante de `main.py`, et il manquait trois
+ * choses a l'application. (1) `position_actuelle`, qui alimente la carte
+ * « Position » du HUD — sans elle la carte affichait « Aucune » en permanence.
+ * (2) La **bulle de maintien** : le poste fixe montre l'avancement du bras en
+ * X pendant tout l'exercice, ce qui est le seul retour disant « ton geste est
+ * pris ». (3) Les **deux bras leves**, qui remettent le compteur a zero sans
+ * valider la serie — un geste qui existait sur le poste fixe et nulle part
+ * dans le navigateur.
+ */
+function observer_gestes(corps) {
+  etat.position_actuelle = deux_bras_leves(corps)
+    ? "Deux bras levés"
+    : bras_droit_leve(corps)
+      ? "Bras droit levé"
+      : bras_gauche_leve(corps)
+        ? "Bras gauche levé"
+        : bras_en_x(corps)
+          ? "Bras en X"
+          : "Aucune";
+
+  // Pendant la preparation c'est le geste d'entree qui remplit la bulle,
+  // pendant l'effort celui de validation : les deux se tiennent de la meme
+  // facon, et montrer l'un puis l'autre evite d'avoir deux indicateurs.
+  const geste = seance.phase === "preparation" ? geste_preparation : geste_fin;
+  // **Lecture seule** : `update` ne doit etre appele qu'une fois par image, et
+  // c'est la phase qui s'en charge. L'appeler ici aussi consommerait la
+  // transition « termine », que `HoldPosition` ne rend qu'une seule fois — la
+  // serie ne se validerait plus jamais.
+  etat.progression_maintien =
+    !geste || geste.debut === null
+      ? 0
+      : Math.min(100, ((geste.horloge() - geste.debut) / geste.duree) * 100);
+  etat.maintien_termine = Boolean(geste && geste.termine);
+
+  const [, reset] = geste_reset.update(corps);
+  if (reset && seance.phase === "exercice") {
+    compteur.reset();
+    etat.repetitions = 0;
+    derniere_rep = 0;
+  }
 }
 
 /**
@@ -943,7 +986,7 @@ function lancer_effort() {
   etat.consigne = null;
   coach("debut_serie");
   seance.commencer_exercice();
-  geste_fin = new HoldPosition(bras_en_x, TENUE_GESTE);
+  geste_fin = new HoldPosition(bras_en_x, TENUE_VALIDATION);
 }
 
 function jouer_exercice(corps, instant) {
@@ -1019,8 +1062,7 @@ function apres_serie() {
   derniere_rep = 0;
   // Un geste neuf : sans ca, `HoldPosition` reste « termine » et la serie
   // suivante s'arreterait a la premiere image ou les bras sont encore croises.
-  geste_fin = new HoldPosition(bras_en_x, TENUE_GESTE);
-  dessiner_progression();
+  geste_fin = new HoldPosition(bras_en_x, TENUE_VALIDATION);
   if (seance.bloc_actuel) changer_exercice();
 }
 
@@ -1059,146 +1101,26 @@ function peindre(pose, nombre) {
   ctx.restore();
 }
 
+/**
+ * Peint le HUD — **avec la meme fonction que le poste fixe**.
+ *
+ * Tout ce qui etait ecrit ici (badges, compteur multi-modes, fiche, voile de
+ * repos, barres de progression) vivait en double : une version Flask, une
+ * version navigateur, qui ne se ressemblaient plus. `payload_etat` fabrique
+ * l'objet que `/etat` renvoie, `peindre_hud` s'en charge, et les deux ecrans
+ * ne peuvent plus diverger sans qu'on l'ait decide.
+ *
+ * Ne restent ici que les deux choses que le poste fixe n'a pas : un bouton de
+ * secours pour demarrer sans le geste, et l'anneau de geste bras en X pendant
+ * l'effort — cote Flask, la meme information passe par `progression_maintien`,
+ * que le serveur calcule.
+ */
 function rafraichir_affichage() {
-  const bloc = seance.bloc_actuel;
+  peindre_hud(payload_etat(seance, etat, statut, PROFIL));
 
-  $("nomExercice").textContent = bloc ? bloc.exercice.nom : "—";
-  $("serie").textContent = bloc
-    ? `${seance.serie_actuelle} / ${seance.nombre_series}`
-    : "—";
-  $("charge").textContent = bloc && bloc.poids ? `${bloc.poids} kg` : "poids du corps";
-  $("erreur").textContent = etat.erreur ?? "";
-  $("consigne").textContent = etat.consigne ?? "";
-  $("etape").textContent = etat.etape_libelle ?? "—";
-  $("dureeSeance").textContent = `${Math.floor(seance.duree_totale / 60)} min`;
-
-  // Le mode decide de ce qu'on compte, et il se deduit du bloc — pas d'une
-  // metadonnee a declarer.
-  const au_temps =
-    bloc && (bloc.mode === "maintien" || bloc.mode === "chrono" || bloc.mode === "echauffement");
-  let fait = 0;
-  let cible = 0;
-  if (au_temps) {
-    fait = etat.temps_maintien || etat.temps_chrono || etat.temps_echauffement || 0;
-    cible = bloc.duree;
-    $("valeur").textContent = Math.floor(fait);
-    $("cible").textContent = `secondes / ${cible}`;
-  } else {
-    fait = etat.repetitions ?? 0;
-    cible = bloc ? bloc.repetitions_par_serie : 0;
-    $("valeur").textContent = fait;
-    // Un test de calibration vise un plafond inatteignable : afficher
-    // « / 999 » donnerait l'impression d'un objectif rate avant d'avoir
-    // commence.
-    $("cible").textContent = !bloc
-      ? ""
-      : bloc.test_max
-        ? "— fais ton maximum, puis croise les bras"
-        : `/ ${cible}`;
-  }
-  // La barre reste vide pendant un test : il n'y a pas d'objectif a remplir.
-  const part = bloc && !bloc.test_max && cible ? Math.min(100, (fait / cible) * 100) : 0;
-  $("pisteRemplie").style.width = `${part}%`;
-
-  majAnneau();
-
-  const en_repos =
-    seance.phase === "recuperation_serie" || seance.phase === "repos_exercice";
-  $("voile").classList.toggle("actif", en_repos);
-  if (en_repos) {
-    $("voileTitre").textContent =
-      seance.phase === "recuperation_serie" ? "Récupération" : "Exercice suivant";
-    $("voileCompte").textContent = Math.ceil(seance.temps_restant);
-    const suite = etat.prochaine_etape;
-    $("voileSuite").textContent = suite
-      ? `${suite.exercice} — série ${suite.serie_actuelle} / ${suite.nombre_total_series}`
-      : "";
-    remplir_fiche(etat.fiche_suivante ?? etat.fiche);
-  }
-  $("boutonRefaire").hidden = !seance.peut_refaire_derniere_serie();
+  // Le geste de fin de serie reutilise la bulle de maintien du HUD : c'est le
+  // meme retour visuel, pour le meme genre d'action tenue.
   $("boutonCommencer").hidden = seance.phase !== "preparation";
-}
-
-//: Circonference du cercle de l'anneau (r = 70). Le trait se remplit en
-//: reduisant `stroke-dashoffset` de cette valeur a zero.
-const CIRCONFERENCE = 2 * Math.PI * 70;
-
-/**
- * L'anneau de progression du geste bras en X.
- *
- * Il repond a un defaut d'usage reel : tenir les bras croises sans aucun
- * retour ne dit pas si le geste est pris ou si l'on s'y prend mal. Le desktop
- * a toujours eu cet anneau ; l'application en etait depourvue, et le premier
- * test s'est solde par « mes bras en croix n'ont rien lance du tout ».
- */
-function majAnneau() {
-  const geste = seance.phase === "preparation" ? geste_preparation : geste_fin;
-  const progression = geste?.debut === null || geste?.debut === undefined
-    ? 0
-    : Math.min(100, ((geste.horloge() - geste.debut) / geste.duree) * 100);
-
-  // Pendant le decompte, l'anneau montre le compte a rebours plutot que le
-  // geste : c'est ce que l'on attend a ce moment-la.
-  const en_decompte = seance.phase === "preparation" && fin_decompte !== null;
-  const visible = en_decompte || progression > 0;
-
-  $("anneauGeste").classList.toggle("actif", visible);
-  if (!visible) return;
-
-  if (en_decompte) {
-    $("anneauAvance").style.strokeDashoffset = 0;
-    $("anneauTexte").textContent = dernier_decompte ?? "";
-    return;
-  }
-  $("anneauAvance").style.strokeDashoffset =
-    CIRCONFERENCE * (1 - progression / 100);
-  $("anneauTexte").textContent =
-    seance.phase === "preparation" ? "Ne bouge plus" : "Terminer la série";
-}
-
-function remplir_fiche(fiche) {
-  const bloc = $("voileFiche");
-  if (!fiche) {
-    bloc.hidden = true;
-    return;
-  }
-  const sections = [
-    ["Mise en place", fiche.mise_en_place],
-    ["Exécution", fiche.instructions],
-  ].filter(([, lignes]) => lignes?.length);
-  bloc.hidden = !sections.length;
-  bloc.innerHTML = sections
-    .map(
-      ([titre, lignes]) =>
-        `<h3>${titre}</h3><ul>${lignes.map((l) => `<li>${l}</li>`).join("")}</ul>`
-    )
-    .join("");
-}
-
-/**
- * Les segments de progression.
- *
- * Deux barres, jamais deux en meme temps : `dans_echauffement` decide
- * laquelle — c'est ce drapeau et non « reste-t-il des echauffements ? »,
- * puisqu'une seance qui n'en a aucun doit montrer celle des exercices des la
- * premiere image.
- */
-function dessiner_progression() {
-  const echauffement = seance.dans_echauffement;
-  const total = echauffement
-    ? seance.nombre_series_echauffement
-    : seance.nombre_series_total;
-  const faites = echauffement
-    ? seance.series_echauffement_terminees
-    : seance.series_terminees;
-  const barre = $("progression");
-  barre.innerHTML = "";
-  for (let i = 0; i < total; i++) {
-    const segment = document.createElement("div");
-    segment.className =
-      "segment" + (echauffement ? " echauffement" : "") + (i < faites ? " faite" : "");
-    barre.appendChild(segment);
-  }
 }
 
 // ---------------------------------------------------------------- fin
@@ -1526,18 +1448,55 @@ for (const onglet of document.querySelectorAll(".onglet")) {
 $("boutonCommencer").addEventListener("click", () => {
   if (seance && seance.phase === "preparation") lancer_effort();
 });
-$("boutonAbandonner").addEventListener("click", () => {
-  if (en_cours) terminer(true);
-});
-$("boutonPasserRepos").addEventListener("click", () => {
-  seance.passer_pause();
-  changer_exercice();
-});
-$("boutonRefaire").addEventListener("click", () => {
-  if (seance.refaire_derniere_serie()) {
+/**
+ * Les onze commandes de serie, cablees sur le `Circuit` local.
+ *
+ * C'est **toute** la difference avec le poste fixe, qui POSTe les memes noms
+ * sur des routes Flask : la couche d'affichage ne connait que des noms de
+ * commande, jamais des URL, et le reste — quel bouton est visible, lequel est
+ * grise — se decide a partir de `commandes_autorisees`, que `payload_etat`
+ * calcule comme le fait `SessionManager`.
+ */
+const COMMANDES = {
+  reset: () => seance.remettre_serie_a_zero(),
+  recommencer: () => seance.recommencer_serie(),
+  precedente: () => seance.serie_precedente(),
+  suivante: () => seance.serie_suivante(),
+  terminer: () => {
+    const bloc = seance.bloc_actuel;
+    if (!bloc) return;
+    // Le seul chemin qui puisse produire une serie **non reussie** :
+    // `objectif_serie_atteint` en juge, on ne force jamais `completee`.
+    seance.terminer_serie_manuellement({
+      repetitions: etat.repetitions,
+      duree: duree_realisee(bloc, etat),
+    });
+    oublier_durees(etat);
     apres_serie();
-    dessiner_progression();
-  }
+  },
+  pause: () => {
+    statut = "paused";
+    // Laisser courir le coach ferait compter a voix haute dans le vide.
+    lecteur.taire();
+  },
+  reprendre: () => {
+    statut = "running";
+  },
+  passer_pause: () => {
+    seance.passer_pause();
+    changer_exercice();
+  },
+  refaire: () => {
+    if (seance.refaire_derniere_serie()) apres_serie();
+  },
+  terminer_seance: () => terminer(),
+  abandonner: () => terminer(true),
+};
+
+brancher_commandes((nom) => {
+  if (!en_cours || !COMMANDES[nom]) return;
+  COMMANDES[nom]();
+  rafraichir_affichage();
 });
 $("boutonRetour").addEventListener("click", () => {
   dessiner_liste();
