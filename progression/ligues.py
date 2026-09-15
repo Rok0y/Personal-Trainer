@@ -107,19 +107,53 @@ def volume_relatif(nom_exercice, niveau):
     return atteint.volume / depart.volume
 
 
-def rang_pour_volume(relatif):
-    """Rang de 1 à 18 pour un volume relatif, ou None s'il n'atteint rien.
+#: Bornes de ligue posées à la main, exercice par exercice, en **volume
+#: absolu**. C'est la seule façon de placer un cran là où il veut dire quelque
+#: chose : la table relative unique donnait un réglage sensé au curl — Or III à
+#: 4x14 à 12 kg — et une absurdité aux pompes, où le même multiplicateur exige
+#: 324 répétitions. La raison est arithmétique : passer de 2 à 12 kg multiplie
+#: le volume par six sans changer une répétition, alors qu'au poids du corps le
+#: seul levier *est* la répétition. Aucun réglage global ne rattrape ça.
+SEUILS_PAR_EXERCICE = {
+    nom: tuple(valeurs) for nom, valeurs in _LIGUES.get("seuils_par_exercice", {}).items()
+}
+
+
+def seuils_exercice(nom_exercice):
+    """Les dix-huit bornes de ligue d'un exercice, en volume absolu.
+
+    Explicites si l'exercice en porte, sinon dérivées de la table relative
+    globale appliquée à son palier 1. **Ce repli n'est pas décoratif** : il
+    garantit qu'un exercice ajouté au catalogue a des ligues dès le premier
+    jour, au lieu de n'en avoir aucune jusqu'à ce que quelqu'un pense à le
+    régler — un manque qui ne se signalerait nulle part.
+
+    Tout le module raisonne ensuite en volume absolu : la table relative n'est
+    qu'une façon de fabriquer des valeurs par défaut, pas un second chemin de
+    calcul.
+    """
+    explicites = SEUILS_PAR_EXERCICE.get(nom_exercice)
+    if explicites:
+        return explicites
+    depart = palier(nom_exercice, 1)
+    if depart is None or not depart.volume:
+        return None
+    return tuple(seuil * depart.volume for seuil in SEUILS_VOLUME)
+
+
+def rang_pour_volume(volume, seuils):
+    """Rang de 1 à 18 pour un volume, ou None s'il n'atteint pas la première borne.
 
     `None` veut dire **pas de ligue**, ce qui n'est pas « rang 0 » : c'est la
     même distinction en trois situations que porte `niveaux.etat_niveau`, et un
     affichage ne doit pas la gommer en montrant un Bronze III qui n'a pas été
     gagné.
     """
-    if relatif is None or relatif < SEUILS_VOLUME[0]:
+    if volume is None or not seuils or volume < seuils[0]:
         return None
     rang = 1
-    for index, seuil in enumerate(SEUILS_VOLUME):
-        if relatif >= seuil:
+    for index, seuil in enumerate(seuils):
+        if volume >= seuil:
             rang = index + 1
     return rang
 
@@ -161,15 +195,15 @@ def ligue_pour_rang(rang):
     }
 
 
-def _avancement_dans_le_rang(relatif, rang):
+def _avancement_dans_le_rang(volume, rang, seuils):
     """Part du cran parcourue, de 0 à 1 — vaut 1 au dernier rang, qui n'a pas de suite."""
     if rang is None or rang >= RANG_MAX:
         return 1.0
-    plancher = SEUILS_VOLUME[rang - 1]
-    plafond = SEUILS_VOLUME[rang]
+    plancher = seuils[rang - 1]
+    plafond = seuils[rang]
     if plafond <= plancher:
         return 1.0
-    return max(0.0, min(1.0, (relatif - plancher) / (plafond - plancher)))
+    return max(0.0, min(1.0, (volume - plancher) / (plafond - plancher)))
 
 
 def ligue_exercice(nom_exercice, niveau):
@@ -181,20 +215,30 @@ def ligue_exercice(nom_exercice, niveau):
     """
     if not est_suivi_par_le_moteur(nom_exercice):
         return None
-    relatif = volume_relatif(nom_exercice, niveau)
-    rang = rang_pour_volume(relatif)
+    atteint = palier(nom_exercice, niveau) if niveau and niveau >= 1 else None
+    seuils = seuils_exercice(nom_exercice)
+    if atteint is None or not seuils:
+        return None
+    rang = rang_pour_volume(atteint.volume, seuils)
     if rang is None:
         return None
 
     return {
         **ligue_pour_rang(rang),
         "niveau": niveau,
-        "volume_relatif": relatif,
-        "seuil_actuel": SEUILS_VOLUME[rang - 1],
-        "seuil_suivant": SEUILS_VOLUME[rang] if rang < RANG_MAX else None,
-        "avancement": _avancement_dans_le_rang(relatif, rang),
+        "volume": atteint.volume,
+        "volume_relatif": volume_relatif(nom_exercice, niveau),
+        "seuil_actuel": seuils[rang - 1],
+        "seuil_suivant": seuils[rang] if rang < RANG_MAX else None,
+        "avancement": _avancement_dans_le_rang(atteint.volume, rang, seuils),
         "maximum_atteint": rang == RANG_MAX,
     }
+
+
+def rang_exercice(nom_exercice, niveau):
+    """Rang de ligue d'un exercice à un niveau donné, ou None."""
+    ligue = ligue_exercice(nom_exercice, niveau)
+    return ligue["rang"] if ligue else None
 
 
 def ligues_par_exercice(etats):
@@ -289,8 +333,8 @@ def montees_de_ligue(montees_niveaux):
     montees = {}
     for seance_id, exercices in montees_niveaux.items():
         for nom, montee in exercices.items():
-            avant = rang_pour_volume(volume_relatif(nom, montee.get("depuis")))
-            apres = rang_pour_volume(volume_relatif(nom, montee.get("vers")))
+            avant = rang_exercice(nom, montee.get("depuis"))
+            apres = rang_exercice(nom, montee.get("vers"))
             if apres is None or apres == avant:
                 continue
             montees.setdefault(seance_id, {})[nom] = {

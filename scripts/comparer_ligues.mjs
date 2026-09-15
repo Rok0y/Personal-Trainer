@@ -47,7 +47,11 @@ const INVENTAIRES = (tables) => {
 function repondre(moteur, ligne) {
   switch (ligne.question) {
     case "rang_pour_volume":
-      return moteur.ligues.rang_pour_volume(ligne.relatif);
+      return moteur.ligues.rang_pour_volume(ligne.volume, ligne.seuils);
+    case "seuils_exercice": {
+      const seuils = moteur.ligues.seuils_exercice(ligne.exercice);
+      return seuils ? [...seuils] : null;
+    }
     case "ligue_pour_rang":
       return moteur.ligues.ligue_pour_rang(ligne.rang);
     case "xp":

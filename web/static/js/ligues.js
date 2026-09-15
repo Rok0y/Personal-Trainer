@@ -37,6 +37,12 @@ export class Ligues {
     this.LIGUES = tables.ligues;
     this.DIVISIONS = tables.divisions;
     this.SEUILS_VOLUME = tables.seuils_volume;
+    //: Bornes posees a la main, exercice par exercice, en **volume absolu**.
+    //: La table relative unique donnait un reglage sense au curl et une
+    //: absurdite aux pompes : passer de 2 a 12 kg multiplie le volume par six
+    //: sans changer une repetition, alors qu'au poids du corps le seul levier
+    //: *est* la repetition.
+    this.SEUILS_PAR_EXERCICE = tables.seuils_par_exercice ?? {};
     this.PALIERS_XP = tables.paliers_xp;
     this.XP_BASE_NIVEAU_GENERAL = tables.xp_base_niveau_general;
     this.XP_INCREMENT_NIVEAU_GENERAL = tables.xp_increment_niveau_general;
@@ -81,14 +87,39 @@ export class Ligues {
    * affichage ne doit pas la gommer en montrant un Bronze III qui n'a pas ete
    * gagne.
    */
-  rang_pour_volume(relatif) {
-    if (relatif === null || relatif === undefined) return null;
-    if (relatif < this.SEUILS_VOLUME[0]) return null;
+  rang_pour_volume(volume, seuils) {
+    if (volume === null || volume === undefined) return null;
+    if (!seuils || !seuils.length || volume < seuils[0]) return null;
     let rang = 1;
-    this.SEUILS_VOLUME.forEach((seuil, index) => {
-      if (relatif >= seuil) rang = index + 1;
+    seuils.forEach((seuil, index) => {
+      if (volume >= seuil) rang = index + 1;
     });
     return rang;
+  }
+
+  /**
+   * Les dix-huit bornes d'un exercice, en volume absolu.
+   *
+   * Explicites si l'exercice en porte, sinon derivees de la table relative
+   * globale appliquee a son palier 1. **Ce repli n'est pas decoratif** : il
+   * garantit qu'un exercice ajoute au catalogue a des ligues des le premier
+   * jour, au lieu de n'en avoir aucune jusqu'a ce que quelqu'un pense a le
+   * regler — un manque qui ne se signalerait nulle part.
+   */
+  seuils_exercice(nom) {
+    const explicites = this.SEUILS_PAR_EXERCICE[nom];
+    if (explicites && explicites.length) return explicites;
+    const depart = this.baremes.palier(nom, 1);
+    if (!depart) return null;
+    const v = this.baremes.volume(depart.series, depart.cible, depart.poids);
+    if (!v) return null;
+    return this.SEUILS_VOLUME.map((seuil) => seuil * v);
+  }
+
+  /** Rang de ligue d'un exercice a un niveau donne, ou null. */
+  rang_exercice(nom, niveau) {
+    const ligue = this.ligue_exercice(nom, niveau);
+    return ligue ? ligue.rang : null;
   }
 
   /**
@@ -117,12 +148,12 @@ export class Ligues {
   }
 
   /** Part du cran parcourue, de 0 a 1 — vaut 1 au dernier rang, qui n'a pas de suite. */
-  _avancement_dans_le_rang(relatif, rang) {
+  _avancement_dans_le_rang(volume, rang, seuils) {
     if (rang === null || rang >= this.RANG_MAX) return 1.0;
-    const plancher = this.SEUILS_VOLUME[rang - 1];
-    const plafond = this.SEUILS_VOLUME[rang];
+    const plancher = seuils[rang - 1];
+    const plafond = seuils[rang];
     if (plafond <= plancher) return 1.0;
-    return Math.max(0.0, Math.min(1.0, (relatif - plancher) / (plafond - plancher)));
+    return Math.max(0.0, Math.min(1.0, (volume - plancher) / (plafond - plancher)));
   }
 
   /**
@@ -134,17 +165,21 @@ export class Ligues {
    */
   ligue_exercice(nom_exercice, niveau) {
     if (!this.baremes.est_suivi_par_le_moteur(nom_exercice)) return null;
-    const relatif = this.volume_relatif(nom_exercice, niveau);
-    const rang = this.rang_pour_volume(relatif);
+    const atteint = niveau && niveau >= 1 ? this.baremes.palier(nom_exercice, niveau) : null;
+    const seuils = this.seuils_exercice(nom_exercice);
+    if (!atteint || !seuils) return null;
+    const volume = this.baremes.volume(atteint.series, atteint.cible, atteint.poids);
+    const rang = this.rang_pour_volume(volume, seuils);
     if (rang === null) return null;
 
     return {
       ...this.ligue_pour_rang(rang),
       niveau,
-      volume_relatif: relatif,
-      seuil_actuel: this.SEUILS_VOLUME[rang - 1],
-      seuil_suivant: rang < this.RANG_MAX ? this.SEUILS_VOLUME[rang] : null,
-      avancement: this._avancement_dans_le_rang(relatif, rang),
+      volume,
+      volume_relatif: this.volume_relatif(nom_exercice, niveau),
+      seuil_actuel: seuils[rang - 1],
+      seuil_suivant: rang < this.RANG_MAX ? seuils[rang] : null,
+      avancement: this._avancement_dans_le_rang(volume, rang, seuils),
       maximum_atteint: rang === this.RANG_MAX,
     };
   }
@@ -240,10 +275,8 @@ export class Ligues {
     const montees = {};
     for (const [seance_id, exercices] of Object.entries(montees_niveaux)) {
       for (const [nom, montee] of Object.entries(exercices)) {
-        const avant = this.rang_pour_volume(
-          this.volume_relatif(nom, montee.depuis),
-        );
-        const apres = this.rang_pour_volume(this.volume_relatif(nom, montee.vers));
+        const avant = this.rang_exercice(nom, montee.depuis);
+        const apres = this.rang_exercice(nom, montee.vers);
         if (apres === null || apres === avant) continue;
         if (!montees[seance_id]) montees[seance_id] = {};
         montees[seance_id][nom] = {

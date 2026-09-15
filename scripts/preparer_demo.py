@@ -144,6 +144,10 @@ def exporter_baremes():
             "ligues": list(ligues.LIGUES),
             "divisions": list(ligues.DIVISIONS),
             "seuils_volume": list(ligues.SEUILS_VOLUME),
+            "seuils_par_exercice": {
+                nom: list(valeurs)
+                for nom, valeurs in ligues.SEUILS_PAR_EXERCICE.items()
+            },
             "paliers_xp": [list(tranche) for tranche in ligues.PALIERS_XP],
             "xp_base_niveau_general": ligues.XP_BASE_NIVEAU_GENERAL,
             "xp_increment_niveau_general": ligues.XP_INCREMENT_NIVEAU_GENERAL,

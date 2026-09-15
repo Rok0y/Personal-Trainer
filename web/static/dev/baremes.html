@@ -157,6 +157,25 @@
             <input id="jusqua" type="number" min="1" max="400" value="60">
         </div>
     </div>
+    <div class="bloc">
+        <h3>Bornes de ligue de cet exercice — volume atteint</h3>
+        <p class="hint">
+            <strong>C'est ici que tu décides à partir de quand on passe à la
+            ligue suivante</strong>, exercice par exercice. Le volume est
+            absolu (séries × cible × charge, le poids du corps comptant pour 1),
+            et la colonne de droite montre le premier palier qui l'atteint —
+            donc la performance réelle que tu exiges.
+        </p>
+        <div class="barre">
+            <div style="width:150px">
+                <label for="niveauMaitre">Maître I au niveau</label>
+                <input id="niveauMaitre" type="number" min="18" max="600">
+            </div>
+            <button class="bouton secondaire" id="repartir">Répartir régulièrement</button>
+        </div>
+        <div class="tableau"><table id="bornes"></table></div>
+    </div>
+
     <div class="tableau"><table id="detail"></table></div>
 
     <h2>Le niveau général</h2>
@@ -206,17 +225,43 @@ let reglages = lire_brouillon() ?? structuredClone(deployes);
 let baremes = null;
 let ligues = null;
 
+let brouillon_perime = false;
+
+/**
+ * Le brouillon en cours, **s'il porte encore sur la version deployee**.
+ *
+ * Un brouillon garde en memoire la version sur laquelle il a ete fabrique. Si
+ * un deploiement est passe depuis, il est **jete** plutot que reapplique :
+ * les bornes de ligue etant en volume absolu, un brouillon fait sur un ancien
+ * bareme designe des performances qui n'existent plus, et il masquerait le
+ * nouveau reglage sans rien signaler — le meme piege que le document en cache,
+ * un etage plus haut. La page le dit, plutot que de laisser regler sur des
+ * valeurs fantomes.
+ *
+ * Commodite de cette page seulement : elle ne touche jamais la base de
+ * l'application, et un brouillon perdu ne coute qu'une ressaisie.
+ */
 function lire_brouillon() {
-  // Commodite de cette page seulement : elle ne touche jamais la base de
-  // l'application, et un brouillon perdu ne coute qu'une ressaisie.
   try {
     const brut = localStorage.getItem(CLE_BROUILLON);
-    return brut ? JSON.parse(brut) : null;
+    if (!brut) return null;
+    const enregistre = JSON.parse(brut);
+    if (enregistre.base !== JSON.stringify(deployes)) {
+      localStorage.removeItem(CLE_BROUILLON);
+      brouillon_perime = true;
+      return null;
+    }
+    return enregistre.reglages;
   } catch { return null; }
 }
 
 function ecrire_brouillon() {
-  try { localStorage.setItem(CLE_BROUILLON, JSON.stringify(reglages)); } catch { /* tant pis */ }
+  try {
+    localStorage.setItem(CLE_BROUILLON, JSON.stringify({
+      base: JSON.stringify(deployes),
+      reglages,
+    }));
+  } catch { /* tant pis */ }
 }
 
 /** Les tables telles que `Ligues` les attend, depuis la forme du fichier. */
@@ -346,6 +391,72 @@ function dessiner_crans() {
   }).join("");
 }
 
+/**
+ * Les bornes de l'exercice choisi, editables une par une.
+ *
+ * Elles sont stockees en **volume absolu** : c'est la seule unite qui laisse
+ * poser un cran la ou il veut dire quelque chose. Une table relative unique
+ * donnait Or III a 4x14 a 12 kg au curl — sense — et 324 repetitions aux
+ * pompes, parce que le poids du corps n'a qu'un seul levier.
+ */
+function dessiner_bornes() {
+  const nom = $("exercice").value;
+  const seuils = bornes_de(nom);
+  // Le parametre s'appelle `borne` et non `volume` : `volume` est la fonction
+  // qui calcule celui d'un palier, et la masquer ici la rendrait inappelable
+  // deux lignes plus bas.
+  const lignes = seuils.map((borne, index) => {
+    const l = ligues.ligue_pour_rang(index + 1);
+    // Le premier palier qui atteint cette borne : c'est *lui* la performance
+    // exigee, et c'est ce qu'on regarde pour juger si la borne est juste.
+    let atteint = null;
+    for (let niveau = 1; niveau <= 600; niveau += 1) {
+      const p = baremes.palier(nom, niveau);
+      if (!p) break;
+      if (volume(p) >= seuils[index]) { atteint = { niveau, p }; break; }
+    }
+    return { l, index, atteint };
+  });
+
+  $("bornes").innerHTML =
+    `<thead><tr><th>Ligue</th><th>Volume à atteindre</th><th>Niveau</th>` +
+    `<th>Performance exigée</th></tr></thead><tbody>${
+      lignes.map(({ l, index, atteint }) =>
+        `<tr><td>${badge_ligue(l)}</td>` +
+        `<td class="num" data-borne="${index}"></td>` +
+        `<td class="num">${atteint ? atteint.niveau : "—"}</td>` +
+        `<td>${atteint ? resume(atteint.p) : "hors d'atteinte"}</td></tr>`).join("")
+    }</tbody>`;
+
+  // Les champs sont poses apres coup : un `<input>` ecrit dans `innerHTML`
+  // perdrait son ecouteur au prochain redessin.
+  for (const cellule of $("bornes").querySelectorAll("[data-borne]")) {
+    const index = Number(cellule.dataset.borne);
+    cellule.append(champ_nombre(seuils[index], (v) => {
+      const table = bornes_explicites(nom);
+      table[index] = v;
+    }));
+  }
+}
+
+/** Les bornes effectives d'un exercice : les siennes, ou celles de la table globale. */
+function bornes_de(nom) {
+  const explicites = reglages.ligues.seuils_par_exercice?.[nom];
+  if (explicites?.length) return explicites;
+  const depart = baremes.palier(nom, 1);
+  const v = depart ? volume(depart) : 0;
+  return reglages.ligues.seuils_volume.map((seuil) => seuil * v);
+}
+
+/** Les bornes propres d'un exercice, creees depuis les effectives si besoin. */
+function bornes_explicites(nom) {
+  reglages.ligues.seuils_par_exercice ??= {};
+  if (!reglages.ligues.seuils_par_exercice[nom]?.length) {
+    reglages.ligues.seuils_par_exercice[nom] = bornes_de(nom).slice();
+  }
+  return reglages.ligues.seuils_par_exercice[nom];
+}
+
 function dessiner_detail() {
   const nom = $("exercice").value;
   const jusqua = Math.max(1, Number($("jusqua").value) || 60);
@@ -409,7 +520,9 @@ function dessiner_json() {
   const change = JSON.stringify(reglages) !== JSON.stringify(deployes);
   $("etat").textContent = change
     ? "Brouillon local non déployé — copie le JSON et pousse-le pour l'appliquer."
-    : "Identique à ce qui est déployé.";
+    : brouillon_perime
+      ? "Un brouillon antérieur a été écarté : il portait sur une version déployée depuis."
+      : "Identique à ce qui est déployé.";
   $("etat").className = "etat" + (change ? " brouillon" : "");
 }
 
@@ -417,6 +530,7 @@ function tout_recalculer() {
   construire();
   dessiner_crans();
   dessiner_specs();
+  dessiner_bornes();
   dessiner_detail();
   dessiner_general();
   dessiner_json();
@@ -431,12 +545,13 @@ $("exercice").innerHTML = Object.keys(reglages.specs).sort()
   .map((nom) => `<option value="${nom}">${nom}</option>`).join("");
 
 construire();
+$("niveauMaitre").value = 36;
 dessiner_seuils();
 dessiner_xp();
 tout_recalculer();
 
 $("inventaire").addEventListener("change", tout_recalculer);
-$("exercice").addEventListener("change", dessiner_detail);
+$("exercice").addEventListener("change", () => { dessiner_bornes(); dessiner_detail(); });
 $("jusqua").addEventListener("input", dessiner_detail);
 
 $("reinitialiser").addEventListener("click", () => {
@@ -444,6 +559,21 @@ $("reinitialiser").addEventListener("click", () => {
   try { localStorage.removeItem(CLE_BROUILLON); } catch { /* rien a faire */ }
   dessiner_seuils();
   dessiner_xp();
+  tout_recalculer();
+});
+
+$("repartir").addEventListener("click", () => {
+  const nom = $("exercice").value;
+  const maitre = Math.max(18, Number($("niveauMaitre").value) || 36);
+  const table = bornes_explicites(nom);
+  for (let i = 0; i < 18; i += 1) {
+    const niveau = Math.round(1 + ((maitre - 1) * i) / 17);
+    const p = baremes.palier(nom, niveau);
+    table[i] = p ? volume(p) : table[i];
+    // Deux bornes egales rendraient un rang inatteignable : sur un bareme
+    // court, deux crans peuvent tomber sur le meme palier.
+    if (i && table[i] <= table[i - 1]) table[i] = table[i - 1] + 1;
+  }
   tout_recalculer();
 });
 

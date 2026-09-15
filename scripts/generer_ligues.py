@@ -105,18 +105,18 @@ def _injecter_specs_fictives():
     )
 
 
-def _ratios(tirage):
-    """Les volumes relatifs interrogés : les abords de chaque seuil, puis du hasard.
+def _volumes(tirage, seuils):
+    """Les volumes interrogés : les abords de chaque borne, puis du hasard.
 
-    Un seuil est exactement l'endroit où `>=` se distingue de `>`, et un tirage
-    uniforme n'y tombe jamais : sans les trois points posés autour de chacun,
+    Une borne est exactement l'endroit où `>=` se distingue de `>`, et un
+    tirage uniforme n'y tombe jamais : sans les points posés autour de chacune,
     un portage qui déplacerait une borne d'un cran resterait invisible.
     """
-    points = [None, 0.0, 0.5, 0.999999]
-    for seuil in ligues.SEUILS_VOLUME:
-        points.extend([seuil - 1e-9, seuil, seuil + 1e-9, seuil - 0.001, seuil + 0.001])
-    points.extend(tirage.uniform(0.5, 90.0) for _ in range(RATIOS_AU_HASARD))
-    points.append(1e6)
+    points = [None, 0.0, seuils[0] / 2, seuils[0] - 1e-9]
+    for seuil in seuils:
+        points.extend([seuil - 1e-9, seuil, seuil + 1e-9, seuil - 0.5, seuil + 0.5])
+    points.extend(tirage.uniform(0.0, seuils[-1] * 1.5) for _ in range(RATIOS_AU_HASARD))
+    points.append(1e9)
     return points
 
 
@@ -135,12 +135,17 @@ def main():
             lignes += 1
 
         # --- Ce qui ne dépend pas du matériel : rangs, XP, niveau général ---
-        for relatif in _ratios(tirage):
+        # Les bornes interrogées sont celles d'un exercice réellement réglé,
+        # pas une échelle inventée : c'est sur des bornes en volume absolu que
+        # la comparaison `>=` se joue désormais.
+        bornes = list(ligues.seuils_exercice("Pompes"))
+        for volume in _volumes(tirage, bornes):
             relever({
                 "inventaire": INVENTAIRE_NEUTRE,
                 "question": "rang_pour_volume",
-                "relatif": relatif,
-                "reponse": ligues.rang_pour_volume(relatif),
+                "volume": volume,
+                "seuils": bornes,
+                "reponse": ligues.rang_pour_volume(volume, bornes),
             })
 
         for rang in [None, -1, 0] + list(range(1, ligues.RANG_MAX + 5)):
@@ -194,6 +199,16 @@ def main():
             )
 
             for nom in paliers.SPECS:
+                # Les bornes d'un exercice dependent de son palier 1 quand
+                # elles ne sont pas posees a la main : elles bougent donc avec
+                # l'inventaire, et se comparent sous chacun.
+                seuils = ligues.seuils_exercice(nom)
+                relever({
+                    "inventaire": nom_inventaire,
+                    "exercice": nom,
+                    "question": "seuils_exercice",
+                    "reponse": list(seuils) if seuils else None,
+                })
                 for niveau in range(1, NIVEAU_MAX + 1):
                     relever({
                         "inventaire": nom_inventaire,
