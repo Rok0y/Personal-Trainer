@@ -199,20 +199,21 @@
         {% endif %}
         <div class="resume-pied">
             <a class="resume-lien" href="/programmes">Voir le détail du programme</a>
-            {% if programmes_disponibles|length > 1 %}
-            <label class="resume-bascule">
-                Changer de programme
-                <select id="choix-programme">
-                    {% for cle, nom in programmes_disponibles.items() %}
-                    <option value="{{ cle }}"{% if cle == programme.cle %} selected{% endif %}>{{ nom }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-            {% endif %}
+            {# Changer de programme se fait sur `/programmes`, et la seule :
+               deux endroits pour la meme regle, c'etait deux endroits a
+               corriger le jour ou elle change. #}
+            <a class="resume-lien" href="/programmes">Changer de programme</a>
         </div>
     </section>
+    {% elif programmes_disponibles %}
+    {# Aucun choix : on invite, on ne choisit pas a sa place. #}
+    <section class="programme-resume">
+        <div class="resume-entete"><h2>Aucun programme suivi</h2></div>
+        <p class="resume-detail">Un programme enchaîne les séances dans un ordre et fixe des objectifs de fin. Tant que tu n'en choisis pas, les séances restent libres.</p>
+        <div class="resume-pied"><a class="resume-lien" href="/programmes">Choisir un programme</a></div>
+    </section>
     {% endif %}
-    <p class="section-titre">Tes séances</p>
+    <p class="section-titre">Séances disponibles</p>
     <section class="grid" aria-label="Seances disponibles">
         {% for identifiant, seance in seances.items() %}
         <div class="session{% if identifiant == selection %} selected{% endif %}" data-seance="{{ identifiant }}" role="button" tabindex="0">
@@ -311,7 +312,7 @@
     <section class="previous" id="previous" aria-live="polite"></section>
     <div class="links">
         <a href="/historique">Voir l'historique</a>
-        <a href="/records">Voir les records</a>
+        <a href="/exercices">Voir les exercices</a>
         <a href="/creer-seance">Créer une séance personnalisée</a>
     </div>
 </main>
@@ -398,18 +399,6 @@
     if (choixSeanceProgramme) {
         choixSeanceProgramme.addEventListener("change", () => {
             refleterSeanceDuProgramme(choixSeanceProgramme.value);
-        });
-    }
-    // Changer de programme, lui, se mémorise : c'est le programme qu'on suit.
-    const choixProgramme = document.getElementById("choix-programme");
-    if (choixProgramme) {
-        choixProgramme.addEventListener("change", async () => {
-            await fetch("/api/programme-choisi", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ cle: choixProgramme.value }),
-            });
-            window.location.reload();
         });
     }
     document.querySelectorAll(".session details").forEach((details) => {

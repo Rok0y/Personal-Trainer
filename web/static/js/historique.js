@@ -104,9 +104,43 @@ export function creer_utilisateur(base, nom, maintenant) {
     seance_initiale: null,
     programme_choisi: null,
     materiel: null,
+    // Les mesures du corps. `null` veut dire « non renseigne » et non zero :
+    // personne n'est oblige de les donner, rien ne les lit encore.
+    //
+    // **`poids_corps_kg` et non `poids`** : dans tout le projet, « poids »
+    // designe la charge soulevee (`exercices.poids`, `series_realisees.poids`,
+    // les halteres du materiel). Un champ nomme `poids` sur le profil
+    // creerait une ambiguite permanente a la lecture.
+    sexe: null,
+    date_naissance: null,
+    taille_cm: null,
+    poids_corps_kg: null,
   };
   base.utilisateurs.push(utilisateur);
   return { ...utilisateur };
+}
+
+//: Les mesures du corps, et elles seules : ni le nom, ni le materiel, ni le
+//: programme ne passent par ici. Chacun a son point d'ecriture, ce qui evite
+//: qu'un formulaire en efface un autre en enregistrant des champs vides.
+export const CHAMPS_MESURES = ["sexe", "date_naissance", "taille_cm", "poids_corps_kg"];
+
+/**
+ * Met a jour les mesures d'un profil.
+ *
+ * Jumelle de `historique.database.definir_mesures`. Une valeur absente de
+ * `mesures` n'est pas touchee ; une chaine vide vaut « efface », parce que
+ * c'est ce que rend un champ de formulaire qu'on vide a la main.
+ */
+export function definir_mesures(base, utilisateur_id, mesures) {
+  const utilisateur = base.utilisateurs.find((u) => u.id === utilisateur_id);
+  if (!utilisateur) return false;
+  for (const champ of CHAMPS_MESURES) {
+    if (!(champ in mesures)) continue;
+    const valeur = mesures[champ];
+    utilisateur[champ] = valeur === "" || valeur === undefined ? null : valeur;
+  }
+  return true;
 }
 
 // ==========================================

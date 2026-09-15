@@ -25,6 +25,7 @@ from core.utilisateur import (
 from historique.database import (
     creer_utilisateur,
     definir_materiel,
+    definir_mesures,
     definir_onboarding,
     definir_programme_choisi,
     derniere_performance,
@@ -156,9 +157,11 @@ def _profil_dans_les_templates():
 def programme_de_l_accueil():
     """Le programme suivi par le profil connecté, et la liste où le choisir.
 
-    Retourne `(état du programme ou None, {clé: nom})`. Le repli sur le premier
-    programme disponible n'écrit rien en base : tant que personne n'a choisi,
-    l'accueil montre quelque chose d'utile sans prétendre que c'est un choix.
+    Retourne `(état du programme ou None, {clé: nom})`. **Aucun repli sur le
+    premier programme** : `NULL` veut dire « aucun choix », et l'accueil invite
+    alors à en faire un. Retomber en silence sur le premier priverait
+    l'utilisateur de la distinction entre « je suis ce programme » et « je n'en
+    suis aucun », qui est exactement ce que le choix sert à exprimer.
     """
     disponibles = {
         cle: donnees.get("nom", cle) for cle, donnees in tous_les_programmes().items()
@@ -169,7 +172,7 @@ def programme_de_l_accueil():
     profil = utilisateur_connecte() or {}
     cle = profil.get("programme_choisi")
     if cle not in disponibles:
-        cle = next(iter(disponibles))
+        return None, disponibles
     return etat_programme(cle), disponibles
 
 
@@ -708,16 +711,6 @@ def historique():
     )
 
 
-@app.route("/records")
-def records():
-    donnees = recuperer_historique()
-    return render_template(
-        "records.html",
-        statistiques=statistiques_exercices(donnees),
-        niveaux=etats_niveaux(donnees),
-    )
-
-
 @app.route("/bienvenue")
 def page_bienvenue():
     """Questionnaire de materiel : la seule etape avant la premiere seance.
@@ -745,6 +738,72 @@ def _page_materiel(premiere_fois):
         accessoires=ACCESSOIRES,
         materiel=materiel_du_profil(),
     )
+
+
+@app.route("/profil")
+def page_profil():
+    """La page du profil connecté : qui je suis, ce que je possède.
+
+    Volontairement **hors de `ROUTES_ONBOARDING`** : un profil neuf doit
+    d'abord déclarer son matériel, et une route de trop dans cet ensemble
+    ouvrirait l'application entière.
+    """
+    profil = utilisateur_connecte()
+    donnees = recuperer_historique()
+    materiel = normaliser(profil.get("materiel"))
+    halteres = materiel.get("halteres") or {}
+    paires = sorted(int(p) for p, q in halteres.items() if q >= 2)
+    seuls = sorted(int(p) for p, q in halteres.items() if q == 1)
+
+    morceaux = []
+    if paires:
+        morceaux.append("paires : " + ", ".join(f"{p} kg" for p in paires))
+    if seuls:
+        morceaux.append("seuls : " + ", ".join(f"{p} kg" for p in seuls))
+    if materiel.get("accessoires"):
+        morceaux.append("accessoires : " + ", ".join(materiel["accessoires"]))
+
+    return render_template(
+        "profil.html",
+        nombre_seances=len(donnees),
+        # Le nombre d'exercices dont l'historique prouve un niveau : c'est ce
+        # que le moteur sait de cette personne, pas ce qu'elle a essayé.
+        nombre_niveaux=sum(
+            1 for etat in etats_niveaux(donnees).values() if etat["niveau"]
+        ),
+        resume_materiel=" · ".join(morceaux) or "Rien de déclaré.",
+    )
+
+
+@app.route("/api/profil", methods=["POST"])
+def enregistrer_profil():
+    """Les mesures du corps. Aucune ne pilote le barème.
+
+    `rafraichir()` est obligatoire : le profil connecté transporte ces
+    colonnes, et le garde de requête les relit sans repasser par la base.
+    """
+    donnees = request.get_json(silent=True) or {}
+    profil = utilisateur_connecte()
+
+    mesures = {}
+    for champ in ("sexe", "date_naissance"):
+        if champ in donnees:
+            mesures[champ] = (donnees[champ] or "").strip()
+    for champ in ("taille_cm", "poids_corps_kg"):
+        if champ not in donnees:
+            continue
+        brut = str(donnees[champ] or "").strip()
+        if not brut:
+            mesures[champ] = ""
+            continue
+        try:
+            mesures[champ] = float(brut.replace(",", "."))
+        except ValueError:
+            return jsonify({"ok": False, "erreur": f"« {champ} » doit être un nombre"}), 400
+
+    definir_mesures(profil["id"], mesures)
+    rafraichir()
+    return jsonify({"ok": True})
 
 
 @app.route("/api/materiel", methods=["POST"])
@@ -792,7 +851,13 @@ def page_exercices():
 
 @app.route("/exercice/<nom>")
 def page_exercice(nom):
-    """Fiche d'un mouvement : comment le faire, et où j'en suis dessus."""
+    """Fiche d'un mouvement : comment le faire, et où j'en suis dessus.
+
+    Elle a absorbé l'écran des records. Les deux disaient la même chose du
+    même mouvement depuis deux pages : un niveau dit **où l'on en est**, le
+    graphe **comment on y est arrivé**, et le recalage sert quand l'historique
+    ne peut pas le prouver. Il n'y a plus qu'un endroit où lire un exercice.
+    """
     fiche = fiche_mouvement(nom)
     if fiche is None:
         abort(404)
@@ -801,7 +866,19 @@ def page_exercice(nom):
         onglet="exercices",
         fiche=fiche,
         etat=etat_niveau(nom),
+        statistique=statistiques_exercices(recuperer_historique()).get(nom),
     )
+
+
+@app.route("/records")
+def records():
+    """Redirection : les records vivent désormais sur la fiche de l'exercice.
+
+    Une redirection et non une 404 : les liens profonds `/records#exercice-…`
+    ont pu être mis en favori, et `historique.html` / `programmes.html` en
+    fabriquaient à chaque ligne.
+    """
+    return redirect("/exercices", code=301)
 
 
 @app.route("/programmes")
@@ -841,12 +918,6 @@ def _ancre(nom, defaut):
 def _cle_programme(nom):
     """Transforme un nom en clé d'URL stable (« Road to TKT » -> road-to-tkt)."""
     return _ancre(nom, "programme")
-
-
-#: Permet aux templates de fabriquer un lien profond vers la fiche d'un
-#: exercice sur `/records` : `/records#exercice-{{ nom|ancre }}`. Les deux
-#: extrémités du lien passent par ce filtre, donc elles ne peuvent pas diverger.
-app.jinja_env.filters["ancre"] = lambda nom: _ancre(nom, "exercice")
 
 
 @app.route("/api/programme-choisi", methods=["POST"])

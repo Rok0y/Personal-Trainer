@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon profil</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<style>
+    main { width:min(860px,calc(100% - 40px)); }
+    h1 { color:var(--teal); }
+    h2 { margin:0 0 6px; font-family:'Bebas Neue','Space Grotesk',sans-serif; font-weight:400; font-size:26px; }
+    .bloc {
+        background:var(--glass); border:1px solid var(--border-strong); border-radius:12px;
+        padding:22px; margin-bottom:14px; backdrop-filter:blur(18px);
+    }
+    .sous-titre {
+        margin:0 0 10px; color:var(--muted);
+        font:700 12px 'Space Grotesk',sans-serif; letter-spacing:.16em; text-transform:uppercase;
+    }
+    .mesures { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; margin-top:12px; }
+    .mesures label { display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--muted); }
+    .mesures input, .mesures select {
+        background:rgba(0,0,0,.35); color:var(--text); border:1px solid var(--border-strong);
+        border-radius:8px; padding:9px 10px; font-family:inherit; font-size:14px;
+    }
+    .chiffres { display:flex; flex-wrap:wrap; gap:26px; margin-top:12px; }
+    .chiffres div span { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+    .chiffres div strong { font-size:22px; font-family:'Bebas Neue','Space Grotesk',sans-serif; font-weight:400; color:var(--teal); }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; align-items:center; }
+    .actions .principal { border-color:var(--teal); color:var(--teal); }
+    .retour { color:var(--muted); font-size:13px; min-height:18px; margin:10px 0 0; }
+    .retour.erreur { color:var(--orange); }
+</style>
+</head>
+<body>
+<main>
+    <p class="kicker">Profil</p>
+    <h1>{{ profil.nom }}</h1>
+    {% set onglet = 'profil' %}{% include '_navigation.html' %}
+
+    <div class="bloc">
+        <h2>En résumé</h2>
+        <div class="chiffres">
+            <div><span>Depuis le</span><strong>{{ profil.cree_le.split(' ')[0] }}</strong></div>
+            <div><span>Séances</span><strong>{{ nombre_seances }}</strong></div>
+            <div><span>Exercices suivis</span><strong>{{ nombre_niveaux }}</strong></div>
+        </div>
+    </div>
+
+    <div class="bloc">
+        <h2>Mes informations</h2>
+        {# Rien ici n'entre dans le calcul des objectifs : le bareme ne regarde
+           que ce qu'on souleve. Ces mesures servent a suivre une evolution. #}
+        <p class="hint">Aucune de ces valeurs n'entre dans le calcul de tes objectifs : le barème ne regarde que ce que tu soulèves. Elles sont là pour suivre ton évolution.</p>
+        <div class="mesures">
+            <label>Sexe
+                <select id="sexe">
+                    <option value=""{% if not profil.sexe %} selected{% endif %}>Non précisé</option>
+                    <option value="femme"{% if profil.sexe == 'femme' %} selected{% endif %}>Femme</option>
+                    <option value="homme"{% if profil.sexe == 'homme' %} selected{% endif %}>Homme</option>
+                    <option value="autre"{% if profil.sexe == 'autre' %} selected{% endif %}>Autre</option>
+                </select>
+            </label>
+            <label>Date de naissance
+                <input type="date" id="date_naissance" value="{{ profil.date_naissance or '' }}">
+            </label>
+            <label>Taille (cm)
+                <input type="number" min="0" max="260" id="taille_cm" value="{{ profil.taille_cm|round|int if profil.taille_cm else '' }}">
+            </label>
+            {# **`poids_corps_kg` et non `poids`** : partout ailleurs dans le
+               projet, « poids » designe la charge soulevee. #}
+            <label>Poids du corps (kg)
+                <input type="number" min="0" max="400" step="0.1" id="poids_corps_kg" value="{{ profil.poids_corps_kg or '' }}">
+            </label>
+        </div>
+        <div class="actions">
+            <button type="button" class="principal" id="enregistrer">Enregistrer</button>
+        </div>
+        <p class="retour" id="retour"></p>
+    </div>
+
+    <div class="bloc">
+        <h2>Mon matériel</h2>
+        <p class="hint">Ce que tu possèdes décide des charges que le barème peut te proposer. Le modifier ne touche pas à tes niveaux acquis : il change ce que les prochaines séances peuvent demander.</p>
+        <p class="sous-titre" style="margin-top:12px">Déclaré</p>
+        <p>{{ resume_materiel }}</p>
+        <div class="actions">
+            <a class="btn" href="/materiel">Modifier mon matériel</a>
+        </div>
+    </div>
+
+    <div class="bloc">
+        <h2>Changer de personne</h2>
+        <p class="hint">Chaque profil garde son historique, ses records et ses niveaux. Les séances et les programmes, eux, sont communs.</p>
+        <div class="actions">
+            <a class="btn" href="/connexion">Changer de profil</a>
+            <a class="btn" href="/">Retour à l'accueil</a>
+        </div>
+    </div>
+</main>
+
+<script>
+document.getElementById("enregistrer").addEventListener("click", async () => {
+    const retour = document.getElementById("retour");
+    retour.classList.remove("erreur");
+    retour.textContent = "…";
+    // Un champ vide part en chaine vide : `definir_mesures` la traduit en
+    // NULL, c'est-a-dire « non renseigne ».
+    const corps = {};
+    for (const champ of ["sexe", "date_naissance", "taille_cm", "poids_corps_kg"]) {
+        corps[champ] = document.getElementById(champ).value;
+    }
+    try {
+        const reponse = await fetch("/api/profil", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(corps),
+        });
+        const donnees = await reponse.json();
+        if (!reponse.ok || !donnees.ok) {
+            retour.classList.add("erreur");
+            retour.textContent = donnees.erreur || "Échec de l'enregistrement";
+            return;
+        }
+        retour.textContent = "Enregistré.";
+    } catch (erreur) {
+        retour.classList.add("erreur");
+        retour.textContent = "Erreur réseau";
+    }
+});
+</script>
+</body>
+</html>

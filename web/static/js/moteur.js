@@ -82,6 +82,49 @@ export function annoncer_temps_restant(coach, bloc, secondes_restantes) {
 }
 
 /**
+ * Annonce le decompte d'un repos au franchissement d'un seuil.
+ *
+ * Jumeau d'`audio.coach.annoncer_temps_repos`. Meme forme que
+ * `annoncer_temps_restant` ci-dessus, deux differences qui comptent : le
+ * repere vit sur la **seance** et non sur le bloc (un repos n'appartient a
+ * aucun bloc — il est entre deux), et les cles sont `repos_20` / `repos_10` /
+ * `repos_5`.
+ *
+ * Le repere est remis a `null` au retour en phase `exercice`, cote appelant :
+ * sans ca, le repos suivant hériterait du compte du precedent et annoncerait
+ * un seuil deja franchi.
+ *
+ * @param {(cle: string) => void} coach — le coach injecte, jamais un global.
+ * @param {object} seance — le Circuit, qui porte `repos_restant_precedent`.
+ * @param {number} secondes_restantes — deja arrondi a l'entier par l'appelant.
+ */
+export function annoncer_temps_repos(coach, seance, secondes_restantes) {
+  // Premier appel apres l'armement : poser le repere et sortir. Sans ca,
+  // entrer en repos avec 9 secondes restantes annoncerait aussitot « 10
+  // secondes », un seuil qu'on n'a jamais traverse.
+  if (seance.repos_restant_precedent === null || seance.repos_restant_precedent === undefined) {
+    seance.repos_restant_precedent = secondes_restantes;
+    return;
+  }
+  const seuils = [
+    [20, "repos_20"],
+    [10, "repos_10"],
+    [5, "repos_5"],
+  ];
+  for (const [seuil, message] of seuils) {
+    // C'est la **traversee** qui declenche, pas le fait d'etre sous le seuil :
+    // autrement l'annonce se repeterait a chaque image.
+    if (seance.repos_restant_precedent > seuil && secondes_restantes <= seuil) {
+      coach(message);
+      // Une image lente peut faire passer de 21 a 4 secondes d'un coup : sans
+      // ce `break`, les trois seuils partiraient en rafale.
+      break;
+    }
+  }
+  seance.repos_restant_precedent = secondes_restantes;
+}
+
+/**
  * Duree courante du bloc, lue dans le compteur de **son** mode.
  *
  * Ne jamais remplacer par une chaine `temps_maintien || temps_chrono ||

@@ -44,8 +44,11 @@ messages = {
     "repos_5": [
         "repos_5.wav",
     ],
-    "repos_5": [
-        "repos_5.wav",
+    # Le fichier existait depuis toujours, la cle n'etait pas declaree :
+    # `annoncer_temps_repos` demandait "repos_20" et `coach` sortait sans rien
+    # jouer, le seuil des 20 secondes etant donc muet en silence.
+    "repos_20": [
+        "repos_20.wav",
     ],
     "bip": ["bip.wav"],
 }
@@ -68,6 +71,7 @@ priorites = {
     "temps_20": 6,
     "temps_10": 7,
     "temps_5": 8,
+    "repos_20": 5,
     "repos_10": 6,
     "repos_5": 8,
     "bip": 2,

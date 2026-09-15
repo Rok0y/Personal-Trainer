@@ -32,7 +32,7 @@
     {% set onglet = 'programmes' %}{% include '_navigation.html' %}
 
     <style>
-        /* Le nom d'exercice mène à sa fiche de records : il garde son allure de
+        /* Le nom d'exercice mène à sa fiche : il garde son allure de
            titre, seul le survol trahit le lien. */
         a.exigence-nom { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--border-strong); }
         a.exigence-nom:hover { color: var(--teal); border-bottom-color: var(--teal); text-decoration: none; }
@@ -43,12 +43,25 @@
             background: var(--glass-strong); color: var(--text); font: inherit; font-size: 12px; cursor: pointer;
         }
         .suivre:hover { border-color: var(--teal); color: var(--teal); }
+        .exigences-detail > summary {
+            cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .06em; padding: 10px 0;
+        }
     </style>
     <p><a class="tab" href="/creer-programme">+ Nouveau programme</a></p>
 
     {% if not programmes %}<p class="empty">Aucun programme défini.</p>{% endif %}
 
+    {#- **On n'en suit qu'un a la fois.** Tant qu'aucun n'est choisi, la page
+        les montre tous, replies, pour qu'on puisse comparer ; des qu'un choix
+        est fait, elle ne montre que celui-la — c'est tout l'objet du choix, et
+        voir les autres en dessous inviterait a papillonner. -#}
+    {% if not programme_suivi and programmes %}
+    <p class="hint">Choisis-en un : la page ne montrera plus que celui-là, et l'accueil proposera ses séances dans l'ordre.</p>
+    {% endif %}
+
     {% for cle, programme in programmes.items() %}
+    {% if not programme_suivi or cle == programme_suivi %}
     <section class="programme{% if programme.battu %} battu{% endif %}">
         <div class="entete">
             <h2>{{ programme.nom }}</h2>
@@ -56,6 +69,9 @@
         </div>
         {% if cle == programme_suivi %}
         <p class="suivi">Programme suivi — c'est celui qui s'affiche sur l'accueil.</p>
+        {# Une chaine vide remet dans l'etat « aucun choix » : les autres
+           programmes reapparaissent, et l'accueil cesse d'en proposer un. #}
+        <p><button type="button" class="suivre" data-programme="">Changer de programme</button></p>
         {% else %}
         <p><button type="button" class="suivre" data-programme="{{ cle }}">Suivre ce programme</button></p>
         {% endif %}
@@ -68,13 +84,14 @@
         <p class="alerte">{{ programme.hors_atteinte }} exigence(s) dépassent le sommet de ton barème : aucune combinaison de poids, de séries et de répétitions disponible n'atteint le volume demandé. Il faut des haltères plus lourds — ce n'est pas une question d'entraînement.</p>
         {% endif %}
 
+        {% if not programme_suivi %}<details class="exigences-detail"><summary>Voir les {{ programme.total }} exigences</summary>{% endif %}
         {% for nom_seance, lignes in programme.seances.items() %}
         <h3>{{ nom_seance }}</h3>
         <ul class="exigences">
             {% for ligne in lignes %}
             <li class="exigence{% if ligne.atteint %} faite{% endif %}">
                 <div class="exigence-titre">
-                    <a class="exigence-nom" href="/records#exercice-{{ ligne.exercice|ancre }}" title="Voir les records et le niveau de {{ ligne.exercice }}">{{ ligne.exercice }}</a>
+                    <a class="exigence-nom" href="/exercice/{{ ligne.exercice|urlencode }}" title="Voir la fiche, les records et le niveau de {{ ligne.exercice }}">{{ ligne.exercice }}</a>
                     {% if ligne.hors_atteinte %}
                     <span class="etat bloque">Matériel insuffisant</span>
                     {% elif ligne.atteint %}
@@ -104,7 +121,9 @@
             {% endfor %}
         </ul>
         {% endfor %}
+        {% if not programme_suivi %}</details>{% endif %}
     </section>
+    {% endif %}
     {% endfor %}
 </main>
 </body>
@@ -118,9 +137,11 @@
             await fetch("/api/programme-choisi", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ cle: bouton.dataset.programme }),
+                body: JSON.stringify({ cle: bouton.dataset.programme || null }),
             });
-            window.location.href = "/";
+            // Choisir mene a l'accueil, qui montre desormais ce programme ;
+            // liberer reste ici, ou la liste complete vient de reapparaitre.
+            window.location.href = bouton.dataset.programme ? "/" : "/programmes";
         });
     });
 </script>

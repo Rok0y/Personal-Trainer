@@ -57,6 +57,9 @@
   "repos_5": [
    "repos_5.wav"
   ],
+  "repos_20": [
+   "repos_20.wav"
+  ],
   "bip": [
    "bip.wav"
   ]
@@ -78,6 +81,7 @@
   "temps_20": 6,
   "temps_10": 7,
   "temps_5": 8,
+  "repos_20": 5,
   "repos_10": 6,
   "repos_5": 8,
   "bip": 2
