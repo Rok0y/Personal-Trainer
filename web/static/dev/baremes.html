@@ -270,6 +270,12 @@ function tables_ligues() {
     ligues: reglages.ligues.ligues,
     divisions: reglages.ligues.divisions,
     seuils_volume: reglages.ligues.seuils_volume,
+    // **A ne pas oublier** : sans cette ligne, le moteur de la page retombe
+    // sur la table relative de repli, et le tableau niveau par niveau decrit
+    // une autre echelle que le tableau des bornes juste au-dessus — deux
+    // verites sur la meme page, sans que rien ne le signale. C'est le repli
+    // qui masque l'oubli : sans lui, la colonne se serait videe bruyamment.
+    seuils_par_exercice: reglages.ligues.seuils_par_exercice ?? {},
     paliers_xp: reglages.xp.paliers_xp,
     xp_base_niveau_general: reglages.xp.base_niveau_general,
     xp_increment_niveau_general: reglages.xp.increment_niveau_general,
@@ -546,12 +552,37 @@ $("exercice").innerHTML = Object.keys(reglages.specs).sort()
 
 construire();
 $("niveauMaitre").value = 36;
+cadrer_sur_l_echelle();
 dessiner_seuils();
 dessiner_xp();
 tout_recalculer();
 
 $("inventaire").addEventListener("change", tout_recalculer);
-$("exercice").addEventListener("change", () => { dessiner_bornes(); dessiner_detail(); });
+/**
+ * Cadre la grande liste sur toute l'echelle de l'exercice choisi.
+ *
+ * Au changement d'exercice **seulement** : refaire ce calcul a chaque
+ * recalcul ecraserait la valeur qu'on vient de taper, et on se battrait avec
+ * le champ. Un bareme court se lit en entier, un bareme long ne noie pas la
+ * page sous trois cents lignes.
+ */
+function cadrer_sur_l_echelle() {
+  const nom = $("exercice").value;
+  for (let niveau = 1; niveau <= 400; niveau += 1) {
+    const l = ligues.ligue_exercice(nom, niveau);
+    if (l && l.rang === ligues.RANG_MAX) {
+      $("jusqua").value = Math.min(400, niveau + 4);
+      return;
+    }
+  }
+  $("jusqua").value = 60;
+}
+
+$("exercice").addEventListener("change", () => {
+  dessiner_bornes();
+  cadrer_sur_l_echelle();
+  dessiner_detail();
+});
 $("jusqua").addEventListener("input", dessiner_detail);
 
 $("reinitialiser").addEventListener("click", () => {
