@@ -125,6 +125,15 @@ def exporter_baremes():
 
     from core.materiel import ACCESSOIRES, MATERIEL_PAR_DEFAUT, POIDS_REFERENCE
     from progression import ligues, paliers
+    from progression.reglages import CHEMIN as CHEMIN_REGLAGES
+
+    # Le fichier de reglages voyage **tel quel** jusqu'au site : c'est lui que
+    # `dev/baremes.html` edite et rend pret a coller. Le recomposer depuis
+    # `baremes.json` obligerait a traduire dans les deux sens, et la traduction
+    # finirait par deriver de la source qu'elle pretend reproduire.
+    (DONNEES / "reglages.json").write_text(
+        CHEMIN_REGLAGES.read_text(encoding="utf-8"), encoding="utf-8"
+    )
     from session.seances import MATERIEL_EXERCICES, nombre_halteres
 
     return {

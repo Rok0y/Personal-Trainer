@@ -45,6 +45,8 @@ import json
 from dataclasses import dataclass, field, replace
 from typing import Mapping
 
+from progression.reglages import REGLAGES
+
 UNITE_REPETITIONS = "repetitions"
 UNITE_SECONDES = "secondes"
 
@@ -59,7 +61,7 @@ SANS_CHARGE = (0,)
 #: huit séries de pompes proposerait une séance que personne ne fait : passé ce
 #: point, la progression relève d'une variante plus dure du mouvement, pas
 #: d'une série de plus.
-SERIES_MAX_PAR_DEFAUT = 6
+SERIES_MAX_PAR_DEFAUT = REGLAGES.get("series_max_par_defaut", 6)
 
 #: Seules ces clés peuvent être surchargées sur un palier. Une surcharge
 #: corrige un palier existant, elle n'en insère ni n'en supprime jamais :
@@ -133,87 +135,93 @@ class SpecProgression:
 # décalent d'une constante, sans changer de contenu. Toucher `series` ou
 # `poids_min` fait au contraire recalculer le départ de chaque tranche par
 # `_premiere_cible`, et rebat tout le barème.
+# ===========================================================================
+# CE QUE VEUT DIRE CHAQUE RÉGLAGE DE `reglages.json`
+#
+# Les valeurs ont déménagé dans `progression/reglages.json`, pour être
+# réglables depuis `dev/baremes.html` — y compris sur la tablette, là où on
+# les juge. Leur *raison*, elle, est restée ici : JSON ne prend pas de
+# commentaires, et ces réglages en demandent. **Modifier un nombre là-bas sans
+# avoir lu la note correspondante ici est la façon la plus simple de casser le
+# barème en silence.**
+#
+# `cible_min` — **le bas du barème appartient au débutant.** C'est le premier
+#   palier proposé à quelqu'un dont l'historique ne prouve rien : le fixer au
+#   niveau d'un pratiquant confirmé laisse un débutant « hors barème »,
+#   c'est-à-dire sans objectif du tout. Sur les mouvements au poids du corps il
+#   est délibérément très bas.
+#   En baisser un est sans danger tant qu'on ne touche **ni `series` ni
+#   `poids_min`** : la première tranche s'allonge par le bas et tous les
+#   paliers supérieurs se décalent d'une *constante*, sans changer de contenu.
+#   Toucher `series` ou `poids_min` fait au contraire recalculer le départ de
+#   chaque tranche par `_premiere_cible`, et rebat tout le barème.
+#
+# `cible_max` — fixe le volume de fin de tranche, donc l'entrée de la suivante.
+#   C'est le réglage par lequel on ajuste un barème à un programme : le baisser
+#   fait entrer les séries en jeu plus tôt. Piège du baisser : les séances déjà
+#   enregistrées portent des cibles qui peuvent désormais le dépasser, et
+#   `ressenti._cible_visee` ne sait alors plus les traduire — transitoire, la
+#   première séance jouée sur le nouveau barème rétablit un repère valide.
+#
+# `poids_min` — un curl ne commence pas à 2 kg pour quelqu'un qui en a fait :
+#   sans cette borne, le barème gaspille ses premiers paliers. Mais la
+#   descendre est justement ce qui ouvre le barème aux débutants.
+#
+# `poids_max` — le plafond de charge n'est pas celui du matériel. Sans lui, le
+#   barème proposait des paliers jusqu'à l'haltère de 18 kg au curl unilatéral,
+#   une charge qu'on ne curle pas d'un bras — et une exigence de programme s'y
+#   calait, la rendant absurde.
+#
+# `series` / `series_max` — au-delà de six séries dures, chaque série
+#   supplémentaire coûte du temps et de la fatigue pour un rendement qui
+#   s'effondre ; la progression relève alors d'une variante plus dure.
+#
+# Réglages par famille de mouvement, qui expliquent les écarts entre exercices :
+#   - **poids du corps** (pompes, squat sur chaise, crunches) : sans axe de
+#     charge, la fourchette de répétitions est allongée, sinon le barème est
+#     épuisé en une poignée de paliers ;
+#   - **variantes assistées** (pompes inclinées, sur les genoux) : mêmes
+#     fourchettes, départ encore plus bas — elles existent pour que quelqu'un
+#     qui ne fait pas une pompe complète ait quand même une progression ;
+#   - **isolation légère** (élévations latérales, oiseau) : beaucoup de
+#     répétitions, jamais très lourd ;
+#   - **lourd et court** (extension triceps) : fourchette basse des deux côtés,
+#     pour qu'une série de 7 à 14 kg reste dans le barème plutôt que d'en
+#     sortir alors qu'elle vaut plus que 15 à 6 kg ;
+#   - **jambes** : elles encaissent plus de répétitions, et les haltères y sont
+#     vite le facteur limitant ;
+#   - **gainage** : plafonné à une minute par série — au-delà, tenir plus
+#     longtemps ne teste plus grand-chose, et c'est le nombre de séries qui
+#     prend le relais.
+# ===========================================================================
+
+
+def _spec_depuis_le_fichier(champs):
+    """Un `SpecProgression` depuis une entrée de `reglages.json`.
+
+    Les clés de `surcharges` redeviennent des entiers : JSON n'a que des clés
+    de texte, alors que le barème indexe ses surcharges par numéro de niveau.
+    C'est le seul endroit où la traduction se fait — le jumeau JavaScript, lui,
+    interroge la table avec `String(niveau)`.
+    """
+    champs = dict(champs)
+    surcharges = champs.pop("surcharges", None) or {}
+    return SpecProgression(
+        **champs,
+        surcharges={int(niveau): valeurs for niveau, valeurs in surcharges.items()},
+    )
+
+
+#: Un barème par exercice, calé sur ce qui s'y pratique réellement — et lu
+#: depuis `reglages.json`, qui est la seule source des deux côtés du portage.
+#: Les trois réglages qui comptent restent les mêmes : la fourchette de poids
+#: (un curl ne commence pas à 2 kg pour un pratiquant confirmé), la fourchette
+#: de répétitions (un triceps se travaille lourd et court, une élévation
+#: latérale léger et long) et le nombre de séries. Des réglages uniformes
+#: produiraient des niveaux incomparables.
 SPECS = {
-    # --- Haut du corps, poussée ---
-    "Developpé couché altères": SpecProgression(
-        series=4, cible_min=8, cible_max=20, poids_min=4
-    ),
-    # Poids du corps : sans axe de charge, la fourchette de répétitions est
-    # allongée pour que le barème ne soit pas épuisé en une poignée de paliers.
-    #
-    # `cible_min` très bas — voir la note « bas de barème » plus haut : un
-    # débutant doit trouver un premier palier à sa portée, sans quoi il reste
-    # « hors barème » et le moteur n'a rien à lui proposer.
-    "Pompes": SpecProgression(series=4, cible_min=3, cible_max=15),
-    # Variantes assistées : mêmes fourchettes hautes, départ encore plus bas.
-    # Elles existent pour que quelqu'un qui ne fait pas une seule pompe complète
-    # ait quand même un barème, et une progression qui le ramène aux Pompes.
-    "Pompes inclinées": SpecProgression(series=3, cible_min=3, cible_max=15),
-    "Pompes sur les genoux": SpecProgression(series=3, cible_min=3, cible_max=15),
-    "Développé épaule": SpecProgression(
-        series=3, cible_min=8, cible_max=15, poids_min=4
-    ),
-    # Isolation légère : beaucoup de répétitions, et jamais très lourd.
-    "Elevations latérales": SpecProgression(
-        series=3, cible_min=10, cible_max=18, poids_min=2, poids_max=8
-    ),
-    # Lourd et court : la fourchette est basse des deux côtés, pour qu'une
-    # série de 7 répétitions à 14 kg reste dans le barème plutôt que d'en
-    # sortir alors qu'elle vaut plus que 15 répétitions à 6 kg.
-    "Extension Triceps": SpecProgression(
-        series=3, cible_min=6, cible_max=10, poids_min=8
-    ),
-    # --- Haut du corps, tirage ---
-    "Rowing unilateral droit": SpecProgression(
-        series=4, cible_min=6, cible_max=15, poids_min=5
-    ),
-    "Rowing unilateral gauche": SpecProgression(
-        series=4, cible_min=6, cible_max=15, poids_min=8
-    ),
-    "Rowing penche": SpecProgression(series=3, cible_min=8, cible_max=15, poids_min=4),
-    "Oiseau": SpecProgression(
-        series=3, cible_min=10, cible_max=20, poids_min=2, poids_max=8
-    ),
-    # Isolation à un bras : le plafond de charge n'est pas celui du matériel.
-    # Sans `poids_max`, le barème proposait des paliers jusqu'à l'haltère de
-    # 18 kg, une charge qu'on ne curle pas d'un bras — et une exigence de
-    # programme s'y calait, la rendant absurde.
-    "Curl biceps droit": SpecProgression(
-        series=4, cible_min=3, cible_max=15, poids_min=4, poids_max=12
-    ),
-    "Curl biceps gauche": SpecProgression(
-        series=4, cible_min=3, cible_max=15, poids_min=4, poids_max=12
-    ),
-    # --- Bas du corps ---
-    # Les jambes encaissent plus de répétitions que le haut du corps, et les
-    # haltères y sont vite le facteur limitant.
-    "Squat": SpecProgression(series=4, cible_min=10, cible_max=15, poids_min=4),
-    # Au poids du corps, avec une chaise pour repère de profondeur : le squat
-    # sans haltère n'existait pas au barème, alors que c'est par là qu'on
-    # commence.
-    "Squat sur chaise": SpecProgression(series=3, cible_min=5, cible_max=15),
-    "Fente droite": SpecProgression(series=4, cible_min=8, cible_max=10, poids_min=4),
-    "Fente gauche": SpecProgression(series=4, cible_min=8, cible_max=10, poids_min=4),
-    "Souleve de terre roumain": SpecProgression(
-        series=4, cible_min=8, cible_max=15, poids_min=4
-    ),
-    # --- Abdos et gainage ---
-    "Crunches": SpecProgression(series=3, cible_min=5, cible_max=15),
-    # Le gainage plafonne à une minute par série : au-delà, tenir plus
-    # longtemps ne teste plus grand-chose, et c'est le nombre de séries qui
-    # prend le relais.
-    "Gainage planche": SpecProgression(
-        series=3, cible_min=10, cible_max=60, pas=2, unite=UNITE_SECONDES
-    ),
-    "Gainage sur les genoux": SpecProgression(
-        series=2, cible_min=10, cible_max=60, pas=2, unite=UNITE_SECONDES
-    ),
-    "Gainage planche laterale droite": SpecProgression(
-        series=1, cible_min=8, cible_max=60, pas=2, unite=UNITE_SECONDES
-    ),
-    "Gainage planche laterale gauche": SpecProgression(
-        series=1, cible_min=8, cible_max=60, pas=2, unite=UNITE_SECONDES
-    ),
+    nom: _spec_depuis_le_fichier(champs)
+    for nom, champs in REGLAGES["specs"].items()
 }
 
 

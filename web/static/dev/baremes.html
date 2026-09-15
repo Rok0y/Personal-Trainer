@@ -3,32 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Barèmes et ligues — monitoring</title>
+<title>Barèmes et ligues — réglage</title>
 <!-- Detecte qu'un deploiement est arrive et va le chercher. Le document etant
      le point d'entree, il ne peut pas porter d'empreinte : c'est le seul
      fichier qu'un cache peut garder perime sans que rien ne le dise. Ne touche
      aucun stockage — l'historique d'entrainement ne risque rien. -->
 <script type="module" src="../js/version.js"></script>
 <!--
-    Page de monitoring des barèmes et des ligues.
+    La page de reglage du moteur de progression.
 
-    Elle ne sert à rien en séance : c'est l'outil de réglage. Elle montre,
-    pour chaque exercice et chaque inventaire de matériel, le palier de
-    chaque niveau, son volume, son volume *relatif* au palier 1, la ligue qui
-    en découle et l'XP qu'il rapporte — c'est-à-dire tout ce sur quoi repose
-    `progression/ligues.py`.
+    Elle n'est pas un ecran d'entrainement : c'est ici qu'on regle les baremes,
+    les seuils de ligue et l'XP, **en voyant tout de suite ce que ca produit**.
+    Un bareme ne se juge pas sur ses parametres, il se juge sur les paliers
+    qu'il sort.
 
-    **Aucune valeur n'est écrite ici** : elle lit `donnees/baremes.json` et
-    importe les mêmes modules que l'application. Elle ne peut donc pas se
-    désynchroniser du barème réel, ce qu'une page qui recopierait les seuils
-    ferait au premier réglage.
+    **Le circuit complet tient en trois gestes** : on modifie ici, on copie le
+    `reglages.json` que la page rend en bas, on le colle dans
+    `progression/reglages.json` et on pousse. Le Python et le JavaScript lisent
+    tous les deux ce fichier, donc les deux applications changent ensemble — il
+    n'y a aucune seconde valeur a reconcilier.
 
-    **Elle est publique, simplement non listée.** Le workflow de déploiement
-    copie `web/static` en entier sur GitHub Pages, sans filtre. Ce n'est pas
-    une fuite — `donnees/baremes.json` et le code source le sont déjà — mais
-    il ne faut rien mettre ici qui ne puisse pas l'être. Pour une vraie
-    protection, la même page se sert depuis une route Flask locale, qui n'est
-    jamais déployée.
+    **Aucun nombre n'est ecrit dans cette page.** Elle lit `donnees/reglages.json`
+    et importe les memes modules que l'application, donc elle ne peut pas mentir
+    sur ce que l'application calculera. Une page qui recopierait les seuils
+    aurait derive au premier reglage.
+
+    **Elle est publique, simplement non listee.** Le workflow copie `web/static`
+    en entier sur GitHub Pages, sans filtre. Ce n'est pas une fuite — le code et
+    les baremes le sont deja — mais il ne faut rien mettre ici qui ne puisse pas
+    l'etre.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,29 +42,44 @@
 <style>
     * { box-sizing: border-box; }
     body {
-        margin: 0; padding: 24px; background: var(--bg); color: var(--text);
+        margin: 0; padding: 20px; background: var(--bg); color: var(--text);
         font: 400 14px 'Space Grotesk', system-ui, sans-serif;
     }
     main { width: min(1240px, 100%); margin: 0 auto; }
-    h1 { font: 400 clamp(30px, 5vw, 48px) 'Bebas Neue', sans-serif; margin: 0 0 4px; color: var(--teal); }
-    h2 { font: 400 24px 'Bebas Neue', sans-serif; margin: 30px 0 10px; }
-    .kicker { color: var(--muted); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; font-weight: 700; margin: 0 0 18px; }
-    .hint { color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 76ch; }
-    .reglages { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; margin-bottom: 8px; }
-    label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 5px; }
-    select, input {
+    h1 { font: 400 clamp(28px, 5vw, 44px) 'Bebas Neue', sans-serif; margin: 0 0 4px; color: var(--teal); }
+    h2 { font: 400 23px 'Bebas Neue', sans-serif; margin: 30px 0 8px; }
+    h3 { font: 700 12px 'Space Grotesk', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+    .kicker { color: var(--muted); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; font-weight: 700; margin: 0 0 16px; }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 78ch; }
+    .bloc { background: var(--glass); border: 1px solid var(--border-strong); border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+    label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+    input, select, textarea {
         background: var(--glass-strong); color: var(--text); font: inherit;
-        border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 10px;
+        border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 9px; width: 100%;
     }
+    input:focus, select:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
+    input.modifie { border-color: var(--orange); }
+    .champs { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+    .barre { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
+    .bouton {
+        background: var(--teal); color: var(--bg); border: 0; border-radius: 999px;
+        padding: 9px 18px; font: 700 12px 'Space Grotesk', sans-serif;
+        letter-spacing: .06em; text-transform: uppercase; cursor: pointer; width: auto;
+    }
+    .bouton.secondaire { background: none; color: var(--text); border: 1px solid var(--border-strong); }
     table { border-collapse: collapse; width: 100%; font-size: 13px; }
-    th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th, td { text-align: left; padding: 5px 9px; border-bottom: 1px solid var(--border); white-space: nowrap; }
     th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
     td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td input { padding: 3px 6px; min-width: 62px; text-align: right; }
     tr.bascule td { border-top: 2px solid var(--border-strong); }
     tr.ouverte td { color: var(--mode-amrap); }
     .tableau { overflow-x: auto; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--glass); }
-    .grid { margin-top: 12px; }
-    .repere { color: var(--muted); font-size: 11px; }
+    .repere { color: var(--muted); font-size: 11px; white-space: normal; }
+    textarea { min-height: 220px; font: 400 12px ui-monospace, monospace; white-space: pre; }
+    .etat { font-size: 12px; color: var(--muted); }
+    .etat.brouillon { color: var(--orange); font-weight: 700; }
+    .grid { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -69,43 +87,72 @@
     <p class="kicker">Outil de réglage — pas un écran d'entraînement</p>
     <h1>Barèmes et ligues</h1>
     <p class="hint">
-        Tout vient de <code>donnees/baremes.json</code> et des modules
-        <code>paliers.js</code> / <code>ligues.js</code> : aucun seuil n'est
-        recopié ici, donc cette page ne peut pas mentir sur ce que
-        l'application calcule.
+        Modifie ce que tu veux : tout se recalcule immédiatement en dessous.
+        Quand le résultat te convient, copie le <code>reglages.json</code> du bas
+        de page, colle-le dans <code>progression/reglages.json</code>, commit,
+        push — et les deux applications changent ensemble.
     </p>
+    <div class="barre">
+        <span class="etat" id="etat"></span>
+        <button class="bouton secondaire" id="reinitialiser">Revenir aux valeurs déployées</button>
+    </div>
+
+    <h2>Réglages globaux</h2>
+    <div class="bloc">
+        <h3>Seuils de ligue — volume relatif au palier 1</h3>
+        <p class="hint">
+            Le rang d'un exercice est le plus haut seuil que son volume atteint.
+            Écarter les seuils ralentit les montées ; les resserrer les accélère.
+        </p>
+        <div class="champs" id="seuils"></div>
+    </div>
+    <div class="bloc">
+        <h3>XP rapportée par un niveau d'exercice</h3>
+        <p class="hint">
+            Chaque ligne dit « à partir du niveau N, un niveau rapporte X ».
+            C'est cette XP, sommée sur tous les exercices, qui fait monter le
+            niveau général.
+        </p>
+        <div class="champs" id="xp"></div>
+        <h3 style="margin-top:16px">Coût d'un niveau général</h3>
+        <p class="hint">
+            Passer du niveau <em>n</em> au suivant coûte
+            <code>base + increment × (n − 1)</code>. Monter les deux rend la
+            progression générale nettement plus lente.
+        </p>
+        <div class="champs" id="cout"></div>
+    </div>
 
     <h2>Les dix-huit crans</h2>
     <p class="hint">
         Les six ligues dans leurs trois divisions, telles qu'elles s'affichent
-        sur une carte d'exercice. C'est ici qu'on juge la teinte et la
-        lisibilité du texte — bronze et or sont les deux cas limites.
+        sur une carte d'exercice — bronze et or sont les deux cas limites de
+        lisibilité.
     </p>
     <div class="grid" id="crans"></div>
 
-    <h2>Vue d'ensemble du catalogue</h2>
+    <h2>Barèmes, exercice par exercice</h2>
     <p class="hint">
-        Pour chaque exercice : où tombe son palier 1, où tombe son dernier
-        palier <em>borné</em> (au-delà, la tranche ouverte monte sans fin), et
-        l'amplitude de volume que son barème couvre. Un écart d'amplitude
-        entre deux exercices est la distorsion connue du système : un mouvement
-        au poids du corps compte pour 1 kg, donc il plafonne plus bas.
+        <strong>Descendre <code>cible_min</code> ou <code>poids_min</code></strong>
+        ouvre le barème aux débutants et décale tous les niveaux d'une constante.
+        <strong>Toucher <code>series</code></strong> rebat en revanche toute la
+        forme des prescriptions : le barème progressant cible → poids → séries,
+        un même volume peut se retrouver joué en 2×15 au lieu de 4×12. Les
+        colonnes de droite montrent ce que ça change.
     </p>
-    <div class="reglages">
-        <div>
-            <label for="inventaire">Inventaire de matériel</label>
-            <select id="inventaire"></select>
-        </div>
-    </div>
-    <div class="tableau"><table id="ensemble"></table></div>
+    <div class="tableau"><table id="specs"></table></div>
 
     <h2>Un exercice, palier par palier</h2>
-    <div class="reglages">
-        <div>
+    <div class="barre">
+        <div style="min-width:220px">
             <label for="exercice">Exercice</label>
             <select id="exercice"></select>
         </div>
-        <div>
+        <div style="width:130px">
+            <label for="inventaire">Matériel</label>
+            <select id="inventaire"></select>
+        </div>
+        <div style="width:110px">
             <label for="jusqua">Jusqu'au niveau</label>
             <input id="jusqua" type="number" min="1" max="400" value="60">
         </div>
@@ -113,11 +160,18 @@
     <div class="tableau"><table id="detail"></table></div>
 
     <h2>Le niveau général</h2>
-    <p class="hint">
-        Ce que l'XP cumulée de tous les exercices donne comme niveau de profil,
-        et le coût de chaque cran.
-    </p>
     <div class="tableau"><table id="general"></table></div>
+
+    <h2>Le fichier à coller</h2>
+    <p class="hint">
+        Contenu exact de <code>progression/reglages.json</code>. Sur l'iPad :
+        copie, ouvre le fichier dans GitHub, remplace tout, commit.
+    </p>
+    <div class="barre">
+        <button class="bouton" id="copier">Copier le JSON</button>
+        <span class="etat" id="copie"></span>
+    </div>
+    <textarea id="json" spellcheck="false" readonly></textarea>
 </main>
 
 <script type="module">
@@ -126,10 +180,10 @@ import { Ligues } from "../js/ligues.js";
 import { badge_ligue, classe_ligue, style_ligue } from "../js/ligues_ui.js";
 
 const $ = (id) => document.getElementById(id);
+const CLE_BROUILLON = "dev.reglages";
 
-//: Les memes cinq inventaires que les harnais, du plus pauvre au plus
-//: complet : l'echelle de poids decale toutes les tranches, donc tous les
-//: volumes, donc toutes les ligues.
+//: Les memes cinq inventaires que les harnais : l'echelle de poids decale
+//: toutes les tranches, donc tous les volumes, donc toutes les ligues.
 const INVENTAIRES = (tables) => {
   const complet = {};
   for (const p of tables.echelles.reference) complet[p] = 2;
@@ -142,72 +196,156 @@ const INVENTAIRES = (tables) => {
   };
 };
 
-const tables = await (await fetch("../donnees/baremes.json")).json();
-const stocks = INVENTAIRES(tables);
+//: Les champs d'un bareme, dans l'ordre ou on les regle.
+const CHAMPS = ["series", "cible_min", "cible_max", "pas", "series_max", "poids_min", "poids_max"];
+
+const socle = await (await fetch("../donnees/baremes.json")).json();
+const deployes = await (await fetch("../donnees/reglages.json")).json();
+
+let reglages = lire_brouillon() ?? structuredClone(deployes);
 let baremes = null;
 let ligues = null;
 
-function construire(nom_inventaire) {
-  baremes = new Baremes(tables, stocks[nom_inventaire]);
-  ligues = new Ligues(baremes, tables.ligues);
+function lire_brouillon() {
+  // Commodite de cette page seulement : elle ne touche jamais la base de
+  // l'application, et un brouillon perdu ne coute qu'une ressaisie.
+  try {
+    const brut = localStorage.getItem(CLE_BROUILLON);
+    return brut ? JSON.parse(brut) : null;
+  } catch { return null; }
 }
 
-function resume(p) {
-  if (!p) return "—";
-  const suffixe = p.unite === "secondes" ? " s" : "";
-  const charge = p.poids ? ` à ${p.poids} kg` : "";
-  return `${p.series}x${p.cible}${suffixe}${charge}`;
+function ecrire_brouillon() {
+  try { localStorage.setItem(CLE_BROUILLON, JSON.stringify(reglages)); } catch { /* tant pis */ }
 }
 
+/** Les tables telles que `Ligues` les attend, depuis la forme du fichier. */
+function tables_ligues() {
+  return {
+    ligues: reglages.ligues.ligues,
+    divisions: reglages.ligues.divisions,
+    seuils_volume: reglages.ligues.seuils_volume,
+    paliers_xp: reglages.xp.paliers_xp,
+    xp_base_niveau_general: reglages.xp.base_niveau_general,
+    xp_increment_niveau_general: reglages.xp.increment_niveau_general,
+  };
+}
+
+function construire() {
+  // Les baremes edites remplacent ceux du socle ; les echelles et le materiel,
+  // eux, ne se reglent pas ici et viennent du site tel quel.
+  const tables = { ...socle, specs: reglages.specs };
+  baremes = new Baremes(tables, INVENTAIRES(socle)[$("inventaire").value ?? "non_declare"]);
+  ligues = new Ligues(baremes, tables_ligues());
+}
+
+const resume = (p) => p
+  ? `${p.series}x${p.cible}${p.unite === "secondes" ? " s" : ""}${p.poids ? ` à ${p.poids} kg` : ""}`
+  : "—";
 const volume = (p) => (p ? baremes.volume(p.series, p.cible, p.poids) : 0);
 
-/* --- Les dix-huit crans, tels qu'ils s'affichent sur une carte ------------ */
+/* ------------------------------------------------------------------ saisie */
+
+function champ_nombre(valeur, surChange, { pas = "any", vide = false } = {}) {
+  const input = document.createElement("input");
+  input.type = "number";
+  input.step = pas;
+  input.value = valeur ?? "";
+  input.addEventListener("input", () => {
+    const brut = input.value.trim();
+    surChange(brut === "" ? (vide ? null : 0) : Number(brut));
+    tout_recalculer();
+  });
+  return input;
+}
+
+function dessiner_seuils() {
+  const hote = $("seuils");
+  hote.replaceChildren();
+  reglages.ligues.seuils_volume.forEach((seuil, index) => {
+    const bloc = document.createElement("div");
+    const l = ligues.ligue_pour_rang(index + 1);
+    const etiquette = document.createElement("label");
+    etiquette.textContent = l ? l.libelle : `rang ${index + 1}`;
+    bloc.append(etiquette, champ_nombre(seuil, (v) => { reglages.ligues.seuils_volume[index] = v; }));
+    hote.append(bloc);
+  });
+}
+
+function dessiner_xp() {
+  const hote = $("xp");
+  hote.replaceChildren();
+  reglages.xp.paliers_xp.forEach((tranche, index) => {
+    for (const [position, titre] of [[0, "à partir du niveau"], [1, "XP par niveau"]]) {
+      const bloc = document.createElement("div");
+      const etiquette = document.createElement("label");
+      etiquette.textContent = titre;
+      bloc.append(etiquette, champ_nombre(tranche[position], (v) => { reglages.xp.paliers_xp[index][position] = v; }));
+      hote.append(bloc);
+    }
+  });
+
+  const cout = $("cout");
+  cout.replaceChildren();
+  for (const [cle, titre] of [["base_niveau_general", "base"], ["increment_niveau_general", "increment"]]) {
+    const bloc = document.createElement("div");
+    const etiquette = document.createElement("label");
+    etiquette.textContent = titre;
+    bloc.append(etiquette, champ_nombre(reglages.xp[cle], (v) => { reglages.xp[cle] = v; }));
+    cout.append(bloc);
+  }
+}
+
+function dessiner_specs() {
+  const table = $("specs");
+  table.replaceChildren();
+  // `createTHead` et non `insertRow` : sur une table vide, `insertRow` cree
+  // un tbody implicite et la ligne d'entete s'y retrouve, melangee aux
+  // donnees. Invisible a l'oeil, mais tout selecteur `tbody tr` compte alors
+  // une ligne de trop.
+  const entete = table.createTHead().insertRow();
+  for (const titre of ["Exercice", ...CHAMPS, "Palier 1", "Dernier borné", "Ligue au sommet"]) {
+    const th = document.createElement("th");
+    th.textContent = titre;
+    entete.append(th);
+  }
+  const corps = table.createTBody();
+  for (const nom of Object.keys(reglages.specs).sort()) {
+    const spec = reglages.specs[nom];
+    const ligne = corps.insertRow();
+    ligne.insertCell().textContent = nom;
+    for (const champ of CHAMPS) {
+      const cellule = ligne.insertCell();
+      cellule.className = "num";
+      const input = champ_nombre(spec[champ], (v) => { spec[champ] = v; }, { vide: true });
+      // Un champ qui s'ecarte de ce qui est deploye se signale : sans ca, on
+      // perd de vue ce qu'on a touche des qu'on fait defiler.
+      if ((deployes.specs[nom] ?? {})[champ] !== spec[champ]) input.classList.add("modifie");
+      cellule.append(input);
+    }
+    const borne = baremes.dernier_palier_borne(nom);
+    ligne.insertCell().textContent = resume(baremes.palier(nom, 1));
+    const c = ligne.insertCell();
+    c.className = "num";
+    c.textContent = borne ?? "—";
+    ligne.insertCell().innerHTML = badge_ligue(ligues.ligue_exercice(nom, borne));
+  }
+}
+
+/* --------------------------------------------------------------- affichage */
+
 function dessiner_crans() {
   $("crans").innerHTML = Array.from({ length: ligues.RANG_MAX }, (_, i) => {
     const l = ligues.ligue_pour_rang(i + 1);
     return (
       `<div class="carte ${classe_ligue(l)}" style="${style_ligue(l)}">` +
       `<h3>${l.libelle}</h3>` +
-      `<p>Rang ${l.rang} · seuil ${ligues.SEUILS_VOLUME[i]}x le volume de départ</p>` +
+      `<p>Rang ${l.rang} · à partir de ${reglages.ligues.seuils_volume[i]}× le volume de départ</p>` +
       `<div class="etiquettes">${badge_ligue(l)}</div></div>`
     );
   }).join("");
 }
 
-/* --- La vue d'ensemble ---------------------------------------------------- */
-function dessiner_ensemble() {
-  const lignes = Object.keys(tables.specs).map((nom) => {
-    const borne = baremes.dernier_palier_borne(nom);
-    const relatif = ligues.volume_relatif(nom, borne);
-    return {
-      nom,
-      borne,
-      relatif,
-      depart: ligues.ligue_exercice(nom, 1),
-      sommet: ligues.ligue_exercice(nom, borne),
-      v1: volume(baremes.palier(nom, 1)),
-      vn: volume(baremes.palier(nom, borne)),
-    };
-  });
-  lignes.sort((a, b) => (a.relatif ?? 0) - (b.relatif ?? 0));
-
-  $("ensemble").innerHTML =
-    `<thead><tr><th>Exercice</th><th>Dernier palier borné</th>` +
-    `<th>Volume palier 1</th><th>Volume au sommet borné</th><th>Amplitude</th>` +
-    `<th>Ligue au palier 1</th><th>Ligue au sommet borné</th></tr></thead><tbody>` +
-    lignes
-      .map(
-        (l) =>
-          `<tr><td>${l.nom}</td><td class="num">${l.borne ?? "—"}</td>` +
-          `<td class="num">${l.v1}</td><td class="num">${l.vn}</td>` +
-          `<td class="num">${(l.relatif ?? 0).toFixed(1)}x</td>` +
-          `<td>${badge_ligue(l.depart)}</td><td>${badge_ligue(l.sommet)}</td></tr>`,
-      )
-      .join("") +
-    "</tbody>";
-}
-
-/* --- Un exercice, palier par palier -------------------------------------- */
 function dessiner_detail() {
   const nom = $("exercice").value;
   const jusqua = Math.max(1, Number($("jusqua").value) || 60);
@@ -221,13 +359,12 @@ function dessiner_detail() {
     const l = ligues.ligue_exercice(nom, niveau);
     // Une bascule = un changement de poids ou de series : c'est la que le
     // bareme change de tranche, et la ou une erreur de volume se verrait.
-    const bascule =
-      precedent && (p.poids !== precedent.poids || p.series !== precedent.series);
+    const bascule = precedent && (p.poids !== precedent.poids || p.series !== precedent.series);
     lignes.push(
       `<tr class="${bascule ? "bascule" : ""}${borne && niveau > borne ? " ouverte" : ""}">` +
         `<td class="num">${niveau}</td><td>${resume(p)}</td>` +
         `<td class="num">${volume(p)}</td>` +
-        `<td class="num">${(ligues.volume_relatif(nom, niveau) ?? 0).toFixed(2)}x</td>` +
+        `<td class="num">${(ligues.volume_relatif(nom, niveau) ?? 0).toFixed(2)}×</td>` +
         `<td>${badge_ligue(l)}</td>` +
         `<td class="num">${Math.round((l?.avancement ?? 0) * 100)} %</td>` +
         `<td class="num">${ligues.xp_du_niveau(niveau)}</td>` +
@@ -236,24 +373,29 @@ function dessiner_detail() {
     );
     precedent = p;
   }
-
   $("detail").innerHTML =
     `<thead><tr><th>Niveau</th><th>Palier</th><th>Volume</th><th>Relatif</th>` +
     `<th>Ligue</th><th>Dans le cran</th><th>XP</th><th>XP cumulée</th><th></th>` +
     `</tr></thead><tbody>${lignes.join("")}</tbody>`;
 }
 
-/* --- Le niveau general ---------------------------------------------------- */
 function dessiner_general() {
+  const noms = Object.keys(reglages.specs);
   let xp = 0;
   const lignes = [];
-  for (let niveau = 1; niveau <= 30; niveau += 1) {
+  for (let niveau = 1; niveau <= 24; niveau += 1) {
     const cout = ligues.cout_du_niveau_general(niveau);
     const etat = ligues.niveau_general(xp);
+    // Le repere qui rend le chiffre parlant : a quel niveau il faudrait
+    // amener *tout* le catalogue pour en etre la.
+    let equivalent = "—";
+    for (let n = 1; n <= 200; n += 1) {
+      if (noms.length * ligues.xp_cumulee(n) >= xp) { equivalent = `catalogue au niveau ${n}`; break; }
+    }
     lignes.push(
       `<tr><td class="num">${niveau}</td><td class="num">${cout}</td>` +
-        `<td class="num">${xp}</td><td>${badge_ligue(etat.ligue)}</td>` +
-        `<td class="repere">${Math.round(xp / Math.max(Object.keys(tables.specs).length, 1))} XP par exercice</td></tr>`,
+      `<td class="num">${xp}</td><td>${badge_ligue(etat.ligue)}</td>` +
+      `<td class="repere">${xp ? equivalent : "départ"}</td></tr>`,
     );
     xp += cout;
   }
@@ -262,27 +404,62 @@ function dessiner_general() {
     `<th>Ligue</th><th>Repère</th></tr></thead><tbody>${lignes.join("")}</tbody>`;
 }
 
-function tout_dessiner() {
-  construire($("inventaire").value);
-  dessiner_crans();
-  dessiner_ensemble();
-  dessiner_detail();
-  dessiner_general();
+function dessiner_json() {
+  $("json").value = JSON.stringify(reglages, null, 1) + "\n";
+  const change = JSON.stringify(reglages) !== JSON.stringify(deployes);
+  $("etat").textContent = change
+    ? "Brouillon local non déployé — copie le JSON et pousse-le pour l'appliquer."
+    : "Identique à ce qui est déployé.";
+  $("etat").className = "etat" + (change ? " brouillon" : "");
 }
 
-$("inventaire").innerHTML = Object.keys(stocks)
-  .map((nom) => `<option value="${nom}">${nom.replace(/_/g, " ")}</option>`)
-  .join("");
-$("exercice").innerHTML = Object.keys(tables.specs)
-  .sort()
-  .map((nom) => `<option value="${nom}">${nom}</option>`)
-  .join("");
+function tout_recalculer() {
+  construire();
+  dessiner_crans();
+  dessiner_specs();
+  dessiner_detail();
+  dessiner_general();
+  dessiner_json();
+  ecrire_brouillon();
+}
 
-$("inventaire").addEventListener("change", tout_dessiner);
+/* ------------------------------------------------------------------ montage */
+
+$("inventaire").innerHTML = Object.keys(INVENTAIRES(socle))
+  .map((nom) => `<option value="${nom}">${nom.replace(/_/g, " ")}</option>`).join("");
+$("exercice").innerHTML = Object.keys(reglages.specs).sort()
+  .map((nom) => `<option value="${nom}">${nom}</option>`).join("");
+
+construire();
+dessiner_seuils();
+dessiner_xp();
+tout_recalculer();
+
+$("inventaire").addEventListener("change", tout_recalculer);
 $("exercice").addEventListener("change", dessiner_detail);
 $("jusqua").addEventListener("input", dessiner_detail);
 
-tout_dessiner();
+$("reinitialiser").addEventListener("click", () => {
+  reglages = structuredClone(deployes);
+  try { localStorage.removeItem(CLE_BROUILLON); } catch { /* rien a faire */ }
+  dessiner_seuils();
+  dessiner_xp();
+  tout_recalculer();
+});
+
+$("copier").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText($("json").value);
+    $("copie").textContent = "Copié.";
+  } catch {
+    // Le presse-papier peut etre refuse (contexte non securise, permission) :
+    // on selectionne alors le texte pour que la copie manuelle soit d'un geste.
+    $("json").removeAttribute("readonly");
+    $("json").select();
+    $("copie").textContent = "Sélectionné — copie à la main.";
+  }
+  setTimeout(() => { $("copie").textContent = ""; }, 4000);
+});
 </script>
 </body>
 </html>

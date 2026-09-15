@@ -1,0 +1,301 @@
+{
+ "_lisez_moi": "Tous les nombres reglables du moteur de progression. Python et JavaScript le lisent tous les deux : c'est la seule source. Il s'edite a la main, ou depuis dev/baremes.html qui le rend pret a coller. Le POURQUOI de chaque reglage vit dans progression/paliers.py et dans CLAUDE.md, pas ici — JSON ne prend pas de commentaires.",
+ "specs": {
+  "Developpé couché altères": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 20,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": null
+  },
+  "Pompes": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null
+  },
+  "Pompes inclinées": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null
+  },
+  "Pompes sur les genoux": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null
+  },
+  "Développé épaule": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": null
+  },
+  "Elevations latérales": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 18,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": 8
+  },
+  "Extension Triceps": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 10,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": null
+  },
+  "Rowing unilateral droit": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": null
+  },
+  "Rowing unilateral gauche": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": null
+  },
+  "Rowing penche": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": null
+  },
+  "Oiseau": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 20,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": 8
+  },
+  "Curl biceps droit": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": 12
+  },
+  "Curl biceps gauche": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": 12
+  },
+  "Squat": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": null
+  },
+  "Squat sur chaise": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null
+  },
+  "Fente droite": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 10,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": null
+  },
+  "Fente gauche": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 10,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": null
+  },
+  "Souleve de terre roumain": {
+   "series": 4,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 2,
+   "poids_max": null
+  },
+  "Crunches": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null
+  },
+  "Gainage planche": {
+   "series": 3,
+   "cible_min": 6,
+   "cible_max": 60,
+   "pas": 2,
+   "unite": "secondes",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null
+  },
+  "Gainage sur les genoux": {
+   "series": 2,
+   "cible_min": 6,
+   "cible_max": 60,
+   "pas": 2,
+   "unite": "secondes",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null
+  },
+  "Gainage planche laterale droite": {
+   "series": 1,
+   "cible_min": 6,
+   "cible_max": 60,
+   "pas": 2,
+   "unite": "secondes",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null
+  },
+  "Gainage planche laterale gauche": {
+   "series": 1,
+   "cible_min": 6,
+   "cible_max": 60,
+   "pas": 2,
+   "unite": "secondes",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null
+  }
+ },
+ "ligues": {
+  "ligues": [
+   "Bronze",
+   "Argent",
+   "Or",
+   "Platine",
+   "Diamant",
+   "Maître"
+  ],
+  "divisions": [
+   "III",
+   "II",
+   "I"
+  ],
+  "seuils_volume": [
+   1,
+   3.3,
+   5.7,
+   8.7,
+   12.7,
+   18,
+   27,
+   40,
+   53,
+   72,
+   91,
+   109,
+   128,
+   147,
+   165,
+   184,
+   203,
+   221
+  ]
+ },
+ "xp": {
+  "paliers_xp": [
+   [
+    1,
+    10
+   ],
+   [
+    11,
+    25
+   ],
+   [
+    21,
+    50
+   ],
+   [
+    31,
+    100
+   ],
+   [
+    41,
+    200
+   ],
+   [
+    61,
+    400
+   ]
+  ],
+  "base_niveau_general": 500,
+  "increment_niveau_general": 600
+ },
+ "series_max_par_defaut": 6
+}

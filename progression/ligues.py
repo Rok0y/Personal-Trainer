@@ -42,14 +42,22 @@ porte l'invariant du barème et dont dépend tout l'historique déjà interprét
 from __future__ import annotations
 
 from progression.paliers import est_suivi_par_le_moteur, palier
+from progression.reglages import REGLAGES
+
+#: Toutes les valeurs de ce module viennent de `progression/reglages.json` :
+#: c'est la seule source, lue par le Python comme par le JavaScript, et elle
+#: s'édite depuis `dev/baremes.html`. Ce qu'elles veulent dire est ici ; ce
+#: qu'elles valent est là-bas.
+_LIGUES = REGLAGES["ligues"]
+_XP = REGLAGES["xp"]
 
 #: Les six ligues, de la plus basse à la plus haute.
-LIGUES = ("Bronze", "Argent", "Or", "Platine", "Diamant", "Maître")
+LIGUES = tuple(_LIGUES["ligues"])
 
 #: Les trois divisions d'une ligue, dans l'ordre où on les traverse : on entre
 #: dans une ligue par sa division III et on la quitte par sa division I. C'est
 #: la convention des jeux compétitifs, où « I » se lit comme un premier rang.
-DIVISIONS = ("III", "II", "I")
+DIVISIONS = tuple(_LIGUES["divisions"])
 
 #: Dix-huit seuils de volume *relatif* — le volume du palier atteint divisé par
 #: celui du palier 1 du même exercice. Progression géométrique de raison ~1,28 :
@@ -59,11 +67,7 @@ DIVISIONS = ("III", "II", "I")
 #: Le premier seuil vaut 1.0 par construction : atteindre le palier 1 d'un
 #: exercice, c'est entrer en Bronze III. En dessous il n'y a pas de « rang 0 »,
 #: il n'y a pas de ligue du tout (voir `rang_pour_volume`).
-SEUILS_VOLUME = (
-    1.0, 1.28, 1.64, 2.10, 2.68, 3.44,
-    4.40, 5.63, 7.21, 9.22, 11.81, 15.11,
-    19.34, 24.76, 31.69, 40.56, 51.91, 66.44,
-)
+SEUILS_VOLUME = tuple(_LIGUES["seuils_volume"])
 
 #: Rang maximal, c'est-à-dire Maître I. Le barème n'ayant pas de fin (sa
 #: dernière tranche est ouverte), le volume relatif n'a pas de borne
@@ -78,13 +82,13 @@ RANG_MAX = len(SEUILS_VOLUME)
 #: plutôt qu'en dérivant une formule. Elle est croissante parce qu'un niveau
 #: gagné haut sur le barème coûte bien plus d'entraînement qu'un niveau gagné
 #: en bas, où deux répétitions suffisent.
-PALIERS_XP = ((1, 10), (11, 25), (21, 50), (31, 100), (41, 200), (61, 400))
+PALIERS_XP = tuple(tuple(tranche) for tranche in _XP["paliers_xp"])
 
 #: Coût du passage du niveau général 1 au niveau 2. Les suivants s'incrémentent
 #: de `XP_INCREMENT_NIVEAU_GENERAL` : le cumul est donc quadratique, de plus en
 #: plus lent, sans jamais devenir hors d'atteinte.
-XP_BASE_NIVEAU_GENERAL = 200
-XP_INCREMENT_NIVEAU_GENERAL = 100
+XP_BASE_NIVEAU_GENERAL = _XP["base_niveau_general"]
+XP_INCREMENT_NIVEAU_GENERAL = _XP["increment_niveau_general"]
 
 
 def volume_relatif(nom_exercice, niveau):
