@@ -1,0 +1,53 @@
+{# =========================================================================
+   L'habillage des ligues pour les pages du poste fixe.
+
+   Jumeau Jinja de `static/js/ligues_ui.js`, qui rend le meme balisage pour
+   l'application. Les deux ne peuvent pas partager de code — l'un rend cote
+   serveur, l'autre cote client — mais ils partagent `static/ligues.css`, et
+   c'est la que vit l'apparence. Un changement d'aspect se fait donc dans la
+   feuille, pas ici.
+
+   Comme `ligues_ui.js`, ce fichier **ne decide rien** : `cle` et
+   `division_index` viennent de `progression/ligues.py` et ne sont jamais
+   recalcules ici.
+
+   Usage : {% from "_ligue.html" import style_ligue, badge_ligue, jauge_ligue %}
+   ========================================================================= #}
+
+{%- macro style_ligue(ligue) -%}
+{%- if ligue -%}
+--ligue: var(--ligue-{{ ligue.cle }}); --ligue-reflet: var(--ligue-{{ ligue.cle }}-reflet); --division: {{ ligue.division_index }}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro classe_ligue(ligue) -%}
+{{ 'ligue-teinte' if ligue else 'ligue-teinte sans-ligue' }}
+{%- endmacro -%}
+
+{# Sans ligue, le badge dit « a tester » plutot que de disparaitre : une
+   absence se confondrait avec un oubli d'affichage, alors que « pas encore
+   classe » est une information. #}
+{%- macro badge_ligue(ligue, grand=False) -%}
+{%- if ligue -%}
+<span class="badge-ligue{{ ' grand' if grand }}" style="{{ style_ligue(ligue) }}">{{ ligue.libelle }}</span>
+{%- else -%}
+<span class="badge-ligue sans-ligue{{ ' grand' if grand }}">À tester</span>
+{%- endif -%}
+{%- endmacro -%}
+
+{# **L'avancement est un argument, jamais lu sur la ligue.** Les deux appelants
+   ne mesurent pas la meme chose : une fiche d'exercice montre la part du cran
+   parcourue, le bandeau de profil la part du prochain niveau general — et la
+   ligue que celui-ci recoit, venue de `ligue_pour_rang`, ne porte aucun
+   avancement. #}
+{%- macro jauge_ligue(ligue, avancement=0) -%}
+{%- if ligue -%}
+<div class="ligue-jauge" style="{{ style_ligue(ligue) }}"><i style="width:{{ ((avancement or 0) * 100) | round | int }}%"></i></div>
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro jalon_ligue(nom, montee) -%}
+<span class="jalon-ligue" style="{{ style_ligue(montee.vers) }}">{{ nom }} :
+{%- if montee.depuis %} {{ montee.depuis.libelle }}{% endif %}
+<span class="fleche">&rarr;</span> {{ badge_ligue(montee.vers) }}</span>
+{%- endmacro -%}

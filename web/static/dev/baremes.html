@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barèmes et ligues — monitoring</title>
+<!--
+    Page de monitoring des barèmes et des ligues.
+
+    Elle ne sert à rien en séance : c'est l'outil de réglage. Elle montre,
+    pour chaque exercice et chaque inventaire de matériel, le palier de
+    chaque niveau, son volume, son volume *relatif* au palier 1, la ligue qui
+    en découle et l'XP qu'il rapporte — c'est-à-dire tout ce sur quoi repose
+    `progression/ligues.py`.
+
+    **Aucune valeur n'est écrite ici** : elle lit `donnees/baremes.json` et
+    importe les mêmes modules que l'application. Elle ne peut donc pas se
+    désynchroniser du barème réel, ce qu'une page qui recopierait les seuils
+    ferait au premier réglage.
+
+    **Elle est publique, simplement non listée.** Le workflow de déploiement
+    copie `web/static` en entier sur GitHub Pages, sans filtre. Ce n'est pas
+    une fuite — `donnees/baremes.json` et le code source le sont déjà — mais
+    il ne faut rien mettre ici qui ne puisse pas l'être. Pour une vraie
+    protection, la même page se sert depuis une route Flask locale, qui n'est
+    jamais déployée.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../palette.css">
+<link rel="stylesheet" href="../exercices.css">
+<link rel="stylesheet" href="../ligues.css">
+<style>
+    * { box-sizing: border-box; }
+    body {
+        margin: 0; padding: 24px; background: var(--bg); color: var(--text);
+        font: 400 14px 'Space Grotesk', system-ui, sans-serif;
+    }
+    main { width: min(1240px, 100%); margin: 0 auto; }
+    h1 { font: 400 clamp(30px, 5vw, 48px) 'Bebas Neue', sans-serif; margin: 0 0 4px; color: var(--teal); }
+    h2 { font: 400 24px 'Bebas Neue', sans-serif; margin: 30px 0 10px; }
+    .kicker { color: var(--muted); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; font-weight: 700; margin: 0 0 18px; }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 76ch; }
+    .reglages { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; margin-bottom: 8px; }
+    label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 5px; }
+    select, input {
+        background: var(--glass-strong); color: var(--text); font: inherit;
+        border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 10px;
+    }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    tr.bascule td { border-top: 2px solid var(--border-strong); }
+    tr.ouverte td { color: var(--mode-amrap); }
+    .tableau { overflow-x: auto; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--glass); }
+    .grid { margin-top: 12px; }
+    .repere { color: var(--muted); font-size: 11px; }
+</style>
+</head>
+<body>
+<main>
+    <p class="kicker">Outil de réglage — pas un écran d'entraînement</p>
+    <h1>Barèmes et ligues</h1>
+    <p class="hint">
+        Tout vient de <code>donnees/baremes.json</code> et des modules
+        <code>paliers.js</code> / <code>ligues.js</code> : aucun seuil n'est
+        recopié ici, donc cette page ne peut pas mentir sur ce que
+        l'application calcule.
+    </p>
+
+    <h2>Les dix-huit crans</h2>
+    <p class="hint">
+        Les six ligues dans leurs trois divisions, telles qu'elles s'affichent
+        sur une carte d'exercice. C'est ici qu'on juge la teinte et la
+        lisibilité du texte — bronze et or sont les deux cas limites.
+    </p>
+    <div class="grid" id="crans"></div>
+
+    <h2>Vue d'ensemble du catalogue</h2>
+    <p class="hint">
+        Pour chaque exercice : où tombe son palier 1, où tombe son dernier
+        palier <em>borné</em> (au-delà, la tranche ouverte monte sans fin), et
+        l'amplitude de volume que son barème couvre. Un écart d'amplitude
+        entre deux exercices est la distorsion connue du système : un mouvement
+        au poids du corps compte pour 1 kg, donc il plafonne plus bas.
+    </p>
+    <div class="reglages">
+        <div>
+            <label for="inventaire">Inventaire de matériel</label>
+            <select id="inventaire"></select>
+        </div>
+    </div>
+    <div class="tableau"><table id="ensemble"></table></div>
+
+    <h2>Un exercice, palier par palier</h2>
+    <div class="reglages">
+        <div>
+            <label for="exercice">Exercice</label>
+            <select id="exercice"></select>
+        </div>
+        <div>
+            <label for="jusqua">Jusqu'au niveau</label>
+            <input id="jusqua" type="number" min="1" max="400" value="60">
+        </div>
+    </div>
+    <div class="tableau"><table id="detail"></table></div>
+
+    <h2>Le niveau général</h2>
+    <p class="hint">
+        Ce que l'XP cumulée de tous les exercices donne comme niveau de profil,
+        et le coût de chaque cran.
+    </p>
+    <div class="tableau"><table id="general"></table></div>
+</main>
+
+<script type="module">
+import { Baremes } from "../js/paliers.js";
+import { Ligues } from "../js/ligues.js";
+import { badge_ligue, classe_ligue, style_ligue } from "../js/ligues_ui.js";
+
+const $ = (id) => document.getElementById(id);
+
+//: Les memes cinq inventaires que les harnais, du plus pauvre au plus
+//: complet : l'echelle de poids decale toutes les tranches, donc tous les
+//: volumes, donc toutes les ligues.
+const INVENTAIRES = (tables) => {
+  const complet = {};
+  for (const p of tables.echelles.reference) complet[p] = 2;
+  return {
+    non_declare: null,
+    vide: { halteres: {}, accessoires: [] },
+    debutant: { halteres: { 2: 2, 3: 2, 4: 2 }, accessoires: ["tapis"] },
+    une_paire_moyenne: { halteres: { 6: 2, 8: 2, 10: 1 }, accessoires: [] },
+    complet: { halteres: complet, accessoires: ["tapis", "chaise"] },
+  };
+};
+
+const tables = await (await fetch("../donnees/baremes.json")).json();
+const stocks = INVENTAIRES(tables);
+let baremes = null;
+let ligues = null;
+
+function construire(nom_inventaire) {
+  baremes = new Baremes(tables, stocks[nom_inventaire]);
+  ligues = new Ligues(baremes, tables.ligues);
+}
+
+function resume(p) {
+  if (!p) return "—";
+  const suffixe = p.unite === "secondes" ? " s" : "";
+  const charge = p.poids ? ` à ${p.poids} kg` : "";
+  return `${p.series}x${p.cible}${suffixe}${charge}`;
+}
+
+const volume = (p) => (p ? baremes.volume(p.series, p.cible, p.poids) : 0);
+
+/* --- Les dix-huit crans, tels qu'ils s'affichent sur une carte ------------ */
+function dessiner_crans() {
+  $("crans").innerHTML = Array.from({ length: ligues.RANG_MAX }, (_, i) => {
+    const l = ligues.ligue_pour_rang(i + 1);
+    return (
+      `<div class="carte ${classe_ligue(l)}" style="${style_ligue(l)}">` +
+      `<h3>${l.libelle}</h3>` +
+      `<p>Rang ${l.rang} · seuil ${ligues.SEUILS_VOLUME[i]}x le volume de départ</p>` +
+      `<div class="etiquettes">${badge_ligue(l)}</div></div>`
+    );
+  }).join("");
+}
+
+/* --- La vue d'ensemble ---------------------------------------------------- */
+function dessiner_ensemble() {
+  const lignes = Object.keys(tables.specs).map((nom) => {
+    const borne = baremes.dernier_palier_borne(nom);
+    const relatif = ligues.volume_relatif(nom, borne);
+    return {
+      nom,
+      borne,
+      relatif,
+      depart: ligues.ligue_exercice(nom, 1),
+      sommet: ligues.ligue_exercice(nom, borne),
+      v1: volume(baremes.palier(nom, 1)),
+      vn: volume(baremes.palier(nom, borne)),
+    };
+  });
+  lignes.sort((a, b) => (a.relatif ?? 0) - (b.relatif ?? 0));
+
+  $("ensemble").innerHTML =
+    `<thead><tr><th>Exercice</th><th>Dernier palier borné</th>` +
+    `<th>Volume palier 1</th><th>Volume au sommet borné</th><th>Amplitude</th>` +
+    `<th>Ligue au palier 1</th><th>Ligue au sommet borné</th></tr></thead><tbody>` +
+    lignes
+      .map(
+        (l) =>
+          `<tr><td>${l.nom}</td><td class="num">${l.borne ?? "—"}</td>` +
+          `<td class="num">${l.v1}</td><td class="num">${l.vn}</td>` +
+          `<td class="num">${(l.relatif ?? 0).toFixed(1)}x</td>` +
+          `<td>${badge_ligue(l.depart)}</td><td>${badge_ligue(l.sommet)}</td></tr>`,
+      )
+      .join("") +
+    "</tbody>";
+}
+
+/* --- Un exercice, palier par palier -------------------------------------- */
+function dessiner_detail() {
+  const nom = $("exercice").value;
+  const jusqua = Math.max(1, Number($("jusqua").value) || 60);
+  const borne = baremes.dernier_palier_borne(nom);
+
+  let precedent = null;
+  const lignes = [];
+  for (let niveau = 1; niveau <= jusqua; niveau += 1) {
+    const p = baremes.palier(nom, niveau);
+    if (!p) break;
+    const l = ligues.ligue_exercice(nom, niveau);
+    // Une bascule = un changement de poids ou de series : c'est la que le
+    // bareme change de tranche, et la ou une erreur de volume se verrait.
+    const bascule =
+      precedent && (p.poids !== precedent.poids || p.series !== precedent.series);
+    lignes.push(
+      `<tr class="${bascule ? "bascule" : ""}${borne && niveau > borne ? " ouverte" : ""}">` +
+        `<td class="num">${niveau}</td><td>${resume(p)}</td>` +
+        `<td class="num">${volume(p)}</td>` +
+        `<td class="num">${(ligues.volume_relatif(nom, niveau) ?? 0).toFixed(2)}x</td>` +
+        `<td>${badge_ligue(l)}</td>` +
+        `<td class="num">${Math.round((l?.avancement ?? 0) * 100)} %</td>` +
+        `<td class="num">${ligues.xp_du_niveau(niveau)}</td>` +
+        `<td class="num">${ligues.xp_cumulee(niveau)}</td>` +
+        `<td class="repere">${niveau === borne ? "dernier palier borné" : ""}</td></tr>`,
+    );
+    precedent = p;
+  }
+
+  $("detail").innerHTML =
+    `<thead><tr><th>Niveau</th><th>Palier</th><th>Volume</th><th>Relatif</th>` +
+    `<th>Ligue</th><th>Dans le cran</th><th>XP</th><th>XP cumulée</th><th></th>` +
+    `</tr></thead><tbody>${lignes.join("")}</tbody>`;
+}
+
+/* --- Le niveau general ---------------------------------------------------- */
+function dessiner_general() {
+  let xp = 0;
+  const lignes = [];
+  for (let niveau = 1; niveau <= 30; niveau += 1) {
+    const cout = ligues.cout_du_niveau_general(niveau);
+    const etat = ligues.niveau_general(xp);
+    lignes.push(
+      `<tr><td class="num">${niveau}</td><td class="num">${cout}</td>` +
+        `<td class="num">${xp}</td><td>${badge_ligue(etat.ligue)}</td>` +
+        `<td class="repere">${Math.round(xp / Math.max(Object.keys(tables.specs).length, 1))} XP par exercice</td></tr>`,
+    );
+    xp += cout;
+  }
+  $("general").innerHTML =
+    `<thead><tr><th>Niveau général</th><th>Coût du cran</th><th>XP cumulée à l'entrée</th>` +
+    `<th>Ligue</th><th>Repère</th></tr></thead><tbody>${lignes.join("")}</tbody>`;
+}
+
+function tout_dessiner() {
+  construire($("inventaire").value);
+  dessiner_crans();
+  dessiner_ensemble();
+  dessiner_detail();
+  dessiner_general();
+}
+
+$("inventaire").innerHTML = Object.keys(stocks)
+  .map((nom) => `<option value="${nom}">${nom.replace(/_/g, " ")}</option>`)
+  .join("");
+$("exercice").innerHTML = Object.keys(tables.specs)
+  .sort()
+  .map((nom) => `<option value="${nom}">${nom}</option>`)
+  .join("");
+
+$("inventaire").addEventListener("change", tout_dessiner);
+$("exercice").addEventListener("change", dessiner_detail);
+$("jusqua").addEventListener("input", dessiner_detail);
+
+tout_dessiner();
+</script>
+</body>
+</html>

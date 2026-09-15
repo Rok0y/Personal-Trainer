@@ -1,4 +1,67 @@
 {
+ "ligues": {
+  "ligues": [
+   "Bronze",
+   "Argent",
+   "Or",
+   "Platine",
+   "Diamant",
+   "Maître"
+  ],
+  "divisions": [
+   "III",
+   "II",
+   "I"
+  ],
+  "seuils_volume": [
+   1.0,
+   1.28,
+   1.64,
+   2.1,
+   2.68,
+   3.44,
+   4.4,
+   5.63,
+   7.21,
+   9.22,
+   11.81,
+   15.11,
+   19.34,
+   24.76,
+   31.69,
+   40.56,
+   51.91,
+   66.44
+  ],
+  "paliers_xp": [
+   [
+    1,
+    10
+   ],
+   [
+    11,
+    25
+   ],
+   [
+    21,
+    50
+   ],
+   [
+    31,
+    100
+   ],
+   [
+    41,
+    200
+   ],
+   [
+    61,
+    400
+   ]
+  ],
+  "xp_base_niveau_general": 200,
+  "xp_increment_niveau_general": 100
+ },
  "specs": {
   "Developpé couché altères": {
    "series": 4,

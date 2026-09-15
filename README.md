@@ -89,7 +89,7 @@ exercice isolé, qui sert à faire tester la détection par quelqu'un d'autre et
 diagnostiquer un comptage qui ne démarre pas (`?banc=1`).
 
 **Comment les deux restent alignées.** Le code qui *calcule* existe en double,
-Python d'un côté et JavaScript de l'autre, et huit harnais de comparaison
+Python d'un côté et JavaScript de l'autre, et neuf harnais de comparaison
 vérifient que les deux rendent exactement les mêmes réponses (voir *Tests*). Le
 code qui *affiche* l'écran de séance, lui, n'existe qu'une fois : `hud.css` et
 `hud.js` sont chargés par les deux pages, tout comme la palette, les feuilles
@@ -111,7 +111,7 @@ réel : il est écrit hors du dépôt, et le script refuse d'écrire dedans.
 - `audio/` — Coach vocal : sélection et déclenchement des annonces (`coach.py`), lecture des fichiers son (`lecteur.py`), banque de fichiers audio (`Fichiers/`) et outils de génération/nettoyage des sons (`nettoyer_sons.py`, `generer_annonces_manquantes.py`).
 - `historique/` — Persistance SQLite des séances, statistiques et records (`database.py`, base `personaltrainer.db`).
 - `web/` — Deux choses distinctes. Le **serveur Flask** (`app.py`) exposant l'API et les pages (démarrage/pause de séance, historique, programmes, fiches d'exercice, profil, création/édition de séances), avec ses templates (`templates/`). Et le **portage navigateur** dans `static/` : `static/js/` porte les jumeaux JavaScript des modules de calcul plus le code d'affichage partagé avec les templates, `static/app/` l'application complète, `static/demo/` le banc d'essai, `static/donnees/` les fichiers dérivés du Python. Les feuilles de style de la racine (`palette.css`, `hud.css`, `programmes.css`, `exercices.css`, `ressentis.css`, `ancrages.css`) sont chargées par les deux applications : c'est ce qui les empêche de diverger à chaque correction.
-- `progression/` — Moteur de progression : le barème de paliers de chaque exercice (`paliers.py`), la déduction du niveau atteint à partir de l'historique (`niveaux.py`), l'application des objectifs aux séances (`objectifs.py`), l'ajustement par le ressenti déclaré en fin de séance (`ressenti.py`), les programmes sportifs (`programmes.py`) et la traduction d'un maximum en niveau de départ (`calibration.py`).
+- `progression/` — Moteur de progression : le barème de paliers de chaque exercice (`paliers.py`), la déduction du niveau atteint à partir de l'historique (`niveaux.py`), l'application des objectifs aux séances (`objectifs.py`), l'ajustement par le ressenti déclaré en fin de séance (`ressenti.py`), les programmes sportifs (`programmes.py`), la traduction d'un maximum en niveau de départ (`calibration.py`) et les ligues, divisions et XP qui rendent tout cela lisible (`ligues.py`).
 - `core/` — État partagé entre la boucle caméra et le site web (`state.py`), identité du profil connecté (`utilisateur.py`), matériel déclaré par le profil (`materiel.py`) et catalogue des messages affichés à l'utilisateur (`messages.py`).
 - `scripts/` — Trois genres d'outils, tous hors du chemin critique. Les **vérifications manuelles** (`script_verification_positions.py`, `script_niveaux.py`, `verifier_hud.py`), les **harnais de portage** par paires `generer_*.py` / `comparer_*.mjs`, et les **exports** : `preparer_demo.py` (tout ce que le navigateur relit) et `exporter_profil.py` (un historique SQLite vers l'application).
 
@@ -138,7 +138,7 @@ Au lancement, l'application initialise la base de données d'historique, ouvre l
 
 ## Tests
 
-Il n'y a pas de suite de tests unitaires, mais **huit harnais de comparaison**
+Il n'y a pas de suite de tests unitaires, mais **neuf harnais de comparaison**
 qui répondent à la seule question qui compte pour le portage : les deux
 implémentations rendent-elles la même réponse ? Chacun se joue en deux temps —
 un script Python écrit l'oracle, un script Node le rejoue et diffe.
@@ -151,8 +151,8 @@ python -m scripts.generer_scenarios     # 6 228 pas de seance, images comprises
 node scripts/comparer_seances.mjs
 ```
 
-Les six autres suivent la même forme : `historique`, `paliers`, `niveaux`,
-`ressenti`, `objectifs`, `programmes`. Attention, deux noms ne coïncident pas —
+Les sept autres suivent la même forme : `historique`, `paliers`, `niveaux`,
+`ressenti`, `objectifs`, `programmes`, `ligues`. Attention, deux noms ne coïncident pas —
 `generer_fixtures` alimente `comparer_detections` et `generer_scenarios`
 alimente `comparer_seances` — et les fixtures **ne sont pas versionnées** : un
 comparateur lancé sans son générateur compare de vieilles réponses.

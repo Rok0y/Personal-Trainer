@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="../programmes.css">
 <link rel="stylesheet" href="../exercices.css">
 <link rel="stylesheet" href="../ancrages.css">
+<link rel="stylesheet" href="../ligues.css">
 <link rel="stylesheet" href="../graphique.css">
 <link rel="stylesheet" href="../editeur.css">
 <link rel="stylesheet" href="../programme_resume.css">
@@ -651,6 +652,9 @@
   <div class="onglets" data-onglets="ecranProfil"></div>
   <h1 id="titreProfil">Mon profil</h1>
   <p class="sous-titre" id="sousTitreProfil"></p>
+  <!-- Le bandeau prend la teinte de la ligue **generale**, avec la meme
+       mecanique que les cartes d'exercice : memes variables, meme feuille. -->
+  <div id="ligueProfil"></div>
 
   <h2 class="titre-section">Mes informations</h2>
   <p class="sous-titre">
@@ -709,6 +713,14 @@
   <div class="actions" style="justify-content:flex-start">
     <button class="bouton secondaire" id="versProfils">Changer de profil</button>
   </div>
+
+  <!-- Derriere `?dev=1`, comme le banc d'essai de la demo derriere `?banc=1` :
+       personne n'a besoin de voir passer une table de baremes en s'entrainant.
+       La page visee est publique (tout `web/static` est deploye), simplement
+       non listee — il ne faut donc rien y mettre qui ne puisse pas l'etre. -->
+  <p class="muet" id="lienDev" hidden style="margin-top:1.4rem">
+    <a href="../dev/baremes.html">Barèmes et ligues — page de réglage</a>
+  </p>
 </section>
 
 <!-- ====================== HISTORIQUE ====================== -->
@@ -1054,6 +1066,9 @@
   <h1>Séance terminée</h1>
   <p class="sous-titre" id="resumeDuree"></p>
   <div class="etat-sauvegarde" id="etatSauvegarde"></div>
+  <!-- Ce que la seance a fait franchir. Cache tant qu'elle n'a rien fait
+       franchir : un bandeau vide vaut moins que pas de bandeau. -->
+  <section id="jalonsFin" hidden></section>
   <div class="resume" id="resume"></div>
   <p class="muet" id="aideRessenti" hidden>
     Dis-moi si c'était trop facile ou trop dur : le moteur avance plus vite ou
@@ -1095,6 +1110,8 @@ import * as stockage from "../js/stockage.js";
 import { Lecteur } from "../js/lecteur.js";
 import { Baremes } from "../js/paliers.js";
 import { Niveaux } from "../js/niveaux.js";
+import { Ligues } from "../js/ligues.js";
+import { badge_ligue, classe_ligue, jalon_ligue, jauge_ligue, style_ligue } from "../js/ligues_ui.js";
 import { ECHELLE, Ressenti } from "../js/ressenti.js";
 import { construire_ligne } from "../js/ressentis_ui.js";
 import { Calibration } from "../js/calibration.js";
@@ -1279,6 +1296,9 @@ function construire_moteur() {
     niveaux,
     calibration,
     ressenti,
+    // Les ligues suivent le meme sort que le reste : elles derivent du
+    // bareme, donc elles se refont avec lui quand le materiel change.
+    ligues: new Ligues(baremes, tables_baremes.ligues),
     objectifs: new Objectifs(baremes, niveaux, ressenti, calibration),
   };
 }
@@ -1749,6 +1769,45 @@ function rafraichir_affichage() {
 
 // ---------------------------------------------------------------- fin
 
+/**
+ * Ce que la seance vient de faire franchir : ligues, niveaux, XP.
+ *
+ * Jumelle de la route `/api/historique/<id>/jalons` du poste fixe, a ceci
+ * pres qu'il n'y a rien a interroger : la base est locale et la seance vient
+ * d'y etre ecrite. Une seance sans jalon n'affiche rien plutot qu'un bandeau
+ * vide — la celebration n'a de valeur que si elle est rare.
+ */
+function afficher_jalons(seance_id) {
+  const section = $("jalonsFin");
+  section.hidden = true;
+  if (seance_id === null || seance_id === undefined) return;
+
+  const { seances, ancrages } = lecture_du_profil();
+  const montees = moteur.niveaux.montees_de_niveau(seances, ancrages);
+  const de_la_seance = montees[seance_id] ?? {};
+  const franchies = Object.entries(moteur.ligues.montees_de_ligue(montees)[seance_id] ?? {});
+  const gagnee = moteur.ligues.xp_gagnee(de_la_seance);
+  if (!franchies.length && !Object.keys(de_la_seance).length) return;
+
+  const etats = moteur.niveaux.etats_niveaux(seances, ancrages);
+  const general = moteur.ligues.niveau_general(moteur.ligues.xp_totale(etats));
+
+  section.innerHTML =
+    `<div class="ligue-profil ${classe_ligue(general.ligue)}" style="${style_ligue(general.ligue)}">` +
+    `<div><span class="xp">Niveau général</span>` +
+    `<div class="niveau-general">${general.niveau}</div></div>` +
+    badge_ligue(general.ligue, { grand: true }) +
+    jauge_ligue(general.ligue, general.avancement) +
+    `<div class="xp">+${gagnee} XP cette séance · ` +
+    `${general.xp_dans_le_niveau} / ${general.xp_pour_le_suivant}</div></div>` +
+    (franchies.length
+      ? `<p class="muet" style="margin-top:.8rem">Nouvelle ligue :</p>` +
+        franchies.map(([nom, montee]) => jalon_ligue(nom, montee)).join(" ")
+      : "");
+  section.hidden = false;
+}
+
+
 async function terminer(abandonnee = false) {
   en_cours = false;
   verrou_ecran.relacher();
@@ -1809,6 +1868,7 @@ async function terminer(abandonnee = false) {
   }
 
   proposer_ressentis(seance_id);
+  afficher_jalons(seance_id);
 
   $("noteCamera").textContent =
     "La caméra reste autorisée tant que tu ne quittes pas la page — son voyant peut rester allumé.";
@@ -1999,10 +2059,11 @@ const echapper = (texte) =>
  * **le maillon faible**. « 12, 12, 10, 12 » prouve 10, et une ligne agregee
  * (« 46 repetitions ») ne permet pas de le voir.
  */
-function dessiner_seance(seance, montees) {
+function dessiner_seance(seance, montees, montees_ligue = {}) {
   const minutes = Math.floor((seance.duree || 0) / 60);
   const abandonnee = seance.statut === "abandoned";
   const montee = montees[seance.id] ?? {};
+  const franchie = montees_ligue[seance.id] ?? {};
 
   const exercices = seance.exercices
     .map((exercice) => {
@@ -2015,8 +2076,12 @@ function dessiner_seance(seance, montees) {
       const series = resume_series(exercice.series_detaillees, exercice.mode);
 
       const gain = montee[exercice.nom];
+      // Une montee de niveau est frequente, une montee de ligue est un jalon :
+      // les deux coexistent, et seule la seconde porte une medaille.
+      const saut = franchie[exercice.nom];
       const badge = gain
-        ? `<div class="montee">Niveau ${gain.depuis ?? "—"} → ${gain.vers}</div>`
+        ? `<div class="montee">Niveau ${gain.depuis ?? "—"} → ${gain.vers}</div>` +
+          (saut ? jalon_ligue(exercice.nom, saut) : "")
         : "";
 
       return (
@@ -2054,13 +2119,14 @@ function dessiner_seance(seance, montees) {
 function dessiner_historique() {
   const { seances: histoire, ancrages } = lecture_du_profil();
   const montees = moteur.niveaux.montees_de_niveau(histoire, ancrages);
+  const montees_ligue = moteur.ligues.montees_de_ligue(montees);
 
   mettre_a_jour_etat_base();
   $("resumeHistorique").textContent = histoire.length
     ? `${histoire.length} séance${histoire.length > 1 ? "s" : ""} sur cet appareil.`
     : "";
   $("listeHistorique").innerHTML = histoire.length
-    ? histoire.map((seance) => dessiner_seance(seance, montees)).join("")
+    ? histoire.map((seance) => dessiner_seance(seance, montees, montees_ligue)).join("")
     : `<p class="vide">Aucune séance enregistrée pour l'instant.</p>`;
 
   // Le ressenti se saisit **aussi a posteriori**, comme sur le poste fixe :
@@ -2547,6 +2613,20 @@ function dessiner_profil() {
   $("champTaille").value = profil.taille_cm ?? "";
   $("champPoidsCorps").value = profil.poids_corps_kg ?? "";
 
+  // Le niveau general derive du meme calcul que les ligues d'exercice :
+  // chaque niveau acquis rapporte de l'XP, et l'XP fait monter le profil.
+  // Rien n'est stocke, tout se relit depuis l'historique local.
+  const { seances, ancrages } = lecture_du_profil();
+  const etats = moteur.niveaux.etats_niveaux(seances, ancrages);
+  const general = moteur.ligues.niveau_general(moteur.ligues.xp_totale(etats));
+  $("ligueProfil").innerHTML =
+    `<div class="ligue-profil ${classe_ligue(general.ligue)}" style="${style_ligue(general.ligue)}">` +
+    `<div><span class="xp">Niveau général</span>` +
+    `<div class="niveau-general">${general.niveau}</div></div>` +
+    badge_ligue(general.ligue, { grand: true }) +
+    jauge_ligue(general.ligue, general.avancement) +
+    `<div class="xp">${general.xp_dans_le_niveau} / ${general.xp_pour_le_suivant} XP</div></div>`;
+
   $("resumeMesures").innerHTML =
     case_resume("Sexe", LIBELLES_SEXE[profil.sexe] ?? "Non précisé") +
     case_resume("Naissance", profil.date_naissance || "—") +
@@ -2556,6 +2636,8 @@ function dessiner_profil() {
 
   dessiner_materiel();
   editer_materiel(false);
+
+  $("lienDev").hidden = !new URLSearchParams(location.search).has("dev");
 }
 
 //: Le stockage garde la valeur brute (`femme`, `homme`, `autre`, ou null) :
@@ -2640,8 +2722,13 @@ function dessiner_exercices() {
 function carte_exercice(nom, etat) {
   const fiche = mouvements[nom];
   const etiquettes = [];
+  // La carte porte la couleur de la ligue de **cet** exercice : le catalogue
+  // doit se lire comme un tableau de trophees. Un echauffement n'a pas
+  // d'etat, donc pas de ligue, et sa carte reste neutre.
+  const ligue = etat ? moteur.ligues.ligue_exercice(nom, etat.niveau) : null;
 
   if (etat) {
+    etiquettes.push(badge_ligue(ligue));
     etiquettes.push(
       etat.niveau
         ? `<span class="etiquette niveau">Niveau ${etat.niveau} · ${echapper(resume_palier(etat.actuel))}</span>`
@@ -2657,7 +2744,8 @@ function carte_exercice(nom, etat) {
   }
 
   return (
-    `<button type="button" class="carte" data-mouvement="${echapper(nom)}">` +
+    `<button type="button" class="carte ${etat ? classe_ligue(ligue) : ""}" ` +
+    `style="${style_ligue(ligue)}" data-mouvement="${echapper(nom)}">` +
     `<h3>${echapper(nom)}</h3><p>${echapper(fiche.description ?? "")}</p>` +
     (etiquettes.length ? `<div class="etiquettes">${etiquettes.join("")}</div>` : "") +
     `</button>`
@@ -2729,7 +2817,7 @@ function dessiner_fiche(nom) {
     `<h1>${echapper(nom)}</h1>` +
     `<p class="resume">${echapper(fiche.description ?? "")}</p>` +
     (meta.length ? `<div class="meta">${meta.join("")}</div>` : "") +
-    (etat ? bloc_niveau(etat) : "") +
+    (etat ? bloc_niveau(etat, nom) : "") +
     (etat ? bloc_graphique(nom, statistique) : "") +
     (etat ? bloc_recalage(nom, etat) : "") +
     liste("Se mettre en place", fiche.mise_en_place) +
@@ -2808,8 +2896,12 @@ function brancher_points_du_graphique(nom, histoire) {
   }
 }
 
-function bloc_niveau(etat) {
+function bloc_niveau(etat, nom) {
+  // Ouvrir une carte doree ne doit pas atterrir sur une page grise : le bloc
+  // « Ou j'en suis » porte la teinte du meme exercice que la carte.
+  const ligue = moteur.ligues.ligue_exercice(nom, etat.niveau);
   const cases = [
+    `<div><span>Ligue</span><strong style="line-height:1.4">${badge_ligue(ligue, { grand: true })}</strong></div>`,
     `<div><span>Niveau</span><strong>${etat.niveau ?? "—"}</strong></div>`,
     `<div><span>${etat.niveau ? "Palier acquis" : "Premier palier"}</span>` +
       `<strong>${echapper(resume_palier(etat.actuel ?? etat.premier) ?? "—")}</strong></div>`,
@@ -2824,7 +2916,16 @@ function bloc_niveau(etat) {
     : `<p class="sous-titre" style="margin-top:14px">Rien dans l'historique n'atteint ` +
       `encore le premier palier. Le test de calibration, ou simplement une première ` +
       `séance, posera le niveau.</p>`;
-  return `<div class="bloc"><h2>Où j'en suis</h2><div class="niveau">${cases.join("")}</div>${note}</div>`;
+  const cran = ligue?.seuil_suivant
+    ? `<p class="niveau-note">Le cran suivant demande ` +
+      `${Math.round((ligue.seuil_suivant * 100) / ligue.seuil_actuel - 100)} % de volume ` +
+      `de plus que celui où tu es entré.</p>`
+    : "";
+  return (
+    `<div class="bloc ${classe_ligue(ligue)}" style="${style_ligue(ligue)}">` +
+    `<h2>Où j'en suis</h2><div class="niveau">${cases.join("")}</div>` +
+    `${jauge_ligue(ligue, ligue?.avancement)}${cran}${note}</div>`
+  );
 }
 
 // ---------------------------------------------------------------- programmes

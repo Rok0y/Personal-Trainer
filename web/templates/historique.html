@@ -11,6 +11,7 @@
 
     <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='ressentis.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='ligues.css') }}">
 <style>
         main { width: min(1100px, calc(100% - 40px)); margin: auto; padding: 44px 0; }
 
@@ -116,6 +117,7 @@
         <h1>Historique</h1>
         <a class="back" href="/">Accueil</a>
     </header>
+    {% from "_ligue.html" import badge_ligue, style_ligue %}
     {% set onglet = 'historique' %}{% include '_navigation.html' %}
     {% if not seances %}<p class="empty">Aucune séance enregistrée.</p>{% endif %}
     {% for seance in seances %}
@@ -155,6 +157,11 @@
                affichable une seule fois dans tout l'historique. #}
             {% set montee = montees.get(seance.id, {}).get(exercice.nom) %}
             {% if montee %}<a class="levelup" href="/exercice/{{ exercice.nom|urlencode }}">Niveau {{ montee.vers }} atteint : {{ montee.palier.resume() }}</a>{% endif %}
+            {%- set franchie = montees_ligue.get(seance.id, {}).get(exercice.nom) %}
+            {# Une montee de niveau est frequente, une montee de ligue est un
+               jalon : les deux coexistent, et seule la seconde porte une
+               medaille. #}
+            {% if franchie %}<span class="jalon-ligue" style="{{ style_ligue(franchie.vers) }}">{% if franchie.depuis %}{{ franchie.depuis.libelle }} {% endif %}<span class="fleche">&rarr;</span> {{ badge_ligue(franchie.vers) }}</span>{% endif %}
         </section>
         {% endfor %}
         </div>

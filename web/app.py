@@ -52,6 +52,7 @@ from core.materiel import ACCESSOIRES, POIDS_REFERENCE, materiel_du_profil, norm
 # l'ecrit en ligne de commande. La route d'export ne fait que la servir.
 from scripts.exporter_profil import exporter as exporter_profil
 from progression.niveaux import etat_niveau, etats_niveaux, montees_de_niveau
+from progression import ligues as moteur_ligues
 from progression.paliers import (
     est_suivi_par_le_moteur,
     exercices_suivis,
@@ -813,10 +814,12 @@ def historique():
 
     donnees = recuperer_historique()
 
+    montees = montees_de_niveau(donnees)
     return render_template(
         "historique.html",
         seances=seances_entrainement(donnees),
-        montees=montees_de_niveau(donnees),
+        montees=montees,
+        montees_ligue=moteur_ligues.montees_de_ligue(montees),
         jugements=jugements_par_seance(donnees),
         detail=False,
     )
@@ -874,14 +877,17 @@ def page_profil():
     if materiel.get("accessoires"):
         morceaux.append("accessoires : " + ", ".join(materiel["accessoires"]))
 
+    etats = etats_niveaux(donnees)
     return render_template(
         "profil.html",
         nombre_seances=len(donnees),
         # Le nombre d'exercices dont l'historique prouve un niveau : c'est ce
         # que le moteur sait de cette personne, pas ce qu'elle a essayé.
-        nombre_niveaux=sum(
-            1 for etat in etats_niveaux(donnees).values() if etat["niveau"]
-        ),
+        nombre_niveaux=sum(1 for etat in etats.values() if etat["niveau"]),
+        # Le niveau général se dérive du même calcul : chaque niveau acquis
+        # rapporte de l'XP, et l'XP fait monter le profil. Rien de plus n'est
+        # lu, et surtout rien n'est stocké.
+        general=moteur_ligues.niveau_general(moteur_ligues.xp_totale(etats)),
         resume_materiel=" · ".join(morceaux) or "Rien de déclaré.",
     )
 
@@ -939,12 +945,14 @@ def page_exercices():
     partout ailleurs : ils ne se lisent pas de la même façon (les premiers ont
     un niveau, les seconds non).
     """
+    etats = etats_niveaux(recuperer_historique())
     return render_template(
         "exercices.html",
         onglet="exercices",
         exercices=catalogue_exercices(),
         echauffements=catalogue_echauffements(),
-        niveaux=etats_niveaux(recuperer_historique()),
+        niveaux=etats,
+        ligues=moteur_ligues.ligues_par_exercice(etats),
     )
 
 
@@ -960,11 +968,13 @@ def page_exercice(nom):
     fiche = fiche_mouvement(nom)
     if fiche is None:
         abort(404)
+    etat = etat_niveau(nom)
     return render_template(
         "exercice.html",
         onglet="exercices",
         fiche=fiche,
-        etat=etat_niveau(nom),
+        etat=etat,
+        ligue=moteur_ligues.ligue_exercice(nom, (etat or {}).get("niveau")),
         statistique=statistiques_exercices(recuperer_historique()).get(nom),
     )
 
@@ -1208,6 +1218,34 @@ def lire_ressentis_api(seance_id):
     """
     return jsonify({"ok": True, "echelle": list(ECHELLE),
                     "exercices": evaluation_seance(seance_id)})
+
+
+@app.route("/api/historique/<int:seance_id>/jalons")
+def lire_jalons_api(seance_id):
+    """Ce qu'une séance a fait franchir : niveaux, ligues, XP.
+
+    Pendant exact de la route des ressentis, et pour la même raison : la séance
+    est écrite par le **thread caméra**, donc `fin.html` n'a pas son identifiant
+    au moment du rendu. Il l'attend dans `/etat` puis vient chercher ses jalons
+    ici. Ne pas déplacer ce calcul dans `enregistrer_seance` : il arriverait
+    toujours trop tôt pour être affiché.
+
+    Une séance inconnue rend des jalons vides plutôt qu'une 404 — l'écran
+    interroge cette route pendant que l'écriture est peut-être en cours.
+    """
+    donnees = recuperer_historique()
+    montees = montees_de_niveau(donnees)
+    de_la_seance = montees.get(seance_id, {})
+    etats = etats_niveaux(donnees)
+    return jsonify({
+        "ok": True,
+        "montees_niveau": de_la_seance,
+        "montees_ligue": moteur_ligues.montees_de_ligue(montees).get(seance_id, {}),
+        "xp_gagnee": moteur_ligues.xp_gagnee(de_la_seance),
+        "niveau_general": moteur_ligues.niveau_general(
+            moteur_ligues.xp_totale(etats)
+        ),
+    })
 
 
 @app.route("/api/historique/<int:seance_id>/ressentis", methods=["POST"])

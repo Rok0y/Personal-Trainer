@@ -36,4 +36,25 @@
     --mode-chrono: var(--blue);
     --mode-amrap: #a97bff;
     --mode-echauffement: #ffb340;
+
+    /* Les six ligues, par couples « ton mat / ton reflet ». C'est l'ecart
+       entre les deux qui fabrique l'aspect metallique du degrade, et c'est
+       aussi lui qui distingue le platine du diamant : leurs teintes de base
+       sont voisines, leurs reflets non.
+
+       Deux valeurs par ligue et pas trois : il n'y a volontairement pas de
+       couleur de halo, ce qui obligerait a maintenir dix-huit variables. Le
+       halo est fabrique par `ligues.css` en filtrant le ton mat. */
+    --ligue-bronze: #c87f3a;
+    --ligue-bronze-reflet: #f5c489;
+    --ligue-argent: #aebccd;
+    --ligue-argent-reflet: #f0f6fc;
+    --ligue-or: #e5b02a;
+    --ligue-or-reflet: #ffe9a0;
+    --ligue-platine: #8fbccb;
+    --ligue-platine-reflet: #dff3fa;
+    --ligue-diamant: #4fd2ff;
+    --ligue-diamant-reflet: #cdf2ff;
+    --ligue-maitre: #d46bff;
+    --ligue-maitre-reflet: #f3d0ff;
 }

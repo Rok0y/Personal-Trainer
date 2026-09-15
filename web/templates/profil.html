@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='ligues.css') }}">
 <style>
     main { width:min(860px,calc(100% - 40px)); }
     h1 { color:var(--teal); }
@@ -39,14 +40,30 @@
 <main>
     <p class="kicker">Profil</p>
     <h1>{{ profil.nom }}</h1>
+    {% from "_ligue.html" import badge_ligue, classe_ligue, jauge_ligue, style_ligue %}
     {% set onglet = 'profil' %}{% include '_navigation.html' %}
 
     <div class="bloc">
         <h2>En résumé</h2>
+
+        {# Le bandeau prend la teinte de la ligue **generale**, avec la meme
+           mecanique que les cartes d'exercice : ce sont les memes variables et
+           la meme feuille. #}
+        <div class="ligue-profil {{ classe_ligue(general.ligue) }}" style="{{ style_ligue(general.ligue) }}">
+            <div>
+                <span class="xp">Niveau général</span>
+                <div class="niveau-general">{{ general.niveau }}</div>
+            </div>
+            {{ badge_ligue(general.ligue, grand=True) }}
+            {{ jauge_ligue(general.ligue, general.avancement) }}
+            <div class="xp">{{ general.xp_dans_le_niveau }} / {{ general.xp_pour_le_suivant }} XP</div>
+        </div>
+
         <div class="chiffres">
             <div><span>Depuis le</span><strong>{{ profil.cree_le.split(' ')[0] }}</strong></div>
             <div><span>Séances</span><strong>{{ nombre_seances }}</strong></div>
             <div><span>Exercices suivis</span><strong>{{ nombre_niveaux }}</strong></div>
+            <div><span>XP totale</span><strong>{{ general.xp }}</strong></div>
         </div>
     </div>
 

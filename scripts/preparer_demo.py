@@ -124,10 +124,21 @@ def exporter_baremes():
     from dataclasses import asdict
 
     from core.materiel import ACCESSOIRES, MATERIEL_PAR_DEFAUT, POIDS_REFERENCE
-    from progression import paliers
+    from progression import ligues, paliers
     from session.seances import MATERIEL_EXERCICES, nombre_halteres
 
     return {
+        # Les echelles de ligue et la table d'XP voyagent avec le bareme : ce
+        # sont des reglages, pas des donnees de profil, et `ligues.js` ne doit
+        # en reecrire aucune valeur.
+        "ligues": {
+            "ligues": list(ligues.LIGUES),
+            "divisions": list(ligues.DIVISIONS),
+            "seuils_volume": list(ligues.SEUILS_VOLUME),
+            "paliers_xp": [list(tranche) for tranche in ligues.PALIERS_XP],
+            "xp_base_niveau_general": ligues.XP_BASE_NIVEAU_GENERAL,
+            "xp_increment_niveau_general": ligues.XP_INCREMENT_NIVEAU_GENERAL,
+        },
         "specs": {nom: asdict(spec) for nom, spec in paliers.SPECS.items()},
         "echelles": {
             "un_haltere": list(paliers.ECHELLE_UN_HALTERE),

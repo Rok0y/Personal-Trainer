@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='exercices.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='ancrages.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='graphique.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='ligues.css') }}">
 <style>
         main { width:min(880px,calc(100% - 40px)); }
         header { display:flex; justify-content:space-between; align-items:center; gap:20px; border-bottom:1px solid var(--border); padding-bottom:22px; margin-bottom:22px; }
@@ -43,6 +44,7 @@
         <a class="back" href="/exercices">Tous les exercices</a>
     </header>
 
+    {% from "_ligue.html" import badge_ligue, classe_ligue, jauge_ligue, style_ligue %}
     {% include "_navigation.html" %}
 
     <p class="resume">{{ fiche.description }}</p>
@@ -55,9 +57,13 @@
     </div>
 
     {%- if etat %}
-    <div class="bloc">
+    <div class="bloc {{ classe_ligue(ligue) }}" style="{{ style_ligue(ligue) }}">
         <h2>Où j'en suis</h2>
         <div class="niveau">
+            <div>
+                <span>Ligue</span>
+                <strong style="line-height:1.4;">{{ badge_ligue(ligue, grand=True) }}</strong>
+            </div>
             <div>
                 <span>Niveau</span>
                 <strong>{% if etat.niveau %}{{ etat.niveau }}{% else %}—{% endif %}</strong>
@@ -73,6 +79,13 @@
             </div>
             {%- endif %}
         </div>
+        {{ jauge_ligue(ligue, ligue.avancement if ligue else 0) }}
+        {%- if ligue and ligue.seuil_suivant %}
+        <p class="niveau-note">
+            Le cran suivant demande {{ (ligue.seuil_suivant * 100 / ligue.seuil_actuel - 100)|round|int }} % de volume
+            de plus que celui où tu es entré.
+        </p>
+        {%- endif %}
         {%- if not etat.niveau %}
         <p class="hint" style="margin-top:14px;">
             Rien dans l'historique n'atteint encore le premier palier. Le test de

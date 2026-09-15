@@ -1,0 +1,202 @@
+/* ==========================================================================
+   Les ligues, partagees par les deux applications.
+
+   Meme decoupage que `hud.css`, `ressentis.css` et `exercices.css` : le poste
+   fixe et l'application montrent la meme chose, donc elles partagent leur
+   habillage. Une carte teintee y est teintee pareil.
+
+   **Une variable locale, pas une classe par ligue.** L'element porte en ligne
+   `--ligue`, `--ligue-reflet` et `--division` (0 pour III, 2 pour I) ; tout ce
+   qui suit ne parle que de ces trois-la. Une seule regle couvre donc les dix-
+   huit crans : il n'y a ni `.carte.or` ni `.carte.platine-i` a maintenir, et
+   ajouter une ligue ne demande que deux couleurs dans `palette.css`.
+
+   **L'intensite monte avec la division.** Le meme `--division` gradue trois
+   choses a la fois : l'opacite de la teinte de fond, la force du halo du
+   badge, et — sur la division I seulement — un reflet oblique. Un exercice en
+   Or I ne doit pas avoir la meme carte qu'un exercice en Or III.
+
+   Aucune animation : une grille de cartes qui scintille coute des images par
+   seconde sur l'iPad, qu'on mesure deja a la minute pres.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   La surface teintee — carte du catalogue, entete de fiche, bandeau de profil.
+   -------------------------------------------------------------------------- */
+
+.ligue-teinte {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-color: var(--ligue, var(--border-strong));
+}
+
+/* La teinte metallique elle-meme. Posee en pseudo-element plutot qu'en
+   `background` pour que l'opacite soit pilotable par `calc()` sur un nombre
+   sans unite — universellement supporte — la ou un `color-mix()` dans la
+   couleur ne l'est que depuis Safari 16.2. */
+.ligue-teinte::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    /* Reflet dans les deux coins, ton mat au centre : c'est ce qui fait lire
+       la surface comme du metal. Surtout **pas** de `transparent` au milieu —
+       essaye, ca creuse une bande sombre en diagonale et la carte a l'air
+       sale plutot que polie. */
+    background: linear-gradient(135deg,
+        var(--ligue-reflet) 0%,
+        var(--ligue) 38%,
+        var(--ligue) 64%,
+        var(--ligue-reflet) 100%);
+    /* 0,22 a 0,42 selon la division. Plafonne la : au-dela, le texte clair
+       passe sous le seuil lisible sur l'or et le bronze, qui sont les deux
+       teintes les plus claires — ce sont elles qui fixent la limite, pas les
+       quatre autres. */
+    opacity: calc(0.22 + 0.10 * var(--division, 0));
+}
+
+/* Le reflet oblique, reserve a la division I (`--division` a 2). Le `max()`
+   le laisse a zero pour III et II plutot que d'introduire une troisieme
+   regle. */
+.ligue-teinte::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(108deg,
+        transparent 36%,
+        var(--ligue-reflet) 50%,
+        transparent 64%);
+    opacity: calc(0.18 * max(var(--division, 0) - 1, 0));
+}
+
+/* **Le texte secondaire ne peut pas rester `--muted` sur une surface teintee.**
+   Mesure sur la division I, la plus chargee en couleur : le gris bleute de
+   `--muted` tombe a un contraste de 2,3 (diamant) a 3,3 (bronze), tres en
+   dessous du seuil lisible de 4,5 — alors que les titres, eux, tiennent entre
+   6,0 et 8,6 et n'ont besoin de rien.
+   La surprise de la mesure est que l'argent, le platine et le diamant sont
+   *pires* que l'or et le bronze, bien qu'ils paraissent plus clairs : `--muted`
+   est lui-meme un gris bleute, donc il se fond dans ces trois teintes-la.
+   Le texte clair a 84 % remonte les six entre 4,8 et 6,6. */
+.ligue-teinte:not(.sans-ligue) p,
+.ligue-teinte:not(.sans-ligue) .hint { color: rgba(244, 242, 236, .84); }
+
+/* Les etiquettes perdent leur couleur propre sur une surface teintee : c'est
+   le badge de ligue qui porte la couleur, et un liseré teal sur fond or ne
+   dit rien de plus qu'il ne salit. Une carte **sans** ligue est exclue des
+   deux regles : elle n'est pas teintee, donc rien n'y justifie de perdre le
+   teal du niveau. */
+.ligue-teinte:not(.sans-ligue) .etiquette,
+.ligue-teinte:not(.sans-ligue) .etiquette.niveau,
+.ligue-teinte:not(.sans-ligue) .etiquette.debut {
+    color: rgba(244, 242, 236, .84);
+    border-color: rgba(244, 242, 236, .3);
+}
+
+/* La teinte est posee au-dessus du fond de la carte et **sous** son contenu.
+   Un `z-index: -1` l'aurait glissee derriere le fond, qui est un verre opaque
+   a 60 % : la couleur s'en serait trouvee delavee d'autant, et le reglage
+   d'opacite aurait cesse de vouloir dire quelque chose. */
+.ligue-teinte > * { position: relative; z-index: 1; }
+
+/* Un exercice hors bareme n'a **pas** de ligue — pas un Bronze III offert.
+   Sa carte reste neutre, et c'est l'etiquette « a tester » qui le dit. */
+.ligue-teinte.sans-ligue::before,
+.ligue-teinte.sans-ligue::after { opacity: 0; }
+
+.ligue-teinte.sans-ligue { border-color: var(--border-strong); }
+
+.carte.ligue-teinte:hover { border-color: var(--ligue-reflet, var(--teal)); }
+
+/* --------------------------------------------------------------------------
+   Le badge — la medaille.
+   -------------------------------------------------------------------------- */
+
+.badge-ligue {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--ligue-reflet);
+    background: linear-gradient(135deg,
+        var(--ligue-reflet) 0%,
+        var(--ligue) 48%,
+        var(--ligue-reflet) 100%);
+    /* Texte sombre sur metal clair : c'est le seul sens qui tienne le
+       contraste sur les six ligues, le bronze et l'or compris. */
+    color: var(--bg);
+    font: 700 11px 'Space Grotesk', sans-serif;
+    letter-spacing: .06em;
+    white-space: nowrap;
+    filter: drop-shadow(0 0 calc(2px + 4px * var(--division, 0)) var(--ligue));
+}
+
+.badge-ligue.sans-ligue {
+    background: none;
+    color: var(--muted);
+    border-color: var(--border-strong);
+    filter: none;
+}
+
+.badge-ligue.grand { padding: 6px 14px; font-size: 13px; }
+
+/* --------------------------------------------------------------------------
+   L'avancement dans le cran.
+   -------------------------------------------------------------------------- */
+
+.ligue-jauge {
+    height: 4px;
+    margin-top: 10px;
+    border-radius: 999px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.ligue-jauge > i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--ligue), var(--ligue-reflet));
+}
+
+/* --------------------------------------------------------------------------
+   Le niveau general du profil, et les jalons de montee.
+   -------------------------------------------------------------------------- */
+
+.ligue-profil {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 16px 18px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--glass);
+}
+
+.ligue-profil .niveau-general {
+    font: 400 32px 'Bebas Neue', 'Space Grotesk', sans-serif;
+    letter-spacing: .02em;
+}
+
+.ligue-profil .xp { color: var(--muted); font-size: 13px; }
+
+.ligue-profil .ligue-jauge { flex: 1 1 160px; margin-top: 0; }
+
+/* Le jalon pose sur une seance de l'historique, et l'annonce de fin de
+   seance. Les deux disent la meme chose, donc elles se ressemblent. */
+.jalon-ligue {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font: 700 11px 'Space Grotesk', sans-serif;
+    letter-spacing: .04em;
+    color: var(--muted);
+}
+
+.jalon-ligue .fleche { color: var(--ligue); }

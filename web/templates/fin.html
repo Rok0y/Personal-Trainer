@@ -11,6 +11,7 @@
 
     <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='ressentis.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='ligues.css') }}">
 <style>
         main { width: min(900px, calc(100% - 40px)); margin: auto; padding: 72px 0; }
 
@@ -76,6 +77,9 @@
     <p class="kicker">Personal Trainer</p>
     <h1>{{ "Séance terminée" if etat.statut == "finished" else "Séance abandonnée" }}</h1>
     <div class="status{% if etat.statut == 'abandoned' %} abandoned{% endif %}">{{ etat.seance|replace('_', ' ')|title }}</div>
+    <!-- Les jalons franchis par cette seance. Vides tant que le thread camera
+         n'a pas ecrit la seance, remplis des que son identifiant apparait. -->
+    <section id="jalons" hidden></section>
     {% if exercices %}<p class="aide">Signale seulement les écarts. Sans réponse, l'objectif suivant progresse comme d'habitude.</p>{% endif %}
     <section class="results" aria-label="Résultats des exercices">
         {% for exercice in exercices %}
@@ -97,6 +101,10 @@
     // l'ecrire deux fois laisserait un ecran proposer un bouton que le moteur
     // ignore.
     import { construire_ligne } from "{{ url_for('static', filename='js/ressentis_ui.js') }}";
+    // L'habillage des ligues est partage avec l'application : un jalon se
+    // dessine pareil des deux cotes.
+    import { badge_ligue, jalon_ligue, jauge_ligue, style_ligue, classe_ligue }
+        from "{{ url_for('static', filename='js/ligues_ui.js') }}";
 
     const echo = document.getElementById("echo");
     const choix = {};
@@ -135,24 +143,65 @@
         });
     }
 
+    // **Ce qu'une seance a fait franchir.** Route separee de celle des
+    // ressentis pour la meme raison qu'elle existe : la seance est ecrite par
+    // le thread camera, donc rien de tout cela n'est calculable au rendu.
+    async function afficherJalons() {
+        let donnees;
+        try {
+            donnees = await (await fetch(`/api/historique/${seanceId}/jalons`)).json();
+        } catch (erreur) { return; }
+
+        const ligues = Object.entries(donnees.montees_ligue || {});
+        const niveaux = Object.entries(donnees.montees_niveau || {});
+        if (!ligues.length && !niveaux.length && !donnees.xp_gagnee) return;
+
+        const general = donnees.niveau_general;
+        const morceaux = [
+            `<div class="ligue-profil ${classe_ligue(general.ligue)}" style="${style_ligue(general.ligue)}">` +
+            `<div><span class="xp">Niveau général</span>` +
+            `<div class="niveau-general">${general.niveau}</div></div>` +
+            badge_ligue(general.ligue, { grand: true }) +
+            jauge_ligue(general.ligue, general.avancement) +
+            `<div class="xp">+${donnees.xp_gagnee} XP cette séance · ` +
+            `${general.xp_dans_le_niveau} / ${general.xp_pour_le_suivant}</div></div>`,
+        ];
+        if (ligues.length) {
+            morceaux.push(
+                `<p class="aide">Nouvelle ligue :</p>` +
+                ligues.map(([nom, montee]) => jalon_ligue(nom, montee)).join(" ")
+            );
+        }
+        if (niveaux.length) {
+            morceaux.push(
+                `<p class="aide">Niveau gagné : ` +
+                niveaux.map(([nom, m]) => `${nom} → ${m.vers}`).join(" · ") + `</p>`
+            );
+        }
+        const section = document.getElementById("jalons");
+        section.innerHTML = morceaux.join("");
+        section.hidden = false;
+    }
+
     // Le statut passe a `finished` avant que le thread camera n'ait ecrit la
     // seance : a l'arrivee sur cette page, l'identifiant peut ne pas exister
     // encore. On l'attend brievement, puis on renonce — une seance sans
     // aucune repetition n'est jamais ecrite, et n'a donc rien a annoter.
     async function attendreSeance(essaisRestants = 12) {
-        if (seanceId !== null) return afficherRessentis();
+        if (seanceId !== null) { afficherJalons(); return afficherRessentis(); }
         if (essaisRestants <= 0) return;
         try {
             const donnees = await (await fetch("/etat")).json();
             if (donnees.seance_id !== null && donnees.seance_id !== undefined) {
                 seanceId = donnees.seance_id;
+                afficherJalons();
                 return afficherRessentis();
             }
         } catch (erreur) { /* le serveur redemarre peut-etre : on reessaiera */ }
         setTimeout(() => attendreSeance(essaisRestants - 1), 300);
     }
 
-    if (document.querySelector(".result[data-exercice]")) attendreSeance();
+    attendreSeance();
 </script>
 </body>
 </html>
