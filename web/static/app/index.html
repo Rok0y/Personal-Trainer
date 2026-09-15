@@ -252,6 +252,8 @@
     font-size: 0.86rem;
     color: var(--texte-doux);
   }
+  /* Les pastilles se rangent sous la date, comme dans l'historique. */
+  .progression-detail .series-detail { margin-top: 0.3rem; }
 
   .barre-carte {
     display: flex;
@@ -319,8 +321,10 @@
     padding: 0.45rem 0;
     border-top: 1px solid var(--trait);
   }
-  .detail-ligne span { color: var(--texte-doux); }
-  .detail-ligne i { color: var(--alerte); font-style: normal; }
+  .detail-ligne > span { color: var(--texte-doux); }
+  /* Le ressenti, et **lui seul** : la charge d'une pastille est aussi un <i>,
+     et une regle non portee peindrait les kilos en rouge. */
+  .detail-ligne > span > i { color: var(--alerte); font-style: normal; }
 
   .actions { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
 
@@ -2008,24 +2012,7 @@ function dessiner_seance(seance, montees) {
         : `${exercice.repetitions} reps`;
       const charge = exercice.poids ? ` · ${exercice.poids} kg` : "";
 
-      const series = exercice.series_detaillees
-        .map((serie) => {
-          const valeur = unite ? `${Math.round(serie.duree)} s` : serie.repetitions;
-          // **La charge est portee par la serie, pas par l'exercice**, et c'est
-          // ce qui rend le detail lisible : on baisse souvent d'un cran en
-          // cours de seance, et « 13 13 13 13 » ne dit pas si les quatre ont
-          // ete faites au meme poids. `historique.js` stocke bien un poids par
-          // serie, il n'etait simplement pas affiche.
-          // Le test de veracite n'est pas decoratif : `historique.js` normalise
-          // a l'ecriture avec `poids ?? 0`, donc un format inconditionnel
-          // afficherait « 13x0 kg » sur tout exercice au poids du corps.
-          const charge = serie.poids ? `<i>×${serie.poids}&nbsp;kg</i>` : "";
-          return (
-            `<span class="serie-puce${serie.completee ? "" : " ratee"}">` +
-            `${valeur}${charge}</span>`
-          );
-        })
-        .join("");
+      const series = resume_series(exercice.series_detaillees, exercice.mode);
 
       const gain = montee[exercice.nom];
       const badge = gain
@@ -2812,9 +2799,11 @@ function brancher_points_du_graphique(nom, histoire) {
       // voit ou reappuyer.
       for (const autre of points) autre.classList.toggle("actif", autre === point);
       const ligne = par_seance[id];
-      detail.textContent = ligne
-        ? `${ligne.date} · ${resume_series(ligne.series, ligne.mode) || "aucune série menée au bout"}`
-        : "Séance introuvable dans l'historique.";
+      const puces = ligne ? bloc_series(ligne.series, ligne.mode) : "";
+      detail.innerHTML = !ligne
+        ? "Séance introuvable dans l'historique."
+        : `<span>${echapper(ligne.date)}</span>` +
+          (puces || `<span class="muet">aucune série menée au bout</span>`);
     });
   }
 }
@@ -3040,8 +3029,11 @@ function bloc_graphique(nom, statistique) {
     // etroite : partir sur un autre ecran au premier contact punit un doigt
     // approximatif. La ligne ci-dessous est l'entre-deux — on survole des
     // seances avant d'en ouvrir une.
-    `<p class="progression-detail" id="detailPoint">Touche un point pour voir ` +
-    `le détail de cette séance, deux fois pour l'ouvrir.</p>` +
+    // Un `<div class="series-detail">` ne peut pas vivre dans un `<p>` : le
+    // navigateur fermerait le paragraphe avant lui, sans rien dire, et la mise
+    // en page serait fausse a partir de la.
+    `<div class="progression-detail" id="detailPoint">Touche un point pour voir ` +
+    `le détail de cette séance, deux fois pour l'ouvrir.</div>` +
     `</div>`
   );
 }
@@ -3215,37 +3207,53 @@ const LIBELLES_RESSENTI = {
  * pas ce qu'on a tenu, et l'afficher ferait croire a une contre-performance.
  */
 /**
- * Ce qu'une seance a donne, serie par serie, en une ligne.
+ * Ce qu'une seance a donne, **une pastille par serie**.
  *
- * **La charge est portee par la serie, pas par l'exercice** : on baisse
- * souvent d'un cran en cours de seance, et « 15 · 15 · 12 » ne dit pas si les
- * trois ont ete faites au meme poids. C'est le seul endroit de l'application a
- * decider comment une performance passee s'ecrit — la carte « Derniere fois »
- * de l'accueil et le detail d'un point du graphique l'appellent tous deux, et
- * deux formulations differentes pour la meme donnee seraient deroutantes.
+ * Rend du HTML — les pastilles de `.series-detail` / `.serie-puce`, exactement
+ * celles de l'historique. C'est le point d'entree unique des **trois** ecrans
+ * qui montrent une performance passee : le detail d'une seance dans
+ * l'historique, le depliant « Derniere fois » des cartes de seance, et la ligne
+ * qui repond a un appui sur un point du graphique. Ils disent la meme chose de
+ * la meme donnee ; trois mises en forme differentes obligeraient a relire a
+ * chaque fois de quoi il s'agit.
  *
- * Chaque serie porte `repetitions`, `duree` et `poids` ; `mode` dit laquelle
- * des deux premieres a ete jouee (`maintien` et `chrono` se comptent en
- * secondes). Rend une chaine vide s'il n'y a rien a dire.
+ * Une case par serie, et non une phrase separee par des points medians : c'est
+ * ce qui rend l'ecart visible d'un coup d'oeil, `15x8 kg` et `12x10 kg` etant
+ * alors deux blocs a comparer plutot qu'un texte a lire.
+ *
+ * Deux regles de contenu. Une duree ne se rapporte a aucune charge — un
+ * gainage se tient, il ne se souleve pas. Et un poids nul n'est pas une charge
+ * de zero kilo mais un mouvement au poids du corps : `historique.js` normalise
+ * a l'ecriture avec `poids ?? 0`, donc un format inconditionnel afficherait
+ * « 13x0 kg » sur toutes les pompes.
  */
 function resume_series(series, mode) {
   if (!series?.length) return "";
   const au_temps = mode === "maintien" || mode === "chrono";
   return series
     .map((serie) => {
-      // Une duree ne se rapporte a aucune charge : un gainage se tient, il ne
-      // se souleve pas. Le poste fixe arrondit de meme a la seconde — une
-      // fraction de seconde sur un maintien de trente n'apprend rien.
-      if (au_temps) return `${Math.round(serie.duree || 0)} s`;
-      const repetitions = serie.repetitions || 0;
-      const poids = Number(serie.poids) || 0;
-      // Un poids nul n'est pas une charge de zero kilo : c'est un mouvement au
-      // poids du corps, et « 15×0 kg » serait du bruit sur toutes les pompes.
-      return poids ? `${repetitions}×${poids} kg` : `${repetitions}`;
+      const valeur = au_temps
+        ? `${Math.round(serie.duree || 0)} s`
+        : serie.repetitions || 0;
+      // La charge est plus discrete que la repetition : c'est elle qu'on lit
+      // en premier, le poids ne fait que la qualifier.
+      const charge = !au_temps && serie.poids ? `<i>×${serie.poids}&nbsp;kg</i>` : "";
+      // `=== false` et non la simple faussete : les listes deja filtrees sur
+      // les series menees au bout ne portent pas toujours le champ, et elles
+      // s'afficheraient alors toutes en rate.
+      return (
+        `<span class="serie-puce${serie.completee === false ? " ratee" : ""}">` +
+        `${valeur}${charge}</span>`
+      );
     })
-    .join(" · ");
+    .join("");
 }
 
+/** Les memes pastilles, dans leur conteneur — rien si la liste est vide. */
+function bloc_series(series, mode) {
+  const puces = resume_series(series, mode);
+  return puces ? `<div class="series-detail">${puces}</div>` : "";
+}
 
 function dernieres_series(histoire) {
   const par_seance = {};
@@ -3295,15 +3303,15 @@ function detail_seance(nom, blocs, dernieres) {
 
     const element = document.createElement("div");
     element.className = "detail-ligne";
-    const valeurs = resume_series(ligne?.series ?? [], ligne?.mode);
+    const puces = bloc_series(ligne?.series ?? [], ligne?.mode);
     const ressenti = LIBELLES_RESSENTI[ligne?.ressenti];
 
     element.innerHTML =
       `<b>${echapper(bloc.exercice)}</b>` +
-      (valeurs
-        ? `<span>${echapper(ligne.date)} : ${valeurs}` +
+      (puces
+        ? `<span>${echapper(ligne.date)}` +
           (ressenti ? ` <i>(${ressenti})</i>` : "") +
-          `</span>`
+          `</span>${puces}`
         : `<span class="muet">pas encore joué</span>`) +
       (fige
         ? `<span class="muet">Cible figée à la main : le moteur ne la fait plus ` +
