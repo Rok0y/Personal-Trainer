@@ -64,6 +64,7 @@ from session.circuit import (
     MODES_CONNUS,
     BlocExercice,
     Circuit,
+    cible_du_bloc,
 )
 
 FICHIER_SEANCES_PERSONNALISEES = Path(__file__).with_name("seances_personnalisees.json")
@@ -756,6 +757,19 @@ def construire_circuit(blocs):
         raise ValueError(
             f"{sans_detection[0]} n'analyse pas la pose : "
             f"choisissez le mode {MODE_ECHAUFFEMENT} ou {MODE_CHRONO}"
+        )
+
+    # Une cible nulle dans l'unité que le mode joue produirait une série qui
+    # s'achève à la première image : la séance entière défile en une fraction
+    # de seconde et s'annonce terminée sans que rien n'ait été fait. Mieux vaut
+    # un refus à l'enregistrement, comme pour un mode inconnu.
+    sans_cible = [
+        bloc["exercice"] for bloc in blocs if cible_du_bloc(bloc) <= 0
+    ]
+    if sans_cible:
+        raise ValueError(
+            f"{sans_cible[0]} n'a pas de cible : indiquez des répétitions "
+            f"(ou des secondes selon le mode) supérieures à zéro"
         )
 
     return Circuit(

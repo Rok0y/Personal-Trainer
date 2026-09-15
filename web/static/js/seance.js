@@ -13,8 +13,10 @@ import {
   Circuit,
   Exercice,
   MODES_AVEC_DETECTION_OBLIGATOIRE,
+  MODES_CIBLE_TEMPORELLE,
   MODES_CONNUS,
   MODE_REPETITIONS,
+  cible_du_bloc,
   est_echauffement,
 } from "./circuit.js";
 import { DETECTIONS } from "./detections.js";
@@ -248,6 +250,18 @@ export function problemes_des_blocs(mouvements, blocs) {
       problemes.push(
         `${nom} n'a pas de detection de pose : le mode « ${mode} » ne peut pas ` +
           "l'utiliser. Passe-le en chrono ou en echauffement."
+      );
+    }
+    // Un bloc porte les deux unites a la fois ; seul le mode dit laquelle est
+    // jouee. Une cible nulle **dans cette unite-la** termine la serie a la
+    // premiere image, et la seance entiere s'annonce finie avant d'avoir
+    // commence — c'est un refus a l'enregistrement, pas une surprise en seance.
+    if (cible_du_bloc({ ...bloc, mode }) <= 0) {
+      problemes.push(
+        MODES_CIBLE_TEMPORELLE.includes(mode)
+          ? `${nom} : le mode « ${mode} » se joue au temps. Mets une duree ` +
+            "superieure a zero (les repetitions ne sont pas jouees)."
+          : `${nom} : mets un nombre de repetitions superieur a zero.`
       );
     }
   }

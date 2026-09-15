@@ -16,6 +16,39 @@ MODES_CONNUS = (
     MODE_ECHAUFFEMENT,
 )
 
+#: Modes dont la cible se compte en secondes, et non en répétitions. C'est ce
+#: qui décide quel champ d'un bloc est *joué* : `duree` ici, `repetitions`
+#: ailleurs. Le `MODES_DUREE` des gabarits dit presque la même chose mais sert
+#: à autre chose — quel champ le formulaire présente —, et il laisse l'AMRAP de
+#: côté ; celui-ci décide de ce qui fait avancer la série, et l'AMRAP est bien
+#: borné par un temps.
+MODES_CIBLE_TEMPORELLE = (
+    MODE_MAINTIEN,
+    MODE_CHRONO,
+    MODE_AMRAP,
+    MODE_ECHAUFFEMENT,
+)
+
+
+def cible_du_bloc(bloc):
+    """La cible d'un bloc *dans l'unité que son mode joue*.
+
+    Un bloc porte `repetitions` et `duree` en même temps — volontairement, pour
+    qu'un changement de mode ne perde pas l'autre valeur —, donc seul le mode
+    dit lequel des deux est la cible. Un `repetitions or duree` prend le
+    premier non nul, c'est-à-dire parfois celui que le mode ne joue pas.
+
+    Prend aussi bien un dictionnaire de bloc qu'un `BlocExercice` : les deux
+    formes circulent, et la règle est la même.
+    """
+    mode = bloc.get("mode") if isinstance(bloc, dict) else bloc.mode
+    if mode in MODES_CIBLE_TEMPORELLE:
+        return (bloc.get("duree") if isinstance(bloc, dict) else bloc.duree) or 0
+    if isinstance(bloc, dict):
+        return bloc.get("repetitions") or 0
+    return bloc.repetitions_par_serie or 0
+
+
 #: Modes dont le déroulement dépend d'une fonction de détection : pour eux,
 #: `Exercice.detection` ne peut pas être None. Le chrono et l'échauffement en
 #: sont absents parce qu'ils avancent au temps, sans analyser la pose.

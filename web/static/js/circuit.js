@@ -34,6 +34,35 @@ export const MODES_CONNUS = [
   MODE_ECHAUFFEMENT,
 ];
 
+// Modes dont la cible se compte en secondes, et non en repetitions. C'est ce
+// qui decide quel champ d'un bloc est *joue* : `duree` ici, `repetitions`
+// ailleurs. Le `MODES_DUREE` des gabarits dit presque la meme chose mais sert
+// a autre chose — quel champ le formulaire presente —, et il laisse l'AMRAP de
+// cote ; celui-ci decide de ce qui fait avancer la serie, et l'AMRAP est bien
+// borne par un temps.
+export const MODES_CIBLE_TEMPORELLE = [
+  MODE_MAINTIEN,
+  MODE_CHRONO,
+  MODE_AMRAP,
+  MODE_ECHAUFFEMENT,
+];
+
+/**
+ * La cible d'un bloc *dans l'unite que son mode joue*.
+ *
+ * Un bloc porte `repetitions` et `duree` en meme temps — volontairement, pour
+ * qu'un changement de mode ne perde pas l'autre valeur —, donc seul le mode
+ * dit lequel des deux est la cible. Un `repetitions || duree` prend le premier
+ * non nul, c'est-a-dire parfois celui que le mode ne joue pas.
+ *
+ * Accepte aussi bien un bloc JSON qu'un `BlocExercice` : les deux formes
+ * circulent, et la regle est la meme.
+ */
+export function cible_du_bloc(bloc) {
+  if (MODES_CIBLE_TEMPORELLE.includes(bloc.mode)) return bloc.duree || 0;
+  return (bloc.repetitions ?? bloc.repetitions_par_serie) || 0;
+}
+
 // Modes dont le deroulement depend d'une fonction de detection : pour eux,
 // `Exercice.detection` ne peut pas etre nul. Le chrono et l'echauffement en
 // sont absents parce qu'ils avancent au temps, sans analyser la pose.
@@ -752,6 +781,12 @@ export function construire_circuit(blocs, catalogue) {
       catalogue[bloc.exercice].detection === null
     ) {
       throw new Error(`${bloc.exercice} n'analyse pas la pose`);
+    }
+    // Une cible nulle dans l'unite que le mode joue produirait une serie qui
+    // s'acheve a la premiere image : la seance entiere defile en une fraction
+    // de seconde et s'annonce terminee sans que rien n'ait ete fait.
+    if (cible_du_bloc(bloc) <= 0) {
+      throw new Error(`${bloc.exercice} n'a pas de cible`);
     }
   }
 

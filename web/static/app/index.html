@@ -120,6 +120,15 @@
   }
   .carte-lancer:active { opacity: 0.7; }
 
+  /* La carte choisie se distingue d'un coup d'oeil : c'est la seule chose qui
+     dit « j'ai bien pris ta selection » entre le clic et le demarrage. */
+  article.carte.selectionnee {
+    border-color: var(--accent);
+    background: var(--surface-haut);
+  }
+  .carte-demarrage { margin-top: 0.6rem; }
+  .carte-demarrer { width: 100%; }
+
   /* Le crayon se pose **dans le coin de la carte**, hors du flux : il ne
      dispute plus sa place au contenu, et sa discretion dit ce qu'il est —
      une retouche, pas l'action principale de la carte. */
@@ -237,6 +246,12 @@
     padding: 0.3rem 0;
   }
   .progression-record .chart-container { margin-top: 0.5rem; }
+  .progression-detail {
+    margin: 0.5rem 0 0;
+    min-height: 1.2em;
+    font-size: 0.86rem;
+    color: var(--texte-doux);
+  }
 
   .barre-carte {
     display: flex;
@@ -547,6 +562,35 @@
     font: inherit;
     font-size: 0.85rem;
   }
+  /* Le materiel **en lecture** : trois groupes etiquetes, pas une phrase. */
+  .inventaire { display: flex; flex-direction: column; gap: 0.8rem; margin: 0.8rem 0 0.4rem; }
+  .inventaire-libelle {
+    display: block;
+    color: var(--texte-doux);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.35rem;
+  }
+  /* L'aide reste en minuscules : c'est une phrase, pas une etiquette. */
+  .inventaire-libelle i {
+    font-style: normal;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: 0.75;
+  }
+  .pastilles { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .pastille {
+    background: var(--surface-haut);
+    border: 1px solid var(--trait);
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
   .accessoires { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.9rem 0 1.6rem; }
   .accessoires label { display: flex; align-items: center; gap: 0.45rem; font-size: 0.93rem; }
 
@@ -588,18 +632,6 @@
   <h2 class="titre-section">Séances disponibles</h2>
   <div id="listeSeances"></div>
 
-  <h1 style="margin-top:2rem;font-size:1.1rem">Sauvegarde</h1>
-  <p class="sous-titre" id="etatBase">Chargement…</p>
-  <div class="actions" style="justify-content:flex-start">
-    <button class="bouton secondaire" id="boutonExporter">Exporter mes séances</button>
-    <button class="bouton secondaire" id="boutonImporter">Importer un fichier</button>
-  </div>
-  <input type="file" id="fichierImport" accept="application/json,.json" hidden>
-  <p class="muet" style="margin-top:0.9rem">
-    Tes séances restent sur cet appareil. Exporte-les de temps en temps : c'est
-    ta sauvegarde, et c'est aussi comme ça qu'elles passent sur un autre
-    appareil.
-  </p>
   <p class="muet" style="margin-top:1.4rem">
     <button class="onglet" id="boutonMateriel" style="padding:0">Mon matériel</button>
     · <a href="../demo/">Banc d'essai — tester un exercice isolé</a>
@@ -653,7 +685,7 @@
     paire de 8 kg n'est pas la même chose qu'un seul haltère de 8 kg : les
     mouvements à deux bras ont besoin des deux.
   </p>
-  <p id="resumeMateriel"></p>
+  <div id="resumeMateriel"></div>
   <div class="actions" style="justify-content:flex-start" id="actionsMateriel">
     <button class="bouton secondaire" id="boutonModifierMateriel">Modifier mon matériel</button>
   </div>
@@ -681,6 +713,23 @@
   <h1>Historique</h1>
   <p class="sous-titre" id="resumeHistorique"></p>
   <div id="listeHistorique"></div>
+
+  <!-- La sauvegarde vit **sous l'historique** et non sous l'accueil : c'est ce
+       qu'elle sauvegarde. Sur l'accueil elle s'intercalait entre les seances et
+       le choix du jour, au milieu de ce qu'on vient faire ; ici elle est la
+       suite naturelle de ce qu'on vient de relire. -->
+  <h2 class="titre-section" style="margin-top:2rem">Sauvegarde</h2>
+  <p class="sous-titre" id="etatBase">Chargement…</p>
+  <div class="actions" style="justify-content:flex-start">
+    <button class="bouton secondaire" id="boutonExporter">Exporter mes séances</button>
+    <button class="bouton secondaire" id="boutonImporter">Importer un fichier</button>
+  </div>
+  <input type="file" id="fichierImport" accept="application/json,.json" hidden>
+  <p class="muet" style="margin-top:0.9rem">
+    Tout ce que tu vois ici reste sur cet appareil. Exporte de temps en temps :
+    c'est ta sauvegarde, et c'est aussi comme ça que ton historique passe sur
+    un autre appareil.
+  </p>
 </section>
 
 <!-- ====================== EDITEUR ====================== -->
@@ -1109,6 +1158,12 @@ const TENUE_PREPARATION = 1.5;
 const TENUE_VALIDATION = 3;
 const DECOMPTE = 3;
 
+//: Deux clics sur le meme point du graphique dans cet intervalle valent
+//: « ouvre la seance ». Volontairement plus large que le double-clic du
+//: systeme (souvent 300 ms au pointeur) : au doigt, sur une cible de six
+//: pixels, deux appuis se separent davantage.
+const DELAI_DOUBLE_CLIC = 500;
+
 //: Les modes dont la cible se compte en secondes. Meme liste que le
 //: `MODES_DUREE` des gabarits du poste fixe, et pour la meme raison : la
 //: regle etait ecrite en clair a chaque endroit qui en avait besoin, et un
@@ -1270,6 +1325,17 @@ let statut = "running";
 let phase_precedente = null;
 
 async function demarrer(nom) {
+  // **Avant de construire quoi que ce soit.** Une seance dont un bloc n'a pas
+  // de cible dans l'unite que son mode joue s'acheve a la premiere image et
+  // affiche l'ecran de fin — un defaut spectaculaire et parfaitement muet.
+  // L'editeur refuse desormais d'en creer, mais une seance deja stockee (ou
+  // venue d'un fichier plus ancien) doit dire pourquoi elle ne demarre pas.
+  const problemes = problemes_des_blocs(mouvements, seances[nom] ?? []);
+  if (problemes.length) {
+    $("sousTitre").textContent = `Cette séance ne peut pas démarrer — ${problemes[0]}`;
+    return;
+  }
+
   nom_seance = nom;
   seance = circuit_pour(mouvements, seances[nom]);
   // **Les cibles viennent de l'historique, plus du fichier.** Le JSON ne fait
@@ -1847,21 +1913,39 @@ function dessiner_materiel() {
     )
     .join("");
 
-  // Le resume lu par defaut, dans la meme forme que celui du poste fixe :
-  // « paires : … · seuls : … · accessoires : … ».
+  // Le resume se **lit** avant de s'editer, et une seule longue ligne
+  // « paires : 3 kg, 4 kg · seuls : 2 kg… » ne se lit pas : les trois natures
+  // d'objet y sont separees par le meme point median que les poids entre eux,
+  // donc rien ne se detache. Trois groupes etiquetes, chacun une rangee de
+  // pastilles, disent la meme chose d'un coup d'oeil — et la distinction qui
+  // compte, « une paire n'est pas un haltere seul », devient visible au lieu
+  // d'etre a reconstituer.
   const halteres = inventaire.halteres || {};
-  const paires = Object.keys(halteres).filter((p) => halteres[p] >= 2).map(Number).sort((a, b) => a - b);
-  const seuls = Object.keys(halteres).filter((p) => halteres[p] === 1).map(Number).sort((a, b) => a - b);
-  const morceaux = [];
-  if (paires.length) morceaux.push("paires : " + paires.map((p) => `${p} kg`).join(", "));
-  if (seuls.length) morceaux.push("seuls : " + seuls.map((p) => `${p} kg`).join(", "));
-  if (inventaire.accessoires?.length) {
-    morceaux.push(
-      "accessoires : " +
-      inventaire.accessoires.map((a) => tables_baremes.accessoires[a] ?? a).join(", ")
-    );
-  }
-  $("resumeMateriel").textContent = morceaux.join(" · ") || "Rien de déclaré.";
+  const poids_ou = (garde) =>
+    Object.keys(halteres).filter((p) => garde(halteres[p])).map(Number).sort((a, b) => a - b);
+
+  const groupe = (libelle, valeurs, aide) =>
+    valeurs.length
+      ? `<div class="inventaire-groupe"><span class="inventaire-libelle">${libelle}` +
+        (aide ? ` <i>${aide}</i>` : "") +
+        `</span><div class="pastilles">` +
+        valeurs.map((v) => `<b class="pastille">${echapper(v)}</b>`).join("") +
+        `</div></div>`
+      : "";
+
+  const paires = poids_ou((q) => q >= 2).map((p) => `${p} kg`);
+  const seuls = poids_ou((q) => q === 1).map((p) => `${p} kg`);
+  const accessoires = (inventaire.accessoires ?? []).map(
+    (a) => tables_baremes.accessoires[a] ?? a
+  );
+
+  const resume =
+    groupe("Paires d'haltères", paires, "les mouvements à deux bras s'appuient dessus") +
+    groupe("Haltères seuls", seuls, "pour les mouvements à un bras") +
+    groupe("Accessoires", accessoires, "");
+  $("resumeMateriel").innerHTML = resume
+    ? `<div class="inventaire">${resume}</div>`
+    : `<p class="muet">Rien de déclaré — le barème te proposera donc du poids du corps.</p>`;
 
   $("etatMateriel").textContent = "";
 }
@@ -1984,6 +2068,7 @@ function dessiner_historique() {
   const { seances: histoire, ancrages } = lecture_du_profil();
   const montees = moteur.niveaux.montees_de_niveau(histoire, ancrages);
 
+  mettre_a_jour_etat_base();
   $("resumeHistorique").textContent = histoire.length
     ? `${histoire.length} séance${histoire.length > 1 ? "s" : ""} sur cet appareil.`
     : "";
@@ -2670,18 +2755,68 @@ function dessiner_fiche(nom) {
   for (const bouton of $("contenuFiche").querySelectorAll("[data-variante]")) {
     bouton.addEventListener("click", () => dessiner_fiche(bouton.dataset.variante));
   }
-  for (const point of $("contenuFiche").querySelectorAll("a.chart-point")) {
-    point.addEventListener("click", (evenement) => {
-      evenement.preventDefault();
-      ouvrir_historique_sur(Number(point.getAttribute("href").slice("#seance-".length)));
-    });
-  }
+  brancher_points_du_graphique(nom, histoire);
   brancher_recalages($("contenuFiche"));
   $("retourExercices").textContent =
     retour_de_la_fiche === "ecranHistorique"
       ? "← Retour à l'historique"
       : "← Tous les exercices";
   montrer("ecranFiche");
+}
+
+/**
+ * Un clic montre, un double-clic emmene.
+ *
+ * `graphique.js` rend un `<a>` par point et n'a pas eu a bouger : c'est
+ * l'appelant qui decide de ce qu'un clic fait, et il n'y a donc rien a porter
+ * cote poste fixe, ou un lien qui suit son href reste le bon comportement.
+ *
+ * Le second clic est reconnu **par le temps et par la cible**, pas par un
+ * evenement `dblclick` : celui-ci n'arrive qu'apres le premier `click`, donc
+ * l'affichage du detail aurait deja eu lieu — ce qui est acceptable — mais
+ * surtout il n'existe pas de facon fiable au toucher sur iOS.
+ */
+function brancher_points_du_graphique(nom, histoire) {
+  const detail = $("detailPoint");
+  if (!detail) return;
+
+  // Le detail des series par seance : `statistiques_exercices` n'en garde que
+  // les sommes (c'est un jumeau verifie par harnais, on ne lui ajoute pas un
+  // champ pour un affichage), alors que l'historique brut les a toutes.
+  const par_seance = {};
+  for (const seance of histoire) {
+    const exercice = (seance.exercices ?? []).find((e) => e.nom === nom);
+    if (!exercice) continue;
+    par_seance[seance.id] = {
+      date: seance.date,
+      mode: exercice.mode ?? "repetitions",
+      series: (exercice.series_detaillees ?? []).filter((serie) => serie.completee),
+    };
+  }
+
+  let dernier = { id: null, instant: 0 };
+  const points = $("contenuFiche").querySelectorAll("a.chart-point");
+  for (const point of points) {
+    point.addEventListener("click", (evenement) => {
+      evenement.preventDefault();
+      const id = Number(point.getAttribute("href").slice("#seance-".length));
+      const instant = Date.now();
+      if (dernier.id === id && instant - dernier.instant < DELAI_DOUBLE_CLIC) {
+        ouvrir_historique_sur(id);
+        return;
+      }
+      dernier = { id, instant };
+      // **Marquer le point touche**, sinon rien ne dit lequel a repondu : au
+      // doigt il n'y a pas de survol, et le detail sous le graphe ne designe
+      // pas sa source. C'est aussi ce qui rend le second appui evident — on
+      // voit ou reappuyer.
+      for (const autre of points) autre.classList.toggle("actif", autre === point);
+      const ligne = par_seance[id];
+      detail.textContent = ligne
+        ? `${ligne.date} · ${resume_series(ligne.series, ligne.mode) || "aucune série menée au bout"}`
+        : "Séance introuvable dans l'historique.";
+    });
+  }
 }
 
 function bloc_niveau(etat) {
@@ -2901,6 +3036,12 @@ function bloc_graphique(nom, statistique) {
     `<div class="progression-record">` +
     `<strong class="progression-titre">Progression · ${points.length} séances</strong>` +
     `<div class="chart-container">${svg}</div>` +
+    // **Un clic montre, un double-clic emmene.** Un point est une cible
+    // etroite : partir sur un autre ecran au premier contact punit un doigt
+    // approximatif. La ligne ci-dessous est l'entre-deux — on survole des
+    // seances avant d'en ouvrir une.
+    `<p class="progression-detail" id="detailPoint">Touche un point pour voir ` +
+    `le détail de cette séance, deux fois pour l'ouvrir.</p>` +
     `</div>`
   );
 }
@@ -3073,6 +3214,39 @@ const LIBELLES_RESSENTI = {
  * Seules les series `completee` sont retenues : une serie interrompue ne dit
  * pas ce qu'on a tenu, et l'afficher ferait croire a une contre-performance.
  */
+/**
+ * Ce qu'une seance a donne, serie par serie, en une ligne.
+ *
+ * **La charge est portee par la serie, pas par l'exercice** : on baisse
+ * souvent d'un cran en cours de seance, et « 15 · 15 · 12 » ne dit pas si les
+ * trois ont ete faites au meme poids. C'est le seul endroit de l'application a
+ * decider comment une performance passee s'ecrit — la carte « Derniere fois »
+ * de l'accueil et le detail d'un point du graphique l'appellent tous deux, et
+ * deux formulations differentes pour la meme donnee seraient deroutantes.
+ *
+ * Chaque serie porte `repetitions`, `duree` et `poids` ; `mode` dit laquelle
+ * des deux premieres a ete jouee (`maintien` et `chrono` se comptent en
+ * secondes). Rend une chaine vide s'il n'y a rien a dire.
+ */
+function resume_series(series, mode) {
+  if (!series?.length) return "";
+  const au_temps = mode === "maintien" || mode === "chrono";
+  return series
+    .map((serie) => {
+      // Une duree ne se rapporte a aucune charge : un gainage se tient, il ne
+      // se souleve pas. Le poste fixe arrondit de meme a la seconde — une
+      // fraction de seconde sur un maintien de trente n'apprend rien.
+      if (au_temps) return `${Math.round(serie.duree || 0)} s`;
+      const repetitions = serie.repetitions || 0;
+      const poids = Number(serie.poids) || 0;
+      // Un poids nul n'est pas une charge de zero kilo : c'est un mouvement au
+      // poids du corps, et « 15×0 kg » serait du bruit sur toutes les pompes.
+      return poids ? `${repetitions}×${poids} kg` : `${repetitions}`;
+    })
+    .join(" · ");
+}
+
+
 function dernieres_series(histoire) {
   const par_seance = {};
   for (const seance of histoire) {
@@ -3121,10 +3295,7 @@ function detail_seance(nom, blocs, dernieres) {
 
     const element = document.createElement("div");
     element.className = "detail-ligne";
-    const au_temps = ligne && (ligne.mode === "maintien" || ligne.mode === "chrono");
-    const valeurs = (ligne?.series ?? [])
-      .map((s) => (au_temps ? `${Math.round(s.duree)} s` : s.repetitions))
-      .join(" · ");
+    const valeurs = resume_series(ligne?.series ?? [], ligne?.mode);
     const ressenti = LIBELLES_RESSENTI[ligne?.ressenti];
 
     element.innerHTML =
@@ -3250,10 +3421,24 @@ function dessiner_resume_programme() {
 
 }
 
+/**
+ * La cible **du fichier**, dans l'unite que son mode joue reellement.
+ *
+ * Un bloc porte les deux champs a la fois — c'est voulu, ca permet de passer
+ * d'un mode a l'autre sans perdre l'autre valeur —, donc le mode seul decide
+ * lequel est la cible. Un `repetitions || duree` prenait le premier non nul et
+ * collait l'unite de l'autre : un echauffement de 30 s saisi avec 10
+ * repetitions s'affichait « 1×10 s ».
+ */
+function cible_du_bloc(bloc) {
+  return MODES_DUREE.includes(bloc.mode) ? bloc.duree : bloc.repetitions;
+}
+
 /** La cible d'un bloc telle qu'elle sera jouee, objectif du moteur compris. */
 function cible_affichee(bloc, objectifs, sans_donnees) {
+  const unite_bloc = MODES_DUREE.includes(bloc.mode) ? " s" : "";
   if (est_cible_manuelle(bloc, PROFIL)) {
-    return `${bloc.series}×${bloc.repetitions || bloc.duree}` +
+    return `${bloc.series}×${cible_du_bloc(bloc)}${unite_bloc}` +
       (bloc.poids ? ` · ${bloc.poids} kg` : "") + " · figée";
   }
   if (moteur.objectifs.a_calibrer(bloc.exercice, bloc.mode, sans_donnees)) {
@@ -3264,8 +3449,7 @@ function cible_affichee(bloc, objectifs, sans_donnees) {
     return `${palier.series}×${palier.cible}${palier.unite === "secondes" ? " s" : ""}` +
       (palier.poids ? ` · ${palier.poids} kg` : "");
   }
-  const unite = MODES_DUREE.includes(bloc.mode) ? " s" : "";
-  return `${bloc.series}×${bloc.repetitions || bloc.duree}${unite}`;
+  return `${bloc.series}×${cible_du_bloc(bloc)}${unite_bloc}`;
 }
 
 /**
@@ -3303,6 +3487,26 @@ function contenu_seance(blocs, objectifs, sans_donnees) {
   return detail;
 }
 
+/**
+ * La seance choisie pour aujourd'hui, ou null.
+ *
+ * L'etat vit dans le document (une classe sur la carte) plutot que dans une
+ * variable a resynchroniser : `dessiner_liste` reconstruit tout, et une
+ * variable survivrait a un redessin en designant un noeud disparu.
+ */
+function selectionner_seance(nom) {
+  for (const carte of $("listeSeances").querySelectorAll("article.carte")) {
+    const choisie = carte.dataset.seance === nom;
+    carte.classList.toggle("selectionnee", choisie);
+    const demarrage = carte.querySelector(".carte-demarrage");
+    if (demarrage) demarrage.hidden = !choisie;
+    if (choisie) carte.querySelector(".carte-demarrer")?.focus({ preventScroll: true });
+  }
+  $("sousTitre").textContent = nom
+    ? `${nom} — appuie sur « Démarrer la séance » quand tu es prêt.`
+    : "Choisis ce que tu fais aujourd'hui.";
+}
+
 function dessiner_liste() {
   dessiner_resume_programme();
   const liste = $("listeSeances");
@@ -3337,15 +3541,33 @@ function dessiner_liste() {
       `<div class="carte-detail">${exercices.length} exercice${exercices.length > 1 ? "s" : ""}` +
       (echauffements ? ` · ${echauffements} échauffement${echauffements > 1 ? "s" : ""}` : "") +
       `</div>`;
-    lancer.addEventListener("click", () => {
+    // **Choisir n'est pas commencer.** Le clic sur la carte ne fait plus que
+    // selectionner la seance ; c'est le bouton « Demarrer » qui ouvre la
+    // camera. Le poste fixe a toujours fonctionne ainsi, et pour une bonne
+    // raison : on ouvre une carte pour lire son contenu et sa derniere fois,
+    // pas pour se retrouver devant l'objectif.
+    lancer.addEventListener("click", () => selectionner_seance(nom));
+    carte.appendChild(lancer);
+
+    const demarrage = document.createElement("div");
+    demarrage.className = "carte-demarrage";
+    demarrage.hidden = true;
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "bouton carte-demarrer";
+    bouton.textContent = "Démarrer la séance";
+    bouton.addEventListener("click", () => {
       // **Au plus pres du clic, avant tout `await`.** L'activation de
       // l'utilisateur ne survit pas a la preparation de l'audio, a
       // l'autorisation camera et au chargement du modele — plusieurs secondes,
-      // au bout desquelles Safari peut refuser.
+      // au bout desquelles Safari peut refuser. Le geste a simplement change
+      // de bouton : il reste un geste.
       verrou_ecran.tenir();
       demarrer(nom);
     });
-    carte.appendChild(lancer);
+    demarrage.appendChild(bouton);
+    carte.appendChild(demarrage);
+    carte.dataset.seance = nom;
 
     const editer = document.createElement("button");
     editer.className = "carte-editer";
@@ -3387,6 +3609,17 @@ function dessiner_liste() {
     liste.appendChild(carte);
   }
   majOngletProfil();
+  mettre_a_jour_etat_base();
+}
+
+/**
+ * La ligne d'etat de la sauvegarde.
+ *
+ * Elle vit sous l'historique depuis qu'elle y a suivi le bloc « Sauvegarde »,
+ * mais elle se recalcule aussi depuis l'accueil : une seance enregistree en
+ * fin de seance ne repasse pas forcement par l'onglet Historique.
+ */
+function mettre_a_jour_etat_base() {
   const faites = historique.recuperer_historique(base, PROFIL).length;
   $("etatBase").textContent = faites
     ? `${faites} séance${faites > 1 ? "s" : ""} enregistrée${faites > 1 ? "s" : ""} sur cet appareil.`

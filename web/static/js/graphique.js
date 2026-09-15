@@ -31,6 +31,18 @@ const MARGE_BAS = 100;
 //: qu'une sur n.
 const ESPACEMENT_MINIMUM = 70;
 
+//: Rayon de la **cible tactile** d'un point, en unites du viewBox. Le disque
+//: visible fait 6 unites, soit environ huit pixels sur un iPad : on ne vise pas
+//: ca au doigt. Un cercle transparent plus large attrape le contact sans rien
+//: changer au dessin — `fill="transparent"` et non `fill="none"`, qui ne
+//: recoit aucun evenement.
+//:
+//: Il est **plafonne par la moitie de l'ecart entre deux points** : sur un
+//: historique fourni les cibles se chevaucheraient, et c'est alors le dernier
+//: dessine qui gagnerait — on toucherait un point pour en ouvrir un autre.
+const RAYON_TOUCHE = 22;
+const RAYON_VISIBLE = 6;
+
 /** « 12/09/2026 08:00 » et « 2026-09-12T08:00 » rendent tous deux leur date. */
 export function date_seule(valeur) {
   if (!valeur) return "";
@@ -96,6 +108,10 @@ export function graphique_progression(donnees, { cle, unite, lien = () => null }
 
   const espacement_reel = n > 1 ? largeur / (n - 1) : largeur;
   const pas_etiquette = Math.max(1, Math.ceil(ESPACEMENT_MINIMUM / espacement_reel));
+  const rayon_touche = Math.max(
+    RAYON_VISIBLE,
+    Math.min(RAYON_TOUCHE, espacement_reel / 2)
+  );
 
   let svg =
     `<svg viewBox="0 0 ${L} ${H}" class="progression-svg" role="img" ` +
@@ -120,7 +136,9 @@ export function graphique_progression(donnees, { cle, unite, lien = () => null }
         `aria-label="Voir la séance du ${echapper(description)}">`
       : `<g class="chart-point">`;
     svg +=
-      `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="6">` +
+      `<circle class="chart-cible" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" ` +
+      `r="${rayon_touche.toFixed(1)}" fill="transparent"></circle>` +
+      `<circle class="chart-disque" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${RAYON_VISIBLE}">` +
       `<title>${echapper(description)}</title></circle>` +
       `<text class="chart-axis-label" x="${p.x.toFixed(1)}" y="${(p.y - 14).toFixed(1)}" ` +
       `text-anchor="middle">${valeur}</text>`;

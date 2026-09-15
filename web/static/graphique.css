@@ -13,10 +13,28 @@
 .chart-area { fill:var(--teal); opacity:.10; }
 .chart-line { fill:none; stroke:var(--teal); stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; }
 /* Le curseur ne promet un clic que la ou il y en a un : un point est un <a>
-   quand l'appelant fournit un lien, un simple <g> sinon. */
-.chart-point circle { fill:#0f1420; stroke:var(--teal); stroke-width:2.5; transition:r .15s ease, fill .15s ease; }
-a.chart-point circle { cursor:pointer; }
-.chart-point:hover circle { fill:var(--teal); r:8; }
-.chart-point:focus circle { fill:var(--orange); stroke:var(--orange); }
+   quand l'appelant fournit un lien, un simple <g> sinon.
+
+   Un point porte deux cercles : `.chart-disque` est ce qu'on voit,
+   `.chart-cible` est ce qu'on touche — transparent et bien plus large, parce
+   qu'un disque de six unites fait huit pixels sur une tablette. Les regles de
+   couleur visent donc le disque nommement : appliquees a `circle`, elles
+   peindraient la cible en noir et la rendraient visible. */
+.chart-point .chart-disque { fill:#0f1420; stroke:var(--teal); stroke-width:2.5; transition:r .15s ease, fill .15s ease; }
+/* `manipulation` retire le **double-tap pour zoomer** sur ce seul element :
+   sans lui, deux appuis rapides sur un point zooment la page au lieu d'ouvrir
+   la seance. Il supprime au passage le delai de 300 ms que Safari s'accorde
+   pour voir si un second appui arrive. Le reste de la page garde son zoom. */
+a.chart-point { touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+a.chart-point .chart-disque { cursor:pointer; }
+/* Le survol n'existe pas au doigt, et un iPad qui l'emule laisse un point
+   allume apres le retrait — d'ou la garde `hover: hover`. */
+@media (hover: hover) {
+  .chart-point:hover .chart-disque { fill:var(--teal); r:8; }
+}
+.chart-point:focus .chart-disque { fill:var(--orange); stroke:var(--orange); }
+/* Le point dont on lit le detail. Au doigt c'est le seul retour disant « c'est
+   bien celui-la que tu as touche » : `:hover` ne dit rien sur une tablette. */
+.chart-point.actif .chart-disque { fill:var(--orange); stroke:var(--orange); r:9; }
 .chart-axis-label { fill:var(--muted); font:14px 'Space Grotesk', sans-serif; }
 .chart-date-label { fill:var(--muted); font:13px 'Space Grotesk', sans-serif; }
