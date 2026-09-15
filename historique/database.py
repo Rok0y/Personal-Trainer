@@ -1069,6 +1069,67 @@ def supprimer_seance(seance_id, utilisateur_id=None):
     conn.close()
 
 
+def supprimer_utilisateur(utilisateur_id):
+    """Supprime un profil et tout ce qui lui appartient.
+
+    La descente suit les clés étrangères, comme `supprimer_seance` : les
+    séries, puis les exercices, puis les séances, puis les ancrages, puis la
+    ligne du profil. `utilisateur_id` ne figure que sur les deux tables
+    racines — filtrer les quatre indépendamment laisserait les exercices d'un
+    autre profil, ou emporterait les siens.
+
+    **Le dernier profil n'est pas supprimable.** `_profil_courant` lève par
+    conception plutôt que de retomber sur un défaut : une base sans profil
+    rendrait l'application inutilisable, écran de connexion compris. Le
+    supprimer est refusé ici, à la source, plutôt que dans chaque interface.
+
+    Rien ne rattrape cette suppression : c'est à l'appelant de proposer un
+    export avant de la demander.
+    """
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+
+    curseur.execute("SELECT nom FROM utilisateurs WHERE id = ?", (utilisateur_id,))
+    ligne = curseur.fetchone()
+    if ligne is None:
+        conn.close()
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
+
+    curseur.execute("SELECT COUNT(*) FROM utilisateurs")
+    if curseur.fetchone()[0] <= 1:
+        conn.close()
+        raise ValueError("Le dernier profil ne peut pas être supprimé.")
+
+    curseur.execute(
+        """
+        DELETE FROM series_realisees
+        WHERE exercice_id IN (
+            SELECT e.id FROM exercices e
+            JOIN seances s ON s.id = e.seance_id
+            WHERE s.utilisateur_id = ?
+        )
+        """,
+        (utilisateur_id,),
+    )
+    curseur.execute(
+        """
+        DELETE FROM exercices
+        WHERE seance_id IN (SELECT id FROM seances WHERE utilisateur_id = ?)
+        """,
+        (utilisateur_id,),
+    )
+    curseur.execute("DELETE FROM seances WHERE utilisateur_id = ?", (utilisateur_id,))
+    curseur.execute(
+        "DELETE FROM corrections_niveaux WHERE utilisateur_id = ?", (utilisateur_id,)
+    )
+    curseur.execute("DELETE FROM utilisateurs WHERE id = ?", (utilisateur_id,))
+
+    conn.commit()
+    conn.close()
+    return ligne[0]
+
+
 def supprimer_exercice_de_seance(seance_id, nom_exercice, utilisateur_id=None):
     """Supprime un exercice précis (et ses séries) d'une séance de l'historique."""
     utilisateur_id = _profil_courant(utilisateur_id)

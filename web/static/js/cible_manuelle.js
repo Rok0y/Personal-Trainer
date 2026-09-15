@@ -95,3 +95,35 @@ export function fusionner_cible_manuelle(valeur_entrante, valeur_stockee, utilis
   const tries = [...autres].sort((a, b) => a - b);
   return tries.length ? tries : null;
 }
+
+/**
+ * Une seance jouee jusqu'au bout fait de sa cible figee la reference.
+ *
+ * Figer une cible est une exception provisoire : le moteur propose autre
+ * chose, l'utilisateur impose sa valeur, et le badge orange rend ce
+ * decrochage visible. Une fois la seance **terminee** a cette cible,
+ * l'exception n'en est plus une — l'historique porte desormais la performance
+ * realisee, et c'est d'elle que `ressenti._cible_visee` repartira. Lever la
+ * marque ne perd donc pas la valeur : elle rebranche le moteur *sur* elle.
+ *
+ * Une seance abandonnee ne prouve rien et garde sa marque.
+ *
+ * A ne pas confondre avec `marquer_cibles_manuelles`, qui *detecte* un ecart
+ * au palier propose : appliquee ici, elle effacerait aussi les marques des
+ * blocs que la seance n'a pas joues.
+ *
+ * Rend true si au moins une marque a ete levee.
+ */
+export function enteriner_cibles_manuelles(blocs, utilisateur_id) {
+  let leve = false;
+  for (const bloc of blocs) {
+    if (!est_cible_manuelle(bloc, utilisateur_id)) continue;
+    const valeur = definir_cible_manuelle(
+      _valeur_cible_manuelle(bloc), false, utilisateur_id
+    );
+    if (valeur === null) delete bloc.cible_manuelle;
+    else bloc.cible_manuelle = valeur;
+    leve = true;
+  }
+  return leve;
+}

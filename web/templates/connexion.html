@@ -47,9 +47,31 @@
         .profil-nom { font: 700 17px 'Space Grotesk', sans-serif; color: var(--text); }
         .profil-date { display: block; margin-top: 2px; color: var(--muted); font: 400 12px 'Space Grotesk', sans-serif; text-transform: none; letter-spacing: 0; }
 
-        .profil-renommer {
+        /* Les trois actions sur une seule ligne : elles sont secondaires, et
+           empilees elles prenaient plus de place que le profil lui-meme. */
+        .profil-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+        .profil-renommer, .profil-supprimer, .profil-sauvegarder {
             padding: 5px 10px; border-radius: 999px; font-size: 10px;
-            color: var(--muted); border-color: var(--border);
+            font-family: inherit; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .05em;
+            color: var(--muted); background: transparent; cursor: pointer;
+            border: 1px solid var(--border); text-decoration: none;
+        }
+        .profil-sauvegarder:hover { color: var(--teal); border-color: var(--teal); }
+        .profil-supprimer:hover { color: #ff6b6b; border-color: currentColor; }
+        .mesures-creation {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px; margin-top: 16px; width: 100%;
+        }
+        .mesures-creation label {
+            display: flex; flex-direction: column; gap: 5px;
+            color: var(--muted); font: 400 12px 'Space Grotesk', sans-serif;
+            text-transform: none; letter-spacing: 0;
+        }
+        .mesures-creation input, .mesures-creation select {
+            padding: 10px 12px; border-radius: 10px;
+            border: 1px solid var(--border-strong); background: rgba(255,255,255,.03);
+            color: var(--text); font: 400 14px 'Space Grotesk', sans-serif;
         }
 
         .creation { border-top: 1px solid var(--border); padding-top: 28px; }
@@ -85,7 +107,13 @@
                     <span class="profil-date">Depuis le {{ utilisateur.cree_le }}</span>
                 </span>
             </button>
-            <button type="button" class="profil-renommer" data-renommer="{{ utilisateur.id }}" data-nom="{{ utilisateur.nom }}">Renommer</button>
+            <div class="profil-actions">
+                <button type="button" class="profil-renommer" data-renommer="{{ utilisateur.id }}" data-nom="{{ utilisateur.nom }}">Renommer</button>
+                {# La suppression ne se rattrape pas : la sauvegarde est
+                   proposee juste a cote, et la confirmation dit ce qu'on perd. #}
+                <a class="profil-sauvegarder" href="/api/utilisateurs/{{ utilisateur.id }}/export" download>Sauvegarder</a>
+                <button type="button" class="profil-supprimer" data-supprimer="{{ utilisateur.id }}" data-nom="{{ utilisateur.nom }}" data-seances="{{ seances_par_profil.get(utilisateur.id, 0) }}">Supprimer</button>
+            </div>
         </div>
         {% endfor %}
     </section>
@@ -95,6 +123,28 @@
         <p class="hint">Il demarre sans historique : ses niveaux se construiront a partir de ses seances, ou d'un recalage depuis la fiche d'un exercice.</p>
         <form id="form-creation">
             <input type="text" id="nom-profil" placeholder="Prenom" maxlength="40" autocomplete="off" required>
+            {# **Les mesures se demandent ici**, pas plus tard : une page de
+               profil qu'on ne visite jamais revient a ne jamais les avoir.
+               Toutes facultatives — rien dans le bareme n'en depend. #}
+            <div class="mesures-creation">
+                <label>Sexe
+                    <select id="sexe">
+                        <option value="">Non precise</option>
+                        <option value="femme">Femme</option>
+                        <option value="homme">Homme</option>
+                        <option value="autre">Autre</option>
+                    </select>
+                </label>
+                <label>Date de naissance
+                    <input type="date" id="date_naissance">
+                </label>
+                <label>Taille (cm)
+                    <input type="number" min="0" max="260" id="taille_cm">
+                </label>
+                <label>Poids du corps (kg)
+                    <input type="number" min="0" max="400" step="0.1" id="poids_corps_kg">
+                </label>
+            </div>
             <button type="submit">Creer et commencer</button>
         </form>
         <p class="erreur" id="erreur" role="status"></p>
@@ -141,10 +191,35 @@
         });
     });
 
+    // La suppression emporte tout l'historique du profil. La confirmation
+    // nomme ce qu'on perd plutot que de demander « es-tu sur ? », qui ne dit
+    // rien — et le bouton « Sauvegarder » est juste a cote.
+    document.querySelectorAll("[data-supprimer]").forEach((bouton) => {
+        bouton.addEventListener("click", async () => {
+            const seances = Number(bouton.dataset.seances);
+            const compte = seances
+                ? `${seances} seance${seances > 1 ? "s" : ""} enregistree${seances > 1 ? "s" : ""}`
+                : "aucune seance enregistree";
+            if (!window.confirm(
+                `Supprimer definitivement le profil « ${bouton.dataset.nom} » ?
+
+` +
+                `Il a ${compte}. Son historique, ses records et ses recalages ` +
+                `partent avec lui, et rien ne les rattrape.`
+            )) return;
+            const resultat = await envoyer(`/api/utilisateurs/${bouton.dataset.supprimer}`, {}, "DELETE");
+            if (resultat) window.location.reload();
+        });
+    });
+
     document.getElementById("form-creation").addEventListener("submit", async (evenement) => {
         evenement.preventDefault();
         const champ = document.getElementById("nom-profil");
-        const resultat = await envoyer("/api/utilisateurs", { nom: champ.value });
+        const mesures = {};
+        for (const nom of ["sexe", "date_naissance", "taille_cm", "poids_corps_kg"]) {
+            mesures[nom] = document.getElementById(nom).value;
+        }
+        const resultat = await envoyer("/api/utilisateurs", { nom: champ.value, mesures });
         if (resultat) window.location.href = "/";
     });
 </script>

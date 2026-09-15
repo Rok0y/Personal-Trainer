@@ -359,3 +359,42 @@ def _ecrire_cible_manuelle(bloc, manuelle):
         bloc.pop("cible_manuelle", None)
     else:
         bloc["cible_manuelle"] = valeur
+
+
+def enteriner_cibles_manuelles(blocs, utilisateur_id=None):
+    """Une séance jouée jusqu'au bout fait de sa cible figée la référence.
+
+    Figer une cible est une exception provisoire : le moteur propose autre
+    chose, l'utilisateur impose sa valeur, et le badge orange rend ce
+    décrochage visible. Mais une fois la séance **terminée** à cette cible,
+    l'exception n'en est plus une — l'historique porte désormais la
+    performance réalisée, et c'est d'elle que `ressenti._cible_visee` repartira
+    pour proposer la suite. Lever la marque ne perd donc pas la valeur : elle
+    rebranche le moteur *sur* elle.
+
+    Une séance abandonnée ne prouve rien et garde sa marque. C'est pourquoi
+    l'appel se fait sur la phase `termine`, jamais sur `abandonne`.
+
+    Ne surtout pas confondre avec `marquer_cibles_manuelles`, qui *détecte* un
+    écart au palier proposé : appliquée ici, elle effacerait aussi les marques
+    des blocs que la séance n'a pas joués.
+
+    Retourne True si au moins une marque a été levée — l'appelant n'a alors
+    qu'une raison d'écrire le fichier.
+    """
+    leve = False
+    for bloc in blocs:
+        if not est_cible_manuelle(bloc, utilisateur_id):
+            continue
+        valeur = definir_cible_manuelle(
+            _valeur_cible_manuelle(bloc), False, utilisateur_id
+        )
+        if isinstance(bloc, dict):
+            if valeur is None:
+                bloc.pop("cible_manuelle", None)
+            else:
+                bloc["cible_manuelle"] = valeur
+        else:
+            bloc.cible_manuelle = valeur
+        leve = True
+    return leve

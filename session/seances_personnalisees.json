@@ -146,7 +146,7 @@
       "commentaire": ""
     }
   ],
-  "bras": [
+  "Bras": [
     {
       "exercice": "Curl biceps droit",
       "mode": "repetitions",
@@ -170,7 +170,7 @@
       "commentaire": ""
     }
   ],
-  "upper_push": [
+  "Upper Push": [
     {
       "exercice": "Jumping jacks",
       "mode": "echauffement",
@@ -304,7 +304,7 @@
       "commentaire": ""
     }
   ],
-  "jambes_abdos": [
+  "Jambes et abdos": [
     {
       "exercice": "Squat de prière",
       "mode": "echauffement",
@@ -314,8 +314,7 @@
       "duree": 30,
       "repos_entre_series": 5,
       "repos_apres": 5,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Rotation des genoux",
@@ -326,8 +325,7 @@
       "duree": 30,
       "repos_entre_series": 5,
       "repos_apres": 5,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Rotation des chevilles",
@@ -338,8 +336,7 @@
       "duree": 30,
       "repos_entre_series": 5,
       "repos_apres": 5,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Hanches en avant en arrière",
@@ -350,8 +347,7 @@
       "duree": 30,
       "repos_entre_series": 5,
       "repos_apres": 5,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Abducteurs",
@@ -362,8 +358,7 @@
       "duree": 30,
       "repos_entre_series": 5,
       "repos_apres": 5,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Hip thrust",
@@ -374,8 +369,7 @@
       "duree": 30,
       "repos_entre_series": 5,
       "repos_apres": 5,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Squat lent",
@@ -386,8 +380,7 @@
       "duree": 30,
       "repos_entre_series": 5,
       "repos_apres": 5,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Extensions de mollets",
@@ -398,8 +391,7 @@
       "duree": 30,
       "repos_entre_series": 5,
       "repos_apres": 5,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Montées de genou",
@@ -410,27 +402,25 @@
       "duree": 30,
       "repos_entre_series": 5,
       "repos_apres": 5,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Squat",
       "mode": "repetitions",
-      "poids": 5.0,
+      "poids": 6,
       "series": 4,
-      "repetitions": 20,
+      "repetitions": 13,
       "duree": 0,
       "repos_entre_series": 45,
       "repos_apres": 90,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Fente droite",
       "mode": "repetitions",
-      "poids": 8.0,
+      "poids": 10,
       "series": 4,
-      "repetitions": 12,
+      "repetitions": 8,
       "duree": 0,
       "repos_entre_series": 45,
       "repos_apres": 90,
@@ -440,77 +430,72 @@
     {
       "exercice": "Fente gauche",
       "mode": "repetitions",
-      "poids": 8.0,
+      "poids": 10,
       "series": 4,
-      "repetitions": 12,
+      "repetitions": 8,
       "duree": 0,
       "repos_entre_series": 45,
       "repos_apres": 90,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Souleve de terre roumain",
       "mode": "repetitions",
-      "poids": 6.0,
+      "poids": 6,
       "series": 4,
-      "repetitions": 13,
+      "repetitions": 15,
       "duree": 0,
       "repos_entre_series": 45,
       "repos_apres": 90,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Crunches",
       "mode": "repetitions",
-      "poids": 0.0,
+      "poids": 0,
       "series": 3,
-      "repetitions": 14,
+      "repetitions": 15,
       "duree": 0,
       "repos_entre_series": 45,
       "repos_apres": 90,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Gainage planche",
       "mode": "maintien",
-      "poids": 0.0,
+      "poids": 0,
       "series": 3,
       "repetitions": 0,
-      "duree": 30.0,
+      "duree": 30,
       "repos_entre_series": 45,
       "repos_apres": 90,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     },
     {
       "exercice": "Gainage planche laterale droite",
       "mode": "maintien",
-      "poids": 0.0,
+      "poids": 0,
       "series": 2,
       "repetitions": 0,
-      "duree": 30.0,
+      "duree": 32,
       "repos_entre_series": 45,
       "repos_apres": 90,
       "commentaire": "",
-      "entrelace_avec": null
+      "entrelace_avec": "Gainage planche laterale gauche"
     },
     {
       "exercice": "Gainage planche laterale gauche",
       "mode": "maintien",
-      "poids": 0.0,
+      "poids": 0,
       "series": 2,
       "repetitions": 0,
-      "duree": 30.0,
+      "duree": 32,
       "repos_entre_series": 45,
       "repos_apres": 0,
-      "commentaire": "",
-      "entrelace_avec": null
+      "commentaire": ""
     }
   ],
-  "Séance bas du corps": [
+  "Bas du corps": [
     {
       "exercice": "Squat",
       "mode": "repetitions",
@@ -556,17 +541,34 @@
       "commentaire": ""
     }
   ],
-  "Séance Haut du corps": [
+  "Haut du corps": [
     {
       "exercice": "Elevations latérales",
       "mode": "repetitions",
-      "poids": 6,
-      "series": 3,
-      "repetitions": 17,
+      "poids": 5,
+      "series": 2,
+      "repetitions": 10,
       "duree": 0,
-      "repos_entre_series": 60,
-      "repos_apres": 90,
-      "commentaire": ""
+      "repos_entre_series": 15,
+      "repos_apres": 15,
+      "commentaire": "",
+      "cible_manuelle": [
+        1
+      ]
+    },
+    {
+      "exercice": "Oiseau",
+      "mode": "repetitions",
+      "poids": 5,
+      "series": 1,
+      "repetitions": 10,
+      "duree": 0,
+      "repos_entre_series": 0,
+      "repos_apres": 0,
+      "commentaire": "",
+      "cible_manuelle": [
+        1
+      ]
     }
   ]
 }

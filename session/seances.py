@@ -547,11 +547,17 @@ seance_jambes_abdos = Circuit(
 )
 
 
+#: Les clés sont des **noms affichés** : elles remontent telles quelles sur
+#: l'accueil, dans le bandeau du programme et dans l'historique. Elles doivent
+#: rester alignées sur celles de `seances_personnalisees.json`, qui masque ce
+#: catalogue par clé : deux orthographes de la même séance ne se masqueraient
+#: plus et l'accueil en afficherait deux. Renommer passe par
+#: `python -m scripts.renommer_seances`, qui s'occupe du reste.
 CATALOGUE_SEANCES = {
-    "bras": seance_bras,
+    "Bras": seance_bras,
     "test": Test_exercice,
-    "upper_push": seance_Upper_Push,
-    "jambes_abdos": seance_jambes_abdos,
+    "Upper Push": seance_Upper_Push,
+    "Jambes et abdos": seance_jambes_abdos,
 }
 
 

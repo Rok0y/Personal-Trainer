@@ -120,11 +120,17 @@ def main():
 
         ecritures = []
 
+        # Trois profils et non deux : le troisieme sert a eprouver
+        # `supprimer_utilisateur` en fin de parcours. Supprimer Alice ou Bob
+        # priverait tous les pas suivants de leur relecture, alors que le
+        # verdict interessant est justement « que reste-t-il apres ? ».
         alice = base_de_donnees.creer_utilisateur("Alice")
         bob = base_de_donnees.creer_utilisateur("Bob")
-        profils = [alice["id"], bob["id"]]
+        chloe = base_de_donnees.creer_utilisateur("Chloé")
+        profils = [alice["id"], bob["id"], chloe["id"]]
         ecritures.append(("creer_utilisateur", {"nom": "Alice"}))
         ecritures.append(("creer_utilisateur", {"nom": "Bob"}))
+        ecritures.append(("creer_utilisateur", {"nom": "Chloé"}))
 
         with DESTINATION.open("w", encoding="utf-8") as fichier:
 
@@ -218,8 +224,16 @@ def main():
                         {"seance_id": identifiant, "utilisateur_id": profil}, supprimee)
                 pas += 1
 
+            # Un profil entier disparait, et le relevé continue de le relire :
+            # une suppression qui laisserait une séance, un exercice ou un
+            # ancrage derriere elle se verrait ici, au pas ou elle cede.
+            nom = base_de_donnees.supprimer_utilisateur(chloe["id"])
+            relever(pas, "supprimer_utilisateur",
+                    {"utilisateur_id": chloe["id"]}, nom)
+            pas += 1
+
     lignes = sum(1 for _ in DESTINATION.open(encoding="utf-8"))
-    print(f"{lignes} ecritures relues, 2 profils")
+    print(f"{lignes} ecritures relues, 3 profils")
     print(f"Ecrit dans {DESTINATION.relative_to(RACINE).as_posix()}")
 
 

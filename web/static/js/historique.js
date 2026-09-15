@@ -123,6 +123,48 @@ export function creer_utilisateur(base, nom, maintenant) {
 //: Les mesures du corps, et elles seules : ni le nom, ni le materiel, ni le
 //: programme ne passent par ici. Chacun a son point d'ecriture, ce qui evite
 //: qu'un formulaire en efface un autre en enregistrant des champs vides.
+/**
+ * Supprime un profil et tout ce qui lui appartient.
+ *
+ * La descente suit les cles etrangeres, comme `supprimer_seance` :
+ * `utilisateur_id` ne vit que sur les deux collections racines (`seances`,
+ * `corrections_niveaux`), et filtrer les quatre independamment laisserait les
+ * exercices d'un autre profil — ou emporterait les siens.
+ *
+ * **Le dernier profil n'est pas supprimable** : une base sans profil rend
+ * l'application inutilisable, et le refus vit ici plutot que dans chaque
+ * ecran. `seances_locales` n'est pas touchee : les seances sont communes aux
+ * profils, comme sur le poste fixe.
+ *
+ * Rend le nom du profil supprime. Rien ne rattrape ce geste : c'est a
+ * l'appelant de proposer un export avant.
+ */
+export function supprimer_utilisateur(base, utilisateur_id) {
+  const profil = base.utilisateurs.find((u) => u.id === utilisateur_id);
+  if (profil === undefined) throw new Error(`Profil ${utilisateur_id} introuvable`);
+  if (base.utilisateurs.length <= 1) {
+    throw new Error("Le dernier profil ne peut pas être supprimé.");
+  }
+
+  const seances = new Set(
+    base.seances.filter((s) => s.utilisateur_id === utilisateur_id).map((s) => s.id)
+  );
+  const exercices = new Set(
+    base.exercices.filter((e) => seances.has(e.seance_id)).map((e) => e.id)
+  );
+
+  base.series_realisees = base.series_realisees.filter(
+    (s) => !exercices.has(s.exercice_id)
+  );
+  base.exercices = base.exercices.filter((e) => !seances.has(e.seance_id));
+  base.seances = base.seances.filter((s) => !seances.has(s.id));
+  base.corrections_niveaux = base.corrections_niveaux.filter(
+    (a) => a.utilisateur_id !== utilisateur_id
+  );
+  base.utilisateurs = base.utilisateurs.filter((u) => u.id !== utilisateur_id);
+  return profil.nom;
+}
+
 export const CHAMPS_MESURES = ["sexe", "date_naissance", "taille_cm", "poids_corps_kg"];
 
 /**

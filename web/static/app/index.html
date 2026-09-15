@@ -102,7 +102,7 @@
   /* La carte de seance n'est plus un bouton : elle contient le bouton de
      lancement, le crayon et deux <details>. Un <button> ne peut contenir ni
      l'un ni les autres — le navigateur deplacerait le noeud en silence. */
-  article.carte { cursor: default; padding-bottom: 0.55rem; }
+  article.carte { cursor: default; padding-bottom: 0.55rem; position: relative; }
   article.carte:active { background: var(--surface); }
 
   .carte-lancer {
@@ -120,18 +120,44 @@
   }
   .carte-lancer:active { opacity: 0.7; }
 
+  /* Le crayon se pose **dans le coin de la carte**, hors du flux : il ne
+     dispute plus sa place au contenu, et sa discretion dit ce qu'il est —
+     une retouche, pas l'action principale de la carte. */
+  .carte-editer {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.6rem;
+    background: none;
+    border: 0;
+    padding: 0.25rem 0.35rem;
+    line-height: 1;
+    font-size: 0.95rem;
+    color: var(--texte-doux);
+    opacity: 0.55;
+    cursor: pointer;
+  }
+  .carte-editer:hover,
+  .carte-editer:focus-visible { opacity: 1; color: var(--accent); }
+  /* Le titre s'arrete avant le crayon plutot que de passer dessous. */
+  .carte-lancer .carte-titre { padding-right: 2rem; }
+
   /* Le contenu deplie : la liste complete, la ou les puces du bouton
      s'arretent a cinq. */
   .carte-contenu { font-size: 0.86rem; }
   .carte-contenu > summary,
   .detail-seance > summary { list-style-position: inside; }
+  /* La cible suit immediatement le nom. Rejetee contre le bord droit par
+     un `space-between`, elle se lisait trop loin de l'exercice qu'elle
+     decrit — sur une ligne courte, l'oeil devait traverser la carte. */
   .contenu-ligne {
     display: flex;
-    justify-content: space-between;
-    gap: 0.6rem;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.45rem;
     padding: 0.35rem 0;
     border-top: 1px solid var(--trait);
   }
+  .contenu-ligne .contenu-cible-figee { color: var(--orange); }
   .contenu-ligne em { font-style: normal; color: var(--texte-doux); }
   .contenu-ligne b { font-weight: 600; }
   .contenu-echauffements { margin-top: 0.3rem; }
@@ -201,8 +227,8 @@
   }
 
   .progression-record { margin-top: 0.7rem; }
-  .progression-record summary {
-    cursor: pointer;
+  .progression-titre {
+    display: block;
     color: var(--texte-doux);
     font-size: 0.76rem;
     font-weight: 700;
@@ -210,7 +236,6 @@
     letter-spacing: 0.06em;
     padding: 0.3rem 0;
   }
-  .progression-record summary:hover { color: var(--accent); }
   .progression-record .chart-container { margin-top: 0.5rem; }
 
   .barre-carte {
@@ -374,9 +399,16 @@
     padding: 1rem 1.05rem;
     margin-bottom: 0.7rem;
   }
+  /* La date, la duree et le nombre d'exercices sont **dans** le summary :
+     replie, on doit pouvoir reconnaitre une seance sans la deplier. Le
+     summary devient donc un bloc de deux lignes, et c'est l'entete qui porte
+     la repartition gauche/droite. */
   .fiche-seance > summary {
     cursor: pointer;
     list-style: none;
+    display: block;
+  }
+  .fiche-entete {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -404,6 +436,25 @@
   }
   .statut.abandonnee { color: var(--alerte); }
   .statut.abandonnee::before { background: var(--alerte); }
+
+  /* Le nom d'un exercice mene a sa fiche : c'est le seul endroit ou un
+     mouvement s'explique, et on se demande justement « c'etait quoi, deja ? »
+     en relisant sa seance. Un bouton plutot qu'un <a> : l'application n'a pas
+     d'URL, elle change d'ecran. */
+  .vers-fiche {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-weight: 700;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--trait);
+    text-underline-offset: 3px;
+  }
+  .vers-fiche:hover, .vers-fiche:focus-visible { color: var(--accent); }
 
   .meta {
     display: flex;
@@ -507,6 +558,25 @@
 
   .muet { color: var(--texte-doux); font-size: 0.84rem; }
   a { color: var(--accent); }
+
+  /* `hidden` doit gagner contre les `display` poses par les feuilles
+     partagees : `.form-ancrage` est un `display:flex`, donc un `hidden` sans
+     cette regle ne cache rien — le formulaire des mesures restait affiche
+     sous son propre bouton « Modifier ». */
+  [hidden] { display: none !important; }
+
+  /* Les chiffres d'un resume, memes proportions que `profil.html` : libelle
+     en petit, valeur en grand. La feuille du site n'est pas liee ici (c'est
+     une mise en page de site), on en reprend le langage visuel. */
+  .chiffres { display: flex; flex-wrap: wrap; gap: 1.4rem; margin: 0.8rem 0; }
+  .chiffres div span {
+    display: block;
+    color: var(--texte-doux);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .chiffres div strong { font-size: 1.15rem; color: var(--accent); font-weight: 600; }
 </style>
 
 <!-- ====================== LISTE DES SEANCES ====================== -->
@@ -551,7 +621,15 @@
     Rien ici n'entre dans le calcul des objectifs : le barème ne regarde que ce
     que tu soulèves. Ces mesures sont là pour suivre ton évolution.
   </p>
-  <form class="form-ancrage" id="formMesures">
+  <!-- **Une page de profil se lit d'abord.** Un formulaire toujours ouvert
+       donne l'impression qu'il y a quelque chose a remplir, alors qu'on vient
+       le plus souvent verifier ce qui est declare. L'edition devient un geste
+       explicite, des deux cotes. -->
+  <div class="chiffres" id="resumeMesures"></div>
+  <div class="actions" style="justify-content:flex-start" id="actionsMesures">
+    <button class="bouton secondaire" id="boutonModifierMesures">Modifier mes informations</button>
+  </div>
+  <form class="form-ancrage" id="formMesures" hidden>
     <span class="champ"><label>Sexe</label>
       <select id="champSexe">
         <option value="">Non précisé</option>
@@ -575,12 +653,19 @@
     paire de 8 kg n'est pas la même chose qu'un seul haltère de 8 kg : les
     mouvements à deux bras ont besoin des deux.
   </p>
-  <h3 style="font-size:1rem;margin-top:1.2rem">Haltères</h3>
-  <div class="halteres" id="listeHalteres"></div>
-  <h3 style="font-size:1rem">Accessoires</h3>
-  <div class="accessoires" id="listeAccessoires"></div>
-  <div class="actions" style="justify-content:flex-start">
-    <button class="bouton" id="boutonEnregistrerMateriel">Enregistrer le matériel</button>
+  <p id="resumeMateriel"></p>
+  <div class="actions" style="justify-content:flex-start" id="actionsMateriel">
+    <button class="bouton secondaire" id="boutonModifierMateriel">Modifier mon matériel</button>
+  </div>
+  <div id="editeurMateriel" hidden>
+    <h3 style="font-size:1rem;margin-top:1.2rem">Haltères</h3>
+    <div class="halteres" id="listeHalteres"></div>
+    <h3 style="font-size:1rem">Accessoires</h3>
+    <div class="accessoires" id="listeAccessoires"></div>
+    <div class="actions" style="justify-content:flex-start">
+      <button class="bouton" id="boutonEnregistrerMateriel">Enregistrer le matériel</button>
+      <button class="bouton secondaire" id="boutonAnnulerMateriel">Annuler</button>
+    </div>
   </div>
   <p class="muet" id="etatMateriel" style="margin-top:0.9rem"></p>
 
@@ -637,9 +722,25 @@
     Il démarre sans historique : ses niveaux se construiront à partir de ses
     séances, ou d'un recalage depuis la fiche d'un exercice.
   </p>
+  <!-- Les mesures sont demandees **a la creation**. Une page de profil qu'on
+       ne visite jamais revient a ne jamais les avoir. Toutes facultatives :
+       rien dans le bareme n'en depend. -->
   <form class="form-ancrage" id="formProfil">
     <span class="champ champ-large"><label>Prénom</label>
       <input type="text" id="nomProfil" placeholder="Prénom" autocomplete="off"></span>
+    <span class="champ"><label>Sexe</label>
+      <select id="nouveauSexe">
+        <option value="">Non précisé</option>
+        <option value="femme">Femme</option>
+        <option value="homme">Homme</option>
+        <option value="autre">Autre</option>
+      </select></span>
+    <span class="champ"><label>Date de naissance</label>
+      <input type="date" id="nouveauNaissance"></span>
+    <span class="champ"><label>Taille (cm)</label>
+      <input type="number" min="0" max="260" id="nouveauTaille"></span>
+    <span class="champ"><label>Poids (kg)</label>
+      <input type="number" min="0" max="400" step="0.1" id="nouveauPoidsCorps"></span>
     <button type="submit">Créer</button>
     <span class="retour-ancrage" id="retourProfil"></span>
   </form>
@@ -955,7 +1056,7 @@ import {
   prochaine_seance,
   resume_palier,
 } from "../js/programmes.js";
-import { est_cible_manuelle } from "../js/cible_manuelle.js";
+import { enteriner_cibles_manuelles, est_cible_manuelle } from "../js/cible_manuelle.js";
 import { UNITE_SECONDES } from "../js/paliers.js";
 
 //: Ou le dernier profil choisi est retenu. `localStorage` et non la base :
@@ -1600,6 +1701,8 @@ async function terminer(abandonnee = false) {
     enregistree = await stockage.sauver(base);
   }
 
+  if (!abandonnee) await enteriner_cibles_figees();
+
   $("resumeDuree").textContent =
     `${nom_seance} · ${Math.round(seance.duree_totale / 60)} min` +
     (abandonnee ? " · arrêtée en cours" : "");
@@ -1643,6 +1746,28 @@ async function terminer(abandonnee = false) {
   montrer("ecranFin");
 }
 
+
+/**
+ * La seance a ete menee a son terme : ses cibles figees deviennent la reference.
+ *
+ * Le badge orange signale une cible que le moteur ne pilote plus. Une fois la
+ * seance jouee a cette cible, il n'y a plus rien a signaler — l'historique
+ * porte la performance realisee, et c'est d'elle que le moteur repartira. On
+ * leve donc la marque plutot que de la laisser figer la valeur pour toujours.
+ *
+ * **Seulement sur une seance editee ici.** Quand elle vient du fichier
+ * deploye, lever la marque imposerait d'en ecrire une copie locale, qui
+ * masquerait desormais le fichier : on echangerait un badge contre un autre.
+ * Le cas ne se pose pas en pratique — une cible figee sur cet appareil vient
+ * forcement de l'editeur de cet appareil.
+ */
+async function enteriner_cibles_figees() {
+  const blocs = seances[nom_seance];
+  if (!blocs || !historique.est_seance_locale(base, nom_seance)) return;
+  if (!enteriner_cibles_manuelles(blocs, PROFIL)) return;
+  historique.enregistrer_seance_locale(base, nom_seance, blocs);
+  await stockage.sauver(base);
+}
 
 /**
  * Propose de declarer un ressenti sur chaque exercice de la seance ecoulee.
@@ -1722,6 +1847,22 @@ function dessiner_materiel() {
     )
     .join("");
 
+  // Le resume lu par defaut, dans la meme forme que celui du poste fixe :
+  // « paires : … · seuls : … · accessoires : … ».
+  const halteres = inventaire.halteres || {};
+  const paires = Object.keys(halteres).filter((p) => halteres[p] >= 2).map(Number).sort((a, b) => a - b);
+  const seuls = Object.keys(halteres).filter((p) => halteres[p] === 1).map(Number).sort((a, b) => a - b);
+  const morceaux = [];
+  if (paires.length) morceaux.push("paires : " + paires.map((p) => `${p} kg`).join(", "));
+  if (seuls.length) morceaux.push("seuls : " + seuls.map((p) => `${p} kg`).join(", "));
+  if (inventaire.accessoires?.length) {
+    morceaux.push(
+      "accessoires : " +
+      inventaire.accessoires.map((a) => tables_baremes.accessoires[a] ?? a).join(", ")
+    );
+  }
+  $("resumeMateriel").textContent = morceaux.join(" · ") || "Rien de déclaré.";
+
   $("etatMateriel").textContent = "";
 }
 
@@ -1749,6 +1890,8 @@ async function enregistrer_materiel() {
   // resteraient calculees sur l'ancien materiel, en silence.
   construire_moteur();
   dessiner_liste();
+  dessiner_materiel();
+  if (ecrit) editer_materiel(false);
   $("etatMateriel").textContent = ecrit
     ? "Matériel enregistré. Tes objectifs ont été recalculés."
     : "Le stockage a refusé l'écriture : le matériel n'est pas retenu.";
@@ -1807,7 +1950,9 @@ function dessiner_seance(seance, montees) {
 
       return (
         `<div class="exercice-fait">` +
-        `<div class="exercice-ligne"><strong>${echapper(exercice.nom)}</strong>` +
+        `<div class="exercice-ligne">` +
+        `<button type="button" class="vers-fiche" ` +
+        `data-mouvement="${echapper(exercice.nom)}">${echapper(exercice.nom)}</button>` +
         `<span>${exercice.series} séries · ${fait}${charge}</span></div>` +
         `<div class="series-detail">${series}</div>${badge}` +
         // Rempli apres coup par `construire_ligne` : il faut des ecouteurs,
@@ -1819,12 +1964,15 @@ function dessiner_seance(seance, montees) {
     .join("");
 
   return (
-    `<details class="fiche-seance">` +
-    `<summary><b>${echapper(seance.nom ?? "Séance")}</b>` +
+    // L'identifiant sert d'ancre : un point du graphique de progression
+    // ramene ici, sur la seance exacte.
+    `<details class="fiche-seance" id="seance-${seance.id}">` +
+    `<summary><div class="fiche-entete"><b>${echapper(seance.nom ?? "Séance")}</b>` +
     `<span class="statut${abandonnee ? " abandonnee" : ""}">` +
-    `${abandonnee ? "abandonnée" : "terminée"}</span></summary>` +
+    `${abandonnee ? "abandonnée" : "terminée"}</span></div>` +
     `<div class="meta"><span>${echapper(seance.date)}</span><span>${minutes} min</span>` +
     `<span>${seance.exercices.length} exercice${seance.exercices.length > 1 ? "s" : ""}</span></div>` +
+    `</summary>` +
     exercices +
     `<button type="button" class="bouton secondaire supprimer-seance" ` +
     `data-supprimer="${seance.id}">Supprimer cette séance</button>` +
@@ -1860,6 +2008,16 @@ function dessiner_historique() {
       construire_ligne(zone, exercice, jugement, async (nom, valeur) => {
         historique.enregistrer_ressentis(base, Number(seance), { [nom]: valeur }, ECHELLE);
         await stockage.sauver(base);
+      });
+    });
+
+  $("listeHistorique")
+    .querySelectorAll(".vers-fiche[data-mouvement]")
+    .forEach((bouton) => {
+      bouton.addEventListener("click", (evenement) => {
+        // Le bouton vit dans un <details> : sans ca, cliquer le replierait.
+        evenement.preventDefault();
+        ouvrir_fiche(bouton.dataset.mouvement, "ecranHistorique");
       });
     });
 
@@ -2181,18 +2339,88 @@ function dessiner_profils() {
 
   for (const utilisateur of base.utilisateurs) {
     const seances = historique.recuperer_historique(base, utilisateur.id).length;
-    const carte = document.createElement("button");
-    carte.className = "carte" + (utilisateur.id === PROFIL ? " carte-active" : "");
-    carte.innerHTML =
+    const actif = utilisateur.id === PROFIL;
+
+    // Un <article> et non un <button> : la carte porte desormais un second
+    // bouton, et un bouton ne peut pas en contenir un autre — le navigateur
+    // deplacerait le noeud en silence. Meme geste que pour les cartes de
+    // seance : on change l'element porteur plutot que de sortir le contenu.
+    const carte = document.createElement("article");
+    carte.className = "carte" + (actif ? " carte-active" : "");
+
+    const choisir = document.createElement("button");
+    choisir.className = "carte-lancer";
+    choisir.type = "button";
+    choisir.innerHTML =
       `<div class="carte-titre">${echapper(utilisateur.nom)}</div>` +
       `<div class="carte-detail">` +
       (seances ? `${seances} séance${seances > 1 ? "s" : ""}` : "aucune séance") +
       ` · depuis ${echapper(utilisateur.cree_le ?? "—")}` +
-      (utilisateur.id === PROFIL ? " · profil actif" : "") +
+      (actif ? " · profil actif" : "") +
       `</div>`;
-    carte.addEventListener("click", () => choisir_profil(utilisateur.id));
+    choisir.addEventListener("click", () => choisir_profil(utilisateur.id));
+    carte.appendChild(choisir);
+
+    // **Le profil actif n'est pas supprimable**, et le dernier non plus :
+    // `supprimer_utilisateur` refuse le second cas de toute facon, mais un
+    // bouton qui echoue vaut moins qu'un bouton absent.
+    if (!actif && base.utilisateurs.length > 1) {
+      const supprimer = document.createElement("button");
+      supprimer.className = "carte-editer";
+      supprimer.type = "button";
+      supprimer.textContent = "✕";
+      supprimer.title = `Supprimer ${utilisateur.nom}`;
+      supprimer.setAttribute("aria-label", `Supprimer ${utilisateur.nom}`);
+      supprimer.addEventListener("click", (evenement) => {
+        evenement.stopPropagation();
+        supprimer_profil(utilisateur, seances);
+      });
+      carte.appendChild(supprimer);
+    }
+
     liste.appendChild(carte);
   }
+}
+
+/**
+ * Supprime un profil, apres avoir propose d'en garder une trace.
+ *
+ * Rien ne rattrape ce geste : l'historique, les records et les recalages
+ * partent avec le profil. La sauvegarde est donc proposee **avant** la
+ * confirmation, et elle porte la base entiere — c'est le seul format que
+ * `importer` sait relire.
+ */
+async function supprimer_profil(utilisateur, seances) {
+  const compte = seances
+    ? `${seances} séance${seances > 1 ? "s" : ""} enregistrée${seances > 1 ? "s" : ""}`
+    : "aucune séance enregistrée";
+
+  if (seances && confirm(
+    `Avant de supprimer « ${utilisateur.nom} » : télécharger une sauvegarde ?
+
+` +
+    "Elle contient tous les profils de cet appareil et se réimporte depuis " +
+    "l'écran des séances."
+  )) {
+    stockage.telecharger(base);
+  }
+
+  if (!confirm(
+    `Supprimer définitivement le profil « ${utilisateur.nom} » ?
+
+` +
+    `Il a ${compte}. Son historique, ses records et ses recalages partent ` +
+    "avec lui, et rien ne les rattrape."
+  )) return;
+
+  try {
+    historique.supprimer_utilisateur(base, utilisateur.id);
+  } catch (erreur) {
+    alert(erreur.message);
+    return;
+  }
+  await stockage.sauver(base);
+  dessiner_profils();
 }
 
 function choisir_profil(id) {
@@ -2247,7 +2475,37 @@ function dessiner_profil() {
   $("champTaille").value = profil.taille_cm ?? "";
   $("champPoidsCorps").value = profil.poids_corps_kg ?? "";
 
+  $("resumeMesures").innerHTML =
+    case_resume("Sexe", LIBELLES_SEXE[profil.sexe] ?? "Non précisé") +
+    case_resume("Naissance", profil.date_naissance || "—") +
+    case_resume("Taille", profil.taille_cm ? `${Math.round(profil.taille_cm)} cm` : "—") +
+    case_resume("Poids du corps", profil.poids_corps_kg ? `${profil.poids_corps_kg} kg` : "—");
+  editer_mesures(false);
+
   dessiner_materiel();
+  editer_materiel(false);
+}
+
+//: Le stockage garde la valeur brute (`femme`, `homme`, `autre`, ou null) :
+//: l'affichage se corrige sans toucher aux donnees.
+const LIBELLES_SEXE = { femme: "Femme", homme: "Homme", autre: "Autre" };
+
+const case_resume = (libelle, valeur) =>
+  `<div><span>${libelle}</span><strong>${echapper(valeur)}</strong></div>`;
+
+/** Bascule le bloc des mesures entre lecture et edition. Une vue a la fois. */
+function editer_mesures(ouvert) {
+  $("resumeMesures").hidden = ouvert;
+  $("actionsMesures").hidden = ouvert;
+  $("formMesures").hidden = !ouvert;
+  if (!ouvert) $("retourMesures").textContent = "";
+}
+
+/** Meme bascule pour le materiel. Le resume est celui du poste fixe. */
+function editer_materiel(ouvert) {
+  $("resumeMateriel").hidden = ouvert;
+  $("actionsMateriel").hidden = ouvert;
+  $("editeurMateriel").hidden = !ouvert;
 }
 
 /** Enregistre les mesures du profil. Aucune ne pilote le bareme. */
@@ -2269,6 +2527,7 @@ async function enregistrer_mesures(evenement) {
   retour.textContent = sauve
     ? "Enregistré."
     : "Impossible d'écrire sur cet appareil — exporte ta sauvegarde.";
+  if (sauve) dessiner_profil();
 }
 
 // ---------------------------------------------------------------- exercices
@@ -2301,7 +2560,8 @@ function dessiner_exercices() {
     `</div>`;
 
   for (const carte of $("listeExercices").querySelectorAll("[data-mouvement]")) {
-    carte.addEventListener("click", () => dessiner_fiche(carte.dataset.mouvement));
+    carte.addEventListener("click", () =>
+      ouvrir_fiche(carte.dataset.mouvement, "ecranExercices"));
   }
 }
 
@@ -2330,6 +2590,27 @@ function carte_exercice(nom, etat) {
     (etiquettes.length ? `<div class="etiquettes">${etiquettes.join("")}</div>` : "") +
     `</button>`
   );
+}
+
+//: L'ecran vers lequel « Retour » ramene depuis une fiche. On arrive sur une
+//: fiche depuis le catalogue, mais aussi depuis l'historique — et repartir
+//: systematiquement vers le catalogue ferait perdre la seance qu'on lisait.
+let retour_de_la_fiche = "ecranExercices";
+
+/** La fiche d'un mouvement, ouverte depuis un autre ecran que le catalogue. */
+function ouvrir_fiche(nom, depuis) {
+  retour_de_la_fiche = depuis;
+  dessiner_fiche(nom);
+}
+
+/** L'historique, deplie et fait defiler jusqu'a une seance precise. */
+function ouvrir_historique_sur(seance_id) {
+  dessiner_historique();
+  montrer("ecranHistorique");
+  const carte = document.getElementById(`seance-${seance_id}`);
+  if (!carte) return;
+  carte.open = true;
+  carte.scrollIntoView({ block: "center" });
 }
 
 /** La fiche d'un mouvement : comment le faire, et ou j'en suis dessus. */
@@ -2389,7 +2670,17 @@ function dessiner_fiche(nom) {
   for (const bouton of $("contenuFiche").querySelectorAll("[data-variante]")) {
     bouton.addEventListener("click", () => dessiner_fiche(bouton.dataset.variante));
   }
+  for (const point of $("contenuFiche").querySelectorAll("a.chart-point")) {
+    point.addEventListener("click", (evenement) => {
+      evenement.preventDefault();
+      ouvrir_historique_sur(Number(point.getAttribute("href").slice("#seance-".length)));
+    });
+  }
   brancher_recalages($("contenuFiche"));
+  $("retourExercices").textContent =
+    retour_de_la_fiche === "ecranHistorique"
+      ? "← Retour à l'historique"
+      : "← Tous les exercices";
   montrer("ecranFiche");
 }
 
@@ -2574,10 +2865,16 @@ function dessiner_exigence(ligne) {
 /**
  * Le graphique de progression d'un exercice.
  *
- * **Replie par defaut** : un niveau repond a « ou j'en suis », le graphe a
- * « comment j'y suis arrive », et les deux questions ne se posent pas au meme
- * moment. Vingt-trois graphes ouverts feraient de l'ecran des records une
- * page a faire defiler plutot qu'a consulter.
+ * **Toujours deplie**, comme sur le poste fixe. Il etait replie du temps ou
+ * l'ecran des records les empilait tous ; depuis la fusion, une fiche ne parle
+ * que d'un mouvement, et le graphe y est la reponse a la question qu'on est
+ * venu poser — le replier revenait a la cacher.
+ *
+ * **Chaque point mene a sa seance.** Le poste fixe passe une URL
+ * (`/historique/<id>`) ; l'application n'en a pas, elle passe donc une ancre
+ * et intercepte le clic pour changer d'ecran. Dans les deux cas c'est
+ * `graphique.js` qui enveloppe le point dans un <a> — le module partage n'a
+ * pas eu a bouger.
  *
  * Un seul point ne fait pas une progression : on l'annonce plutot que de
  * tracer une ligne horizontale qui n'apprend rien.
@@ -2594,10 +2891,17 @@ function bloc_graphique(nom, statistique) {
     statistique.meilleure_charge.valeur > 0
   );
 
+  const svg = graphique_progression(points, {
+    cle,
+    unite,
+    lien: (point) => `#seance-${point.seance_id}`,
+  });
+
   return (
-    `<details class="progression-record"><summary>Progression · ${points.length} séances</summary>` +
-    `<div class="chart-container">${graphique_progression(points, { cle, unite })}</div>` +
-    `</details>`
+    `<div class="progression-record">` +
+    `<strong class="progression-titre">Progression · ${points.length} séances</strong>` +
+    `<div class="chart-container">${svg}</div>` +
+    `</div>`
   );
 }
 
@@ -2946,34 +3250,6 @@ function dessiner_resume_programme() {
 
 }
 
-/**
- * La puce d'un bloc : ce que le moteur demandera pour cet exercice.
- *
- * Extraite de `dessiner_liste` parce que le contenu deplie en a besoin aussi,
- * et qu'une seconde copie divergerait a la premiere correction — le badge
- * orange et le badge « a tester » sont exactement le genre de regle qu'on ne
- * veut pas voir dire deux choses selon l'endroit.
- */
-function puce_objectif(bloc, objectifs, sans_donnees) {
-  // Une cible figee a la main sort du pilotage : le moteur ne la fait plus
-  // evoluer, et le badge orange est ce qui rend ce decrochage **visible**
-  // plutot que silencieux — c'est tout son objet.
-  if (est_cible_manuelle(bloc, PROFIL)) {
-    const cible = `${bloc.series}×${bloc.repetitions || bloc.duree}` +
-      (bloc.poids ? ` · ${bloc.poids} kg` : "");
-    return `<span class="puce puce-manuelle">${bloc.exercice} <b>${cible}</b> · figée</span>`;
-  }
-  if (moteur.objectifs.a_calibrer(bloc.exercice, bloc.mode, sans_donnees)) {
-    return `<span class="puce puce-tester">${bloc.exercice} · à tester</span>`;
-  }
-  const palier = moteur.objectifs.objectif_pour(bloc.exercice, bloc.mode, objectifs);
-  const cible = palier
-    ? `${palier.series}×${palier.cible}${palier.unite === "secondes" ? " s" : ""}` +
-      (palier.poids ? ` · ${palier.poids} kg` : "")
-    : `${bloc.series}×${bloc.repetitions || bloc.duree}`;
-  return `<span class="puce">${bloc.exercice} <b>${cible}</b></span>`;
-}
-
 /** La cible d'un bloc telle qu'elle sera jouee, objectif du moteur compris. */
 function cible_affichee(bloc, objectifs, sans_donnees) {
   if (est_cible_manuelle(bloc, PROFIL)) {
@@ -3003,10 +3279,16 @@ function contenu_seance(blocs, objectifs, sans_donnees) {
   const exercices = blocs.filter((b) => b.mode !== "echauffement");
   const echauffements = blocs.filter((b) => b.mode === "echauffement");
 
-  const ligne = (b) =>
-    `<div class="contenu-ligne"><span>${echapper(b.exercice)}` +
-    (b.entrelace_avec ? ` <em>⟷ alterné</em>` : "") +
-    `</span><b>${echapper(cible_affichee(b, objectifs, sans_donnees))}</b></div>`;
+  const ligne = (b) => {
+    const figee = est_cible_manuelle(b, PROFIL);
+    return (
+      `<div class="contenu-ligne"><span>${echapper(b.exercice)}</span>` +
+      `<b${figee ? ' class="contenu-cible-figee"' : ""}>` +
+      `${echapper(cible_affichee(b, objectifs, sans_donnees))}</b>` +
+      (b.entrelace_avec ? ` <em>⟷ alterné</em>` : "") +
+      `</div>`
+    );
+  };
 
   const detail = document.createElement("details");
   detail.className = "carte-contenu";
@@ -3043,19 +3325,17 @@ function dessiner_liste() {
     const carte = document.createElement("article");
     carte.className = "carte";
 
-    // Ce que le moteur demandera, exercice par exercice. C'est la seule chose
-    // qui rend sa progression visible avant de commencer.
-    const puces = exercices.slice(0, 5).map((b) => puce_objectif(b, objectifs, sans_donnees));
-
+    // **Le contenu d'une seance ne s'affiche qu'une fois.** Le bouton portait
+    // aussi les cinq premiers exercices avec leur cible, juste au-dessus du
+    // <details> qui deplie les memes lignes — deux fois la meme liste, dont
+    // l'une tronquee. Ne reste que l'ampleur, qui elle ne se lit nulle part
+    // ailleurs sans deplier.
     const lancer = document.createElement("button");
     lancer.className = "carte-lancer";
     lancer.innerHTML =
-      `<div class="carte-titre">${nom}</div>` +
+      `<div class="carte-titre">${echapper(nom)}</div>` +
       `<div class="carte-detail">${exercices.length} exercice${exercices.length > 1 ? "s" : ""}` +
       (echauffements ? ` · ${echauffements} échauffement${echauffements > 1 ? "s" : ""}` : "") +
-      `</div>` +
-      `<div class="puces">${puces.join("")}` +
-      (exercices.length > 5 ? `<span class="puce">+${exercices.length - 5}</span>` : "") +
       `</div>`;
     lancer.addEventListener("click", () => {
       // **Au plus pres du clic, avant tout `await`.** L'activation de
@@ -3067,6 +3347,21 @@ function dessiner_liste() {
     });
     carte.appendChild(lancer);
 
+    const editer = document.createElement("button");
+    editer.className = "carte-editer";
+    editer.type = "button";
+    editer.textContent = "✎";
+    editer.title = "Modifier cette séance";
+    editer.setAttribute("aria-label", `Modifier ${nom}`);
+    editer.addEventListener("click", (evenement) => {
+      evenement.stopPropagation();
+      ouvrir_editeur(nom);
+    });
+    carte.appendChild(editer);
+
+    // La barre ne porte plus que les decrochages. Ils restent **au-dessus** du
+    // repli : une cible figee ou une seance qui ne suit plus le fichier sont
+    // precisement ce qu'on ne doit pas avoir a deplier pour voir.
     const barre = document.createElement("div");
     barre.className = "barre-carte";
     if (historique.est_seance_locale(base, nom)) {
@@ -3075,15 +3370,14 @@ function dessiner_liste() {
       marque.textContent = "modifiée sur cet appareil";
       barre.appendChild(marque);
     }
-    const editer = document.createElement("button");
-    editer.className = "bouton secondaire";
-    editer.textContent = "Modifier";
-    editer.addEventListener("click", (evenement) => {
-      evenement.stopPropagation();
-      ouvrir_editeur(nom);
-    });
-    barre.appendChild(editer);
-    carte.appendChild(barre);
+    const figees = exercices.filter((b) => est_cible_manuelle(b, PROFIL)).length;
+    if (figees) {
+      const marque = document.createElement("span");
+      marque.className = "puce puce-manuelle";
+      marque.textContent = `${figees} cible${figees > 1 ? "s" : ""} figée${figees > 1 ? "s" : ""}`;
+      barre.appendChild(marque);
+    }
+    if (barre.childElementCount) carte.appendChild(barre);
 
     carte.appendChild(contenu_seance(blocs, objectifs, sans_donnees));
 
@@ -3108,6 +3402,15 @@ $("versProfils").addEventListener("click", () => {
   montrer("ecranProfils");
 });
 $("formMesures").addEventListener("submit", enregistrer_mesures);
+$("boutonModifierMesures").addEventListener("click", () => editer_mesures(true));
+$("boutonModifierMateriel").addEventListener("click", () => editer_materiel(true));
+$("boutonAnnulerMateriel").addEventListener("click", () => {
+  // Redessiner avant de refermer : les <select> ont pu bouger sans etre
+  // enregistres, et les rouvrir sur d'anciennes valeurs ferait croire qu'ils
+  // le sont.
+  dessiner_materiel();
+  editer_materiel(false);
+});
 
 for (const onglet of document.querySelectorAll(".onglet")) {
   if (!onglet.dataset.ecran) continue;
@@ -3219,8 +3522,21 @@ $("formProfil").addEventListener("submit", async (evenement) => {
   const retour = $("retourProfil");
   try {
     const cree = historique.creer_utilisateur(base, $("nomProfil").value);
+    // Les mesures sont posees dans la foulee : c'est le meme geste, et les
+    // demander plus tard revient a ne jamais les avoir.
+    const taille = $("nouveauTaille").value;
+    const poids = $("nouveauPoidsCorps").value;
+    historique.definir_mesures(base, cree.id, {
+      sexe: $("nouveauSexe").value,
+      date_naissance: $("nouveauNaissance").value,
+      taille_cm: taille === "" ? "" : Number(taille),
+      poids_corps_kg: poids === "" ? "" : Number(poids),
+    });
     await stockage.sauver(base);
-    $("nomProfil").value = "";
+    for (const champ of ["nomProfil", "nouveauNaissance", "nouveauTaille", "nouveauPoidsCorps"]) {
+      $(champ).value = "";
+    }
+    $("nouveauSexe").value = "";
     retour.className = "retour-ancrage";
     retour.textContent = "";
     // On bascule tout de suite dessus : creer un profil sans s'en servir n'a
@@ -3232,6 +3548,11 @@ $("formProfil").addEventListener("submit", async (evenement) => {
   }
 });
 $("retourExercices").addEventListener("click", () => {
+  if (retour_de_la_fiche === "ecranHistorique") {
+    dessiner_historique();
+    montrer("ecranHistorique");
+    return;
+  }
   dessiner_exercices();
   montrer("ecranExercices");
 });

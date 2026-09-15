@@ -16,7 +16,7 @@ import { dirname, join } from "node:path";
 
 import {
   base_vide, creer_utilisateur, enregistrer_seance, enregistrer_ressentis,
-  enregistrer_ancrage, supprimer_seance, recuperer_historique,
+  enregistrer_ancrage, supprimer_seance, supprimer_utilisateur, recuperer_historique,
   recuperer_ancrages, statistiques_exercices, exporter, importer,
 } from "../web/static/js/historique.js";
 
@@ -63,6 +63,8 @@ function main() {
         });
       } else if (ligne.commande === "supprimer_seance") {
         supprimer_seance(base, a.seance_id, a.utilisateur_id);
+      } else if (ligne.commande === "supprimer_utilisateur") {
+        resultat = supprimer_utilisateur(base, a.utilisateur_id);
       } else {
         throw new Error(`Commande inconnue : ${ligne.commande}`);
       }

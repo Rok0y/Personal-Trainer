@@ -1,5 +1,7 @@
+import json
 import logging
 import re
+import sqlite3
 import time
 import unicodedata
 import webbrowser
@@ -23,6 +25,7 @@ from core.utilisateur import (
     utilisateur_connecte,
 )
 from historique.database import (
+    CHEMIN_DB,
     creer_utilisateur,
     definir_materiel,
     definir_mesures,
@@ -42,8 +45,12 @@ from historique.database import (
     supprimer_ancrages,
     supprimer_exercice_de_seance,
     supprimer_seance,
+    supprimer_utilisateur,
 )
 from core.materiel import ACCESSOIRES, POIDS_REFERENCE, materiel_du_profil, normaliser
+# Le format d'une sauvegarde n'a qu'une definition : celle du script qui
+# l'ecrit en ligne de commande. La route d'export ne fait que la servir.
+from scripts.exporter_profil import exporter as exporter_profil
 from progression.niveaux import etat_niveau, etats_niveaux, montees_de_niveau
 from progression.paliers import (
     est_suivi_par_le_moteur,
@@ -96,9 +103,19 @@ ROUTES_SANS_PROFIL = {
     "lister_utilisateurs_api",
     "creer_utilisateur_api",
     "renommer_utilisateur_api",
+    # Supprimer un profil et en sauvegarder un se font depuis l'ecran de
+    # connexion, donc avant d'etre connecte : les exiger connectes obligerait
+    # a entrer dans un profil pour pouvoir l'effacer.
+    "supprimer_utilisateur_api",
+    "exporter_utilisateur_api",
     "connecter_profil_api",
     "deconnecter_profil_api",
 }
+
+#: Les libelles du champ `sexe`, cote ecran. Le stockage garde la valeur brute
+#: (`femme`, `homme`, `autre`, ou NULL) : l'affichage se corrige sans toucher
+#: aux donnees.
+LIBELLES_SEXE = {"femme": "Femme", "homme": "Homme", "autre": "Autre"}
 
 
 @app.before_request
@@ -151,7 +168,7 @@ def _exiger_onboarding():
 @app.context_processor
 def _profil_dans_les_templates():
     """Rend le profil connecté disponible partout, sans le passer route par route."""
-    return {"profil": utilisateur_connecte()}
+    return {"profil": utilisateur_connecte(), "LIBELLES_SEXE": LIBELLES_SEXE}
 
 
 def programme_de_l_accueil():
@@ -248,7 +265,44 @@ def page_connexion():
     On la sert même si quelqu'un est déjà connecté : c'est aussi par ici que
     passe le bouton « changer de profil ».
     """
-    return render_template("connexion.html", profils=lister_utilisateurs())
+    profils = lister_utilisateurs()
+    # Le nombre de séances par profil : la confirmation de suppression dit ce
+    # qu'on perd plutôt que de demander « es-tu sûr ? ».
+    with sqlite3.connect(CHEMIN_DB) as connexion:
+        comptes = dict(
+            connexion.execute(
+                "SELECT utilisateur_id, COUNT(*) FROM seances GROUP BY utilisateur_id"
+            )
+        )
+    return render_template(
+        "connexion.html", profils=profils, seances_par_profil=comptes
+    )
+
+
+def _mesures_valides(donnees):
+    """Extrait les quatre mesures d'un corps de requête. Rend `(mesures, erreur)`.
+
+    Un champ absent n'est pas touché, une chaîne vide vaut « non renseigné » —
+    c'est ce que rend un champ de formulaire qu'on vide à la main, et
+    `definir_mesures` la traduit en NULL. Partagée par la création d'un profil
+    et la page de profil, pour que les deux acceptent exactement la même chose.
+    """
+    mesures = {}
+    for champ in ("sexe", "date_naissance"):
+        if champ in donnees:
+            mesures[champ] = (donnees[champ] or "").strip()
+    for champ in ("taille_cm", "poids_corps_kg"):
+        if champ not in donnees:
+            continue
+        brut = str(donnees[champ] or "").strip()
+        if not brut:
+            mesures[champ] = ""
+            continue
+        try:
+            mesures[champ] = float(brut.replace(",", "."))
+        except ValueError:
+            return {}, f"« {champ} » doit être un nombre"
+    return mesures, None
 
 
 @app.route("/api/utilisateurs")
@@ -268,11 +322,68 @@ def creer_utilisateur_api():
         profil = creer_utilisateur(donnees.get("nom"))
     except ValueError as erreur:
         return jsonify({"ok": False, "erreur": str(erreur)}), 400
+
+    # **Les mesures se demandent a la creation.** Elles restent facultatives —
+    # rien dans le bareme n'en depend — mais les reclamer plus tard, sur une
+    # page de profil qu'on ne visite jamais, revenait a ne jamais les avoir.
+    mesures, erreur = _mesures_valides(donnees.get("mesures") or {})
+    if erreur:
+        return jsonify({"ok": False, "erreur": erreur}), 400
+    if mesures:
+        definir_mesures(profil["id"], mesures)
+
     try:
         _ouvrir_session(profil["id"])
     except RuntimeError as erreur:
         return jsonify({"ok": False, "erreur": str(erreur)}), 409
     return jsonify({"ok": True, "utilisateur": profil})
+
+
+@app.route("/api/utilisateurs/<int:utilisateur_id>/export")
+def exporter_utilisateur_api(utilisateur_id):
+    """La sauvegarde d'un profil, au format que l'application sait relire.
+
+    Meme fonction que `python -m scripts.exporter_profil` : le format n'a
+    qu'une definition. Elle sert ici a **proposer un export avant une
+    suppression**, qui, elle, ne se rattrape pas.
+    """
+    profils = {profil["id"]: profil for profil in lister_utilisateurs()}
+    if utilisateur_id not in profils:
+        return jsonify({"ok": False, "erreur": "Profil introuvable"}), 404
+
+    with sqlite3.connect(CHEMIN_DB) as connexion:
+        donnees = exporter_profil(connexion, utilisateur_id)
+
+    nom = profils[utilisateur_id]["nom"].lower().replace(" ", "-")
+    return Response(
+        json.dumps(donnees, ensure_ascii=False, indent=1),
+        mimetype="application/json",
+        headers={"Content-Disposition": f'attachment; filename="coach-{nom}.json"'},
+    )
+
+
+@app.route("/api/utilisateurs/<int:utilisateur_id>", methods=["DELETE"])
+def supprimer_utilisateur_api(utilisateur_id):
+    """Supprime un profil et tout son historique. Rien ne le rattrape.
+
+    Le profil connecte n'est pas supprimable : le garde de requete le relit a
+    chaque appel, et l'effacer sous ses propres pieds laisserait une session
+    qui designe une ligne disparue. Changer de profil d'abord est un geste de
+    plus, mais un geste explicite.
+    """
+    connecte = utilisateur_connecte()
+    if connecte and connecte["id"] == utilisateur_id:
+        return jsonify({
+            "ok": False,
+            "erreur": "Connecte-toi sur un autre profil avant de supprimer celui-ci.",
+        }), 409
+    try:
+        nom = supprimer_utilisateur(utilisateur_id)
+    except KeyError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 404
+    except ValueError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
+    return jsonify({"ok": True, "nom": nom})
 
 
 @app.route("/api/utilisateurs/<int:utilisateur_id>", methods=["PUT"])
@@ -785,21 +896,9 @@ def enregistrer_profil():
     donnees = request.get_json(silent=True) or {}
     profil = utilisateur_connecte()
 
-    mesures = {}
-    for champ in ("sexe", "date_naissance"):
-        if champ in donnees:
-            mesures[champ] = (donnees[champ] or "").strip()
-    for champ in ("taille_cm", "poids_corps_kg"):
-        if champ not in donnees:
-            continue
-        brut = str(donnees[champ] or "").strip()
-        if not brut:
-            mesures[champ] = ""
-            continue
-        try:
-            mesures[champ] = float(brut.replace(",", "."))
-        except ValueError:
-            return jsonify({"ok": False, "erreur": f"« {champ} » doit être un nombre"}), 400
+    mesures, erreur = _mesures_valides(donnees)
+    if erreur:
+        return jsonify({"ok": False, "erreur": erreur}), 400
 
     definir_mesures(profil["id"], mesures)
     rafraichir()

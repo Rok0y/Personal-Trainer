@@ -2,7 +2,10 @@ import threading
 
 from core.state import EtatSeance
 from core.utilisateur import identifiant_connecte
-from progression.objectifs import marquer_cibles_manuelles
+from progression.objectifs import (
+    enteriner_cibles_manuelles,
+    marquer_cibles_manuelles,
+)
 from session.seances import (
     catalogue,
     construire_circuit,
@@ -170,7 +173,19 @@ class SessionManager:
             if self.seance is not None and self.seance.phase == "termine":
                 self.statut = "finished"
                 if not getattr(self.seance, "progression_appliquee", False):
-                    if self.seance.appliquer_progression():
+                    # Deux raisons d'écrire le fichier, et elles sont
+                    # indépendantes : la progression des exercices sans barème,
+                    # et les cibles figées que cette séance vient d'entériner.
+                    # `appliquer_progression` ne rend presque jamais True (il
+                    # n'existe plus d'exercice sans barème), donc y accrocher
+                    # l'écriture reviendrait à ne jamais lever une marque.
+                    a_change = self.seance.appliquer_progression()
+                    if enteriner_cibles_manuelles(
+                        self.seance.exercices,
+                        getattr(self.seance, "utilisateur_id", None),
+                    ):
+                        a_change = True
+                    if a_change:
                         enregistrer_configuration_seance(
                             self.nom_selectionne,
                             self.seance,

@@ -12,7 +12,10 @@
 .progression-svg { width:100%; height:auto; display:block; overflow:visible; max-height:60vh; }
 .chart-area { fill:var(--teal); opacity:.10; }
 .chart-line { fill:none; stroke:var(--teal); stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; }
-.chart-point circle { fill:#0f1420; stroke:var(--teal); stroke-width:2.5; transition:r .15s ease, fill .15s ease; cursor:pointer; }
+/* Le curseur ne promet un clic que la ou il y en a un : un point est un <a>
+   quand l'appelant fournit un lien, un simple <g> sinon. */
+.chart-point circle { fill:#0f1420; stroke:var(--teal); stroke-width:2.5; transition:r .15s ease, fill .15s ease; }
+a.chart-point circle { cursor:pointer; }
 .chart-point:hover circle { fill:var(--teal); r:8; }
 .chart-point:focus circle { fill:var(--orange); stroke:var(--orange); }
 .chart-axis-label { fill:var(--muted); font:14px 'Space Grotesk', sans-serif; }

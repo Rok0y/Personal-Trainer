@@ -175,7 +175,28 @@ def _table_des_cibles_manuelles():
             for s in (None, True, [1], [1, 3])
             for p in (1, 2)
         ],
+        # `enteriner_cibles_manuelles` **écrit** sur les blocs, et ce qu'elle
+        # efface est une marque collante : l'oublier fige une cible pour
+        # toujours, l'effacer trop large emporte celle d'un autre profil. Les
+        # deux se voient à l'écran des mois plus tard, ou jamais. On relève
+        # donc les blocs après l'appel, pas seulement sa valeur de retour.
+        "enteriner": [
+            {
+                "blocs": [{"cible_manuelle": v} for v in CIBLES_MANUELLES],
+                "profil": p,
+                "reponse": _enteriner_releve(
+                    [{"cible_manuelle": v} for v in CIBLES_MANUELLES], p
+                ),
+            }
+            for p in (1, 2, 3)
+        ],
     }
+
+
+def _enteriner_releve(blocs, profil):
+    """Joue l'entérinement et rend ce qu'il a laissé, valeur de retour comprise."""
+    leve = objectifs.enteriner_cibles_manuelles(blocs, utilisateur_id=profil)
+    return {"leve": leve, "apres": [b.get("cible_manuelle") for b in blocs]}
 
 
 def main():

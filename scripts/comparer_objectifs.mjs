@@ -27,6 +27,7 @@ import {
   est_cible_manuelle,
   definir_cible_manuelle,
   fusionner_cible_manuelle,
+  enteriner_cibles_manuelles,
 } from "../web/static/js/objectifs.js";
 import { BlocExercice, Circuit, Exercice } from "../web/static/js/circuit.js";
 
@@ -144,6 +145,15 @@ function main() {
           `fusionner(${JSON.stringify(cas.entrante)}, ${JSON.stringify(cas.stockee)}, ${cas.profil})`,
           cas.reponse,
           fusionner_cible_manuelle(cas.entrante, cas.stockee, cas.profil)
+        );
+      }
+      for (const cas of ligne.enteriner) {
+        const blocs = cas.blocs.map((b) => ({ ...b }));
+        const leve = enteriner_cibles_manuelles(blocs, cas.profil);
+        verifier(
+          `enteriner_cibles_manuelles(profil ${cas.profil})`,
+          cas.reponse,
+          { leve, apres: blocs.map((b) => b.cible_manuelle ?? null) }
         );
       }
       continue;

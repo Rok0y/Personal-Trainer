@@ -223,7 +223,7 @@
                     {% if identifiant != 'test' %}
                     <a class="edit-session" href="/editer-seance/{{ identifiant|urlencode }}">Éditer</a>
                     {% endif %}
-                    {% if identifiant not in ('bras', 'test', 'upper_push', 'jambes_abdos') %}
+                    {% if identifiant not in ('Bras', 'test', 'Upper Push', 'Jambes et abdos') %}
                     <button class="delete-session" data-nom="{{ identifiant }}" type="button">Supprimer</button>
                     {% endif %}
                 </span>

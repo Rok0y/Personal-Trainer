@@ -19,6 +19,7 @@ export {
   est_cible_manuelle,
   definir_cible_manuelle,
   fusionner_cible_manuelle,
+  enteriner_cibles_manuelles,
 } from "./cible_manuelle.js";
 
 /** Les blocs JSON nomment l'exercice `exercice`, les blocs exportes `nom`. */

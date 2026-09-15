@@ -55,7 +55,21 @@
         {# Rien ici n'entre dans le calcul des objectifs : le bareme ne regarde
            que ce qu'on souleve. Ces mesures servent a suivre une evolution. #}
         <p class="hint">Aucune de ces valeurs n'entre dans le calcul de tes objectifs : le barème ne regarde que ce que tu soulèves. Elles sont là pour suivre ton évolution.</p>
-        <div class="mesures">
+        {# **Une page de profil se lit d'abord.** Un formulaire toujours ouvert
+           donne l'impression qu'il y a quelque chose a remplir, alors que le
+           cas courant est de venir verifier ce qui est declare. L'edition
+           devient donc un geste, comme elle l'etait deja pour le materiel
+           juste en dessous — dont ce bloc reprend la forme. #}
+        <div class="chiffres" id="resume-mesures">
+            <div><span>Sexe</span><strong data-resume="sexe">{{ LIBELLES_SEXE.get(profil.sexe, 'Non précisé') }}</strong></div>
+            <div><span>Naissance</span><strong data-resume="date_naissance">{{ profil.date_naissance or '—' }}</strong></div>
+            <div><span>Taille</span><strong data-resume="taille_cm">{{ (profil.taille_cm|round|int ~ ' cm') if profil.taille_cm else '—' }}</strong></div>
+            <div><span>Poids du corps</span><strong data-resume="poids_corps_kg">{{ (profil.poids_corps_kg ~ ' kg') if profil.poids_corps_kg else '—' }}</strong></div>
+        </div>
+        <div class="actions" id="actions-lecture">
+            <button type="button" class="btn" id="modifier">Modifier mes informations</button>
+        </div>
+        <div class="mesures" id="formulaire-mesures" hidden>
             <label>Sexe
                 <select id="sexe">
                     <option value=""{% if not profil.sexe %} selected{% endif %}>Non précisé</option>
@@ -76,8 +90,9 @@
                 <input type="number" min="0" max="400" step="0.1" id="poids_corps_kg" value="{{ profil.poids_corps_kg or '' }}">
             </label>
         </div>
-        <div class="actions">
+        <div class="actions" id="actions-edition" hidden>
             <button type="button" class="principal" id="enregistrer">Enregistrer</button>
+            <button type="button" class="btn" id="annuler">Annuler</button>
         </div>
         <p class="retour" id="retour"></p>
     </div>
@@ -103,6 +118,38 @@
 </main>
 
 <script>
+const CHAMPS = ["sexe", "date_naissance", "taille_cm", "poids_corps_kg"];
+const LIBELLES_SEXE = {{ LIBELLES_SEXE|tojson }};
+
+/** Bascule entre le resume et le formulaire. Une seule des deux vues a la fois. */
+function editer(ouvert) {
+    document.getElementById("resume-mesures").hidden = ouvert;
+    document.getElementById("actions-lecture").hidden = ouvert;
+    document.getElementById("formulaire-mesures").hidden = !ouvert;
+    document.getElementById("actions-edition").hidden = !ouvert;
+}
+
+/** Reporte dans le resume ce que le formulaire vient d'enregistrer. */
+function rafraichir_resume() {
+    const valeurs = {};
+    for (const champ of CHAMPS) valeurs[champ] = document.getElementById(champ).value;
+    const affiche = {
+        sexe: LIBELLES_SEXE[valeurs.sexe] || "Non précisé",
+        date_naissance: valeurs.date_naissance || "—",
+        taille_cm: valeurs.taille_cm ? `${Math.round(valeurs.taille_cm)} cm` : "—",
+        poids_corps_kg: valeurs.poids_corps_kg ? `${valeurs.poids_corps_kg} kg` : "—",
+    };
+    for (const champ of CHAMPS) {
+        document.querySelector(`[data-resume="${champ}"]`).textContent = affiche[champ];
+    }
+}
+
+document.getElementById("modifier").addEventListener("click", () => editer(true));
+document.getElementById("annuler").addEventListener("click", () => {
+    document.getElementById("retour").textContent = "";
+    editer(false);
+});
+
 document.getElementById("enregistrer").addEventListener("click", async () => {
     const retour = document.getElementById("retour");
     retour.classList.remove("erreur");
@@ -110,9 +157,7 @@ document.getElementById("enregistrer").addEventListener("click", async () => {
     // Un champ vide part en chaine vide : `definir_mesures` la traduit en
     // NULL, c'est-a-dire « non renseigne ».
     const corps = {};
-    for (const champ of ["sexe", "date_naissance", "taille_cm", "poids_corps_kg"]) {
-        corps[champ] = document.getElementById(champ).value;
-    }
+    for (const champ of CHAMPS) corps[champ] = document.getElementById(champ).value;
     try {
         const reponse = await fetch("/api/profil", {
             method: "POST",
@@ -126,6 +171,8 @@ document.getElementById("enregistrer").addEventListener("click", async () => {
             return;
         }
         retour.textContent = "Enregistré.";
+        rafraichir_resume();
+        editer(false);
     } catch (erreur) {
         retour.classList.add("erreur");
         retour.textContent = "Erreur réseau";
