@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Barèmes et ligues — monitoring</title>
+<!-- Detecte qu'un deploiement est arrive et va le chercher. Le document etant
+     le point d'entree, il ne peut pas porter d'empreinte : c'est le seul
+     fichier qu'un cache peut garder perime sans que rien ne le dise. Ne touche
+     aucun stockage — l'historique d'entrainement ne risque rien. -->
+<script type="module" src="../js/version.js"></script>
 <!--
     Page de monitoring des barèmes et des ligues.
 

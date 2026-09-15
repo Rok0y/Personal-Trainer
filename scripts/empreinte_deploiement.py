@@ -35,6 +35,7 @@ gênerait plus qu'elle n'aiderait, le serveur local ne cachant rien.
 Usage : `python -m scripts.empreinte_deploiement _site <empreinte>`
 """
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -53,6 +54,12 @@ MOTIFS = (
 
 EXTENSIONS = (".html", ".js")
 
+#: Le fichier que `web/static/js/version.js` relit a chaque ouverture pour
+#: savoir si le document qu'il accompagne est perime. Pose a la racine du site
+#: publie, jamais marque, et volontairement minuscule : il est relu a chaque
+#: lancement, y compris en 4G.
+NOM_VERSION = "version.json"
+
 
 def marquer(texte, empreinte):
     """Ajoute `?v=<empreinte>` aux adresses locales, et à elles seules."""
@@ -64,6 +71,13 @@ def marquer(texte, empreinte):
         # Une adresse absolue a son propre cache : y toucher ferait rater le
         # sien sans rien nous apporter.
         if adresse.startswith(("http://", "https://", "//")) or "?" in adresse:
+            return trouve.group(0)
+        # `version.json` est l'exception, et c'est tout son interet : c'est le
+        # seul fichier qui doit etre relu tel quel a chaque ouverture, puisque
+        # c'est lui qui dit quelle empreinte est publiee. Le marquer le ferait
+        # relire sous l'ancienne adresse, donc depuis le cache, donc repondre
+        # l'ancienne version — et ne plus jamais signaler une mise a jour.
+        if adresse.endswith(NOM_VERSION):
             return trouve.group(0)
         marques += 1
         return f"{guillemet}{adresse}?v={empreinte}{guillemet}"
@@ -96,7 +110,15 @@ def main():
             total += combien
             fichiers += 1
 
+    # L'empreinte publiee, a la racine du site. C'est la seule chose qui
+    # permette a un document deja en cache de savoir qu'il est depasse : lui
+    # ne peut pas etre marque, etant le point d'entree.
+    (racine / NOM_VERSION).write_text(
+        json.dumps({"empreinte": empreinte}), encoding="utf-8"
+    )
+
     print(f"Empreinte {empreinte} : {total} adresses marquees dans {fichiers} fichiers")
+    print(f"Ecrit {NOM_VERSION} a la racine du site")
     return 0
 
 
