@@ -212,6 +212,25 @@ def initialiser():
     if "materiel" not in colonnes_utilisateurs:
         curseur.execute("ALTER TABLE utilisateurs ADD COLUMN materiel TEXT")
 
+    # Les mesures du corps. Pas de DEFAULT : NULL veut dire « non renseigné »,
+    # et personne n'est obligé de les donner — rien dans le moteur de
+    # progression ne les lit, le barème ne regarde que ce qu'on soulève.
+    #
+    # **`poids_corps_kg` et non `poids`** : dans tout le projet, « poids »
+    # désigne la charge soulevée (`exercices.poids`, `series_realisees.poids`,
+    # les haltères du matériel). Un champ nommé `poids` sur le profil créerait
+    # une ambiguïté permanente à la lecture.
+    for colonne, type_sql in (
+        ("sexe", "TEXT"),
+        ("date_naissance", "TEXT"),
+        ("taille_cm", "REAL"),
+        ("poids_corps_kg", "REAL"),
+    ):
+        if colonne not in colonnes_utilisateurs:
+            curseur.execute(
+                f"ALTER TABLE utilisateurs ADD COLUMN {colonne} {type_sql}"
+            )
+
     # À l'échelle visée, toute requête filtre par profil : ces index ne sont
     # pas optionnels.
     curseur.execute("""
@@ -262,6 +281,11 @@ def _profil_depuis_ligne(ligne):
         # Brut (JSON ou None) : `core.materiel.normaliser` en a la
         # responsabilité, et None doit rester distinguable d'un inventaire vide.
         "materiel": ligne[6],
+        # Informatives : aucune ne pilote le barème.
+        "sexe": ligne[7],
+        "date_naissance": ligne[8],
+        "taille_cm": ligne[9],
+        "poids_corps_kg": ligne[10],
     }
 
 
@@ -272,7 +296,8 @@ def lister_utilisateurs():
     curseur = conn.cursor()
     curseur.execute(
         "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
-        "programme_choisi, materiel "
+        "programme_choisi, materiel, sexe, date_naissance, taille_cm, "
+        "poids_corps_kg "
         "FROM utilisateurs ORDER BY id"
     )
     profils = [_profil_depuis_ligne(ligne) for ligne in curseur.fetchall()]
@@ -287,7 +312,8 @@ def recuperer_utilisateur(utilisateur_id):
     curseur = conn.cursor()
     curseur.execute(
         "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
-        "programme_choisi, materiel "
+        "programme_choisi, materiel, sexe, date_naissance, taille_cm, "
+        "poids_corps_kg "
         "FROM utilisateurs WHERE id = ?",
         (utilisateur_id,),
     )
@@ -346,6 +372,44 @@ def definir_programme_choisi(utilisateur_id, cle):
     curseur.execute(
         "UPDATE utilisateurs SET programme_choisi = ? WHERE id = ?",
         (cle, utilisateur_id),
+    )
+    if curseur.rowcount == 0:
+        conn.close()
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
+    conn.commit()
+    conn.close()
+
+
+#: Les mesures du corps, et elles seules : ni le nom, ni le matériel, ni le
+#: programme ne passent par ici. Chacun a son point d'écriture, ce qui évite
+#: qu'un formulaire en efface un autre en enregistrant des champs vides.
+CHAMPS_MESURES = ("sexe", "date_naissance", "taille_cm", "poids_corps_kg")
+
+
+def definir_mesures(utilisateur_id, mesures):
+    """Enregistre les mesures d'un profil (sexe, naissance, taille, poids).
+
+    Aucune ne pilote le barème : elles sont là pour suivre une évolution, pas
+    pour calculer un objectif. Une clé absente de `mesures` n'est pas touchée ;
+    une valeur vide ou `None` remet la colonne à NULL, c'est-à-dire « non
+    renseigné » — ce que rend un champ de formulaire qu'on vide à la main.
+
+    L'appelant doit enchaîner sur `core.utilisateur.rafraichir()` : le profil
+    connecté transporte ces colonnes.
+    """
+    demandees = [champ for champ in CHAMPS_MESURES if champ in mesures]
+    if not demandees:
+        return
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    affectations = ", ".join(f"{champ} = ?" for champ in demandees)
+    valeurs = [
+        None if mesures[champ] in ("", None) else mesures[champ] for champ in demandees
+    ]
+    curseur.execute(
+        f"UPDATE utilisateurs SET {affectations} WHERE id = ?",
+        (*valeurs, utilisateur_id),
     )
     if curseur.rowcount == 0:
         conn.close()
@@ -1003,6 +1067,67 @@ def supprimer_seance(seance_id, utilisateur_id=None):
 
     conn.commit()
     conn.close()
+
+
+def supprimer_utilisateur(utilisateur_id):
+    """Supprime un profil et tout ce qui lui appartient.
+
+    La descente suit les clés étrangères, comme `supprimer_seance` : les
+    séries, puis les exercices, puis les séances, puis les ancrages, puis la
+    ligne du profil. `utilisateur_id` ne figure que sur les deux tables
+    racines — filtrer les quatre indépendamment laisserait les exercices d'un
+    autre profil, ou emporterait les siens.
+
+    **Le dernier profil n'est pas supprimable.** `_profil_courant` lève par
+    conception plutôt que de retomber sur un défaut : une base sans profil
+    rendrait l'application inutilisable, écran de connexion compris. Le
+    supprimer est refusé ici, à la source, plutôt que dans chaque interface.
+
+    Rien ne rattrape cette suppression : c'est à l'appelant de proposer un
+    export avant de la demander.
+    """
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+
+    curseur.execute("SELECT nom FROM utilisateurs WHERE id = ?", (utilisateur_id,))
+    ligne = curseur.fetchone()
+    if ligne is None:
+        conn.close()
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
+
+    curseur.execute("SELECT COUNT(*) FROM utilisateurs")
+    if curseur.fetchone()[0] <= 1:
+        conn.close()
+        raise ValueError("Le dernier profil ne peut pas être supprimé.")
+
+    curseur.execute(
+        """
+        DELETE FROM series_realisees
+        WHERE exercice_id IN (
+            SELECT e.id FROM exercices e
+            JOIN seances s ON s.id = e.seance_id
+            WHERE s.utilisateur_id = ?
+        )
+        """,
+        (utilisateur_id,),
+    )
+    curseur.execute(
+        """
+        DELETE FROM exercices
+        WHERE seance_id IN (SELECT id FROM seances WHERE utilisateur_id = ?)
+        """,
+        (utilisateur_id,),
+    )
+    curseur.execute("DELETE FROM seances WHERE utilisateur_id = ?", (utilisateur_id,))
+    curseur.execute(
+        "DELETE FROM corrections_niveaux WHERE utilisateur_id = ?", (utilisateur_id,)
+    )
+    curseur.execute("DELETE FROM utilisateurs WHERE id = ?", (utilisateur_id,))
+
+    conn.commit()
+    conn.close()
+    return ligne[0]
 
 
 def supprimer_exercice_de_seance(seance_id, nom_exercice, utilisateur_id=None):

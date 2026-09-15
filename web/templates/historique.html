@@ -1,8 +1,3 @@
-{# Réponses proposées selon l'issue de l'exercice : la règle est fixée par
-   `progression/ressenti.py`, on ne fait ici que l'habiller. Pas de bouton
-   « normal » : ne rien sélectionner, c'est déjà ça. #}
-{% set RESSENTIS_REUSSITE = [("facile", "Facile"), ("trop_facile", "Trop facile")] %}
-{% set RESSENTIS_ECHEC = [("trop_dur", "Trop dur")] %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -15,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='ressentis.css') }}">
 <style>
         main { width: min(1100px, calc(100% - 40px)); margin: auto; padding: 44px 0; }
 
@@ -110,21 +106,6 @@
 
         /* Ressenti : mêmes réponses et mêmes couleurs que l'écran de fin de
            séance, l'une servant de rattrapage à l'autre. */
-        .feedback { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
-        .verdict {
-            font: 700 11px 'Space Grotesk', sans-serif; text-transform: uppercase; letter-spacing: .04em;
-            padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border-strong);
-        }
-        .verdict.reussi { color: var(--teal); }
-        .verdict.echoue { color: var(--orange); }
-        .feedback button {
-            padding: 6px 12px; border-radius: 999px; cursor: pointer; border: 1px solid var(--border-strong);
-            background: transparent; color: var(--muted); font: 600 11px 'Space Grotesk', sans-serif;
-            transition: border-color .2s ease, color .2s ease;
-        }
-        .feedback button:hover { border-color: var(--teal); color: var(--teal); }
-        .feedback button.actif { border-color: var(--teal); color: var(--teal); background: var(--glass); }
-        .feedback button.actif[data-valeur="trop_dur"] { border-color: var(--orange); color: var(--orange); }
 
         @keyframes dropIn { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -155,19 +136,16 @@
         {% for exercice in seance.exercices %}
         <section class="exercise">
             <button class="exercise-delete" type="button" data-seance-id="{{ seance.id }}" data-nom="{{ exercice.nom }}" aria-label="Supprimer {{ exercice.nom }} de cette séance" title="Supprimer cet exercice">×</button>
-            <div class="exercise-line"><strong><a class="vers-record" href="/records#exercice-{{ exercice.nom|ancre }}" title="Voir les records et le niveau de {{ exercice.nom }}">{{ exercice.nom }}</a></strong><span>{{ exercice.series }} séries · {{ exercice.repetitions }} répétitions{% if exercice.poids %} · {{ exercice.poids }} kg{% endif %}</span></div>
+            <div class="exercise-line"><strong><a class="vers-record" href="/exercice/{{ exercice.nom|urlencode }}" title="Voir la fiche, les records et le niveau de {{ exercice.nom }}">{{ exercice.nom }}</a></strong><span>{{ exercice.series }} séries · {{ exercice.repetitions }} répétitions{% if exercice.poids %} · {{ exercice.poids }} kg{% endif %}</span></div>
             <div class="meta">Objectif : {{ exercice.series_cibles }} séries · {% if exercice.mode == 'maintien' or exercice.mode == 'chrono' %}{{ exercice.duree_cible|round(1) }} secondes{% else %}{{ exercice.repetitions_cibles }} répétitions{% endif %}</div>
             <div class="meta">Mode : {{ exercice.mode }}{% if exercice.duree %} · résultat durée {{ exercice.duree|round(1) }} secondes{% endif %}</div>
             {% if exercice.commentaire %}<div class="meta">Note : {{ exercice.commentaire }}</div>{% endif %}
-            {% set jugement = jugements.get(seance.id, {}).get(exercice.nom) %}
-            {% if jugement %}
-            <div class="feedback" data-seance-id="{{ seance.id }}" data-exercice="{{ exercice.nom }}">
-                <span class="verdict {{ 'reussi' if jugement.reussi else 'echoue' }}">{{ "Réussi" if jugement.reussi else "Non atteint" }}</span>
-                {% for valeur, libelle in (RESSENTIS_REUSSITE if jugement.reussi else RESSENTIS_ECHEC) %}
-                <button type="button" data-valeur="{{ valeur }}"{% if jugement.ressenti == valeur %} class="actif"{% endif %}>{{ libelle }}</button>
-                {% endfor %}
-            </div>
-            {% endif %}
+            {# Remplie par `js/ressentis_ui.js`, partage avec l'ecran de fin et
+               l'application du navigateur : « quelles reponses proposer »
+               decoule de la table d'ajustement et ne doit vivre qu'a un seul
+               endroit. Ce bloc en portait une troisieme copie, avec des
+               libelles qui avaient deja diverge de ceux de `fin.html`. #}
+            <div class="feedback" data-seance-id="{{ seance.id }}" data-exercice="{{ exercice.nom }}"></div>
             {% if exercice.series_detaillees %}
             <ul class="series">{% for serie in exercice.series_detaillees %}<li>Série {{ serie.serie }} · {{ serie.repetitions }} rep.{% if serie.poids %} · {{ serie.poids }} kg{% endif %}{% if serie.duree %} · {{ serie.duree|round(1) }} s{% endif %}</li>{% endfor %}</ul>
             {% else %}<p class="empty">Détail par série indisponible pour cette ancienne séance.</p>{% endif %}
@@ -176,14 +154,15 @@
                bien — muet sur tout exercice au poids du corps (volume nul), et
                affichable une seule fois dans tout l'historique. #}
             {% set montee = montees.get(seance.id, {}).get(exercice.nom) %}
-            {% if montee %}<a class="levelup" href="/records#exercice-{{ exercice.nom|ancre }}">Niveau {{ montee.vers }} atteint : {{ montee.palier.resume() }}</a>{% endif %}
+            {% if montee %}<a class="levelup" href="/exercice/{{ exercice.nom|urlencode }}">Niveau {{ montee.vers }} atteint : {{ montee.palier.resume() }}</a>{% endif %}
         </section>
         {% endfor %}
         </div>
     </details>
     {% endfor %}
 </main>
-<script>
+<script type="module">
+    import { construire_ligne } from "{{ url_for('static', filename='js/ressentis_ui.js') }}";
     async function supprimer(url, confirmation) {
         if (!window.confirm(confirmation)) return false;
         try {
@@ -210,30 +189,28 @@
         });
     });
 
-    document.querySelectorAll(".feedback").forEach((zone) => {
-        zone.querySelectorAll("button").forEach((bouton) => {
-            bouton.addEventListener("click", async (evenement) => {
-                evenement.preventDefault();
-                evenement.stopPropagation();
-                // Recliquer sur son propre choix l'annule : revenir à « je n'ai
-                // rien dit » doit rester possible sans recharger la page.
-                const deja = bouton.classList.contains("actif");
-                zone.querySelectorAll("button").forEach((b) => b.classList.remove("actif"));
-                if (!deja) bouton.classList.add("actif");
-                const corps = { ressentis: {} };
-                corps.ressentis[zone.dataset.exercice] = deja ? "" : bouton.dataset.valeur;
-                try {
-                    const reponse = await fetch(`/api/historique/${zone.dataset.seanceId}/ressentis`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(corps),
-                    });
-                    const donnees = await reponse.json();
-                    if (!donnees.ok) window.alert(donnees.erreur || "Enregistrement impossible.");
-                } catch (erreur) {
-                    window.alert("Erreur réseau : ressenti non enregistré.");
-                }
-            });
+    // Les jugements sont calcules par le serveur (`jugements_par_seance`) et
+    // deposes tels quels : le module partage ne fait que les habiller.
+    const JUGEMENTS = {{ jugements|tojson }};
+
+    document.querySelectorAll(".feedback[data-exercice]").forEach((zone) => {
+        const jugement = (JUGEMENTS[zone.dataset.seanceId] || {})[zone.dataset.exercice];
+        if (!jugement) return;
+        // La zone vit dans une carte cliquable : sans ca, repondre replierait
+        // la seance.
+        zone.addEventListener("click", (evenement) => evenement.stopPropagation());
+        construire_ligne(zone, zone.dataset.exercice, jugement, async (nom, valeur) => {
+            try {
+                const reponse = await fetch(`/api/historique/${zone.dataset.seanceId}/ressentis`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ressentis: { [nom]: valeur } }),
+                });
+                const donnees = await reponse.json();
+                if (!donnees.ok) window.alert(donnees.erreur || "Enregistrement impossible.");
+            } catch (erreur) {
+                window.alert("Erreur reseau : ressenti non enregistre.");
+            }
         });
     });
 

@@ -1,5 +1,7 @@
+import json
 import logging
 import re
+import sqlite3
 import time
 import unicodedata
 import webbrowser
@@ -14,7 +16,7 @@ from flask import (
     request,
 )
 
-from core import state
+from core.flux import FluxVideo
 from core.utilisateur import (
     connecter,
     deconnecter,
@@ -23,8 +25,10 @@ from core.utilisateur import (
     utilisateur_connecte,
 )
 from historique.database import (
+    CHEMIN_DB,
     creer_utilisateur,
     definir_materiel,
+    definir_mesures,
     definir_onboarding,
     definir_programme_choisi,
     derniere_performance,
@@ -41,8 +45,12 @@ from historique.database import (
     supprimer_ancrages,
     supprimer_exercice_de_seance,
     supprimer_seance,
+    supprimer_utilisateur,
 )
 from core.materiel import ACCESSOIRES, POIDS_REFERENCE, materiel_du_profil, normaliser
+# Le format d'une sauvegarde n'a qu'une definition : celle du script qui
+# l'ecrit en ligne de commande. La route d'export ne fait que la servir.
+from scripts.exporter_profil import exporter as exporter_profil
 from progression.niveaux import etat_niveau, etats_niveaux, montees_de_niveau
 from progression.paliers import (
     est_suivi_par_le_moteur,
@@ -84,6 +92,8 @@ logging.getLogger("werkzeug").addFilter(FiltreEtat())
 
 app = Flask(__name__)
 controleur = SessionManager()
+#: Une camera par processus, alimentee par la boucle de `main.py`.
+flux = FluxVideo()
 
 #: Points d'entrée accessibles sans profil connecté : l'écran de connexion
 #: lui-même et ce qu'il appelle. Tout le reste passe par `_exiger_un_profil`.
@@ -93,9 +103,19 @@ ROUTES_SANS_PROFIL = {
     "lister_utilisateurs_api",
     "creer_utilisateur_api",
     "renommer_utilisateur_api",
+    # Supprimer un profil et en sauvegarder un se font depuis l'ecran de
+    # connexion, donc avant d'etre connecte : les exiger connectes obligerait
+    # a entrer dans un profil pour pouvoir l'effacer.
+    "supprimer_utilisateur_api",
+    "exporter_utilisateur_api",
     "connecter_profil_api",
     "deconnecter_profil_api",
 }
+
+#: Les libelles du champ `sexe`, cote ecran. Le stockage garde la valeur brute
+#: (`femme`, `homme`, `autre`, ou NULL) : l'affichage se corrige sans toucher
+#: aux donnees.
+LIBELLES_SEXE = {"femme": "Femme", "homme": "Homme", "autre": "Autre"}
 
 
 @app.before_request
@@ -148,15 +168,17 @@ def _exiger_onboarding():
 @app.context_processor
 def _profil_dans_les_templates():
     """Rend le profil connecté disponible partout, sans le passer route par route."""
-    return {"profil": utilisateur_connecte()}
+    return {"profil": utilisateur_connecte(), "LIBELLES_SEXE": LIBELLES_SEXE}
 
 
 def programme_de_l_accueil():
     """Le programme suivi par le profil connecté, et la liste où le choisir.
 
-    Retourne `(état du programme ou None, {clé: nom})`. Le repli sur le premier
-    programme disponible n'écrit rien en base : tant que personne n'a choisi,
-    l'accueil montre quelque chose d'utile sans prétendre que c'est un choix.
+    Retourne `(état du programme ou None, {clé: nom})`. **Aucun repli sur le
+    premier programme** : `NULL` veut dire « aucun choix », et l'accueil invite
+    alors à en faire un. Retomber en silence sur le premier priverait
+    l'utilisateur de la distinction entre « je suis ce programme » et « je n'en
+    suis aucun », qui est exactement ce que le choix sert à exprimer.
     """
     disponibles = {
         cle: donnees.get("nom", cle) for cle, donnees in tous_les_programmes().items()
@@ -167,7 +189,7 @@ def programme_de_l_accueil():
     profil = utilisateur_connecte() or {}
     cle = profil.get("programme_choisi")
     if cle not in disponibles:
-        cle = next(iter(disponibles))
+        return None, disponibles
     return etat_programme(cle), disponibles
 
 
@@ -243,7 +265,44 @@ def page_connexion():
     On la sert même si quelqu'un est déjà connecté : c'est aussi par ici que
     passe le bouton « changer de profil ».
     """
-    return render_template("connexion.html", profils=lister_utilisateurs())
+    profils = lister_utilisateurs()
+    # Le nombre de séances par profil : la confirmation de suppression dit ce
+    # qu'on perd plutôt que de demander « es-tu sûr ? ».
+    with sqlite3.connect(CHEMIN_DB) as connexion:
+        comptes = dict(
+            connexion.execute(
+                "SELECT utilisateur_id, COUNT(*) FROM seances GROUP BY utilisateur_id"
+            )
+        )
+    return render_template(
+        "connexion.html", profils=profils, seances_par_profil=comptes
+    )
+
+
+def _mesures_valides(donnees):
+    """Extrait les quatre mesures d'un corps de requête. Rend `(mesures, erreur)`.
+
+    Un champ absent n'est pas touché, une chaîne vide vaut « non renseigné » —
+    c'est ce que rend un champ de formulaire qu'on vide à la main, et
+    `definir_mesures` la traduit en NULL. Partagée par la création d'un profil
+    et la page de profil, pour que les deux acceptent exactement la même chose.
+    """
+    mesures = {}
+    for champ in ("sexe", "date_naissance"):
+        if champ in donnees:
+            mesures[champ] = (donnees[champ] or "").strip()
+    for champ in ("taille_cm", "poids_corps_kg"):
+        if champ not in donnees:
+            continue
+        brut = str(donnees[champ] or "").strip()
+        if not brut:
+            mesures[champ] = ""
+            continue
+        try:
+            mesures[champ] = float(brut.replace(",", "."))
+        except ValueError:
+            return {}, f"« {champ} » doit être un nombre"
+    return mesures, None
 
 
 @app.route("/api/utilisateurs")
@@ -263,11 +322,68 @@ def creer_utilisateur_api():
         profil = creer_utilisateur(donnees.get("nom"))
     except ValueError as erreur:
         return jsonify({"ok": False, "erreur": str(erreur)}), 400
+
+    # **Les mesures se demandent a la creation.** Elles restent facultatives —
+    # rien dans le bareme n'en depend — mais les reclamer plus tard, sur une
+    # page de profil qu'on ne visite jamais, revenait a ne jamais les avoir.
+    mesures, erreur = _mesures_valides(donnees.get("mesures") or {})
+    if erreur:
+        return jsonify({"ok": False, "erreur": erreur}), 400
+    if mesures:
+        definir_mesures(profil["id"], mesures)
+
     try:
         _ouvrir_session(profil["id"])
     except RuntimeError as erreur:
         return jsonify({"ok": False, "erreur": str(erreur)}), 409
     return jsonify({"ok": True, "utilisateur": profil})
+
+
+@app.route("/api/utilisateurs/<int:utilisateur_id>/export")
+def exporter_utilisateur_api(utilisateur_id):
+    """La sauvegarde d'un profil, au format que l'application sait relire.
+
+    Meme fonction que `python -m scripts.exporter_profil` : le format n'a
+    qu'une definition. Elle sert ici a **proposer un export avant une
+    suppression**, qui, elle, ne se rattrape pas.
+    """
+    profils = {profil["id"]: profil for profil in lister_utilisateurs()}
+    if utilisateur_id not in profils:
+        return jsonify({"ok": False, "erreur": "Profil introuvable"}), 404
+
+    with sqlite3.connect(CHEMIN_DB) as connexion:
+        donnees = exporter_profil(connexion, utilisateur_id)
+
+    nom = profils[utilisateur_id]["nom"].lower().replace(" ", "-")
+    return Response(
+        json.dumps(donnees, ensure_ascii=False, indent=1),
+        mimetype="application/json",
+        headers={"Content-Disposition": f'attachment; filename="coach-{nom}.json"'},
+    )
+
+
+@app.route("/api/utilisateurs/<int:utilisateur_id>", methods=["DELETE"])
+def supprimer_utilisateur_api(utilisateur_id):
+    """Supprime un profil et tout son historique. Rien ne le rattrape.
+
+    Le profil connecte n'est pas supprimable : le garde de requete le relit a
+    chaque appel, et l'effacer sous ses propres pieds laisserait une session
+    qui designe une ligne disparue. Changer de profil d'abord est un geste de
+    plus, mais un geste explicite.
+    """
+    connecte = utilisateur_connecte()
+    if connecte and connecte["id"] == utilisateur_id:
+        return jsonify({
+            "ok": False,
+            "erreur": "Connecte-toi sur un autre profil avant de supprimer celui-ci.",
+        }), 409
+    try:
+        nom = supprimer_utilisateur(utilisateur_id)
+    except KeyError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 404
+    except ValueError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
+    return jsonify({"ok": True, "nom": nom})
 
 
 @app.route("/api/utilisateurs/<int:utilisateur_id>", methods=["PUT"])
@@ -408,43 +524,44 @@ def index():
 def etat():
 
     etat_session = controleur.etat()
+    etat = controleur.etat_seance
 
     return jsonify(
         {
-            "position_actuelle": state.position_actuelle,
-            "exercice_actuel": state.exercice_actuel,
+            "position_actuelle": etat.position_actuelle,
+            "exercice_actuel": etat.exercice_actuel,
             "commentaire_exercice": (
                 controleur.seance.bloc_actuel.commentaire
                 if controleur.seance and controleur.seance.bloc_actuel
                 else ""
             ),
-            "poids": state.poids,
-            "stage": state.stage,
-            "etape_libelle": state.etape_libelle,
-            "erreur": state.erreur,
-            "consigne": state.consigne,
-            "fiche": state.fiche,
-        "fiche_suivante": state.fiche_suivante,
-            "repetitions": state.repetitions,
-            "repetitions_cibles": state.repetitions_cibles,
-            "test_max": state.test_max,
-            "serie_actuelle": state.serie_actuelle,
-            "nombre_series": state.nombre_series,
-            "phase": state.phase,
-            "temps_repos_restant": state.temps_repos_restant,
+            "poids": etat.poids,
+            "stage": etat.stage,
+            "etape_libelle": etat.etape_libelle,
+            "erreur": etat.erreur,
+            "consigne": etat.consigne,
+            "fiche": etat.fiche,
+        "fiche_suivante": etat.fiche_suivante,
+            "repetitions": etat.repetitions,
+            "repetitions_cibles": etat.repetitions_cibles,
+            "test_max": etat.test_max,
+            "serie_actuelle": etat.serie_actuelle,
+            "nombre_series": etat.nombre_series,
+            "phase": etat.phase,
+            "temps_repos_restant": etat.temps_repos_restant,
             "duree_session": controleur.seance.duree_totale if controleur.seance else 0,
-            "temps_amrap_restant": state.temps_amrap_restant,
-            "maintien_termine": state.maintien_termine,
-            "progression_maintien": state.progression_maintien,
-            "progression_preparation": state.progression_preparation,
-            "mode": state.mode,
-            "temps_maintien": state.temps_maintien,
-            "duree_maintien": state.duree_maintien,
-            "temps_chrono": state.temps_chrono,
-            "chrono_termine": state.chrono_termine,
-            "temps_echauffement": state.temps_echauffement,
-            "duree_echauffement": state.duree_echauffement,
-            "prochaine_etape": state.prochaine_etape,
+            "temps_amrap_restant": etat.temps_amrap_restant,
+            "maintien_termine": etat.maintien_termine,
+            "progression_maintien": etat.progression_maintien,
+            "progression_preparation": etat.progression_preparation,
+            "mode": etat.mode,
+            "temps_maintien": etat.temps_maintien,
+            "duree_maintien": etat.duree_maintien,
+            "temps_chrono": etat.temps_chrono,
+            "chrono_termine": etat.chrono_termine,
+            "temps_echauffement": etat.temps_echauffement,
+            "duree_echauffement": etat.duree_echauffement,
+            "prochaine_etape": etat.prochaine_etape,
             "statut_session": etat_session["statut"],
             "seance_id": etat_session["seance_id"],
             "series_terminees": etat_session["series_terminees"],
@@ -596,13 +713,14 @@ def commander_serie(commande):
         return jsonify({"ok": False, "erreur": "Commande inconnue"}), 404
     donnees = request.get_json(silent=True) or {}
     if commande == "terminer":
-        repetitions = donnees.get("repetitions", state.repetitions)
+        repetitions = donnees.get("repetitions", controleur.etat_seance.repetitions)
         # Même règle que le geste bras en X : la durée se lit dans le compteur
         # du mode courant, jamais dans le premier compteur non nul venu.
         duree = donnees.get(
             "duree",
             duree_realisee(
-                controleur.seance.bloc_actuel if controleur.seance else None, state
+                controleur.seance.bloc_actuel if controleur.seance else None,
+                controleur.etat_seance,
             ),
         )
         return executer_commande(
@@ -646,17 +764,17 @@ def generer_video():
 
     while True:
 
-        frame = state.latest_frame
+        frame = flux.latest_frame
 
         # Sans ce garde-fou, la même image est renvoyée en boucle aussi vite
         # que possible : le flux sature et la vidéo prend du retard.
-        if frame is None or state.frame_id == dernier_id:
+        if frame is None or flux.frame_id == dernier_id:
 
             time.sleep(0.005)
 
             continue
 
-        dernier_id = state.frame_id
+        dernier_id = flux.frame_id
 
         yield (
             b"--frame\r\n"
@@ -704,16 +822,6 @@ def historique():
     )
 
 
-@app.route("/records")
-def records():
-    donnees = recuperer_historique()
-    return render_template(
-        "records.html",
-        statistiques=statistiques_exercices(donnees),
-        niveaux=etats_niveaux(donnees),
-    )
-
-
 @app.route("/bienvenue")
 def page_bienvenue():
     """Questionnaire de materiel : la seule etape avant la premiere seance.
@@ -741,6 +849,60 @@ def _page_materiel(premiere_fois):
         accessoires=ACCESSOIRES,
         materiel=materiel_du_profil(),
     )
+
+
+@app.route("/profil")
+def page_profil():
+    """La page du profil connecté : qui je suis, ce que je possède.
+
+    Volontairement **hors de `ROUTES_ONBOARDING`** : un profil neuf doit
+    d'abord déclarer son matériel, et une route de trop dans cet ensemble
+    ouvrirait l'application entière.
+    """
+    profil = utilisateur_connecte()
+    donnees = recuperer_historique()
+    materiel = normaliser(profil.get("materiel"))
+    halteres = materiel.get("halteres") or {}
+    paires = sorted(int(p) for p, q in halteres.items() if q >= 2)
+    seuls = sorted(int(p) for p, q in halteres.items() if q == 1)
+
+    morceaux = []
+    if paires:
+        morceaux.append("paires : " + ", ".join(f"{p} kg" for p in paires))
+    if seuls:
+        morceaux.append("seuls : " + ", ".join(f"{p} kg" for p in seuls))
+    if materiel.get("accessoires"):
+        morceaux.append("accessoires : " + ", ".join(materiel["accessoires"]))
+
+    return render_template(
+        "profil.html",
+        nombre_seances=len(donnees),
+        # Le nombre d'exercices dont l'historique prouve un niveau : c'est ce
+        # que le moteur sait de cette personne, pas ce qu'elle a essayé.
+        nombre_niveaux=sum(
+            1 for etat in etats_niveaux(donnees).values() if etat["niveau"]
+        ),
+        resume_materiel=" · ".join(morceaux) or "Rien de déclaré.",
+    )
+
+
+@app.route("/api/profil", methods=["POST"])
+def enregistrer_profil():
+    """Les mesures du corps. Aucune ne pilote le barème.
+
+    `rafraichir()` est obligatoire : le profil connecté transporte ces
+    colonnes, et le garde de requête les relit sans repasser par la base.
+    """
+    donnees = request.get_json(silent=True) or {}
+    profil = utilisateur_connecte()
+
+    mesures, erreur = _mesures_valides(donnees)
+    if erreur:
+        return jsonify({"ok": False, "erreur": erreur}), 400
+
+    definir_mesures(profil["id"], mesures)
+    rafraichir()
+    return jsonify({"ok": True})
 
 
 @app.route("/api/materiel", methods=["POST"])
@@ -788,7 +950,13 @@ def page_exercices():
 
 @app.route("/exercice/<nom>")
 def page_exercice(nom):
-    """Fiche d'un mouvement : comment le faire, et où j'en suis dessus."""
+    """Fiche d'un mouvement : comment le faire, et où j'en suis dessus.
+
+    Elle a absorbé l'écran des records. Les deux disaient la même chose du
+    même mouvement depuis deux pages : un niveau dit **où l'on en est**, le
+    graphe **comment on y est arrivé**, et le recalage sert quand l'historique
+    ne peut pas le prouver. Il n'y a plus qu'un endroit où lire un exercice.
+    """
     fiche = fiche_mouvement(nom)
     if fiche is None:
         abort(404)
@@ -797,7 +965,19 @@ def page_exercice(nom):
         onglet="exercices",
         fiche=fiche,
         etat=etat_niveau(nom),
+        statistique=statistiques_exercices(recuperer_historique()).get(nom),
     )
+
+
+@app.route("/records")
+def records():
+    """Redirection : les records vivent désormais sur la fiche de l'exercice.
+
+    Une redirection et non une 404 : les liens profonds `/records#exercice-…`
+    ont pu être mis en favori, et `historique.html` / `programmes.html` en
+    fabriquaient à chaque ligne.
+    """
+    return redirect("/exercices", code=301)
 
 
 @app.route("/programmes")
@@ -837,12 +1017,6 @@ def _ancre(nom, defaut):
 def _cle_programme(nom):
     """Transforme un nom en clé d'URL stable (« Road to TKT » -> road-to-tkt)."""
     return _ancre(nom, "programme")
-
-
-#: Permet aux templates de fabriquer un lien profond vers la fiche d'un
-#: exercice sur `/records` : `/records#exercice-{{ nom|ancre }}`. Les deux
-#: extrémités du lien passent par ce filtre, donc elles ne peuvent pas diverger.
-app.jinja_env.filters["ancre"] = lambda nom: _ancre(nom, "exercice")
 
 
 @app.route("/api/programme-choisi", methods=["POST"])

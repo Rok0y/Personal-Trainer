@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='exercices.css') }}">
 <style>
         main { width:min(1100px,calc(100% - 40px)); }
         header { display:flex; justify-content:space-between; align-items:center; gap:20px; border-bottom:1px solid var(--border); padding-bottom:22px; margin-bottom:22px; }
@@ -21,17 +22,8 @@
             backdrop-filter:blur(18px); transition:border-color .2s ease, transform .2s ease;
         }
         a.carte:hover { border-color:var(--teal); text-decoration:none; transform:translateY(-2px); }
-        .carte h3 { margin:0 0 6px; font:700 16px 'Space Grotesk',sans-serif; }
-        .carte p { margin:0; color:var(--muted); font-size:13px; line-height:1.5; }
-        .etiquettes { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
-        .etiquette {
-            padding:3px 9px; border-radius:999px; border:1px solid var(--border-strong);
-            color:var(--muted); font:700 11px 'Space Grotesk',sans-serif; letter-spacing:.04em;
-        }
         .etiquette.niveau { color:var(--teal); border-color:var(--teal); }
-        .etiquette.debut { color:var(--mode-echauffement); border-color:var(--mode-echauffement); }
-        .etiquette.sans-pose { color:var(--muted); }
-</style>
+    </style>
 </head>
 <body>
 <main>

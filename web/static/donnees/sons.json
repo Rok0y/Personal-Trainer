@@ -1,0 +1,92 @@
+{
+ "fichiers": {
+  "rep": [
+   "rep.wav"
+  ],
+  "debut": [
+   "debut.wav"
+  ],
+  "avant_derniere": [
+   "avant_derniere.wav"
+  ],
+  "derniere_rep": [
+   "derniere_rep.wav"
+  ],
+  "fin_serie": [
+   "fin_serie.wav"
+  ],
+  "repos": [
+   "repos.wav"
+  ],
+  "changement_exercice": [
+   "changement_exercice.wav"
+  ],
+  "fin_seance": [
+   "fin_seance.wav"
+  ],
+  "debut_serie": [
+   "debut_serie.wav"
+  ],
+  "preparation": [
+   "preparation.wav"
+  ],
+  "mi_parcours": [
+   "mi_parcours_1.wav"
+  ],
+  "encore_5": [
+   "encore_5_1.wav"
+  ],
+  "encore_3": [
+   "encore_3_1.wav"
+  ],
+  "correction_gainage": [
+   "correction_gainage_1.wav"
+  ],
+  "temps_20": [
+   "temps_20_1.wav"
+  ],
+  "temps_10": [
+   "temps_10_1.wav"
+  ],
+  "temps_5": [
+   "temps_5_1.wav"
+  ],
+  "repos_10": [
+   "repos_10.wav"
+  ],
+  "repos_5": [
+   "repos_5.wav"
+  ],
+  "repos_20": [
+   "repos_20.wav"
+  ],
+  "bip": [
+   "bip.wav"
+  ]
+ },
+ "priorites": {
+  "rep": 1,
+  "debut_serie": 5,
+  "avant_derniere": 5,
+  "derniere_rep": 10,
+  "fin_serie": 10,
+  "repos": 8,
+  "changement_exercice": 5,
+  "fin_seance": 10,
+  "mi_parcours": 3,
+  "encore_5": 4,
+  "encore_3": 5,
+  "correction_gainage": 7,
+  "temps_30": 4,
+  "temps_20": 6,
+  "temps_10": 7,
+  "temps_5": 8,
+  "repos_20": 5,
+  "repos_10": 6,
+  "repos_5": 8,
+  "bip": 2
+ },
+ "delais": {
+  "correction_gainage": 8
+ }
+}

@@ -207,9 +207,9 @@ developpe_couche_sol = Exercice(
         "Descends les coudes jusqu'au niveau du buste, pas plus bas.",
     ],
     mise_en_place=[
-        "Allongé sur le dos sur un tapis.",
+        "Allongé sur le dos sur un tapis, jambes tendues ou genoux pliés, au choix.",
         "Un haltère dans chaque main, bras tendus au-dessus de la poitrine.",
-        "Place-toi face à la caméra, les pieds vers la caméra.",
+        "Place la caméra sur le côté, à hauteur de ton corps, et non vers tes pieds.",
     ],
     erreurs_frequentes=[
         "Descendre les coudes trop bas : ça met l'épaule en tension inutile.",
@@ -272,9 +272,19 @@ def developpe_epaule_detection(corps):
     angle_coude_gauche = calculer_angle(
         corps.epaule_droite, corps.coude_droit, corps.poignet_droit
     )
+    # Un développé épaule se termine *au-dessus de la tête*, et l'angle du
+    # coude seul ne le dit pas : bras baissés et tendus le long du corps, il
+    # dépasse aussi 150 degrés. Un testeur comptait donc une répétition en
+    # abandonnant sa série, « comme si retendre les bras sous les épaules
+    # comptait pour un ». Ce qui fait la position haute, c'est que les
+    # poignets sont passés au-dessus des épaules.
+    mains_en_haut = (
+        corps.poignet_gauche.y < corps.epaule_gauche.y
+        and corps.poignet_droit.y < corps.epaule_droite.y
+    )
     if angle_coude_droit < 40 and angle_coude_gauche < 40:
         return "debut"
-    elif angle_coude_droit > 150 and angle_coude_gauche > 150:
+    elif angle_coude_droit > 150 and angle_coude_gauche > 150 and mains_en_haut:
         return "fin"
     return "milieu"
 
@@ -313,9 +323,13 @@ def crunches_detection(corps):
     angle_hanche_gauche = calculer_angle(
         corps.epaule_droite, corps.hanche_droite, corps.genou_droit
     )
-    if angle_hanche_droite < 70 and angle_hanche_gauche < 70:
+    # Seuils ouverts de 70/95 a 85/100 : a 70 degres il fallait decoller tout
+    # le dos, c'est-a-dire faire un releve de buste et non un crunch. L'ecart
+    # de 15 degres entre les deux bornes est conserve — c'est lui qui empeche
+    # un tremblement de landmark de compter une repetition.
+    if angle_hanche_droite < 85 and angle_hanche_gauche < 85:
         return "fin"
-    elif angle_hanche_droite > 95 and angle_hanche_gauche > 95:
+    elif angle_hanche_droite > 100 and angle_hanche_gauche > 100:
         return "debut"
     return "milieu"
 
@@ -347,16 +361,31 @@ crunches = Exercice(
 
 
 def detection_gainage(corps):
-    # Les deux hanches sont comparees au seuil : la version precedente calculait
-    # bien les deux angles mais n'en testait qu'un, si bien qu'un bassin
-    # affaisse d'un seul cote passait pour un gainage correct.
+    """Bassin aligné et hanches soulevées du sol.
+
+    Deux réglages ici viennent de tests, et vont dans des sens opposés.
+
+    Le seuil est passé de 145 à 135 degrés : un bassin légèrement bas reste un
+    gainage, et à 145 le maintien se coupait par à-coups alors que la position
+    était tenue.
+
+    Surtout, les deux côtés sont **moyennés et non exigés ensemble**. La fiche
+    demande une vue de profil : la jambe éloignée est donc *toujours* masquée
+    et son genou estimé par le modèle. Exiger que les deux angles dépassent le
+    seuil revient à exiger que cette estimation soit exacte — un testeur voyait
+    le chrono s'arrêter par intermittence et l'attribuait à ses genoux. Une
+    moyenne encaisse l'estimation. Ce qu'elle abandonne, c'est la détection
+    d'un bassin affaissé d'un seul côté — que la conjonction avait été
+    introduite pour attraper, mais qu'une vue de profil ne montre de toute
+    façon pas.
+    """
     angle_hanche_droite = calculer_angle(
         corps.epaule_gauche, corps.hanche_gauche, corps.genou_gauche
     )
     angle_hanche_gauche = calculer_angle(
         corps.epaule_droite, corps.hanche_droite, corps.genou_droit
     )
-    hanches_droites = angle_hanche_droite > 145 and angle_hanche_gauche > 145
+    hanches_droites = (angle_hanche_droite + angle_hanche_gauche) / 2 > 135
 
     hanche_au_dessus_coude = corps.hanche_gauche.y < corps.coude_gauche.y
     if hanches_droites and hanche_au_dessus_coude:
@@ -554,17 +583,41 @@ souleve_roumain = Exercice(
 # ==================================
 
 
+def _appui_sur_le_bras(epaule, coude, hanche):
+    """De combien le buste est soulevé par l'appui sur le bras.
+
+    Rapporté à la longueur du buste, donc sans unité : indépendant de la taille
+    de la personne et du cadrage. Vaut environ 0 quand on est simplement
+    allongé sur le côté — l'épaule est alors à la hauteur du coude, tous deux
+    au sol — et grimpe vers 0,5 dès qu'on se redresse sur l'avant-bras.
+    """
+    buste = calculer_distance(epaule, hanche)
+    if buste <= 0:
+        return 0.0
+    return (coude.y - epaule.y) / buste
+
+
 def detection_gainage_laterale_gauche(corps):
     angle_hanche_gauche = calculer_angle(
         corps.epaule_gauche, corps.hanche_gauche, corps.cheville_gauche
     )
-    corps_aligne = angle_hanche_gauche > 150
+    # Meme resserrement que du cote droit, et pour la meme raison : le maintien
+    # se declenchait avant que la position soit prise.
+    corps_aligne = angle_hanche_gauche > 155
 
     cote_gauche_au_sol = corps.epaule_gauche.y > corps.epaule_droite.y
 
     hanche_au_dessus_coude = corps.hanche_gauche.y < corps.coude_gauche.y
 
-    if corps_aligne and cote_gauche_au_sol and hanche_au_dessus_coude:
+    # Allongé sur le côté sans rien faire, les trois conditions précédentes
+    # sont réunies : le corps est aligné, le bon côté est en bas, et la hanche
+    # passe de justesse au-dessus du coude puisque tous deux touchent le sol.
+    # Un testeur voyait donc le chrono tourner « alors que je ne suis pas en
+    # position ». Ce qui distingue vraiment une planche latérale, c'est que le
+    # buste est *soulevé* par l'appui sur l'avant-bras.
+    souleve = _appui_sur_le_bras(corps.epaule_gauche, corps.coude_gauche, corps.hanche_gauche) > 0.25
+
+    if corps_aligne and cote_gauche_au_sol and hanche_au_dessus_coude and souleve:
         return "maintien"
 
     return "repos"
@@ -602,13 +655,26 @@ def detection_gainage_laterale_droite(corps):
     angle_hanche_droite = calculer_angle(
         corps.epaule_droite, corps.hanche_droite, corps.cheville_droite
     )
-    corps_aligne = angle_hanche_droite > 150
+    # Seuil resserre de 150 a 155 degres : a 150 le corps pouvait casser de 30
+    # degres et passer pour aligne, si bien qu'un testeur a compte du temps les
+    # fesses posees au sol. Resserre modestement et non a 165 : ce mode n'a pas
+    # d'hysteresis, donc un seuil trop pres de la position parfaite ferait
+    # clignoter le maintien.
+    corps_aligne = angle_hanche_droite > 155
 
     cote_droit_au_sol = corps.epaule_droite.y > corps.epaule_gauche.y
 
     hanche_au_dessus_coude = corps.hanche_droite.y < corps.coude_droit.y
 
-    if corps_aligne and cote_droit_au_sol and hanche_au_dessus_coude:
+    # Allongé sur le côté sans rien faire, les trois conditions précédentes
+    # sont réunies : le corps est aligné, le bon côté est en bas, et la hanche
+    # passe de justesse au-dessus du coude puisque tous deux touchent le sol.
+    # Un testeur voyait donc le chrono tourner « alors que je ne suis pas en
+    # position ». Ce qui distingue vraiment une planche latérale, c'est que le
+    # buste est *soulevé* par l'appui sur l'avant-bras.
+    souleve = _appui_sur_le_bras(corps.epaule_droite, corps.coude_droit, corps.hanche_droite) > 0.25
+
+    if corps_aligne and cote_droit_au_sol and hanche_au_dessus_coude and souleve:
         return "maintien"
 
     return "repos"
@@ -888,22 +954,57 @@ oiseau = Exercice(
 # d'introduire une heuristique de plus à maintenir.
 
 
-def squat_sur_chaise_detection(corps):
-    """Profondeur lue sur l'angle du genou, pas sur la distance coude-genou.
+def _descente_hanche(hanche, genou, cheville):
+    """Hauteur de la hanche au-dessus du genou, rapportée à celle du tibia.
 
-    `squat_detection` mesure l'écart entre le coude et le genou : ça suppose des
-    haltères qui pendent le long du corps. Au poids du corps, les bras partent
-    devant pour l'équilibre et ce repère ne veut plus rien dire.
+    Rapportée, donc sans unité : le résultat ne dépend ni de la taille de la
+    personne ni de sa distance à la caméra. Vaut environ 1 debout, tend vers 0
+    quand la hanche arrive à hauteur de genou.
     """
-    angle_gauche = calculer_angle(
-        corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche
-    )
-    angle_droit = calculer_angle(
-        corps.hanche_droite, corps.genou_droit, corps.cheville_droite
-    )
-    if angle_gauche < 110 and angle_droit < 110:
+    tibia = cheville.y - genou.y
+    if tibia <= 0:
+        return None
+    return (genou.y - hanche.y) / tibia
+
+
+def squat_sur_chaise_detection(corps):
+    """Profondeur lue sur la descente de la hanche, et non sur un angle.
+
+    Deux repères ont été essayés avant celui-ci, et chacun supposait un point de
+    vue. La distance coude-genou de `squat_detection` suppose des haltères qui
+    pendent le long du corps ; au poids du corps les bras partent devant pour
+    l'équilibre. L'angle du genou, lui, ne se lit que de profil : la flexion se
+    fait dans le plan sagittal, donc *vers* la caméra quand on lui fait face, et
+    une projection en deux dimensions garde alors la jambe presque droite au
+    plus bas du mouvement. Mesuré sur une pose de face plausible, l'angle ne
+    descendait pas sous 124° au plus profond, là où le seuil exigeait 110 : la
+    détection ne quittait jamais `"fin"`, ne s'armait donc jamais, et ne
+    comptait aucune répétition — c'est le défaut remonté par un testeur.
+
+    Ce qui se voit des deux points de vue, c'est que la hanche descend vers le
+    genou. Les deux jambes sont moyennées et non exigées ensemble : de face
+    elles sont également visibles, de profil la plus éloignée est estimée, et
+    une moyenne encaisse cette estimation là où une conjonction s'y casse.
+    """
+    mesures = [
+        mesure
+        for mesure in (
+            _descente_hanche(
+                corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche
+            ),
+            _descente_hanche(
+                corps.hanche_droite, corps.genou_droit, corps.cheville_droite
+            ),
+        )
+        if mesure is not None
+    ]
+    if not mesures:
+        return "milieu"
+
+    descente = sum(mesures) / len(mesures)
+    if descente < 0.45:
         return "debut"
-    if angle_gauche > 160 and angle_droit > 160:
+    if descente > 0.75:
         return "fin"
     return "milieu"
 
@@ -994,7 +1095,7 @@ squat_sur_chaise = Exercice(
     mise_en_place=[
         "Place une chaise derrière toi, debout, pieds écartés de la largeur des hanches.",
         "Tends les bras devant toi pour l'équilibre.",
-        "Place-toi de profil face à la caméra, jambes entières visibles.",
+        "Place-toi face à la caméra, jambes entières visibles.",
     ],
     instructions=[
         "Descends les hanches vers l'arrière comme pour t'asseoir.",

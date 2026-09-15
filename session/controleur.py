@@ -1,7 +1,11 @@
 import threading
 
+from core.state import EtatSeance
 from core.utilisateur import identifiant_connecte
-from progression.objectifs import marquer_cibles_manuelles
+from progression.objectifs import (
+    enteriner_cibles_manuelles,
+    marquer_cibles_manuelles,
+)
 from session.seances import (
     catalogue,
     construire_circuit,
@@ -20,6 +24,13 @@ class SessionManager:
     def __init__(self, reset_progression=None):
         self._verrou = threading.RLock()
         self._reset_progression = reset_progression
+        # L'etat que la boucle camera ecrit et que `/etat` publie. Il vit ici
+        # parce que c'est cet objet qui *est* une session : il detient deja la
+        # seance, le statut et le verrou. Nomme `etat_seance` et non `etat`,
+        # la methode `etat()` decrivant le statut du controleur lui-meme.
+        # Jamais remplace, seulement remis a zero : la boucle camera en garde
+        # une reference des le demarrage.
+        self.etat_seance = EtatSeance()
         self.nom_selectionne = None
         self.seance = None
         self.statut = "idle"
@@ -162,7 +173,19 @@ class SessionManager:
             if self.seance is not None and self.seance.phase == "termine":
                 self.statut = "finished"
                 if not getattr(self.seance, "progression_appliquee", False):
-                    if self.seance.appliquer_progression():
+                    # Deux raisons d'écrire le fichier, et elles sont
+                    # indépendantes : la progression des exercices sans barème,
+                    # et les cibles figées que cette séance vient d'entériner.
+                    # `appliquer_progression` ne rend presque jamais True (il
+                    # n'existe plus d'exercice sans barème), donc y accrocher
+                    # l'écriture reviendrait à ne jamais lever une marque.
+                    a_change = self.seance.appliquer_progression()
+                    if enteriner_cibles_manuelles(
+                        self.seance.exercices,
+                        getattr(self.seance, "utilisateur_id", None),
+                    ):
+                        a_change = True
+                    if a_change:
                         enregistrer_configuration_seance(
                             self.nom_selectionne,
                             self.seance,
@@ -212,6 +235,13 @@ class SessionManager:
                 and seance_active
                 and self.seance.phase in ("recuperation_serie", "repos_exercice"),
                 "terminer_seance": self.statut in ("running", "paused"),
+                # Absente de ce dictionnaire pendant longtemps, alors que le
+                # bouton « Abandonner » existait : le front grise tout ce qui
+                # n'y figure pas, si bien qu'il n'a jamais pu etre clique. Les
+                # memes conditions que la methode `abandonner`, qui refuse
+                # sinon la commande.
+                "abandonner": self.statut in ("running", "paused")
+                and seance_active,
             }
             return {
                 "statut": self.statut,

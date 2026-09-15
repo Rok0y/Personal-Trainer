@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='ressentis.css') }}">
 <style>
         main { width: min(900px, calc(100% - 40px)); margin: auto; padding: 72px 0; }
 
@@ -52,31 +53,6 @@
         .result strong { color: var(--text); font-weight: 700; text-align: right; }
         .empty { color: var(--muted); }
 
-        /* Ligne de ressenti, injectée par le script une fois la séance écrite
-           en base. Reste vide et invisible tant qu'il n'y a rien à proposer. */
-        .feedback {
-            display: none; margin-top: 14px; padding-top: 14px;
-            border-top: 1px solid var(--border);
-            align-items: center; gap: 8px; flex-wrap: wrap;
-        }
-        .feedback.visible { display: flex; }
-        .verdict {
-            font: 700 11px 'Space Grotesk', sans-serif; text-transform: uppercase;
-            letter-spacing: .08em; padding: 5px 12px; border-radius: 999px;
-            border: 1px solid var(--border-strong); margin-right: 4px;
-        }
-        .verdict.reussi { color: var(--teal); }
-        .verdict.echoue { color: var(--orange); }
-        .feedback button {
-            padding: 8px 14px; border-radius: 999px; cursor: pointer;
-            border: 1px solid var(--border-strong); background: transparent;
-            color: var(--muted); font: 600 12px 'Space Grotesk', sans-serif;
-            transition: border-color .2s ease, color .2s ease;
-        }
-        .feedback button:hover { border-color: var(--teal); color: var(--teal); }
-        .feedback button.actif { border-color: var(--teal); color: var(--teal); background: var(--glass); }
-        .feedback button.actif[data-valeur="trop_dur"] { border-color: var(--orange); color: var(--orange); }
-        .feedback button:disabled { opacity: .4; cursor: default; }
 
         .aide { color: var(--muted); font: 13px 'Space Grotesk', sans-serif; margin: 0 0 20px; }
         #echo { color: var(--teal); font: 600 13px 'Space Grotesk', sans-serif; min-height: 18px; }
@@ -114,22 +90,13 @@
     <p id="echo"></p>
     <nav class="actions"><a class="primary" href="/nouvelle">Nouvelle séance</a><a href="/historique">Historique</a></nav>
 </main>
-<script>
-    // Les réponses proposées dépendent de ce qui s'est passé : après une
-    // réussite on demande si c'était facile, après un échec si c'était trop
-    // dur. Proposer les cinq d'un coup laisserait croire à un effet là où il
-    // n'y en a pas — c'est `progression/ressenti.py` qui fixe la règle.
-    //
-    // Aucun bouton ne dit « normal » : ne rien sélectionner, c'est déjà ça.
-    // Un bouton neutre ferait croire qu'une réponse est attendue, alors que le
-    // cas courant est justement de passer son chemin.
-    const OPTIONS_REUSSITE = [
-        { valeur: "facile", libelle: "C'était facile" },
-        { valeur: "trop_facile", libelle: "C'était trop facile" },
-    ];
-    const OPTIONS_ECHEC = [
-        { valeur: "trop_dur", libelle: "C'était trop dur" },
-    ];
+<script type="module">
+    // Les reponses proposees et le comportement des boutons vivent dans
+    // `static/js/ressentis_ui.js`, partage avec l'application du navigateur :
+    // « quelles reponses ont un effet » decoule de la table d'ajustement, et
+    // l'ecrire deux fois laisserait un ecran proposer un bouton que le moteur
+    // ignore.
+    import { construire_ligne } from "{{ url_for('static', filename='js/ressentis_ui.js') }}";
 
     const echo = document.getElementById("echo");
     const choix = {};
@@ -150,50 +117,28 @@
         }
     }
 
-    function construireLigne(carte, jugement) {
-        const nom = carte.dataset.exercice;
-        const zone = carte.querySelector('[data-role="feedback"]');
-        zone.innerHTML = "";
-
-        const verdict = document.createElement("span");
-        verdict.className = `verdict ${jugement.reussi ? "reussi" : "echoue"}`;
-        verdict.textContent = jugement.reussi ? "Réussi" : "Non atteint";
-        zone.appendChild(verdict);
-
-        const options = jugement.reussi ? OPTIONS_REUSSITE : OPTIONS_ECHEC;
-        for (const option of options) {
-            const bouton = document.createElement("button");
-            bouton.type = "button";
-            bouton.dataset.valeur = option.valeur;
-            bouton.textContent = option.libelle;
-            if (jugement.ressenti === option.valeur) bouton.classList.add("actif");
-            bouton.addEventListener("click", () => {
-                // Recliquer sur son propre choix l'annule : « je préfère ne
-                // rien dire » doit rester atteignable sans recharger la page.
-                const deja = bouton.classList.contains("actif");
-                zone.querySelectorAll("button").forEach((b) => b.classList.remove("actif"));
-                if (!deja) bouton.classList.add("actif");
-                choix[nom] = deja ? "" : option.valeur;
-                envoyer();
-            });
-            zone.appendChild(bouton);
-        }
-        zone.classList.add("visible");
-    }
-
     async function afficherRessentis() {
         const reponse = await fetch(`/api/historique/${seanceId}/ressentis`);
         const donnees = await reponse.json();
         document.querySelectorAll(".result[data-exercice]").forEach((carte) => {
             const jugement = donnees.exercices[carte.dataset.exercice];
-            if (jugement) construireLigne(carte, jugement);
+            if (!jugement) return;
+            construire_ligne(
+                carte.querySelector('[data-role="feedback"]'),
+                carte.dataset.exercice,
+                jugement,
+                (nom, valeur) => {
+                    choix[nom] = valeur;
+                    envoyer();
+                }
+            );
         });
     }
 
-    // Le statut passe à `finished` avant que le thread caméra n'ait écrit la
-    // séance : à l'arrivée sur cette page, l'identifiant peut ne pas exister
-    // encore. On l'attend brièvement, puis on renonce — une séance sans
-    // aucune répétition n'est jamais écrite, et n'a donc rien à annoter.
+    // Le statut passe a `finished` avant que le thread camera n'ait ecrit la
+    // seance : a l'arrivee sur cette page, l'identifiant peut ne pas exister
+    // encore. On l'attend brievement, puis on renonce — une seance sans
+    // aucune repetition n'est jamais ecrite, et n'a donc rien a annoter.
     async function attendreSeance(essaisRestants = 12) {
         if (seanceId !== null) return afficherRessentis();
         if (essaisRestants <= 0) return;
@@ -203,7 +148,7 @@
                 seanceId = donnees.seance_id;
                 return afficherRessentis();
             }
-        } catch (erreur) { /* le serveur redémarre peut-être : on réessaiera */ }
+        } catch (erreur) { /* le serveur redemarre peut-etre : on reessaiera */ }
         setTimeout(() => attendreSeance(essaisRestants - 1), 300);
     }
 

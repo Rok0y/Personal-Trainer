@@ -16,6 +16,39 @@ MODES_CONNUS = (
     MODE_ECHAUFFEMENT,
 )
 
+#: Modes dont la cible se compte en secondes, et non en répétitions. C'est ce
+#: qui décide quel champ d'un bloc est *joué* : `duree` ici, `repetitions`
+#: ailleurs. Le `MODES_DUREE` des gabarits dit presque la même chose mais sert
+#: à autre chose — quel champ le formulaire présente —, et il laisse l'AMRAP de
+#: côté ; celui-ci décide de ce qui fait avancer la série, et l'AMRAP est bien
+#: borné par un temps.
+MODES_CIBLE_TEMPORELLE = (
+    MODE_MAINTIEN,
+    MODE_CHRONO,
+    MODE_AMRAP,
+    MODE_ECHAUFFEMENT,
+)
+
+
+def cible_du_bloc(bloc):
+    """La cible d'un bloc *dans l'unité que son mode joue*.
+
+    Un bloc porte `repetitions` et `duree` en même temps — volontairement, pour
+    qu'un changement de mode ne perde pas l'autre valeur —, donc seul le mode
+    dit lequel des deux est la cible. Un `repetitions or duree` prend le
+    premier non nul, c'est-à-dire parfois celui que le mode ne joue pas.
+
+    Prend aussi bien un dictionnaire de bloc qu'un `BlocExercice` : les deux
+    formes circulent, et la règle est la même.
+    """
+    mode = bloc.get("mode") if isinstance(bloc, dict) else bloc.mode
+    if mode in MODES_CIBLE_TEMPORELLE:
+        return (bloc.get("duree") if isinstance(bloc, dict) else bloc.duree) or 0
+    if isinstance(bloc, dict):
+        return bloc.get("repetitions") or 0
+    return bloc.repetitions_par_serie or 0
+
+
 #: Modes dont le déroulement dépend d'une fonction de détection : pour eux,
 #: `Exercice.detection` ne peut pas être None. Le chrono et l'échauffement en
 #: sont absents parce qu'ils avancent au temps, sans analyser la pose.
@@ -166,7 +199,15 @@ class Circuit:
         # se trouve connecté quand le thread caméra l'écrit : entre la dernière
         # répétition et l'écriture en base, il y a le temps de changer de profil.
         self.utilisateur_id = None
-        self.debut = time.time()
+        # Horloge des modes qui cumulent des deltas image par image
+        # (`gerer_mode_maintien`, `gerer_mode_echauffement`). Portée par la
+        # séance et non par le module : chaque client a sa propre ligne de
+        # temps, et un serveur multi-sessions en ferait tourner plusieurs en
+        # parallèle. Un client web la remplace par sa propre horodatation, ce
+        # qui sort la latence du réseau du calcul — seule la gigue subsiste,
+        # que `moteur.INTERVALLE_MAX` borne déjà.
+        self.maintenant = time.monotonic
+        self.debut = self.maintenant()
         self.resultats_series = []
         self.paires_entrelacees = self._detecter_paires_entrelacees()
         self.serie_actuelle_locale = 1
@@ -246,6 +287,12 @@ class Circuit:
 
     @property
     def poids(self):
+        # Seule des cinq lectures de `bloc_actuel` à ne pas se protéger, elle
+        # levait un AttributeError dès que l'index dépassait le dernier bloc.
+        # Ses voisines rendent toutes 0 ou None dans ce cas, et `main.py` lit
+        # `seance.poids` à chaque image : une exception y gèle le flux vidéo.
+        if self.bloc_actuel is None:
+            return 0
         return self.bloc_actuel.poids
 
     @property
@@ -277,12 +324,12 @@ class Circuit:
             duree = self.bloc_actuel.repos_apres
         else:
             return 0
-        temps_ecoule = time.time() - self.debut_repos
+        temps_ecoule = self.maintenant() - self.debut_repos
         return max(0, duree - temps_ecoule)
 
     @property
     def duree_totale(self):
-        return int(time.time() - self.debut)
+        return int(self.maintenant() - self.debut)
 
     @property
     def blocs_comptabilises(self):
@@ -613,6 +660,8 @@ class Circuit:
 
     def remettre_serie_a_zero(self):
         """Efface la progression de la série courante sans changer d'index."""
+        if self.bloc_actuel is None:
+            return
         self.reinitialiser_etat_serie()
         if self.phase not in ("termine", "preparation"):
             self.phase = "exercice"
@@ -620,6 +669,8 @@ class Circuit:
 
     def recommencer_serie(self):
         """Relance entièrement la série courante depuis son état initial."""
+        if self.bloc_actuel is None:
+            return
         self.reinitialiser_etat_serie()
         self.phase = "exercice"
         self.debut_repos = None
@@ -739,7 +790,7 @@ class Circuit:
         filtre de `progression.niveaux.performance_realisee` n'avait jusqu'ici
         jamais rien à écarter.
         """
-        if self.phase != "exercice":
+        if self.phase != "exercice" or self.bloc_actuel is None:
             return False
 
         self.enregistrer_resultat_serie(
@@ -756,6 +807,11 @@ class Circuit:
         Appelée lorsque le nombre de répétitions
         demandé pour la série est atteint.
         """
+        # Même garde que `commencer_exercice` : plus aucun bloc courant, donc
+        # plus rien à terminer. Les lectures de `bloc_actuel.repos_apres` plus
+        # bas la supposent déjà.
+        if self.bloc_actuel is None:
+            return
 
         # Photographier la série qui vient de s'achever *avant* de bouger quoi
         # que ce soit : à la sortie de cette méthode, l'information n'est plus
@@ -788,7 +844,7 @@ class Circuit:
                 self.index_exercice = partenaire_index
                 # GARDER le même serie_actuelle pour que l'affichage reste cohérent
                 self.phase = "recuperation_serie"
-                self.debut_repos = time.time()
+                self.debut_repos = self.maintenant()
                 return
             else:
                 # On revient du partenaire
@@ -803,13 +859,13 @@ class Circuit:
                     # Passer à l'exercice suivant
                     if self.bloc_actuel.repos_apres > 0:
                         self.phase = "repos_exercice"
-                        self.debut_repos = time.time()
+                        self.debut_repos = self.maintenant()
                     else:
                         self.passer_exercice_suivant()
                 else:
                     # Il y a encore des séries
                     self.phase = "recuperation_serie"
-                    self.debut_repos = time.time()
+                    self.debut_repos = self.maintenant()
                 return
 
         # Cas 2 : On revient du partenaire entrelacé (dans le cas où le partenaire est celui-ci)
@@ -822,12 +878,12 @@ class Circuit:
             if self.serie_actuelle > self.nombre_series:
                 if self.bloc_actuel.repos_apres > 0:
                     self.phase = "repos_exercice"
-                    self.debut_repos = time.time()
+                    self.debut_repos = self.maintenant()
                 else:
                     self.passer_exercice_suivant()
             else:
                 self.phase = "recuperation_serie"
-                self.debut_repos = time.time()
+                self.debut_repos = self.maintenant()
             return
 
         # -----------------------------------------
@@ -837,7 +893,7 @@ class Circuit:
         if self.serie_actuelle < self.nombre_series:
             self.serie_actuelle += 1
             self.phase = "recuperation_serie"
-            self.debut_repos = time.time()
+            self.debut_repos = self.maintenant()
             return
 
         # -----------------------------------------
@@ -847,11 +903,19 @@ class Circuit:
 
         if self.bloc_actuel.repos_apres > 0:
             self.phase = "repos_exercice"
-            self.debut_repos = time.time()
+            self.debut_repos = self.maintenant()
         else:
             self.passer_exercice_suivant()
 
     def commencer_exercice(self):
+        # Ne pas ouvrir un exercice qui n'existe pas : la séance terminée,
+        # l'index dépasse le dernier bloc, et poser « exercice » y laissait un
+        # état impossible — phase active, `bloc_actuel` à None — dans lequel
+        # `terminer_serie` levait. `main.py` s'en protégeait par un test de
+        # phase ; le portage web appellera la classe directement, donc la règle
+        # descend ici, là où elle ne peut plus être oubliée.
+        if self.bloc_actuel is None:
+            return
         self.phase = "exercice"
 
     def passer_exercice_suivant(self):

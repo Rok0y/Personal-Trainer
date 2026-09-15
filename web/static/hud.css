@@ -1,0 +1,1139 @@
+/* ==========================================================================
+   Le HUD de seance, partage par les deux applications.
+
+   Il vivait en entier dans le <style> de `templates/index.html`, et
+   `app/index.html` en avait sa propre version — palette differente, typo
+   differente, disposition differente. Le portage web a pour objectif que
+   l'application se comporte **exactement** pareil des deux cotes : deux
+   feuilles de style rendaient cet objectif intenable, puisque toute
+   correction faite d'un cote devait etre refaite de l'autre, et qu'aucun
+   mecanisme ne le signalait. Meme raisonnement que `_navigation.html`, la
+   barre d'onglets qui etait copiee dans quatre pages.
+
+   Lier `base.css` depuis l'application aurait ete une erreur — c'est une mise
+   en page de *site*, avec ses conteneurs et ses largeurs fixes. Le HUD, lui,
+   est un calque sur une image plein ecran : il n'a besoin que de la palette
+   (`palette.css`) et ne pose aucune regle de document, a l'exception du
+   `body` ci-dessous, que les deux pages veulent identique.
+
+   Les deux pages ne different que par la **source de l'image** : un flux MJPEG
+   servi par Flask (`<img class="video">`) sur le poste fixe, un `<canvas>`
+   alimente par la camera de l'appareil dans le navigateur. Les deux portent la
+   classe `.video`, et tout le reste du calque les ignore.
+   ========================================================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', Arial, sans-serif;
+    overflow: hidden;
+}
+
+/* ---------- STAGE (full-bleed camera) ---------- */
+
+.stage {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+.video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(1.05) contrast(1.03);
+    animation: fadeIn 0.9s ease both;
+}
+
+/* subtle vignette + scanline for a "broadcast HUD" feel */
+.vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%),
+        linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 78%, rgba(0,0,0,0.6) 100%);
+}
+
+.scanlines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.6) 0px,
+        rgba(255,255,255,0.6) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+    mix-blend-mode: overlay;
+}
+
+/* ---------- TOP BAR ---------- */
+
+.topbar {
+    position: absolute;
+    top: 28px;
+    left: 28px;
+    right: 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 5;
+    animation: dropIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 10px 18px 10px 14px;
+    border-radius: 999px;
+}
+
+.brand-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--orange);
+    box-shadow: 0 0 10px var(--orange-glow);
+    animation: pulseDot 2s ease-in-out infinite;
+}
+
+.brand-name {
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.02em;
+}
+
+.brand-name span {
+    color: var(--teal);
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--teal);
+    box-shadow: 0 0 8px var(--teal-glow);
+    animation: pulseDot 1.6s ease-in-out infinite;
+}
+
+.status-dot.offline {
+    background: #ff5a5a;
+    box-shadow: 0 0 8px rgba(255, 90, 90, 0.5);
+}
+
+.duration-badge {
+    display: flex;
+    align-items: center;
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--glass);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.duration-badge strong { color: var(--text); }
+
+.exercise-badge {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 9px 20px;
+    border-radius: 999px;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.exercise-badge.changing {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
+.exercise-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.exercise-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.01em;
+}
+
+.topbar-center {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.series-badge {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 9px 18px;
+    border-radius: 999px;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.series-badge.changing {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
+.series-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.series-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--orange);
+    letter-spacing: 0.01em;
+}
+
+.weight-badge {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 9px 18px;
+    border-radius: 999px;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.weight-badge.changing {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
+.weight-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.weight-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--teal);
+    letter-spacing: 0.01em;
+}
+
+/* ---------- HOLD BUBBLE (progression du maintien) ---------- */
+
+.hold-container {
+    position: absolute;
+    top: 34%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+}
+
+.hold-container.visible {
+    opacity: 1;
+}
+
+.hold-ring-wrap {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hold-ring {
+    position: absolute;
+    inset: 0;
+    transform: rotate(-90deg);
+}
+
+.hold-ring-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.14);
+    stroke-width: 6;
+}
+
+.hold-ring-progress {
+    fill: none;
+    stroke: var(--teal);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 439.8;
+    stroke-dashoffset: 439.8;
+    filter: drop-shadow(0 0 6px var(--teal-glow));
+    transition: stroke-dashoffset 0.12s linear;
+}
+
+.hold-container.flash .hold-ring-progress {
+    animation: ringFlash 0.5s ease-out;
+}
+
+.hold-bubble {
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%,
+        rgba(255, 255, 255, 0.85),
+        rgba(27, 232, 196, 0.45) 42%,
+        rgba(27, 232, 196, 0.16) 72%,
+        transparent 100%);
+    box-shadow: 0 0 26px var(--teal-glow) inset, 0 0 18px var(--teal-glow);
+    transform: scale(0.22);
+    transition: transform 0.15s ease-out;
+    animation: bubbleGlow 2.4s ease-in-out infinite;
+}
+
+.hold-bubble.pop {
+    animation: bubblePop 0.55s cubic-bezier(0.32, 0, 0.67, 0) forwards;
+}
+
+.hold-percent {
+    position: absolute;
+    font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+    font-size: 26px;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+    pointer-events: none;
+}
+
+.hold-caption {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 7px 18px;
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.error-alert {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: min(440px, calc(100vw - 40px));
+    padding: 16px 20px;
+    border: 1px solid rgba(255, 90, 54, 0.8);
+    border-radius: 16px;
+    background: rgba(45, 15, 12, 0.9);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), 0 0 24px var(--orange-glow);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, calc(-50% + 12px));
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.error-alert.visible {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+}
+
+.error-asset {
+    display: grid;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 2px solid var(--orange);
+    border-radius: 50%;
+    color: var(--orange);
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.error-message {
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+/* Meme placement que l'alerte d'erreur, decale vers le bas pour que
+   les deux puissent s'afficher ensemble sans se recouvrir. */
+.consigne-alert {
+    position: absolute;
+    top: calc(50% + 78px);
+    left: 50%;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: min(440px, calc(100vw - 40px));
+    padding: 14px 20px;
+    border: 1px solid rgba(74, 158, 255, 0.75);
+    border-radius: 16px;
+    background: rgba(12, 24, 45, 0.9);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), 0 0 24px var(--blue-glow);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 12px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.consigne-alert.visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.consigne-asset {
+    display: grid;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border: 2px solid var(--blue);
+    border-radius: 50%;
+    color: var(--blue);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.consigne-message {
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* Consignes du mouvement, dans le panneau lateral. Elles existaient
+   depuis toujours dans le catalogue sans jamais atteindre l'ecran. */
+/* `.card` ne pose aucun padding : chaque variante pose le sien
+   (cf. `.position-card`). Sans celui-ci le texte touchait la bordure. */
+.fiche-card {
+    padding: 18px 22px 20px;
+}
+
+.fiche-card ol {
+    margin: 6px 0 0;
+    padding-left: 20px;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.fiche-card li { margin-bottom: 3px; }
+
+.burst {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.particle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--teal);
+    box-shadow: 0 0 8px var(--teal-glow);
+    transform: translate(-50%, -50%);
+    animation: particleBurst 0.6s ease-out forwards;
+}
+
+/* ---------- REST OVERLAY (phase de récupération) ---------- */
+
+.rest-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    background: rgba(9, 12, 18, 0.74);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+
+.rest-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.rest-title {
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.breathe-circle {
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 34% 30%,
+        rgba(255, 255, 255, 0.55),
+        rgba(77, 163, 255, 0.45) 45%,
+        rgba(77, 163, 255, 0.14) 75%,
+        transparent 100%);
+    box-shadow: 0 0 46px var(--blue-glow);
+    animation: breathe 4s ease-in-out infinite;
+}
+
+.rest-time {
+    font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+    font-size: 56px;
+    letter-spacing: 0.02em;
+    color: #ffffff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.rest-next-name {
+    font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+    font-size: 64px;
+    line-height: 1;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    text-align: center;
+    color: #ffffff;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+    max-width: 90vw;
+}
+
+.rest-next-name.hidden-mode,
+.rest-next-label.hidden-mode {
+    display: none;
+}
+
+.rest-next-label {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.rest-next {
+    font-size: 14px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+}
+
+.rest-next strong {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.overlay-session-info {
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.overlay-session-info strong { color: var(--text); }
+
+.overlay-session-progress {
+    width: min(560px, calc(100vw - 56px));
+}
+
+#overlaySessionProgressSegments {
+    display: flex;
+    gap: 8px;
+    min-height: 22px;
+}
+
+.prep-ring-wrap {
+    position: relative;
+    width: 170px;
+    height: 170px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.prep-ring-wrap.active {
+    display: flex;
+}
+
+.prep-ring {
+    position: absolute;
+    inset: 0;
+    transform: rotate(-90deg);
+}
+
+.prep-ring-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.14);
+    stroke-width: 6;
+}
+
+.prep-ring-progress {
+    fill: none;
+    stroke: var(--orange);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 439.8;
+    stroke-dashoffset: 439.8;
+    filter: drop-shadow(0 0 8px var(--orange-glow));
+    transition: stroke-dashoffset 0.12s linear;
+}
+
+.prep-percent {
+    position: absolute;
+    font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+    font-size: 46px;
+    color: #ffffff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.breathe-circle.hidden-mode {
+    display: none;
+}
+
+/* ---------- SIDE PANEL (position + étape, bord gauche) ---------- */
+
+.side-panel {
+    position: absolute;
+    left: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    animation: slideInLeft 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: 0.15s;
+}
+
+/* ---------- COLONNE DROITE (consignes au-dessus du compteur) ---------- */
+
+/* `z-index: 7` la place au-dessus de `.rest-overlay` (6) : c'est ce
+   seul chiffre qui rend les consignes lisibles pendant les pauses,
+   c'est-à-dire au moment où on a le temps de les lire. Les commandes
+   de série (10, en bas à gauche) restent au-dessus de tout. */
+.right-column {
+    position: absolute;
+    right: 28px;
+    bottom: 28px;
+    z-index: 7;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 18px;
+    max-width: min(380px, 40vw);
+}
+
+.hud {
+    display: flex;
+    justify-content: flex-end;
+    animation: riseIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: 0.15s;
+}
+
+.series-controls {
+    position: absolute;
+    left: 28px;
+    bottom: 58px;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-width: min(620px, calc(100vw - 56px));
+    pointer-events: auto;
+}
+
+.series-controls button {
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    background: var(--glass-strong);
+    font: inherit;
+    cursor: pointer;
+}
+
+.series-controls button:hover {
+    border-color: var(--teal);
+    color: var(--teal);
+}
+
+.session-progress {
+    position: absolute;
+    left: 28px;
+    right: 28px;
+    bottom: 12px;
+    z-index: 5;
+    display: flex;
+    gap: 8px;
+    height: 28px;
+}
+
+#sessionProgressSegments {
+    display: flex;
+    width: 100%;
+    gap: 8px;
+}
+
+.progress-exercise {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.progress-exercise-label {
+    overflow: hidden;
+    color: rgba(255, 255, 255, .72);
+    font-size: 10px;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.progress-series {
+    display: flex;
+    flex: 1;
+    gap: 3px;
+}
+
+.progress-segment {
+    flex: 1;
+    min-width: 4px;
+    border-radius: 3px;
+    background: rgba(255,255,255,.22);
+    transition: background .2s ease, box-shadow .2s ease;
+}
+
+.progress-segment.complete {
+    background: var(--teal);
+    box-shadow: 0 0 8px var(--teal-glow);
+}
+
+.progress-segment.active {
+    background: var(--orange);
+    box-shadow: 0 0 8px var(--orange-glow);
+}
+
+/* Barre de l'échauffement : même géométrie, autre couleur. La bascule
+   vers la barre des exercices est un moment de la séance, elle doit se
+   voir sans avoir à lire les étiquettes. */
+.progress-echauffement .progress-segment.complete {
+    background: var(--blue);
+    box-shadow: 0 0 8px var(--blue-glow);
+}
+
+.card {
+    background: var(--glass-strong);
+    border: 1px solid var(--border-strong);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-radius: 22px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+}
+
+/* Position card */
+.position-card {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 200px;
+}
+
+.label {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.position-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--orange);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.position-value.changing {
+    opacity: 0;
+    transform: translateY(6px);
+}
+
+/* Stage card */
+.stage-card {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 200px;
+}
+
+.stage-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--teal);
+    text-transform: capitalize;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.stage-value.changing {
+    opacity: 0;
+    transform: translateY(6px);
+}
+
+/* Reps card — the signature scoreboard */
+.reps-card {
+    padding: 18px 34px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    position: relative;
+    overflow: visible;
+}
+
+.reps-value-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 150px;
+    height: 110px;
+}
+
+.impact-ring {
+    position: absolute;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 3px solid var(--teal);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.impact-ring.hit {
+    animation: ringPulse 0.55s ease-out;
+}
+
+.reps-value {
+    font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+    font-size: 92px;
+    line-height: 1;
+    color: var(--teal);
+    text-shadow: 0 0 24px var(--teal-glow);
+    letter-spacing: 0.02em;
+}
+
+.reps-value.hit {
+    animation: punch 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.reps-target {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    margin-top: -4px;
+}
+
+.reps-target strong {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.reps-progress-track {
+    width: 132px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.reps-progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--teal), #7cf5da);
+    transition: width 0.3s ease;
+}
+
+/* ---------- WORKOUT CARD (multi-modes : répétitions / maintien / chrono / amrap) ---------- */
+/* Un seul bloc est visible à la fois, piloté par [data-mode] sur #workoutCard.
+   Le backend décide de la valeur de "mode" ; le CSS/JS ne fait qu'afficher. */
+
+.workout-block {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+#workoutCard[data-mode="repetitions"] .workout-block--repetitions,
+#workoutCard[data-mode="maintien"] .workout-block--maintien,
+#workoutCard[data-mode="chrono"] .workout-block--chrono,
+#workoutCard[data-mode="amrap"] .workout-block--amrap,
+#workoutCard[data-mode="echauffement"] .workout-block--echauffement {
+    display: flex;
+}
+
+.maintien-status {
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--teal);
+    transition: color 0.25s ease;
+}
+
+.maintien-status--erreur {
+    color: var(--orange);
+}
+
+.chrono-value {
+    font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+    font-size: 92px;
+    line-height: 1;
+    color: var(--blue);
+    text-shadow: 0 0 24px var(--blue-glow);
+    letter-spacing: 0.02em;
+}
+
+.amrap-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+/* ---------- Animations ---------- */
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes dropIn {
+    from { opacity: 0; transform: translateY(-14px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes riseIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+    from { opacity: 0; transform: translate(-18px, -50%); }
+    to { opacity: 1; transform: translate(0, -50%); }
+}
+
+@keyframes pulseDot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.35); opacity: 0.6; }
+}
+
+@keyframes punch {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.28); }
+    60%  { transform: scale(0.94); }
+    100% { transform: scale(1); }
+}
+
+@keyframes ringPulse {
+    0%   { opacity: 0.9; transform: scale(0.6); }
+    100% { opacity: 0; transform: scale(1.9); }
+}
+
+@keyframes bubbleGlow {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.18); }
+}
+
+@keyframes bubblePop {
+    0%   { transform: scale(1);   opacity: 1; }
+    35%  { transform: scale(1.32); opacity: 1; }
+    100% { transform: scale(1.9); opacity: 0; }
+}
+
+@keyframes ringFlash {
+    0%   { stroke: var(--teal); filter: drop-shadow(0 0 6px var(--teal-glow)); }
+    40%  { stroke: #ffffff; filter: drop-shadow(0 0 22px var(--teal-glow)); }
+    100% { stroke: var(--teal); filter: drop-shadow(0 0 6px var(--teal-glow)); }
+}
+
+@keyframes particleBurst {
+    to {
+        transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty)));
+        opacity: 0;
+    }
+}
+
+@keyframes breathe {
+    0%, 100% { transform: scale(0.86); }
+    50% { transform: scale(1.14); }
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 760px) {
+    .side-panel {
+        left: 16px;
+        right: 16px;
+        top: auto;
+        bottom: 28px;
+        transform: none;
+        flex-direction: row;
+        gap: 12px;
+        animation: riseIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation-delay: 0.15s;
+    }
+    .position-card,
+    .stage-card {
+        flex: 1;
+        width: auto;
+        padding: 16px 18px;
+    }
+    .right-column {
+        left: 16px;
+        right: 16px;
+        bottom: 108px;
+        align-items: stretch;
+        max-width: none;
+        gap: 12px;
+    }
+    .hud {
+        justify-content: center;
+    }
+    .brand-name {
+        font-size: 14px;
+    }
+    .reps-value {
+        font-size: 76px;
+    }
+    .exercise-value {
+        font-size: 14px;
+    }
+    .hold-ring-wrap {
+        width: 130px;
+        height: 130px;
+    }
+    .hold-bubble {
+        width: 96px;
+        height: 96px;
+    }
+    .breathe-circle {
+        width: 150px;
+        height: 150px;
+    }
+    .rest-time {
+        font-size: 42px;
+    }
+    .rest-next-name {
+        font-size: 40px;
+    }
+    .prep-ring-wrap {
+        width: 140px;
+        height: 140px;
+    }
+    .prep-percent {
+        font-size: 36px;
+    }
+}
+
+@media (max-width: 480px) {
+    .topbar {
+        flex-wrap: wrap;
+        row-gap: 10px;
+    }
+    .topbar-center {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+}

@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Coach — démo</title>
+<style>
+  :root {
+    --fond: #0f1319;
+    --carte: #19202a;
+    --carte-haute: #222b38;
+    --bord: #2c3644;
+    --texte: #e8eef6;
+    --attenue: #8fa0b6;
+    --accent: #4b9bff;
+    --ok: #3fbf7f;
+    --alerte: #e0a33e;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    background: var(--fond);
+    color: var(--texte);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  .page {
+    padding: 16px;
+    padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    max-width: 720px;
+    margin-inline: auto;
+  }
+  h1 { font-size: 21px; margin: 0 0 6px; letter-spacing: -.01em; }
+  h3 { font-size: 13px; margin: 18px 0 6px; color: var(--attenue);
+       text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  p { margin: 0 0 12px; }
+  .muet { color: var(--attenue); font-size: 14px; }
+  .carte {
+    background: var(--carte); border: 1px solid var(--bord);
+    border-radius: 14px; padding: 16px; margin-bottom: 14px;
+  }
+  button {
+    font: inherit; font-weight: 600;
+    padding: 16px 20px; border-radius: 12px; border: 0;
+    background: var(--accent); color: #fff; cursor: pointer; width: 100%;
+  }
+  button:active { opacity: .85; }
+  button.secondaire { background: var(--carte-haute); color: var(--texte); }
+  button.discret { background: none; color: var(--attenue); padding: 10px;
+                   text-decoration: underline; }
+  select, textarea {
+    font: inherit; width: 100%; padding: 12px;
+    background: var(--carte-haute); color: var(--texte);
+    border: 1px solid var(--bord); border-radius: 10px;
+  }
+  textarea { min-height: 90px; resize: vertical; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  ul { margin: 0; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+
+  .exercice {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    background: var(--carte); border: 1px solid var(--bord);
+    color: var(--texte); font-weight: 600;
+    padding: 14px 16px; border-radius: 12px; margin-bottom: 8px;
+  }
+  .exercice small { display: block; font-weight: 400; color: var(--attenue);
+                    margin-top: 3px; font-size: 13px; }
+  .exercice .pastille {
+    flex: 0 0 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--bord); display: grid; place-items: center;
+    font-size: 13px; color: transparent;
+  }
+  .exercice.fait { border-color: var(--ok); }
+  .exercice.fait .pastille { background: var(--ok); border-color: var(--ok); color: #0f1319; }
+
+  /* Ecran de seance : plein ecran. La camera est le contenu, pas une vignette. */
+  #ecranSeance { position: fixed; inset: 0; background: #000; display: none; }
+  #ecranSeance.actif { display: block; }
+  /* `contain` et non `cover` : recadrer masquerait une partie de ce que le
+     modele analyse, donc on pourrait etre detecte hors de l'image affichee —
+     or c'est precisement le cadrage qu'on cherche a verifier a l'ecran. */
+  #canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .hautDeSeance {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 12px;
+    display: flex; gap: 8px;
+    background: linear-gradient(rgba(0,0,0,.65), transparent);
+  }
+  .hautDeSeance button { width: auto; padding: 9px 14px; font-size: 14px;
+                         background: rgba(0,0,0,.55); backdrop-filter: blur(6px); }
+  .basDeSeance {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(transparent, rgba(0,0,0,.8));
+  }
+  .compteur { font-size: 60px; font-weight: 700; line-height: 1;
+              font-variant-numeric: tabular-nums; }
+  .compteur span { font-size: 20px; color: #c3d0e0; font-weight: 600; }
+  .banc { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    color: #9fb3c8; margin-top: 8px; line-height: 1.5; white-space: pre; }
+  .banc b { color: #e8eef6; }
+  .nomExercice { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+  .consigne { color: var(--alerte); min-height: 22px; margin-bottom: 8px; font-weight: 600; }
+  .jauge { height: 8px; background: rgba(255,255,255,.2); border-radius: 4px; overflow: hidden; }
+  .jauge > div { height: 100%; background: var(--accent); width: 0; transition: width .15s; }
+  .panneauCamera {
+    position: absolute; inset: auto 12px 0 12px; bottom: 130px;
+    background: rgba(16,20,26,.94); border: 1px solid var(--bord);
+    border-radius: 14px; padding: 14px;
+  }
+
+  .probleme {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 12px; border: 1px solid var(--bord); border-radius: 10px;
+    margin-bottom: 8px; cursor: pointer;
+  }
+  .probleme.coche { border-color: var(--accent); background: rgba(75,155,255,.12); }
+  .probleme input { margin: 3px 0 0; accent-color: var(--accent); flex: 0 0 auto; }
+  .reussite { text-align: center; }
+  .reussite .grand { font-size: 42px; font-weight: 700; color: var(--ok); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<section id="ecranAccueil">
+  <h1>Coach de musculation</h1>
+  <p class="muet">Ta caméra compte tes répétitions et une voix te guide. Tout se passe sur ton appareil&nbsp;: aucune image n'est envoyée nulle part.</p>
+  <div class="carte">
+    <h3 style="margin-top:0">Ce qu'il te faut</h3>
+    <ul class="muet">
+      <li>De quoi caler ton téléphone ou ta tablette <b>à 2-3 mètres</b>, et surtout <b>à hauteur de poitrine</b> — idéalement entre la poitrine et le nombril. Posé au sol, il ne te verra pas en entier.</li>
+      <li>De la place pour bouger</li>
+      <li>Le son activé</li>
+      <li>Des haltères si tu en as — sinon, <b>fais semblant</b>, ça compte pareil</li>
+    </ul>
+  </div>
+  <div class="carte" id="avertissementWebview" hidden style="border-color:var(--alerte)">
+    <p style="margin:0"><b>Ouvre plutôt cette page dans Safari.</b></p>
+    <p class="muet" style="margin:6px 0 0">Tu l'as ouverte depuis une application (Messenger, Instagram…), dont le navigateur intégré peut couper le son. Menu «&nbsp;…&nbsp;» en haut à droite → «&nbsp;Ouvrir dans le navigateur&nbsp;».</p>
+  </div>
+  <button id="versExercices">Choisir un exercice</button>
+</section>
+
+<section id="ecranChoix" hidden>
+  <h1>Quel exercice&nbsp;?</h1>
+  <p class="muet">Prends-en un que tu sais faire — on teste le comptage, pas ta forme. Certains demandent des haltères&nbsp;: si tu n'en as pas, mime le mouvement, la détection ne verra pas la différence.</p>
+  <div class="carte" id="blocResume" hidden>
+    <p style="margin:0 0 10px"><b id="resumeCompte"></b></p>
+    <button class="secondaire" id="boutonResume">Copier le résumé pour Arthur</button>
+    <button class="discret" id="boutonOublier">Tout effacer et recommencer</button>
+  </div>
+  <div id="listeExercices"></div>
+</section>
+
+<section id="ecranFiche" hidden>
+  <h1 id="ficheNom"></h1>
+  <p class="muet" id="ficheDescription"></p>
+  <div class="carte">
+    <h3 style="margin-top:0">Installe-toi</h3>
+    <ul id="ficheMiseEnPlace"></ul>
+    <h3>Le mouvement</h3>
+    <ul id="ficheInstructions"></ul>
+  </div>
+  <label class="probleme" for="entoure" style="margin-bottom:12px">
+    <input type="checkbox" id="entoure">
+    <span>D'autres personnes passent dans le champ (salle de sport)<br>
+      <span class="muet">Le suivi devient plus prudent, mais l'image est moins fluide.</span></span>
+  </label>
+  <button id="boutonDemarrer">Démarrer</button>
+  <button class="secondaire" id="boutonTestSon" style="margin-top:8px">Tester le son</button>
+  <p class="muet" style="text-align:center" id="messageDemarrage">Le son s'active au premier clic&nbsp;: iOS l'exige. Monte le volume et vérifie avant de commencer.</p>
+  <button class="discret" id="retourChoix">Choisir un autre exercice</button>
+</section>
+
+<section id="ecranFin" hidden>
+  <div class="carte reussite">
+    <div class="grand" id="finChiffre"></div>
+    <p class="muet" id="finTexte"></p>
+  </div>
+  <div class="carte">
+    <h3 style="margin-top:0">Qu'est-ce qui n'allait pas&nbsp;?</h3>
+    <p class="muet">Coche ce que tu as remarqué. Si tout s'est bien passé, ne coche rien.</p>
+    <div id="listeProblemes"></div>
+    <h3>Autre chose&nbsp;?</h3>
+    <textarea id="commentaire" placeholder="Ce qui t'a gêné, surpris, ou manqué…"></textarea>
+  </div>
+  <button id="boutonEnregistrer">Enregistrer et revenir à la liste</button>
+  <p class="muet" style="text-align:center">La caméra reste ouverte entre deux exercices, mais ne transmet plus rien&nbsp;: c'est ce qui évite qu'on te redemande l'autorisation à chaque fois.</p>
+</section>
+
+</div>
+
+<section id="ecranSeance">
+  <canvas id="canvas"></canvas>
+  <div class="hautDeSeance">
+    <button class="secondaire" id="boutonArreter">Terminer</button>
+    <button class="secondaire" id="boutonCadrage">Cadrage</button>
+    <button class="secondaire" id="boutonCommencer">Commencer</button>
+  </div>
+  <div class="panneauCamera" id="panneauCamera" hidden>
+    <p class="muet" style="margin:0 0 8px">Pas visible en entier&nbsp;? La caméra arrière est bien plus large — et la voix te guide sans que tu voies l'écran.</p>
+    <select id="choixCamera"></select>
+    <div id="reglageZoom" hidden style="margin-top:10px">
+      <label class="muet" for="zoom">Zoom arrière</label>
+      <input type="range" id="zoom">
+    </div>
+    <p class="muet" id="infoCamera" style="margin:8px 0 0"></p>
+  </div>
+  <div class="basDeSeance">
+    <div class="nomExercice" id="nomExercice"></div>
+    <div class="consigne" id="consigne"></div>
+    <div class="compteur"><b id="compteur">0</b> <span id="compteurCible"></span></div>
+    <div class="banc" id="banc" hidden></div>
+    <div class="jauge" style="margin-top:10px"><div id="jauge"></div></div>
+  </div>
+</section>
+
+<script type="module">
+import { PoseLandmarker, FilesetResolver, DrawingUtils }
+  from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+import { construire_corps } from "../js/landmarks.js";
+import { points_utilises, consigne_de_cadrage } from "../js/cadrage.js";
+import { VerrouEcran } from "../js/veille.js";
+import { DETECTIONS } from "../js/detections.js";
+import { CompteurMouvement } from "../js/compteur.js";
+
+const VERSION_WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const MODELE = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
+
+const CIBLE_REPETITIONS = 10;
+const CIBLE_SECONDES = 30;
+// Meme garde-fou que INTERVALLE_MAX cote Python : un onglet
+// suspendu par iOS ne doit pas crediter d'un coup tout le temps ecoule.
+const INTERVALLE_MAX = 0.5;
+const STOCKAGE = "demo-coach-resultats";
+// Combien de personnes le modele cherche a l'image. Mesure a l'aveugle entre
+// les deux reglages, meme iPad et meme modele `full` : 36 images/s et un
+// squelette stable a une pose, contre 24 et un squelette qui saute a quatre.
+// Une seule pose est donc le defaut. En chercher plusieurs garde son sens en
+// salle de sport — le modele pourrait se fixer sur un passant — mais ca se
+// paie sur les deux tableaux, donc ca ne peut pas rester le cas courant.
+const POSES_SEUL = 1;
+const POSES_ENTOURE = 4;
+// Deplacement maximal du centre d'une personne entre deux images, en fraction
+// de l'image. Au-dela, ce n'est plus la meme personne qui bouge : c'est le
+// suivi qui a saute sur quelqu'un d'autre.
+const SAUT_MAX = 0.25;
+const SECONDES_EN_POSITION = 1;
+const DECOMPTE = 3;
+
+const PROBLEMES = [
+  ["comptage_oubli", "Il a oublié des répétitions"],
+  ["comptage_double", "Il en a compté en trop"],
+  ["cadrage", "Il ne me voyait pas bien / cadrage difficile"],
+  ["voix_tard", "La voix arrivait au mauvais moment"],
+  ["pas_de_son", "Je n'ai pas entendu de son"],
+  ["consignes", "Je n'ai pas compris ce qu'il fallait faire"],
+  ["modele", "J'aurais voulu voir le mouvement en image ou en vidéo"],
+  ["depart", "Il a compté pendant que je m'installais"],
+  ["lenteur", "C'était lent ou saccadé"],
+];
+
+let catalogue = [];
+let exercice = null;
+let pointsRequis = [];
+
+// Banc d'essai (`?banc=1`), pour repondre a « pourquoi ca ne compte pas ? »
+// autrement qu'en le devinant. Derriere un parametre d'URL comme `?poses=N` :
+// un testeur ordinaire n'a que faire de voir passer « milieu ».
+const banc = new URLSearchParams(location.search).has("banc");
+let tenuesParJeton = {};
+let jetonPrecedent = null;
+let poseLandmarker = null;
+let fileset = null;
+let posesDuDetecteur = null;
+let preparation = Promise.resolve();
+let posesVoulues = Math.min(
+  POSES_ENTOURE,
+  Math.max(1, Number(new URLSearchParams(location.search).get("poses")) || POSES_SEUL)
+);
+let flux = null;
+let video = null;
+let miroir = true;
+let compteur = new CompteurMouvement();
+let modeMaintien = null;
+let secondesTenues = 0;
+let dernierInstant = null;
+let dernierHorodatage = -1;
+let derniereValeur = 0;
+let enCours = false;
+let termine = false;
+let phase = "preparation";
+let debutImmobile = null;
+let finDecompte = null;
+let dernierDecompteDit = null;
+let bustePrecedent = null;
+let personnesVues = 0;
+let poseSuivie = null;
+
+// ----- resultats accumules -----
+// Conserves d'un exercice a l'autre et d'un rechargement a l'autre : le
+// testeur envoie un seul resume a la fin, pas un par exercice.
+
+function lireResultats() {
+  try {
+    return JSON.parse(localStorage.getItem(STOCKAGE)) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function ecrireResultats(resultats) {
+  try {
+    localStorage.setItem(STOCKAGE, JSON.stringify(resultats));
+  } catch {
+    // Navigation privee : les resultats vivront le temps de la session.
+  }
+}
+
+let resultats = lireResultats();
+
+// ----- fluidite, minute par minute -----
+// Un vieil iPad peut tenir quarante images par seconde la premiere minute et
+// s'effondrer a la cinquieme, quand la chauffe le fait ralentir : c'est la
+// forme de la courbe qui renseigne, pas une moyenne globale. La mesure est
+// donc decoupee par minute *de camera* — le temps pendant lequel des images
+// defilent, pas le temps ecoule — et cumulee d'un exercice a l'autre, la
+// chauffe ne se remettant pas a zero entre deux.
+//
+// Chaque minute tient dans un histogramme de 1 img/s de large plutot que dans
+// la liste de ses images. Trois raisons : c'est borne (61 nombres, que la
+// minute compte 300 images ou 3000), ca se relit apres un rechargement — un
+// vieil iPad ferme l'onglet des que la memoire manque, et c'est justement
+// l'appareil qu'on cherche a mesurer — et deux tranches se fusionnent en
+// s'additionnant, ce qu'une mediane deja calculee ne sait plus faire.
+
+const STOCKAGE_PERF = "demo-coach-performance";
+// Une case par image par seconde : la case i regroupe ce qui s'arrondit a i.
+// Arrondir plutot que tronquer n'est pas cosmetique — un flux parfaitement
+// regulier a 12 img/s mesure 11,9999 a cause du calcul en virgule flottante,
+// et une troncature le rangerait systematiquement une case trop bas.
+const NOMBRE_CASES = 61; // 0 a 59, puis 60 et plus
+// Au-dela, l'image n'a pas ete lente : la page a ete suspendue (ecran
+// verrouille, appel entrant, onglet passe en arriere-plan). La compter comme
+// une demi-image par seconde ferait passer une mise en veille pour un
+// effondrement thermique.
+const PAUSE_MINIMALE = 2;
+const PERIODE_ECRITURE = 15;
+
+function histogrammeVide() {
+  return { cases: new Array(NOMBRE_CASES).fill(0), images: 0, mini: null, pauses: 0 };
+}
+
+function ajouterImage(histo, fps) {
+  histo.cases[Math.min(NOMBRE_CASES - 1, Math.round(fps))] += 1;
+  histo.images += 1;
+  if (histo.mini === null || fps < histo.mini) histo.mini = fps;
+}
+
+// Le rang cherche tombe dans une case, dont on rend l'etiquette : la valeur
+// est donc vraie a 1 img/s pres.
+function centile(histo, part) {
+  const rang = Math.floor(histo.images * part);
+  let cumul = 0;
+  for (let i = 0; i < NOMBRE_CASES; i++) {
+    cumul += histo.cases[i];
+    if (cumul > rang) return i;
+  }
+  return 0;
+}
+
+function lirePerf() {
+  try {
+    const brut = JSON.parse(localStorage.getItem(STOCKAGE_PERF));
+    if (brut && brut.minutes) return brut;
+  } catch {
+    // Rien de mesure jusqu'ici, ou stockage indisponible.
+  }
+  return { secondes: 0, minutes: {} };
+}
+
+function ecrirePerf() {
+  perf.secondes = secondesCamera;
+  try {
+    localStorage.setItem(STOCKAGE_PERF, JSON.stringify(perf));
+  } catch {
+    // Comme pour les resultats : la mesure vivra le temps de la session.
+  }
+}
+
+let perf = lirePerf();
+let secondesCamera = perf.secondes ?? 0;
+let derniereEcriture = secondesCamera;
+let histoExercice = histogrammeVide();
+let derniereImage = null;
+
+function minuteCourante() {
+  const cle = String(Math.floor(secondesCamera / 60));
+  if (!perf.minutes[cle]) perf.minutes[cle] = histogrammeVide();
+  return perf.minutes[cle];
+}
+
+function mesurerImage(maintenant) {
+  if (derniereImage === null) {
+    derniereImage = maintenant;
+    return;
+  }
+  const delta = (maintenant - derniereImage) / 1000;
+  derniereImage = maintenant;
+
+  if (delta > PAUSE_MINIMALE) {
+    minuteCourante().pauses += 1;
+    histoExercice.pauses += 1;
+    return;
+  }
+
+  secondesCamera += delta;
+  const fps = 1 / delta;
+  ajouterImage(minuteCourante(), fps);
+  ajouterImage(histoExercice, fps);
+
+  // Ecrire a chaque image couterait plus cher que la detection ; ne rien
+  // ecrire avant la fin perdrait tout le jour ou l'appareil abandonne en
+  // pleine serie, c'est-a-dire le seul jour ou la mesure sert vraiment.
+  if (secondesCamera - derniereEcriture >= PERIODE_ECRITURE) {
+    derniereEcriture = secondesCamera;
+    ecrirePerf();
+  }
+}
+
+function resumerHistogramme(histo) {
+  if (!histo || !histo.images) return null;
+  return {
+    images: histo.images,
+    median: centile(histo, 0.5),
+    p10: centile(histo, 0.1),
+    mini: Math.round(histo.mini),
+    pauses: histo.pauses,
+  };
+}
+
+function lignesParMinute() {
+  return Object.keys(perf.minutes)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map((minute) => {
+      const r = resumerHistogramme(perf.minutes[String(minute)]);
+      if (!r) return null;
+      const pauses = r.pauses ? `, ${r.pauses} interruption(s)` : "";
+      const alerte = r.p10 < 10 ? "   <-- lent" : "";
+      // Le nombre d'images est affiche parce que la derniere minute est
+      // souvent tronquee : sans lui, trois images a 40 img/s ressemblent a
+      // une minute pleine.
+      return `  min ${minute + 1} : median ${r.median} / p10 ${r.p10} / mini ${r.mini}`
+        + ` (${r.images} images${pauses})${alerte}`;
+    })
+    .filter(Boolean);
+}
+
+function montrer(id) {
+  for (const section of document.querySelectorAll("section")) {
+    if (section.id === "ecranSeance") {
+      section.classList.toggle("actif", id === "ecranSeance");
+    } else {
+      section.hidden = section.id !== id;
+    }
+  }
+  document.querySelector(".page").hidden = id === "ecranSeance";
+  window.scrollTo(0, 0);
+}
+
+// ----- audio -----
+
+let contexteAudio = null;
+const sons = new Map();
+
+async function debloquerAudio() {
+  if (!contexteAudio) {
+    contexteAudio = new (window.AudioContext || window.webkitAudioContext)();
+    // iOS suspend un contexte audio a la moindre reconfiguration de session
+    // — notamment a l'ouverture de la camera. Sans cette reprise
+    // automatique, tout devient muet sans qu'aucune erreur ne soit levee.
+    contexteAudio.addEventListener("statechange", () => {
+      if (contexteAudio.state === "suspended") contexteAudio.resume().catch(() => {});
+    });
+  }
+  const vide = contexteAudio.createBuffer(1, 1, 22050);
+  const source = contexteAudio.createBufferSource();
+  source.buffer = vide;
+  source.connect(contexteAudio.destination);
+  source.start(0);
+  await contexteAudio.resume();
+}
+
+function navigateurIntegre() {
+  // Un lien ouvert depuis Messenger, Instagram ou TikTok s'affiche dans une
+  // webview integree, aux capacites reduites — l'utilisateur croit pourtant
+  // etre dans son navigateur.
+  const ua = navigator.userAgent;
+  for (const marque of ["FBAN", "FBAV", "Instagram", "Line/", "TikTok", "Twitter"]) {
+    if (ua.includes(marque)) return marque;
+  }
+  return null;
+}
+
+function diagnostic() {
+  return {
+    audio: contexteAudio?.state ?? "absent",
+    sons: sons.size,
+    poses: posesVoulues,
+    webview: navigateurIntegre(),
+  };
+}
+
+async function chargerSons() {
+  const noms = ["bip", ...Array.from({ length: 20 }, (_, i) => String(i + 1))];
+  await Promise.all(
+    noms.map(async (nom) => {
+      try {
+        const reponse = await fetch(`sons/${nom}.wav`);
+        const donnees = await reponse.arrayBuffer();
+        sons.set(nom, await contexteAudio.decodeAudioData(donnees));
+      } catch {
+        // Un son absent ne doit jamais interrompre une seance : on se tait.
+      }
+    })
+  );
+}
+
+function jouer(nom) {
+  const buffer = sons.get(String(nom));
+  if (!buffer || !contexteAudio) return;
+  const source = contexteAudio.createBufferSource();
+  source.buffer = buffer;
+  source.connect(contexteAudio.destination);
+  source.start(0);
+}
+
+// ----- catalogue -----
+
+async function chargerCatalogue() {
+  catalogue = await (await fetch("catalogue.json")).json();
+  dessinerListe();
+}
+
+function dessinerListe() {
+  const liste = document.getElementById("listeExercices");
+  liste.innerHTML = "";
+  for (const fiche of catalogue) {
+    if (!DETECTIONS[fiche.detection]) continue;
+    const fait = Boolean(resultats[fiche.nom]);
+    const bouton = document.createElement("button");
+    bouton.className = `exercice${fait ? " fait" : ""}`;
+    bouton.innerHTML =
+      `<span class="pastille">✓</span>` +
+      `<span>${fiche.nom}<small>${fiche.description ?? ""}</small></span>`;
+    bouton.addEventListener("click", () => ouvrirFiche(fiche));
+    liste.appendChild(bouton);
+  }
+  majResume();
+}
+
+function majResume() {
+  const nombre = Object.keys(resultats).length;
+  document.getElementById("blocResume").hidden = nombre === 0;
+  document.getElementById("resumeCompte").textContent =
+    nombre === 1 ? "1 exercice testé" : `${nombre} exercices testés`;
+}
+
+function ouvrirFiche(fiche) {
+  exercice = fiche;
+  pointsRequis = points_utilises(DETECTIONS[fiche.detection]);
+  document.getElementById("ficheNom").textContent = fiche.nom;
+  document.getElementById("ficheDescription").textContent = fiche.description ?? "";
+  remplir("ficheMiseEnPlace", fiche.mise_en_place);
+  remplir("ficheInstructions", fiche.instructions);
+  const bouton = document.getElementById("boutonDemarrer");
+  bouton.disabled = false;
+  bouton.textContent = "Démarrer";
+  montrer("ecranFiche");
+  // En tache de fond : un echec ici n'a pas a etre signale, `demarrer` le
+  // retentera et parlera lui-meme.
+  preparerDetecteur().catch(() => {});
+}
+
+function remplir(id, elements) {
+  const ul = document.getElementById(id);
+  ul.innerHTML = "";
+  for (const texte of elements ?? []) {
+    const li = document.createElement("li");
+    li.textContent = texte;
+    ul.appendChild(li);
+  }
+}
+
+// ----- camera -----
+
+async function ouvrirCamera(deviceId) {
+  // Changer de camera est le seul cas ou l'on ferme vraiment la precedente.
+  libererCamera();
+
+  // Resolution demandee en 4:3 plutot qu'en 16:9 : sur un telephone pose
+  // debout, c'est la hauteur qui manque pour cadrer un corps entier, et le
+  // 16:9 rogne precisement le haut et le bas.
+  const contrainte = deviceId
+    ? { deviceId: { exact: deviceId } }
+    : { facingMode: "user" };
+  contrainte.width = { ideal: 1920 };
+  contrainte.height = { ideal: 1440 };
+
+  flux = await navigator.mediaDevices.getUserMedia({ video: contrainte, audio: false });
+
+  if (!video) {
+    video = document.createElement("video");
+    video.playsInline = true;
+    video.muted = true;
+  }
+  video.srcObject = flux;
+  await video.play();
+
+  const piste = flux.getVideoTracks()[0];
+  const reglages = piste.getSettings();
+
+  // Le miroir est une convention d'affichage du selfie ; sur une camera
+  // arriere il desoriente. Il ne touche que le dessin, jamais l'image
+  // envoyee au modele — la detection y est donc insensible.
+  miroir = reglages.facingMode !== "environment";
+
+  configurerZoom(piste);
+  document.getElementById("infoCamera").textContent =
+    `${reglages.width}x${reglages.height}` +
+    (reglages.facingMode ? ` — ${reglages.facingMode}` : "");
+}
+
+function configurerZoom(piste) {
+  const bloc = document.getElementById("reglageZoom");
+  const curseur = document.getElementById("zoom");
+  const capacites = piste.getCapabilities?.() ?? {};
+
+  if (!capacites.zoom) {
+    bloc.hidden = true;
+    return;
+  }
+  bloc.hidden = false;
+  curseur.min = capacites.zoom.min;
+  curseur.max = capacites.zoom.max;
+  curseur.step = capacites.zoom.step ?? 0.1;
+  curseur.value = piste.getSettings().zoom ?? capacites.zoom.min;
+  curseur.oninput = () => {
+    piste.applyConstraints({ advanced: [{ zoom: Number(curseur.value) }] }).catch(() => {});
+  };
+}
+
+async function listerCameras() {
+  // Les libelles ne sont renseignes qu'une fois l'autorisation accordee :
+  // enumerer avant le premier getUserMedia ne rendrait que des entrees
+  // anonymes.
+  const appareils = await navigator.mediaDevices.enumerateDevices();
+  const cameras = appareils.filter((a) => a.kind === "videoinput");
+  const select = document.getElementById("choixCamera");
+  const actuelle = flux?.getVideoTracks()[0]?.getSettings()?.deviceId;
+
+  select.innerHTML = "";
+  cameras.forEach((camera, index) => {
+    const option = document.createElement("option");
+    option.value = camera.deviceId;
+    option.textContent = camera.label || `Caméra ${index + 1}`;
+    option.selected = camera.deviceId === actuelle;
+    select.appendChild(option);
+  });
+  select.hidden = cameras.length < 2;
+}
+
+// ----- seance -----
+
+// Le verrou est repris a chaque retour au premier plan : le systeme le
+// relache des que la page devient invisible, et il ne revient pas seul.
+const verrouEcran = new VerrouEcran();
+
+async function demarrer() {
+  const bouton = document.getElementById("boutonDemarrer");
+  const message = document.getElementById("messageDemarrage");
+  bouton.disabled = true;
+  bouton.textContent = "Préparation…";
+
+  try {
+    await debloquerAudio();
+    if (cameraVivante()) await reprendreCamera();
+    else await ouvrirCamera();
+    // L'ouverture de la camera vient peut-etre de suspendre le contexte :
+    // on le relance apres, pas avant.
+    await contexteAudio.resume().catch(() => {});
+    listerCameras();
+
+    await preparerDetecteur();
+
+    verrouEcran.tenir(flux);
+
+    chargerSons();
+    reinitialiser();
+    document.getElementById("panneauCamera").hidden = true;
+    montrer("ecranSeance");
+    enCours = true;
+    requestAnimationFrame(boucle);
+  } catch (erreur) {
+    message.textContent = `Impossible de démarrer : ${erreur.message}`;
+    bouton.disabled = false;
+    bouton.textContent = "Réessayer";
+  }
+}
+
+// Le modele pese une dizaine de mega-octets et met une quinzaine de secondes
+// a arriver sur une connexion moyenne. L'attendre au clic sur « Demarrer »
+// donne un bouton qui ne repond pas ; le fabriquer des l'ouverture de la fiche
+// recouvre cette attente par le temps de lecture des consignes. Pas plus tot :
+// allouer le detecteur pour quelqu'un qui ne fait que parcourir la liste
+// couterait de la memoire sur les appareils qui en manquent le plus.
+// Les appels s'enchainent au lieu de se chevaucher : le prechargement de la
+// fiche et un clic rapide sur « Demarrer » fabriqueraient sinon deux
+// detecteurs, dont un jamais libere. Le second appel trouve le travail deja
+// fait et rend la main tout de suite.
+function preparerDetecteur() {
+  preparation = preparation
+    .catch(() => {})
+    .then(async () => {
+      if (!fileset) fileset = await FilesetResolver.forVisionTasks(VERSION_WASM);
+      // Lu avant l'attente : la case a cocher peut basculer pendant la
+      // fabrication, et c'est ce qui a ete construit qu'on enregistre.
+      const voulues = posesVoulues;
+      if (poseLandmarker && posesDuDetecteur === voulues) return poseLandmarker;
+      const detecteur = await creerDetecteur(fileset, voulues);
+      poseLandmarker?.close();
+      poseLandmarker = detecteur;
+      posesDuDetecteur = voulues;
+      return detecteur;
+    });
+  return preparation;
+}
+
+async function creerDetecteur(fileset, poses) {
+  const options = {
+    baseOptions: { modelAssetPath: MODELE, delegate: "GPU" },
+    runningMode: "VIDEO",
+    // Plusieurs poses en salle de sport : n'en chercher qu'une laisserait le
+    // modele designer lui-meme un sujet, et changer d'avis d'une image a
+    // l'autre — le compteur suivrait alternativement deux personnes.
+    numPoses: poses,
+  };
+  try {
+    return await PoseLandmarker.createFromOptions(fileset, options);
+  } catch {
+    options.baseOptions.delegate = "CPU";
+    return await PoseLandmarker.createFromOptions(fileset, options);
+  }
+}
+
+function reinitialiser() {
+  compteur = new CompteurMouvement();
+  modeMaintien = null;
+  secondesTenues = 0;
+  dernierInstant = null;
+  derniereValeur = 0;
+  termine = false;
+  phase = "preparation";
+  debutImmobile = null;
+  finDecompte = null;
+  dernierDecompteDit = null;
+  bustePrecedent = null;
+  poseSuivie = null;
+  histoExercice = histogrammeVide();
+  derniereImage = null;
+  document.getElementById("compteur").textContent = "0";
+  document.getElementById("jauge").style.width = "0%";
+  document.getElementById("compteurCible").textContent = "";
+  document.getElementById("boutonCommencer").hidden = false;
+  document.getElementById("nomExercice").textContent = exercice.nom;
+  afficherConsigne("Mets-toi en position");
+}
+
+function boucle() {
+  if (!enCours) return;
+  const canvas = document.getElementById("canvas");
+
+  if (!video || video.readyState < 2) {
+    requestAnimationFrame(boucle);
+    return;
+  }
+  if (canvas.width !== video.videoWidth) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+  }
+
+  const maintenant = performance.now();
+  mesurerImage(maintenant);
+  const horodatage = Math.max(maintenant, dernierHorodatage + 1);
+  dernierHorodatage = horodatage;
+
+  const resultat = poseLandmarker.detectForVideo(video, horodatage);
+  const landmarks = choisirPose(resultat.landmarks);
+  personnesVues = resultat.landmarks?.length ?? 0;
+
+  const ctx = canvas.getContext("2d");
+  ctx.save();
+  if (miroir) {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  if (landmarks) {
+    const utils = new DrawingUtils(ctx);
+    utils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS,
+      { color: "#4b9bff", lineWidth: 4 });
+    utils.drawLandmarks(landmarks, { color: "#e8eef6", radius: 3 });
+  }
+  ctx.restore();
+
+  if (!landmarks) {
+    afficherConsigne("Recule un peu — je ne te vois pas en entier");
+    dernierInstant = null;
+    debutImmobile = null;
+  } else if (!termine) {
+    traiter(construire_corps(landmarks), maintenant / 1000);
+  }
+
+  requestAnimationFrame(boucle);
+}
+
+function repere(pose) {
+  const xs = pose.map((p) => p.x);
+  const ys = pose.map((p) => p.y);
+  const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
+  const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
+  return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, surface: (x1 - x0) * (y1 - y0) };
+}
+
+function choisirPose(poses) {
+  if (!poses?.length) return null;
+
+  const reperes = poses.map(repere);
+
+  // Au premier choix, la personne qui s'entraine est celle qui fait face a la
+  // camera, donc la plus grande a l'image.
+  let choisi = 0;
+  for (let i = 1; i < reperes.length; i++) {
+    if (reperes[i].surface > reperes[choisi].surface) choisi = i;
+  }
+
+  // Ensuite on suit *la meme*, en reprenant celle qui est la plus proche de la
+  // derniere retenue. Reprendre la plus grande a chaque image semblait sur,
+  // mais ne l'est pas : deux candidats de tailles voisines echangent leur rang
+  // d'une image a l'autre, le squelette saute d'un corps a l'autre, et un
+  // aller-retour suffit a faire compter une repetition qui n'existe pas.
+  // Au-dela de SAUT_MAX, on considere le sujet perdu et on repart sur la plus
+  // grande — sinon un suivi errone se perpetuerait.
+  if (poseSuivie) {
+    let plusProche = null;
+    let distance = Infinity;
+    for (let i = 0; i < reperes.length; i++) {
+      const d = Math.hypot(reperes[i].x - poseSuivie.x, reperes[i].y - poseSuivie.y);
+      if (d < distance) {
+        distance = d;
+        plusProche = i;
+      }
+    }
+    if (distance <= SAUT_MAX) choisi = plusProche;
+  }
+
+  poseSuivie = reperes[choisi];
+  return poses[choisi];
+}
+
+function afficherConsigne(texte) {
+  document.getElementById("consigne").textContent = texte;
+}
+
+// Le temps passe dans chaque jeton, et non le nombre d'images : c'est du
+// temps que parle quelqu'un qui teste (« je suis reste en bas deux secondes
+// et rien »), et une cadence qui varie de 16 a 36 images/s rendrait un
+// comptage d'images incomparable d'un appareil a l'autre.
+function mesurerBanc(jeton, instant) {
+  if (jetonPrecedent !== null) {
+    const delta = Math.min(instant - jetonPrecedent.instant, INTERVALLE_MAX);
+    tenuesParJeton[jetonPrecedent.jeton] = (tenuesParJeton[jetonPrecedent.jeton] ?? 0) + delta;
+  }
+  jetonPrecedent = { jeton, instant };
+
+  const total = Object.values(tenuesParJeton).reduce((a, b) => a + b, 0);
+  const parts = Object.entries(tenuesParJeton)
+    .sort((a, b) => b[1] - a[1])
+    .map(([nom, t]) => `${nom} ${Math.round((t / total) * 100)}%`)
+    .join("  ");
+
+  // L'etat du compteur est la vraie reponse : un squat filme avec une barre
+  // reste sur « fin » et ne s'arme jamais, donc ne compte rien — ce que le
+  // seul jeton courant ne dit pas.
+  const arme = modeMaintien
+    ? ""
+    : `
+  compteur ${compteur.stage === "debut" ? "armé" : compteur.stage === "fin" ? "désarmé (attend « debut »)" : "jamais armé"}`;
+
+  document.getElementById("banc").innerHTML = `  <b>${jeton}</b>${arme}
+  ${parts}`;
+}
+
+function traiter(corps, instant) {
+  const jeton = DETECTIONS[exercice.detection](corps);
+  if (banc && phase === "comptage") mesurerBanc(jeton, instant);
+
+  // Le mode se deduit du jeton plutot que d'une metadonnee : une detection
+  // qui parle de "maintien" mesure un temps, les autres comptent des
+  // repetitions. Rien a declarer, donc rien qui puisse mentir.
+  if (modeMaintien === null) {
+    modeMaintien = jeton === "maintien" || jeton === "repos";
+    document.getElementById("compteurCible").textContent =
+      modeMaintien ? `secondes / ${CIBLE_SECONDES}` : `/ ${CIBLE_REPETITIONS}`;
+  }
+
+  if (phase !== "comptage") {
+    preparer(corps, instant);
+    return;
+  }
+
+  if (modeMaintien) {
+    if (jeton === "maintien") {
+      if (dernierInstant !== null) {
+        secondesTenues += Math.min(instant - dernierInstant, INTERVALLE_MAX);
+      }
+      dernierInstant = instant;
+    } else {
+      dernierInstant = null;
+      document.getElementById("consigne").textContent = "Reprends la position";
+    }
+    majAffichage(Math.floor(secondesTenues), CIBLE_SECONDES);
+  } else {
+    dernierInstant = null;
+    const [, repetitions] = compteur.mettre_a_jour(jeton);
+    majAffichage(repetitions, CIBLE_REPETITIONS);
+  }
+}
+
+// Deplacement du buste, en unites d'image par seconde, sous lequel on
+// considere la personne installee.
+const SEUIL_IMMOBILE = 0.25;
+
+function preparer(corps, instant) {
+  if (phase === "decompte") {
+    const restant = Math.ceil(finDecompte - instant);
+    if (restant <= 0) {
+      lancerComptage();
+      return;
+    }
+    if (restant !== dernierDecompteDit) {
+      dernierDecompteDit = restant;
+      jouer("bip");
+    }
+    afficherConsigne(`Ça démarre dans ${restant}…`);
+    return;
+  }
+
+  const foule = personnesVues > 1 ? ` (${personnesVues} personnes vues, je suis la plus proche)` : "";
+
+  // Le cadrage passe avant l'immobilite : quelqu'un de parfaitement immobile
+  // hors champ est « pret » au sens de mesurerMouvement, et c'est exactement
+  // le cas ou l'exercice entier se joue pour zero repetition.
+  const cadrage = consigne_de_cadrage(corps, pointsRequis);
+  if (cadrage) {
+    debutImmobile = null;
+    afficherConsigne(cadrage + foule);
+    return;
+  }
+
+  const bouge = mesurerMouvement(corps, instant);
+
+  if (bouge === null || bouge > SEUIL_IMMOBILE) {
+    debutImmobile = null;
+    afficherConsigne(`Mets-toi en position${foule}`);
+    return;
+  }
+
+  if (debutImmobile === null) debutImmobile = instant;
+  if (instant - debutImmobile >= SECONDES_EN_POSITION) {
+    phase = "decompte";
+    finDecompte = instant + DECOMPTE;
+    dernierDecompteDit = null;
+  } else {
+    afficherConsigne(`Ne bouge plus${foule}`);
+  }
+}
+
+function mesurerMouvement(corps, instant) {
+  // Le buste seulement : poignets et chevilles bougent encore quand
+  // quelqu'un est pret, et feraient echouer la detection d'immobilite.
+  const points = [
+    corps.epaule_gauche, corps.epaule_droite,
+    corps.hanche_gauche, corps.hanche_droite,
+  ];
+  const actuel = points.map((p) => ({ x: p.x, y: p.y }));
+
+  if (!bustePrecedent || bustePrecedent.instant === instant) {
+    bustePrecedent = { points: actuel, instant };
+    return null;
+  }
+
+  const ecoule = instant - bustePrecedent.instant;
+  const total = actuel.reduce((somme, p, i) => {
+    const avant = bustePrecedent.points[i];
+    return somme + Math.hypot(p.x - avant.x, p.y - avant.y);
+  }, 0);
+  bustePrecedent = { points: actuel, instant };
+
+  return total / actuel.length / ecoule;
+}
+
+function lancerComptage() {
+  phase = "comptage";
+  compteur.reset();
+  tenuesParJeton = {};
+  jetonPrecedent = null;
+  document.getElementById("banc").hidden = !banc;
+  secondesTenues = 0;
+  dernierInstant = null;
+  derniereValeur = 0;
+  document.getElementById("compteur").textContent = "0";
+  document.getElementById("boutonCommencer").hidden = true;
+  afficherConsigne("");
+  jouer("bip");
+}
+
+function majAffichage(valeur, cible) {
+  if (valeur !== derniereValeur) {
+    derniereValeur = valeur;
+    document.getElementById("compteur").textContent = valeur;
+    if (valeur > 0) jouer(valeur <= 20 ? valeur : "bip");
+  }
+  document.getElementById("jauge").style.width =
+    `${Math.min((valeur / cible) * 100, 100)}%`;
+
+  if (valeur >= cible && !termine) {
+    termine = true;
+    jouer("bip");
+    setTimeout(() => terminer(true), 700);
+  }
+}
+
+function terminer(objectifAtteint) {
+  arreterCapture();
+  ecrirePerf();
+  document.getElementById("finChiffre").textContent =
+    modeMaintien ? `${derniereValeur} s` : `${derniereValeur} répétitions`;
+  document.getElementById("finTexte").textContent =
+    `${exercice.nom} — ${objectifAtteint ? "objectif atteint" : "arrêté avant la fin"}.`;
+  dessinerProblemes();
+  document.getElementById("commentaire").value = "";
+  montrer("ecranFin");
+}
+
+function dessinerProblemes() {
+  const conteneur = document.getElementById("listeProblemes");
+  conteneur.innerHTML = "";
+  for (const [cle, libelle] of PROBLEMES) {
+    const ligne = document.createElement("label");
+    ligne.className = "probleme";
+    ligne.innerHTML = `<input type="checkbox" value="${cle}"><span>${libelle}</span>`;
+    const case_ = ligne.querySelector("input");
+    case_.addEventListener("change", () =>
+      ligne.classList.toggle("coche", case_.checked)
+    );
+    conteneur.appendChild(ligne);
+  }
+}
+
+// La camera est ouverte une fois et gardee d'un exercice a l'autre, mise en
+// sourdine entre les deux plutot que fermee. Chaque `getUserMedia` est une
+// demande d'autorisation potentielle : sur une session de 23 exercices, Safari
+// a redemande l'acces trois fois a un testeur, en plein milieu de son test.
+// Une piste desactivee ne livre plus aucune image — rien n'est donc analyse ni
+// affiche pendant les temps morts — mais reste ouverte, donc reutilisable sans
+// nouvelle demande. Le prix est que le voyant de la camera reste allume entre
+// deux exercices : c'est annonce a l'ecran de fin plutot que subi.
+function arreterCapture() {
+  enCours = false;
+  for (const piste of flux?.getTracks() ?? []) piste.enabled = false;
+  verrouEcran.relacher();
+}
+
+function cameraVivante() {
+  return flux?.getVideoTracks()[0]?.readyState === "live";
+}
+
+async function reprendreCamera() {
+  for (const piste of flux.getTracks()) piste.enabled = true;
+  // iOS met la video en pause quand la page passe en arriere-plan ; la
+  // relancer ne coute rien quand elle tourne deja.
+  await video.play().catch(() => {});
+}
+
+function libererCamera() {
+  for (const piste of flux?.getTracks() ?? []) piste.stop();
+  flux = null;
+}
+
+// Quitter la page rend la camera pour de bon : la garder ouverte n'a de sens
+// que le temps d'une session de test.
+window.addEventListener("pagehide", libererCamera);
+
+// ----- navigation -----
+
+document.getElementById("versExercices")
+  .addEventListener("click", () => montrer("ecranChoix"));
+document.getElementById("retourChoix")
+  .addEventListener("click", () => montrer("ecranChoix"));
+document.getElementById("boutonDemarrer").addEventListener("click", demarrer);
+
+document.getElementById("entoure").addEventListener("change", (e) => {
+  posesVoulues = e.target.checked ? POSES_ENTOURE : POSES_SEUL;
+  preparerDetecteur().catch(() => {});
+});
+document.getElementById("entoure").checked = posesVoulues > POSES_SEUL;
+
+document.getElementById("boutonTestSon").addEventListener("click", async (e) => {
+  const bouton = e.currentTarget;
+  await debloquerAudio();
+  if (!sons.size) await chargerSons();
+  jouer("bip");
+  const d = diagnostic();
+  bouton.textContent = d.audio === "running" && d.sons
+    ? "Tu as entendu un bip ? Sinon, monte le volume"
+    : `Son indisponible (${d.audio}, ${d.sons} sons)`;
+});
+
+document.getElementById("boutonCadrage").addEventListener("click", () => {
+  const panneau = document.getElementById("panneauCamera");
+  panneau.hidden = !panneau.hidden;
+});
+
+document.getElementById("choixCamera").addEventListener("change", async (e) => {
+  try {
+    await ouvrirCamera(e.target.value);
+  } catch (erreur) {
+    document.getElementById("infoCamera").textContent =
+      `Caméra indisponible : ${erreur.message}`;
+  }
+});
+
+// Filet de securite : personne ne doit rester bloque en preparation parce
+// que la detection d'immobilite ne se declenche pas chez lui.
+document.getElementById("boutonCommencer")
+  .addEventListener("click", () => { if (phase !== "comptage") lancerComptage(); });
+
+document.getElementById("boutonArreter")
+  .addEventListener("click", () => terminer(false));
+
+document.getElementById("boutonEnregistrer").addEventListener("click", () => {
+  const problemes = [...document.querySelectorAll("#listeProblemes input:checked")]
+    .map((c) => c.value);
+  resultats[exercice.nom] = {
+    valeur: derniereValeur,
+    unite: modeMaintien ? "s" : "reps",
+    problemes,
+    commentaire: document.getElementById("commentaire").value.trim(),
+    // Mesure plutot que deduction : « je n'ai pas entendu de son » ne dit pas
+    // si le contexte audio tournait, si les fichiers etaient charges, ni si
+    // la page s'affichait dans une webview bridee.
+    technique: diagnostic(),
+    fluidite: resumerHistogramme(histoExercice),
+  };
+  ecrireResultats(resultats);
+  dessinerListe();
+  montrer("ecranChoix");
+});
+
+document.getElementById("boutonResume").addEventListener("click", async () => {
+  const libelles = Object.fromEntries(PROBLEMES);
+  const lignes = Object.entries(resultats).map(([nom, r]) => {
+    const soucis = r.problemes.length
+      ? r.problemes.map((p) => libelles[p]).join(" ; ")
+      : "rien à signaler";
+    const commentaire = r.commentaire ? `\n    « ${r.commentaire} »` : "";
+    const t = r.technique;
+    const f = r.fluidite;
+    const fluidite = f
+      ? `\n    [${f.median} img/s median, p10 ${f.p10}, mini ${f.mini}${f.pauses ? `, ${f.pauses} interruption(s)` : ""}]`
+      : "";
+    const technique = t ? `\n    [audio ${t.audio}, ${t.sons} sons, ${t.poses ?? "?"} poses${t.webview ? `, webview ${t.webview}` : ""}]` : "";
+    return `- ${nom} : ${r.valeur} ${r.unite} — ${soucis}${commentaire}${technique}${fluidite}`;
+  });
+
+  const minutes = lignesParMinute();
+
+  const resume = [
+    `Test de la démo — ${Object.keys(resultats).length} exercice(s)`,
+    `Appareil : ${navigator.userAgent}`,
+    `Navigateur intégré : ${navigateurIntegre() ?? "non"}`,
+    "",
+    ...lignes,
+    "",
+    `Fluidité, minute par minute de caméra (${Math.round(secondesCamera)} s au total, à 1 img/s près)`,
+    ...(minutes.length ? minutes : ["  aucune mesure"]),
+  ].join("\n");
+
+  const bouton = document.getElementById("boutonResume");
+  try {
+    await navigator.clipboard.writeText(resume);
+    bouton.textContent = "Résumé copié — envoie-le à Arthur";
+  } catch {
+    prompt("Copie ce texte et envoie-le :", resume);
+  }
+});
+
+document.getElementById("boutonOublier").addEventListener("click", () => {
+  if (!confirm("Effacer tous les résultats de ce test ?")) return;
+  resultats = {};
+  ecrireResultats(resultats);
+  perf = { secondes: 0, minutes: {} };
+  secondesCamera = 0;
+  derniereEcriture = 0;
+  histoExercice = histogrammeVide();
+  ecrirePerf();
+  dessinerListe();
+  document.getElementById("boutonResume").textContent = "Copier le résumé pour Arthur";
+});
+
+document.getElementById("avertissementWebview").hidden = !navigateurIntegre();
+
+chargerCatalogue();
+</script>
+</body>
+</html>

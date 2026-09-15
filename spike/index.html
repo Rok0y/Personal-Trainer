@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spike MediaPipe — validation iPad</title>
+<style>
+  :root {
+    --fond: #10141a;
+    --carte: #1a212b;
+    --bord: #2b3644;
+    --texte: #e6edf5;
+    --attenue: #8b9bb0;
+    --ok: #3fbf7f;
+    --alerte: #e0a33e;
+    --erreur: #e0574e;
+    --accent: #4b9bff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--fond);
+    color: var(--texte);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    padding: 12px;
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+  }
+  h1 { font-size: 16px; margin: 0 0 12px; font-weight: 600; }
+  .carte {
+    background: var(--carte);
+    border: 1px solid var(--bord);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  #zoneVideo { position: relative; line-height: 0; }
+  video { display: none; }
+  canvas { width: 100%; height: auto; border-radius: 10px; background: #000; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    padding: 14px 18px;
+    border-radius: 10px;
+    border: 0;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    width: 100%;
+  }
+  button.secondaire { background: var(--bord); color: var(--texte); }
+  button:disabled { opacity: .5; }
+  label { display: block; margin-bottom: 10px; color: var(--attenue); font-size: 13px; }
+  select {
+    font: inherit; width: 100%; margin-top: 4px; padding: 10px;
+    background: var(--fond); color: var(--texte);
+    border: 1px solid var(--bord); border-radius: 8px;
+  }
+  .grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; }
+  .stat { background: var(--fond); border-radius: 8px; padding: 8px 10px; }
+  .stat b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--attenue); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .compteur { font-size: 56px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+  .etat { text-align: center; color: var(--attenue); }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 5px 6px; border-bottom: 1px solid var(--bord); font-size: 13px; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--attenue); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+  .ok { color: var(--ok); } .alerte { color: var(--alerte); } .erreur { color: var(--erreur); }
+  .jauge { height: 6px; background: var(--fond); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .jauge > div { height: 100%; background: var(--accent); width: 0; transition: width .1s linear; }
+  #journal { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--attenue); white-space: pre-wrap; max-height: 140px; overflow-y: auto; }
+  .muet { color: var(--attenue); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>Spike MediaPipe — validation iPad / iPhone</h1>
+
+<div class="carte" id="cartePreparation">
+  <label>Exercice
+    <select id="choixExercice">
+      <option value="curl">Curl biceps droit</option>
+      <option value="squat">Squat</option>
+    </select>
+  </label>
+  <label>Modèle
+    <select id="choixModele">
+      <option value="full">full (celui du desktop)</option>
+      <option value="lite">lite</option>
+    </select>
+  </label>
+  <label>Image
+    <select id="choixMiroir">
+      <option value="1">Miroir (comme un selfie)</option>
+      <option value="0">Non miroir</option>
+    </select>
+  </label>
+  <button id="boutonDemarrer">Démarrer</button>
+  <p class="muet" id="messagePreparation">Le son et le maintien de l'écran s'activent à ce clic : iOS l'exige.</p>
+</div>
+
+<div class="carte" id="zoneVideo" hidden>
+  <video id="video" playsinline muted autoplay></video>
+  <canvas id="canvas"></canvas>
+</div>
+
+<div class="carte" id="carteCompteur" hidden>
+  <div class="compteur" id="compteur">0</div>
+  <div class="etat" id="etatDetection">en attente</div>
+  <div class="jauge"><div id="jaugeBrasX"></div></div>
+  <p class="muet" style="text-align:center;margin:8px 0 0" id="etatBrasX">Bras en X : croise les avant-bras 1,5 s</p>
+</div>
+
+<div class="carte" id="carteStats" hidden>
+  <div class="grille">
+    <div class="stat"><b id="statFps">—</b><span>fps instant</span></div>
+    <div class="stat"><b id="statMediane">—</b><span>fps médian</span></div>
+    <div class="stat"><b id="statP10">—</b><span>fps p10</span></div>
+    <div class="stat"><b id="statInference">—</b><span>inférence ms</span></div>
+    <div class="stat"><b id="statVisibilite">—</b><span>visibilité</span></div>
+    <div class="stat"><b id="statDuree">—</b><span>durée</span></div>
+  </div>
+</div>
+
+<div class="carte" id="carteMinutes" hidden>
+  <table>
+    <thead><tr><th>Minute</th><th>fps médian</th><th>fps p10</th><th>fps min</th></tr></thead>
+    <tbody id="corpsMinutes"></tbody>
+  </table>
+  <p class="muet">Le seuil critique est ici : aucun effondrement sous 8 fps après la 5ᵉ minute.</p>
+</div>
+
+<div class="carte" id="carteMiroir" hidden>
+  <p class="muet" style="margin-top:0">Contrôle miroir — lève ta main <b>droite</b> et vérifie que c'est bien « droit » qui s'allume.</p>
+  <div class="grille">
+    <div class="stat"><b id="statBrasGauche">—</b><span>bras gauche levé</span></div>
+    <div class="stat"><b id="statBrasDroit">—</b><span>bras droit levé</span></div>
+  </div>
+</div>
+
+<div class="carte" id="carteAudio" hidden>
+  <div id="etatAudio" class="muet">Audio : chargement…</div>
+  <button class="secondaire" id="boutonTestSon" style="margin-top:10px">Tester le son (interrupteur silencieux activé)</button>
+</div>
+
+<div class="carte" hidden id="carteJournal">
+  <div id="journal"></div>
+  <button class="secondaire" id="boutonResume" style="margin-top:10px">Copier le résumé</button>
+</div>
+
+<script type="module">
+import {
+  PoseLandmarker,
+  FilesetResolver,
+  DrawingUtils,
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+// Version épinglée, contrairement au `/latest/` de vision/detector.py : un
+// changement de modèle publié par Google modifierait le comportement de
+// détection sans qu'aucun commit ne l'explique.
+const VERSION_WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const MODELES = {
+  full: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+  lite: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+};
+
+const LANDMARKS = {
+  nez: 0,
+  epaule_gauche: 11, epaule_droite: 12,
+  coude_gauche: 13, coude_droit: 14,
+  poignet_gauche: 15, poignet_droit: 16,
+  hanche_gauche: 23, hanche_droite: 24,
+  genou_gauche: 25, genou_droit: 26,
+  cheville_gauche: 27, cheville_droite: 28,
+};
+
+// ---------------------------------------------------------------
+// Portage de mouvements/outils.py
+// ---------------------------------------------------------------
+
+function calculerDistance(a, b) {
+  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+}
+
+function calculerAngle(a, b, c) {
+  const radians =
+    Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+  let angle = Math.abs((radians * 180) / Math.PI);
+  if (angle > 180) angle = 360 - angle;
+  return angle;
+}
+
+class HoldPosition {
+  constructor(position, duree) {
+    this.position = position;
+    this.duree = duree;
+    this.debut = null;
+    this.termine = false;
+  }
+  update(corps) {
+    if (!this.position(corps)) {
+      this.debut = null;
+      this.termine = false;
+      return [0, false];
+    }
+    if (this.debut === null) this.debut = performance.now() / 1000;
+    const progression = Math.min(
+      ((performance.now() / 1000 - this.debut) / this.duree) * 100,
+      100
+    );
+    if (progression >= 100) {
+      if (!this.termine) {
+        this.termine = true;
+        return [100, true];
+      }
+      return [100, false];
+    }
+    return [progression, false];
+  }
+}
+
+// ---------------------------------------------------------------
+// Portage de mouvements/compteur.py
+// ---------------------------------------------------------------
+
+class CompteurMouvement {
+  constructor() {
+    this.stage = null;
+    this.repetitions = 0;
+  }
+  mettreAJour(nouveauStage) {
+    if (nouveauStage !== "debut" && nouveauStage !== "fin") {
+      return [this.stage, this.repetitions];
+    }
+    if (this.stage === "debut" && nouveauStage === "fin") {
+      this.stage = "fin";
+      this.repetitions += 1;
+    } else if (this.stage === "fin" && nouveauStage === "debut") {
+      this.stage = "debut";
+    } else if (this.stage === null) {
+      this.stage = nouveauStage;
+    }
+    return [this.stage, this.repetitions];
+  }
+  reset() {
+    this.stage = null;
+    this.repetitions = 0;
+  }
+}
+
+// ---------------------------------------------------------------
+// Portage de mouvements/positions.py et mouvements/exercices.py
+// ---------------------------------------------------------------
+
+function brasDroitLeve(corps) {
+  const angle = calculerAngle(corps.poignet_droit, corps.coude_droit, corps.epaule_droite);
+  return corps.poignet_droit.y < corps.epaule_droite.y && angle > 160;
+}
+
+function brasGaucheLeve(corps) {
+  const angle = calculerAngle(corps.poignet_gauche, corps.coude_gauche, corps.epaule_gauche);
+  return corps.poignet_gauche.y < corps.epaule_gauche.y && angle > 160;
+}
+
+function brasEnX(corps) {
+  const xMin = Math.min(corps.epaule_gauche.x, corps.epaule_droite.x);
+  const xMax = Math.max(corps.epaule_gauche.x, corps.epaule_droite.x);
+  return (
+    corps.poignet_gauche.x < corps.poignet_droit.x &&
+    xMin <= corps.poignet_gauche.x && corps.poignet_gauche.x <= xMax &&
+    xMin <= corps.poignet_droit.x && corps.poignet_droit.x <= xMax
+  );
+}
+
+function curlBicepsDroitDetection(corps) {
+  const angle = calculerAngle(corps.epaule_droite, corps.coude_droit, corps.poignet_droit);
+  if (angle < 30) return "fin";
+  if (angle > 160) return "debut";
+  return "milieu";
+}
+
+function squatDetection(corps) {
+  const distanceGauche = calculerDistance(corps.coude_gauche, corps.genou_gauche);
+  const distanceDroite = calculerDistance(corps.coude_droit, corps.genou_droit);
+  const distanceMoyenne = (distanceGauche + distanceDroite) / 2;
+
+  // Coudes proches des genoux = bas du squat, donc "debut" : c'est le
+  // retour debout qui valide la repetition, pas la descente.
+  if (distanceMoyenne < 0.05) return "debut";
+  if (distanceMoyenne > 0.15) return "fin";
+  return "milieu";
+}
+
+const EXERCICES = {
+  curl: { nom: "Curl biceps droit", detection: curlBicepsDroitDetection },
+  squat: { nom: "Squat", detection: squatDetection },
+};
+
+// ---------------------------------------------------------------
+// Audio — WebAudio, débloqué par un geste utilisateur
+// ---------------------------------------------------------------
+
+let contexteAudio = null;
+const sons = new Map();
+let audioEnEchec = [];
+
+function debloquerAudio() {
+  contexteAudio = new (window.AudioContext || window.webkitAudioContext)();
+  // Un buffer vide joué dans le geste : c'est lui qui « arme » la sortie
+  // audio sur iOS, sans quoi tout son ultérieur est muet en silence.
+  const vide = contexteAudio.createBuffer(1, 1, 22050);
+  const source = contexteAudio.createBufferSource();
+  source.buffer = vide;
+  source.connect(contexteAudio.destination);
+  source.start(0);
+  return contexteAudio.resume();
+}
+
+async function chargerSons() {
+  const noms = ["bip"];
+  for (let i = 1; i <= 20; i++) noms.push(String(i));
+
+  let charges = 0;
+  await Promise.all(
+    noms.map(async (nom) => {
+      try {
+        const reponse = await fetch(`sons/${nom}.wav`);
+        if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+        const donnees = await reponse.arrayBuffer();
+        sons.set(nom, await contexteAudio.decodeAudioData(donnees));
+        charges++;
+      } catch (erreur) {
+        audioEnEchec.push(`${nom} (${erreur.message})`);
+      }
+      majEtatAudio(charges, noms.length);
+    })
+  );
+
+  if (audioEnEchec.length) {
+    journaliser(`AUDIO EN ECHEC (${audioEnEchec.length}) : ${audioEnEchec.slice(0, 5).join(", ")}`);
+    journaliser("Piste probable : WAV 32 bits non décodable par Safari — à convertir en AAC.");
+  }
+}
+
+function majEtatAudio(charges, total) {
+  const echecs = audioEnEchec.length;
+  const el = document.getElementById("etatAudio");
+  el.textContent = `Audio : ${charges}/${total} chargés` + (echecs ? ` — ${echecs} en échec` : "");
+  el.className = echecs ? "erreur" : charges === total ? "ok" : "muet";
+}
+
+function jouer(nom) {
+  const buffer = sons.get(nom);
+  if (!buffer || !contexteAudio) return;
+  const source = contexteAudio.createBufferSource();
+  source.buffer = buffer;
+  source.connect(contexteAudio.destination);
+  source.start(0);
+}
+
+// ---------------------------------------------------------------
+// Mesures
+// ---------------------------------------------------------------
+
+const mesures = { fps: [], inference: [], parMinute: new Map(), debut: 0 };
+
+function enregistrerMesure(fps, msInference) {
+  mesures.fps.push(fps);
+  mesures.inference.push(msInference);
+  const minute = Math.floor((performance.now() - mesures.debut) / 60000);
+  if (!mesures.parMinute.has(minute)) mesures.parMinute.set(minute, []);
+  mesures.parMinute.get(minute).push(fps);
+}
+
+function centile(valeurs, part) {
+  if (!valeurs.length) return 0;
+  const triees = [...valeurs].sort((a, b) => a - b);
+  return triees[Math.min(triees.length - 1, Math.floor(triees.length * part))];
+}
+
+function classe(fps) {
+  return fps >= 15 ? "ok" : fps >= 8 ? "alerte" : "erreur";
+}
+
+function rendreMinutes() {
+  const lignes = [...mesures.parMinute.entries()].map(([minute, valeurs]) => {
+    const med = centile(valeurs, 0.5), p10 = centile(valeurs, 0.1), min = Math.min(...valeurs);
+    return `<tr><td>${minute + 1}</td>
+      <td class="${classe(med)}">${med.toFixed(1)}</td>
+      <td class="${classe(p10)}">${p10.toFixed(1)}</td>
+      <td class="${classe(min)}">${min.toFixed(1)}</td></tr>`;
+  });
+  document.getElementById("corpsMinutes").innerHTML = lignes.join("");
+}
+
+function journaliser(message) {
+  const el = document.getElementById("journal");
+  const t = ((performance.now() - mesures.debut) / 1000).toFixed(0);
+  el.textContent += `[${t}s] ${message}\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// ---------------------------------------------------------------
+// Boucle
+// ---------------------------------------------------------------
+
+let poseLandmarker = null;
+let compteur = new CompteurMouvement();
+let maintienBrasX = new HoldPosition(brasEnX, 1.5);
+let dernierHorodatage = -1;
+let derniereFrame = 0;
+let exerciceCourant = "curl";
+let miroir = true;
+
+function construireCorps(landmarks) {
+  const corps = {};
+  for (const [nom, index] of Object.entries(LANDMARKS)) corps[nom] = landmarks[index];
+  return corps;
+}
+
+function visibiliteMoyenne(corps) {
+  const valeurs = Object.values(corps).map((p) => p.visibility ?? 1);
+  return valeurs.reduce((a, b) => a + b, 0) / valeurs.length;
+}
+
+async function demarrer() {
+  const bouton = document.getElementById("boutonDemarrer");
+  bouton.disabled = true;
+  bouton.textContent = "Chargement…";
+
+  exerciceCourant = document.getElementById("choixExercice").value;
+  miroir = document.getElementById("choixMiroir").value === "1";
+  const nomModele = document.getElementById("choixModele").value;
+
+  await debloquerAudio();
+
+  try {
+    await navigator.wakeLock.request("screen");
+    journaliser("Wake lock actif");
+  } catch (erreur) {
+    journaliser(`Wake lock indisponible : ${erreur.message}`);
+  }
+
+  const video = document.getElementById("video");
+  const flux = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+    audio: false,
+  });
+  video.srcObject = flux;
+  await video.play();
+
+  const fileset = await FilesetResolver.forVisionTasks(VERSION_WASM);
+  let delegate = "GPU";
+  try {
+    poseLandmarker = await PoseLandmarker.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: MODELES[nomModele], delegate },
+      runningMode: "VIDEO",
+      numPoses: 1,
+    });
+  } catch (erreur) {
+    delegate = "CPU";
+    journaliser(`GPU indisponible (${erreur.message}), repli CPU`);
+    poseLandmarker = await PoseLandmarker.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: MODELES[nomModele], delegate },
+      runningMode: "VIDEO",
+      numPoses: 1,
+    });
+  }
+
+  document.getElementById("cartePreparation").hidden = true;
+  for (const id of ["zoneVideo", "carteCompteur", "carteStats", "carteMinutes", "carteMiroir", "carteAudio", "carteJournal"]) {
+    document.getElementById(id).hidden = false;
+  }
+
+  mesures.debut = performance.now();
+  derniereFrame = performance.now();
+  journaliser(`Modèle ${nomModele}, delegate ${delegate}, ${video.videoWidth}x${video.videoHeight}`);
+
+  chargerSons();
+  requestAnimationFrame(boucle);
+}
+
+function boucle() {
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+
+  if (video.readyState < 2) {
+    requestAnimationFrame(boucle);
+    return;
+  }
+
+  if (canvas.width !== video.videoWidth) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+  }
+
+  const maintenant = performance.now();
+  // detectForVideo exige des horodatages strictement croissants : deux
+  // appels dans la même milliseconde lèvent.
+  const horodatage = Math.max(maintenant, dernierHorodatage + 1);
+  dernierHorodatage = horodatage;
+
+  const avant = performance.now();
+  const resultat = poseLandmarker.detectForVideo(video, horodatage);
+  const msInference = performance.now() - avant;
+
+  const fps = 1000 / (maintenant - derniereFrame);
+  derniereFrame = maintenant;
+  enregistrerMesure(fps, msInference);
+
+  const ctx = canvas.getContext("2d");
+  ctx.save();
+  if (miroir) {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const landmarks = resultat.landmarks?.[0];
+  if (landmarks) {
+    const utils = new DrawingUtils(ctx);
+    utils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, { color: "#4b9bff", lineWidth: 3 });
+    utils.drawLandmarks(landmarks, { color: "#e6edf5", radius: 3 });
+  }
+  ctx.restore();
+
+  if (landmarks) traiterCorps(construireCorps(landmarks));
+  else document.getElementById("etatDetection").textContent = "aucun corps détecté";
+
+  majStats(fps);
+  requestAnimationFrame(boucle);
+}
+
+let dernieresReps = 0;
+
+function traiterCorps(corps) {
+  const stage = EXERCICES[exerciceCourant].detection(corps);
+  const [, repetitions] = compteur.mettreAJour(stage);
+
+  if (repetitions !== dernieresReps) {
+    dernieresReps = repetitions;
+    document.getElementById("compteur").textContent = repetitions;
+    jouer(String(repetitions));
+  }
+  document.getElementById("etatDetection").textContent = stage;
+
+  const [progression, termine] = maintienBrasX.update(corps);
+  document.getElementById("jaugeBrasX").style.width = `${progression}%`;
+  if (termine) {
+    const secondes = ((performance.now() - mesures.debut) / 1000).toFixed(1);
+    journaliser(`Bras en X validé (${secondes}s depuis le début)`);
+    document.getElementById("etatBrasX").textContent = "Bras en X validé";
+    jouer("bip");
+  }
+
+  document.getElementById("statBrasGauche").textContent = brasGaucheLeve(corps) ? "OUI" : "—";
+  document.getElementById("statBrasDroit").textContent = brasDroitLeve(corps) ? "OUI" : "—";
+  document.getElementById("statVisibilite").textContent = visibiliteMoyenne(corps).toFixed(2);
+}
+
+let derniereMajStats = 0;
+
+function majStats(fps) {
+  if (performance.now() - derniereMajStats < 250) return;
+  derniereMajStats = performance.now();
+
+  const secondes = (performance.now() - mesures.debut) / 1000;
+  document.getElementById("statFps").textContent = fps.toFixed(1);
+  document.getElementById("statFps").className = classe(fps);
+  document.getElementById("statMediane").textContent = centile(mesures.fps, 0.5).toFixed(1);
+  document.getElementById("statP10").textContent = centile(mesures.fps, 0.1).toFixed(1);
+  document.getElementById("statInference").textContent = centile(mesures.inference, 0.5).toFixed(0);
+  document.getElementById("statDuree").textContent =
+    `${Math.floor(secondes / 60)}:${String(Math.floor(secondes % 60)).padStart(2, "0")}`;
+  rendreMinutes();
+}
+
+// ---------------------------------------------------------------
+
+document.getElementById("boutonDemarrer").addEventListener("click", () => {
+  demarrer().catch((erreur) => {
+    document.getElementById("messagePreparation").textContent = `Echec : ${erreur.message}`;
+    document.getElementById("messagePreparation").className = "erreur";
+    document.getElementById("boutonDemarrer").disabled = false;
+    document.getElementById("boutonDemarrer").textContent = "Réessayer";
+  });
+});
+
+document.getElementById("boutonTestSon").addEventListener("click", () => jouer("bip"));
+
+document.getElementById("boutonResume").addEventListener("click", async () => {
+  const lignes = [...mesures.parMinute.entries()].map(([m, v]) =>
+    `min ${m + 1} : median ${centile(v, 0.5).toFixed(1)} / p10 ${centile(v, 0.1).toFixed(1)} / min ${Math.min(...v).toFixed(1)}`
+  );
+  const resume = [
+    `Exercice ${exerciceCourant}, modèle ${document.getElementById("choixModele").value}`,
+    `Durée ${(((performance.now() - mesures.debut) / 1000) / 60).toFixed(1)} min`,
+    `fps médian ${centile(mesures.fps, 0.5).toFixed(1)} / p10 ${centile(mesures.fps, 0.1).toFixed(1)}`,
+    `Inférence médiane ${centile(mesures.inference, 0.5).toFixed(0)} ms`,
+    `Répétitions comptées ${dernieresReps}`,
+    `Audio en échec : ${audioEnEchec.length}`,
+    ...lignes,
+  ].join("\n");
+  try {
+    await navigator.clipboard.writeText(resume);
+    journaliser("Résumé copié");
+  } catch {
+    journaliser(resume);
+  }
+});
+</script>
+</body>
+</html>

@@ -8,36 +8,30 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='exercices.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='ancrages.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='graphique.css') }}">
 <style>
         main { width:min(880px,calc(100% - 40px)); }
         header { display:flex; justify-content:space-between; align-items:center; gap:20px; border-bottom:1px solid var(--border); padding-bottom:22px; margin-bottom:22px; }
         h1 { color:var(--teal); font-size:clamp(30px,5vw,52px); }
         .back { color:var(--text); border:1px solid var(--border-strong); border-radius:999px; padding:9px 18px; text-transform:uppercase; letter-spacing:.06em; }
-        .bloc {
-            background:var(--glass); border:1px solid var(--border-strong); border-radius:12px;
-            padding:20px 22px; margin-bottom:14px; backdrop-filter:blur(18px);
-        }
         .bloc h2 {
             margin:0 0 12px; font:700 12px 'Space Grotesk',sans-serif;
             letter-spacing:.16em; text-transform:uppercase; color:var(--muted);
         }
         .bloc.attention { border-color:var(--orange); }
-        .bloc.attention h2 { color:var(--orange); }
         ol, ul { margin:0; padding-left:20px; line-height:1.75; font-size:15px; }
-        li { margin-bottom:4px; }
-        .resume { font-size:16px; line-height:1.6; margin:0 0 18px; color:var(--text); }
-        .niveau { display:flex; flex-wrap:wrap; gap:22px; }
-        .niveau div { min-width:120px; }
-        .niveau span { display:block; color:var(--muted); font:700 11px 'Space Grotesk',sans-serif; letter-spacing:.12em; text-transform:uppercase; margin-bottom:4px; }
-        .niveau strong { font:400 26px 'Bebas Neue','Space Grotesk',sans-serif; letter-spacing:.02em; }
-        .variantes { display:flex; flex-wrap:wrap; gap:10px; }
-        .variantes a.btn { text-transform:none; letter-spacing:0; }
-        .meta { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
-        .etiquette {
-            padding:4px 10px; border-radius:999px; border:1px solid var(--border-strong);
-            color:var(--muted); font:700 11px 'Space Grotesk',sans-serif; letter-spacing:.04em;
+        /* Reprises de l'ecran des records, que cette fiche a absorbe. */
+        .bloc p { margin:7px 0; color:var(--muted); font-size:13px; }
+        .bloc p strong { color:var(--text); }
+        .pb { color:var(--orange) !important; font-size:15px !important; }
+        .progression > strong, .niveau-paliers > strong {
+            display:block; margin-bottom:10px; font-size:13px;
+            text-transform:uppercase; letter-spacing:.06em; color:var(--muted);
         }
-</style>
+        .niveau-paliers { margin-top:18px; border-top:1px solid var(--border); padding-top:16px; }
+    </style>
 </head>
 <body>
 <main>
@@ -85,6 +79,71 @@
             calibration, ou simplement une première séance, posera le niveau.
         </p>
         {%- endif %}
+
+        <div class="niveau-paliers">
+            <strong>Progression par paliers</strong>
+            {%- if etat.niveau %}
+            <p>Niveau <strong>{{ etat.niveau }}</strong> : <strong>{{ etat.actuel.resume() }}</strong>{% if etat.ancre %}, recalé à la main le {{ etat.date }}{% elif etat.date %}, validé le {{ etat.date }}{% endif %}</p>
+            {%- if etat.maximum_atteint %}
+            <p class="niveau-note">Barème épuisé, il n'y a plus de palier au-dessus. La suite passe par une variante plus difficile du mouvement.</p>
+            {%- else %}
+            <p>Palier suivant : <strong>{{ etat.suivant.resume() }}</strong></p>
+            {%- if etat.suivant.cible < etat.actuel.cible %}
+            {# Un palier suivant peut demander **moins** de repetitions quand il
+               monte en charge : sans cette note, une progression ressemble a un
+               recul. #}
+            <p class="niveau-note">Moins de répétitions, mais plus lourd : le volume progresse quand même ({{ etat.actuel.volume|round|int }} → {{ etat.suivant.volume|round|int }}).</p>
+            {%- endif %}
+            {%- endif %}
+            {%- else %}
+            <p>Aucune performance n'atteint encore le premier palier : <strong>{{ etat.premier.resume() }}</strong>.</p>
+            {%- endif %}
+
+            <details class="recalage">
+                <summary>Recaler mon niveau</summary>
+                {# **On ne demande jamais un numero de niveau** — personne ne sait
+                   ce que vaut « niveau 27 ». On demande une performance, et le
+                   bareme en deduit le niveau. #}
+                <p class="niveau-note">Indique une performance que tu sais tenir sur toutes les séries. Le barème en déduit ton niveau, et l'historique antérieur cesse de compter pour cet exercice.</p>
+                <form class="form-ancrage" data-exercice="{{ fiche.nom }}">
+                    <span class="champ"><label>Séries</label><input type="number" min="1" class="champ-series" value="{{ (etat.actuel or etat.premier).series }}"></span>
+                    <span class="champ"><label>{% if (etat.actuel or etat.premier).unite == 'secondes' %}Secondes{% else %}Répétitions{% endif %}</label><input type="number" min="1" step="any" class="champ-cible" value="{{ (etat.actuel or etat.premier).cible }}"></span>
+                    <span class="champ"><label>Charge (kg)</label><input type="number" min="0" step="0.5" class="champ-poids" value="{{ (etat.actuel or etat.premier).poids }}"></span>
+                    <span class="champ champ-large"><label>Pourquoi ?</label><input type="text" class="champ-raison" placeholder="Séance faite sans l'app, reprise..."></span>
+                    <button type="submit">Recaler</button>
+                    {% if etat.ancre %}<button type="button" class="bouton-secondaire" data-supprimer>Supprimer l'ancrage</button>{% endif %}
+                    <span class="retour-ancrage"></span>
+                </form>
+                {# Deux boutons distincts, et ils ne font pas la meme chose :
+                   celui du formulaire purge tout l'historique d'ancrages,
+                   celui du journal retire une entree precise. #}
+                <details class="journal-ancrages" data-exercice="{{ fiche.nom }}">
+                    <summary>Historique des ancrages ▾</summary>
+                    <p class="empty">Chargement…</p>
+                </details>
+            </details>
+        </div>
+    </div>
+    {%- endif %}
+
+    {%- if statistique %}
+    <div class="bloc">
+        <h2>Mes records</h2>
+        {% set valeur_pb = statistique.pb.valeur or 0 %}
+        {% if statistique.mode in ('maintien', 'chrono') %}{% set unite = 'secondes' %}{% elif statistique.meilleur_volume.valeur > 0 %}{% set unite = 'kg de volume' %}{% else %}{% set unite = 'repetitions' %}{% endif %}
+        <p class="pb"><strong>PB :</strong> {{ valeur_pb|round(1) }} {{ unite }} <span style="color:var(--muted)">· du {{ statistique.pb.date }}</span></p>
+        {% if statistique.meilleur_volume.valeur > 0 %}<p>Meilleur volume : <strong>{{ statistique.meilleur_volume.valeur|round(1) }} kg</strong></p>{% endif %}
+        {% if statistique.meilleure_charge.valeur > 0 %}<p>Meilleure charge : <strong>{{ statistique.meilleure_charge.valeur|round(1) }} kg</strong></p>{% endif %}
+        <p>{{ statistique.repetitions }} repetitions · {{ statistique.series }} series · {{ statistique.seances }} seances</p>
+        {% if statistique.volume > 0 %}<p>Volume total : <strong>{{ statistique.volume|round(1) }} kg</strong></p>{% endif %}
+        {% if statistique.duree > 0 %}<p>Duree totale : <strong>{{ statistique.duree|round(1) }} secondes</strong></p>{% endif %}
+
+        {% if statistique.progression|length > 1 %}
+        <div class="progression" data-progression='{{ statistique.progression|tojson }}' data-cle="{% if statistique.mode in ('maintien', 'chrono') %}duree{% elif statistique.meilleur_volume.valeur > 0 %}volume{% else %}repetitions{% endif %}" data-unite="{{ unite }}">
+            <strong>Progression · {{ statistique.progression|length }} séances</strong>
+            <div class="chart-container"></div>
+        </div>
+        {% endif %}
     </div>
     {%- endif %}
 
@@ -129,5 +188,108 @@
     </div>
     {%- endif %}
 </main>
+<script type="module">
+    import { graphique_progression } from "{{ url_for('static', filename='js/graphique.js') }}";
+
+    // Le trace vit dans `static/js/graphique.js`, partage avec l'application du
+    // navigateur : meme donnee, meme dessin, seul le lien d'un point differe —
+    // ici une URL de seance, la-bas rien, faute d'URL.
+    const conteneur = document.querySelector(".progression[data-progression]");
+    if (conteneur) {
+        conteneur.querySelector(".chart-container").innerHTML = graphique_progression(
+            JSON.parse(conteneur.dataset.progression || "[]"),
+            {
+                cle: conteneur.dataset.cle,
+                unite: conteneur.dataset.unite,
+                lien: (point) => `/historique/${point.seance_id}`,
+            }
+        );
+    }
+
+    async function envoyerAncrage(formulaire, methode, corps) {
+        const retour = formulaire.querySelector(".retour-ancrage");
+        const url = `/api/niveaux/${encodeURIComponent(formulaire.dataset.exercice)}/ancrage`;
+        retour.textContent = "…";
+        retour.classList.remove("erreur");
+        try {
+            const reponse = await fetch(url, {
+                method: methode,
+                headers: { "Content-Type": "application/json" },
+                body: corps ? JSON.stringify(corps) : undefined,
+            });
+            const donnees = await reponse.json();
+            if (!reponse.ok || !donnees.ok) {
+                retour.textContent = donnees.erreur || "Échec du recalage";
+                retour.classList.add("erreur");
+                return;
+            }
+            // Le niveau conditionne l'objectif des séances : on recharge plutôt
+            // que de rafraîchir un bloc seul, pour que la page reste cohérente.
+            window.location.reload();
+        } catch (erreur) {
+            retour.textContent = "Erreur réseau";
+            retour.classList.add("erreur");
+        }
+    }
+
+    function formatDateAncrage(valeur) {
+        const str = String(valeur || "").trim();
+        const indexEspace = str.indexOf(" ");
+        return indexEspace === -1 ? str : str.slice(0, indexEspace);
+    }
+
+    async function chargerJournalAncrages(details) {
+        const nom = details.dataset.exercice;
+        const cible = details.querySelector(".liste-ancrages") || details.querySelector("p");
+        const reponse = await fetch(`/api/niveaux/${encodeURIComponent(nom)}/ancrages`);
+        const donnees = await reponse.json();
+        if (!donnees.ok || !donnees.ancrages.length) {
+            cible.outerHTML = '<p class="empty">Aucun ancrage posé sur cet exercice.</p>';
+            return;
+        }
+        const items = donnees.ancrages.map((ancrage) => `
+            <li>
+                <span>${formatDateAncrage(ancrage.date)} · <strong>${ancrage.palier}</strong>${ancrage.raison ? " · " + ancrage.raison : ""}</span>
+                <button type="button" data-annuler="${ancrage.id}">Annuler</button>
+            </li>
+        `).join("");
+        cible.outerHTML = `<ul class="liste-ancrages">${items}</ul>`;
+        details.querySelectorAll("[data-annuler]").forEach((bouton) => bouton.addEventListener("click", async () => {
+            const suppression = await fetch(`/api/niveaux/${encodeURIComponent(nom)}/ancrage/${bouton.dataset.annuler}`, { method: "DELETE" });
+            const resultat = await suppression.json();
+            if (resultat.ok) window.location.reload();
+            else window.alert(resultat.erreur || "Impossible d'annuler cet ancrage.");
+        }));
+    }
+
+    // Le journal se remplit a l'ouverture : il n'a aucune raison d'etre calcule
+    // tant que personne ne le regarde.
+    document.querySelectorAll(".journal-ancrages").forEach((details) => {
+        details.addEventListener("toggle", () => {
+            if (details.open && !details.dataset.charge) {
+                details.dataset.charge = "1";
+                chargerJournalAncrages(details);
+            }
+        });
+    });
+
+    document.querySelectorAll(".form-ancrage").forEach((formulaire) => {
+        formulaire.addEventListener("submit", (evenement) => {
+            evenement.preventDefault();
+            envoyerAncrage(formulaire, "POST", {
+                series: Number(formulaire.querySelector(".champ-series").value) || 0,
+                cible: Number(formulaire.querySelector(".champ-cible").value) || 0,
+                poids: Number(formulaire.querySelector(".champ-poids").value) || 0,
+                raison: formulaire.querySelector(".champ-raison").value,
+            });
+        });
+        // `supprimer_ancrages` purge **tout** l'historique d'ancrages de
+        // l'exercice, la ou le journal ci-dessus retire une entree precise.
+        const suppression = formulaire.querySelector("[data-supprimer]");
+        if (suppression) {
+            suppression.addEventListener("click", () => envoyerAncrage(formulaire, "DELETE", null));
+        }
+    });
+</script>
 </body>
 </html>

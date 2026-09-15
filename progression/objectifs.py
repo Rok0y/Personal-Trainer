@@ -304,20 +304,35 @@ def appliquer_a_circuit(circuit, objectifs=None, sans_donnees=None):
     return circuit
 
 
-def marquer_cibles_manuelles(blocs, objectifs=None):
+def marquer_cibles_manuelles(blocs, objectifs=None, sans_donnees=None):
     """Repère les cibles saisies à la main, en les comparant au moteur.
 
     L'utilisateur n'a pas à déclarer qu'il fait une exception : éditer une
     cible, c'est s'écarter de ce que le moteur propose, et c'est cet écart qui
     est détecté. Corriger la valeur pour la remettre sur le palier proposé
     efface la marque et rebranche le bloc sur le moteur.
+
+    **Un exercice à calibrer n'est jamais une cible manuelle**, et l'oublier
+    produisait un blocage définitif et silencieux. `appliquer_a_blocs` laisse
+    ses valeurs telles quelles — celles du fichier — parce qu'il n'a rien à
+    proposer tant que rien n'est mesuré ; les comparer au palier calculé les
+    déclarait donc *toujours* différentes. Conséquence : enregistrer le
+    formulaire d'objectifs sans rien modifier figeait tout exercice pas encore
+    testé, et `appliquer_a_circuit` écartant les cibles manuelles avant tout le
+    reste, son test de calibration ne se déclenchait plus jamais.
     """
     objectifs = objectifs_par_exercice() if objectifs is None else objectifs
+    sans_donnees = (
+        exercices_sans_donnees() if sans_donnees is None else sans_donnees
+    )
 
     for bloc in blocs:
-        palier_vise = objectif_pour(
-            _nom_exercice(bloc), bloc.get("mode"), objectifs
-        )
+        nom = _nom_exercice(bloc)
+        if a_calibrer(nom, bloc.get("mode"), sans_donnees):
+            _ecrire_cible_manuelle(bloc, False)
+            continue
+
+        palier_vise = objectif_pour(nom, bloc.get("mode"), objectifs)
         if palier_vise is None:
             _ecrire_cible_manuelle(bloc, False)
             continue
@@ -344,3 +359,42 @@ def _ecrire_cible_manuelle(bloc, manuelle):
         bloc.pop("cible_manuelle", None)
     else:
         bloc["cible_manuelle"] = valeur
+
+
+def enteriner_cibles_manuelles(blocs, utilisateur_id=None):
+    """Une séance jouée jusqu'au bout fait de sa cible figée la référence.
+
+    Figer une cible est une exception provisoire : le moteur propose autre
+    chose, l'utilisateur impose sa valeur, et le badge orange rend ce
+    décrochage visible. Mais une fois la séance **terminée** à cette cible,
+    l'exception n'en est plus une — l'historique porte désormais la
+    performance réalisée, et c'est d'elle que `ressenti._cible_visee` repartira
+    pour proposer la suite. Lever la marque ne perd donc pas la valeur : elle
+    rebranche le moteur *sur* elle.
+
+    Une séance abandonnée ne prouve rien et garde sa marque. C'est pourquoi
+    l'appel se fait sur la phase `termine`, jamais sur `abandonne`.
+
+    Ne surtout pas confondre avec `marquer_cibles_manuelles`, qui *détecte* un
+    écart au palier proposé : appliquée ici, elle effacerait aussi les marques
+    des blocs que la séance n'a pas joués.
+
+    Retourne True si au moins une marque a été levée — l'appelant n'a alors
+    qu'une raison d'écrire le fichier.
+    """
+    leve = False
+    for bloc in blocs:
+        if not est_cible_manuelle(bloc, utilisateur_id):
+            continue
+        valeur = definir_cible_manuelle(
+            _valeur_cible_manuelle(bloc), False, utilisateur_id
+        )
+        if isinstance(bloc, dict):
+            if valeur is None:
+                bloc.pop("cible_manuelle", None)
+            else:
+                bloc["cible_manuelle"] = valeur
+        else:
+            bloc.cible_manuelle = valeur
+        leve = True
+    return leve

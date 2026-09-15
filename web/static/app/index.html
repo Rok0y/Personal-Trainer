@@ -1,0 +1,3832 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0d13">
+<title>Coach</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- La palette et le HUD sont **les memes fichiers** que ceux du poste fixe.
+     C'est ce qui remplace la copie qui vivait ici : deux feuilles separees
+     derivaient a chaque correction, et l'ecran de seance avait fini par ne
+     plus rien avoir de commun avec celui du desktop — ni couleurs, ni
+     typographie, ni disposition. `base.css` reste volontairement hors du
+     coup : c'est une mise en page de *site*, avec ses conteneurs et ses
+     largeurs fixes, que cette page n'a aucune raison de subir. -->
+<link rel="stylesheet" href="../palette.css">
+<link rel="stylesheet" href="../hud.css">
+<link rel="stylesheet" href="../ressentis.css">
+<link rel="stylesheet" href="../programmes.css">
+<link rel="stylesheet" href="../exercices.css">
+<link rel="stylesheet" href="../ancrages.css">
+<link rel="stylesheet" href="../graphique.css">
+<link rel="stylesheet" href="../editeur.css">
+<link rel="stylesheet" href="../programme_resume.css">
+
+<style>
+  /* Les ecrans de liste (seances, historique, records, fin) ont leur propre
+     vocabulaire de couleurs, anterieur au partage de la palette. Le faire
+     pointer sur les variables communes suffit a les aligner, sans avoir a
+     renommer deux cents declarations — et une couleur ne se decide toujours
+     qu'a un seul endroit, `palette.css`. */
+  :root {
+    --fond: var(--bg);
+    --surface: var(--glass);
+    --surface-haut: var(--glass-strong);
+    --trait: var(--border);
+    --texte: var(--text);
+    --texte-doux: var(--muted);
+    --accent: var(--orange);
+    --alerte: var(--mode-echauffement);
+    --erreur: var(--orange);
+    --reussite: var(--teal);
+  }
+
+  html, body {
+    height: 100%;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .ecran { display: none; height: 100%; }
+  .ecran.actif { display: flex; flex-direction: column; }
+
+  /* L'ecran de seance est un `.stage` : un calque sur une image plein cadre,
+     dont tous les elements sont positionnes en absolu. La colonne flex des
+     autres ecrans n'a rien a y faire. */
+  #ecranSeance.actif { display: block; }
+
+  /* **`contain` et jamais `cover`**, contrairement au poste fixe. Recadrer
+     masquerait une partie de ce que le modele analyse : on se verrait entier
+     a l'ecran pendant que le controle de cadrage signale un genou hors champ,
+     c'est-a-dire exactement la confusion qu'il est la pour lever. Le poste
+     fixe peut se le permettre, son flux arrive deja au format de l'ecran. */
+  #ecranSeance .video { object-fit: contain; background: #000; }
+
+  /* ---------- Liste des seances ---------- */
+
+  .defile {
+    overflow-y: auto;
+    padding: max(1.2rem, env(safe-area-inset-top)) 1.1rem 2.5rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  h1 {
+    font-size: 1.55rem;
+    letter-spacing: -0.02em;
+    margin: 0.3rem 0 0.2rem;
+  }
+
+  .sous-titre { color: var(--texte-doux); font-size: 0.92rem; margin: 0 0 1.4rem; }
+
+  .carte {
+    background: var(--surface);
+    border: 1px solid var(--trait);
+    border-radius: 12px;
+    padding: 1rem 1.05rem;
+    margin-bottom: 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .carte:active { background: var(--surface-haut); }
+
+  /* La carte de seance n'est plus un bouton : elle contient le bouton de
+     lancement, le crayon et deux <details>. Un <button> ne peut contenir ni
+     l'un ni les autres — le navigateur deplacerait le noeud en silence. */
+  article.carte { cursor: default; padding-bottom: 0.55rem; position: relative; }
+  article.carte:active { background: var(--surface); }
+
+  .carte-lancer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .carte-lancer:active { opacity: 0.7; }
+
+  /* La carte choisie se distingue d'un coup d'oeil : c'est la seule chose qui
+     dit « j'ai bien pris ta selection » entre le clic et le demarrage. */
+  article.carte.selectionnee {
+    border-color: var(--accent);
+    background: var(--surface-haut);
+  }
+  .carte-demarrage { margin-top: 0.6rem; }
+  .carte-demarrer { width: 100%; }
+
+  /* Le crayon se pose **dans le coin de la carte**, hors du flux : il ne
+     dispute plus sa place au contenu, et sa discretion dit ce qu'il est —
+     une retouche, pas l'action principale de la carte. */
+  .carte-editer {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.6rem;
+    background: none;
+    border: 0;
+    padding: 0.25rem 0.35rem;
+    line-height: 1;
+    font-size: 0.95rem;
+    color: var(--texte-doux);
+    opacity: 0.55;
+    cursor: pointer;
+  }
+  .carte-editer:hover,
+  .carte-editer:focus-visible { opacity: 1; color: var(--accent); }
+  /* Le titre s'arrete avant le crayon plutot que de passer dessous. */
+  .carte-lancer .carte-titre { padding-right: 2rem; }
+
+  /* Le contenu deplie : la liste complete, la ou les puces du bouton
+     s'arretent a cinq. */
+  .carte-contenu { font-size: 0.86rem; }
+  .carte-contenu > summary,
+  .detail-seance > summary { list-style-position: inside; }
+  /* La cible suit immediatement le nom. Rejetee contre le bord droit par
+     un `space-between`, elle se lisait trop loin de l'exercice qu'elle
+     decrit — sur une ligne courte, l'oeil devait traverser la carte. */
+  .contenu-ligne {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.45rem;
+    padding: 0.35rem 0;
+    border-top: 1px solid var(--trait);
+  }
+  .contenu-ligne .contenu-cible-figee { color: var(--orange); }
+  .contenu-ligne em { font-style: normal; color: var(--texte-doux); }
+  .contenu-ligne b { font-weight: 600; }
+  .contenu-echauffements { margin-top: 0.3rem; }
+  .contenu-echauffements summary { color: var(--accent); }
+
+  /* Les exigences d'un programme sont longues : elles se replient tant
+     qu'aucun programme n'est choisi, pour qu'on puisse en comparer plusieurs
+     sur un ecran de telephone. */
+  .exigences-detail > summary {
+    cursor: pointer;
+    color: var(--texte-doux);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.5rem 0;
+  }
+
+  .titre-section {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--texte-doux);
+    margin: 1.4rem 0 0.7rem;
+  }
+
+  .carte-titre { font-size: 1.06rem; font-weight: 600; }
+  .carte-detail { color: var(--texte-doux); font-size: 0.85rem; }
+
+  .puces { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .puce {
+    font-size: 0.74rem;
+    padding: 0.16rem 0.45rem;
+    border-radius: 99px;
+    background: var(--surface-haut);
+    color: var(--texte-doux);
+  }
+  .puce-echauffement { color: var(--accent); }
+  .puce b { color: var(--texte); font-weight: 600; }
+  .puce-tester { color: var(--alerte); }
+
+  /* Le decrochage d'une cible figee doit se voir, sinon il est silencieux.
+     Meme couleur que le badge de l'accueil du poste fixe. */
+  .puce-manuelle { color: var(--orange); border-color: var(--orange); }
+
+  /* Le profil actif est un onglet a part, pousse a droite : c'est une
+     identite, pas une section de l'application. */
+  .onglet-profil {
+    margin-left: auto;
+    color: var(--orange);
+    border-color: var(--orange);
+  }
+  .carte-active { border-color: var(--orange); }
+
+  /* Le poste fixe en fait un <a>, l'application un <button> — meme role,
+     donc meme allure : on lui retire l'habillage de bouton plutot que de
+     lui inventer un style a part. */
+  #resumeProgramme .resume-lien {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .progression-record { margin-top: 0.7rem; }
+  .progression-titre {
+    display: block;
+    color: var(--texte-doux);
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.3rem 0;
+  }
+  .progression-record .chart-container { margin-top: 0.5rem; }
+  .progression-detail {
+    margin: 0.5rem 0 0;
+    min-height: 1.2em;
+    font-size: 0.86rem;
+    color: var(--texte-doux);
+  }
+  /* Les pastilles se rangent sous la date, comme dans l'historique. */
+  .progression-detail .series-detail { margin-top: 0.3rem; }
+
+  .barre-carte {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0.2rem 0 0;
+    flex-wrap: wrap;
+  }
+  .barre-carte .bouton { padding: 0.35rem 0.8rem; font-size: 0.8rem; }
+
+  /* L'editeur reprend `editeur.css`, la feuille des deux pages d'edition du
+     poste fixe : memes classes, meme pastille de mode, meme liseret
+     d'entrelacement. Ne reste ici que la mise en page etroite.
+
+     La grille du bureau aligne onze colonnes sur une ligne — elle suppose un
+     ecran large, et un iPad ne l'a qu'en paysage. En portrait on empile : les
+     commandes en haut, l'exercice en pleine largeur, puis les nombres a deux
+     par ligne. C'est la meme information, dans le meme ordre. */
+  #ecranEditeur .bloc {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.55rem;
+  }
+  #ecranEditeur .bloc > button { order: -1; }
+  /* L'exercice et le mode passent la ligne : ce sont eux qu'on lit d'abord. */
+  #ecranEditeur .bloc .champ:nth-of-type(1),
+  #ecranEditeur .bloc .champ:nth-of-type(2) { flex: 1 1 100%; }
+  #ecranEditeur .bloc .champ { flex: 1 1 5.5rem; }
+  #ecranEditeur .bloc .sup-btn { order: 99; margin-left: auto; }
+  /* Sur une ligne, l'unite gaspille une ligne de hauteur par champ. */
+  #ecranEditeur .champ label span { display: inline; margin-left: 0.25rem; }
+
+  @media (min-width: 900px) {
+    #ecranEditeur .bloc {
+      display: grid;
+      grid-template-columns: 34px 34px 40px 2fr repeat(6, 1fr) 40px;
+      align-items: end;
+    }
+    #ecranEditeur .bloc > button,
+    #ecranEditeur .bloc .sup-btn { order: 0; margin-left: 0; }
+    #ecranEditeur .bloc .champ:nth-of-type(1),
+    #ecranEditeur .bloc .champ:nth-of-type(2) { flex: none; }
+    #ecranEditeur .champ label span { display: block; margin-left: 0; }
+  }
+
+  .detail-seance {
+    margin: 0;
+    padding: 0;
+    font-size: 0.86rem;
+  }
+  .detail-seance summary {
+    cursor: pointer;
+    color: var(--texte-doux);
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.4rem 0;
+  }
+  .detail-ligne {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.45rem 0;
+    border-top: 1px solid var(--trait);
+  }
+  .detail-ligne > span { color: var(--texte-doux); }
+  /* Le ressenti, et **lui seul** : la charge d'une pastille est aussi un <i>,
+     et une regle non portee peindrait les kilos en rouge. */
+  .detail-ligne > span > i { color: var(--alerte); font-style: normal; }
+
+  .actions { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
+
+  /* La zone de ressenti est habillee par `ressentis.css`, partagee avec le
+     poste fixe ; il ne reste ici que son insertion dans les cartes. */
+  .exercice-fait .feedback { margin-top: 0.6rem; }
+
+  /* Propre a l'application : le poste fixe annonce la prochaine seance du
+     programme sur son accueil, que cette page remplace ici. */
+  .programme-suite {
+    margin: 0.9rem 0 0;
+    font-size: 0.9rem;
+    color: var(--texte-doux);
+  }
+  .programme-suite b { color: var(--texte); }
+  .supprimer-seance { margin-top: 0.8rem; align-self: flex-start; }
+
+  /* ---------- Boutons ---------- */
+
+  .bouton {
+    background: var(--accent);
+    border: 0;
+    color: #06101d;
+    font: inherit;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 0.8rem 1.2rem;
+    border-radius: 11px;
+    cursor: pointer;
+  }
+  .bouton:disabled { opacity: 0.5; }
+  .bouton.secondaire { background: var(--surface-haut); color: var(--texte); font-weight: 600; }
+
+  /* ---------- Fin ---------- */
+
+  .resume { display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 1.2rem; }
+  .ligne-resume {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--trait);
+    border-radius: 10px;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.93rem;
+  }
+  .ligne-resume b { font-variant-numeric: tabular-nums; }
+
+  .etat-sauvegarde {
+    font-size: 0.88rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+  }
+  .ok { background: #16302a; color: var(--reussite); }
+  .pasok { background: #3a1f1c; color: var(--erreur); }
+
+
+  /* ---------- Onglets ---------- */
+
+  .onglets {
+    display: flex;
+    gap: 0.4rem;
+    margin: 0 0 1.3rem;
+    border-bottom: 1px solid var(--trait);
+    padding-bottom: 0.6rem;
+  }
+  .onglet {
+    background: transparent;
+    border: 0;
+    color: var(--texte-doux);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .onglet.actif { background: var(--surface-haut); color: var(--texte); }
+
+  /* ---------- Historique et records ----------
+     Les formes viennent du site desktop (`web/templates/historique.html`) :
+     memes classes, memes proportions, variables de l'app. Reprendre son
+     langage visuel plutot qu'en inventer un second evite que les deux
+     n'aient l'air de deux applications differentes. */
+
+  .fiche-seance {
+    background: var(--surface);
+    border: 1px solid var(--trait);
+    border-radius: 14px;
+    padding: 1rem 1.05rem;
+    margin-bottom: 0.7rem;
+  }
+  /* La date, la duree et le nombre d'exercices sont **dans** le summary :
+     replie, on doit pouvoir reconnaitre une seance sans la deplier. Le
+     summary devient donc un bloc de deux lignes, et c'est l'entete qui porte
+     la repartition gauche/droite. */
+  .fiche-seance > summary {
+    cursor: pointer;
+    list-style: none;
+    display: block;
+  }
+  .fiche-entete {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.8rem;
+  }
+  .fiche-seance > summary::-webkit-details-marker { display: none; }
+  .fiche-seance summary b { font-size: 1.02rem; }
+
+  .statut {
+    text-transform: uppercase;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--reussite);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex: none;
+  }
+  .statut::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--reussite);
+  }
+  .statut.abandonnee { color: var(--alerte); }
+  .statut.abandonnee::before { background: var(--alerte); }
+
+  /* Le nom d'un exercice mene a sa fiche : c'est le seul endroit ou un
+     mouvement s'explique, et on se demande justement « c'etait quoi, deja ? »
+     en relisant sa seance. Un bouton plutot qu'un <a> : l'application n'a pas
+     d'URL, elle change d'ecran. */
+  .vers-fiche {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-weight: 700;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--trait);
+    text-underline-offset: 3px;
+  }
+  .vers-fiche:hover, .vers-fiche:focus-visible { color: var(--accent); }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 1rem;
+    color: var(--texte-doux);
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
+  }
+
+  .exercice-fait {
+    margin-top: 0.7rem;
+    padding: 0.65rem 0.8rem;
+    border-radius: 10px;
+    background: #ffffff08;
+    border: 1px solid var(--trait);
+    border-left: 3px solid #4b9bff73;
+  }
+  .exercice-ligne {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+  }
+  .exercice-ligne strong { font-size: 0.95rem; }
+  .exercice-ligne > span {
+    color: var(--texte-doux);
+    font-size: 0.82rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .series-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+  }
+  .serie-puce {
+    font-size: 0.73rem;
+    padding: 0.12rem 0.4rem;
+    border-radius: 5px;
+    background: var(--surface-haut);
+    color: var(--texte-doux);
+    font-variant-numeric: tabular-nums;
+  }
+  .serie-puce.ratee { color: var(--alerte); }
+  /* La charge est plus discrete que la repetition : c'est elle qu'on lit
+     en premier, le poids ne fait que la qualifier. */
+  .serie-puce i { font-style: normal; color: var(--texte-doux); }
+
+  .montee {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.6rem;
+    padding: 0.22rem 0.6rem;
+    border-radius: 99px;
+    background: #64c79c1a;
+    border: 1px solid #64c79c47;
+    color: var(--reussite);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .halteres {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    gap: 0.6rem;
+    margin: 0.9rem 0 1.6rem;
+  }
+  .haltere {
+    background: var(--surface);
+    border: 1px solid var(--trait);
+    border-radius: 10px;
+    padding: 0.6rem 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .haltere span { font-size: 0.86rem; font-weight: 600; }
+  .haltere select {
+    background: var(--surface-haut);
+    color: var(--texte);
+    border: 1px solid var(--trait);
+    border-radius: 7px;
+    padding: 0.35rem 0.4rem;
+    font: inherit;
+    font-size: 0.85rem;
+  }
+  /* Le materiel **en lecture** : trois groupes etiquetes, pas une phrase. */
+  .inventaire { display: flex; flex-direction: column; gap: 0.8rem; margin: 0.8rem 0 0.4rem; }
+  .inventaire-libelle {
+    display: block;
+    color: var(--texte-doux);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.35rem;
+  }
+  /* L'aide reste en minuscules : c'est une phrase, pas une etiquette. */
+  .inventaire-libelle i {
+    font-style: normal;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: 0.75;
+  }
+  .pastilles { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .pastille {
+    background: var(--surface-haut);
+    border: 1px solid var(--trait);
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .accessoires { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.9rem 0 1.6rem; }
+  .accessoires label { display: flex; align-items: center; gap: 0.45rem; font-size: 0.93rem; }
+
+  .vide {
+    color: var(--texte-doux);
+    font-size: 0.9rem;
+    padding: 1.5rem 0;
+  }
+
+  .muet { color: var(--texte-doux); font-size: 0.84rem; }
+  a { color: var(--accent); }
+
+  /* `hidden` doit gagner contre les `display` poses par les feuilles
+     partagees : `.form-ancrage` est un `display:flex`, donc un `hidden` sans
+     cette regle ne cache rien — le formulaire des mesures restait affiche
+     sous son propre bouton « Modifier ». */
+  [hidden] { display: none !important; }
+
+  /* Les chiffres d'un resume, memes proportions que `profil.html` : libelle
+     en petit, valeur en grand. La feuille du site n'est pas liee ici (c'est
+     une mise en page de site), on en reprend le langage visuel. */
+  .chiffres { display: flex; flex-wrap: wrap; gap: 1.4rem; margin: 0.8rem 0; }
+  .chiffres div span {
+    display: block;
+    color: var(--texte-doux);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .chiffres div strong { font-size: 1.15rem; color: var(--accent); font-weight: 600; }
+</style>
+
+<!-- ====================== LISTE DES SEANCES ====================== -->
+<section class="ecran actif defile" id="ecranSeances">
+  <div class="onglets" data-onglets="ecranSeances"></div>
+  <div id="resumeProgramme"></div>
+  <h1>Accueil</h1>
+  <p class="sous-titre" id="sousTitre">Choisis ce que tu fais aujourd'hui.</p>
+  <h2 class="titre-section">Séances disponibles</h2>
+  <div id="listeSeances"></div>
+
+  <p class="muet" style="margin-top:1.4rem">
+    <button class="onglet" id="boutonMateriel" style="padding:0">Mon matériel</button>
+    · <a href="../demo/">Banc d'essai — tester un exercice isolé</a>
+  </p>
+</section>
+
+<!-- ====================== PROFIL ====================== -->
+<!-- La page du profil connecte : qui je suis, ce que je possede, et par ou
+     changer de personne. Elle a une barre d'onglets comme les autres ecrans —
+     on y arrive par le bouton de profil, present partout, et il ne faut pas
+     que ce soit une impasse. -->
+<section class="ecran defile" id="ecranProfil">
+  <div class="onglets" data-onglets="ecranProfil"></div>
+  <h1 id="titreProfil">Mon profil</h1>
+  <p class="sous-titre" id="sousTitreProfil"></p>
+
+  <h2 class="titre-section">Mes informations</h2>
+  <p class="sous-titre">
+    Rien ici n'entre dans le calcul des objectifs : le barème ne regarde que ce
+    que tu soulèves. Ces mesures sont là pour suivre ton évolution.
+  </p>
+  <!-- **Une page de profil se lit d'abord.** Un formulaire toujours ouvert
+       donne l'impression qu'il y a quelque chose a remplir, alors qu'on vient
+       le plus souvent verifier ce qui est declare. L'edition devient un geste
+       explicite, des deux cotes. -->
+  <div class="chiffres" id="resumeMesures"></div>
+  <div class="actions" style="justify-content:flex-start" id="actionsMesures">
+    <button class="bouton secondaire" id="boutonModifierMesures">Modifier mes informations</button>
+  </div>
+  <form class="form-ancrage" id="formMesures" hidden>
+    <span class="champ"><label>Sexe</label>
+      <select id="champSexe">
+        <option value="">Non précisé</option>
+        <option value="femme">Femme</option>
+        <option value="homme">Homme</option>
+        <option value="autre">Autre</option>
+      </select></span>
+    <span class="champ"><label>Date de naissance</label>
+      <input type="date" id="champNaissance"></span>
+    <span class="champ"><label>Taille (cm)</label>
+      <input type="number" min="0" max="260" id="champTaille"></span>
+    <span class="champ"><label>Poids (kg)</label>
+      <input type="number" min="0" max="400" step="0.1" id="champPoidsCorps"></span>
+    <button type="submit">Enregistrer</button>
+    <span class="retour-ancrage" id="retourMesures"></span>
+  </form>
+
+  <h2 class="titre-section">Mon matériel</h2>
+  <p class="sous-titre">
+    Ce que tu possèdes décide des charges que le barème peut te proposer. Une
+    paire de 8 kg n'est pas la même chose qu'un seul haltère de 8 kg : les
+    mouvements à deux bras ont besoin des deux.
+  </p>
+  <div id="resumeMateriel"></div>
+  <div class="actions" style="justify-content:flex-start" id="actionsMateriel">
+    <button class="bouton secondaire" id="boutonModifierMateriel">Modifier mon matériel</button>
+  </div>
+  <div id="editeurMateriel" hidden>
+    <h3 style="font-size:1rem;margin-top:1.2rem">Haltères</h3>
+    <div class="halteres" id="listeHalteres"></div>
+    <h3 style="font-size:1rem">Accessoires</h3>
+    <div class="accessoires" id="listeAccessoires"></div>
+    <div class="actions" style="justify-content:flex-start">
+      <button class="bouton" id="boutonEnregistrerMateriel">Enregistrer le matériel</button>
+      <button class="bouton secondaire" id="boutonAnnulerMateriel">Annuler</button>
+    </div>
+  </div>
+  <p class="muet" id="etatMateriel" style="margin-top:0.9rem"></p>
+
+  <h2 class="titre-section">Changer de personne</h2>
+  <div class="actions" style="justify-content:flex-start">
+    <button class="bouton secondaire" id="versProfils">Changer de profil</button>
+  </div>
+</section>
+
+<!-- ====================== HISTORIQUE ====================== -->
+<section class="ecran defile" id="ecranHistorique">
+  <div class="onglets" data-onglets="ecranHistorique"></div>
+  <h1>Historique</h1>
+  <p class="sous-titre" id="resumeHistorique"></p>
+  <div id="listeHistorique"></div>
+
+  <!-- La sauvegarde vit **sous l'historique** et non sous l'accueil : c'est ce
+       qu'elle sauvegarde. Sur l'accueil elle s'intercalait entre les seances et
+       le choix du jour, au milieu de ce qu'on vient faire ; ici elle est la
+       suite naturelle de ce qu'on vient de relire. -->
+  <h2 class="titre-section" style="margin-top:2rem">Sauvegarde</h2>
+  <p class="sous-titre" id="etatBase">Chargement…</p>
+  <div class="actions" style="justify-content:flex-start">
+    <button class="bouton secondaire" id="boutonExporter">Exporter mes séances</button>
+    <button class="bouton secondaire" id="boutonImporter">Importer un fichier</button>
+  </div>
+  <input type="file" id="fichierImport" accept="application/json,.json" hidden>
+  <p class="muet" style="margin-top:0.9rem">
+    Tout ce que tu vois ici reste sur cet appareil. Exporte de temps en temps :
+    c'est ta sauvegarde, et c'est aussi comme ça que ton historique passe sur
+    un autre appareil.
+  </p>
+</section>
+
+<!-- ====================== EDITEUR ====================== -->
+<!-- L'editeur de seances. Il n'ecrit pas dans `seances_personnalisees.json` —
+     un site statique n'a pas de serveur a qui ecrire —, mais dans la base de
+     l'appareil, qui **masque** alors le fichier deploye. L'ecran le dit
+     explicitement : c'est la seule facon que la precedence ne soit pas une
+     surprise au prochain deploiement. -->
+<section class="ecran defile" id="ecranEditeur">
+  <button class="bouton secondaire" id="retourEditeur">← Retour aux séances</button>
+  <h1 id="titreEditeur">Modifier</h1>
+  <p class="sous-titre" id="sousTitreEditeur"></p>
+  <div id="blocsEditeur"></div>
+  <div class="actions" style="justify-content:flex-start;margin-top:1rem">
+    <button class="bouton secondaire" id="ajouterBloc">+ Ajouter un exercice</button>
+  </div>
+  <p class="retour-ancrage" id="retourEditeurMessage"></p>
+  <div class="actions" style="justify-content:flex-start;margin-top:1rem">
+    <button class="bouton" id="enregistrerSeance">Enregistrer</button>
+    <button class="bouton secondaire" id="rendreAuFichier" hidden>Revenir à la version du fichier</button>
+  </div>
+</section>
+
+<!-- ====================== PROFILS ====================== -->
+<!-- L'ecran « Qui s'entraine ? » du poste fixe. Il ne s'impose jamais au
+     lancement : l'application rouvre sur le dernier profil utilise, et ce
+     n'est qu'en le demandant qu'on arrive ici. Un appareil personnel ne doit
+     pas faire choisir son proprietaire a chaque seance ; un appareil prete a
+     quelqu'un le doit, et c'est le meme ecran. -->
+<section class="ecran defile" id="ecranProfils">
+  <h1>Qui s'entraîne ?</h1>
+  <p class="sous-titre">
+    Chaque profil garde son historique, ses records et ses niveaux. Les séances
+    et les programmes, eux, sont communs.
+  </p>
+  <div id="listeProfils"></div>
+  <h2 style="font-size:1rem;margin-top:1.6rem">Nouveau profil</h2>
+  <p class="sous-titre">
+    Il démarre sans historique : ses niveaux se construiront à partir de ses
+    séances, ou d'un recalage depuis la fiche d'un exercice.
+  </p>
+  <!-- Les mesures sont demandees **a la creation**. Une page de profil qu'on
+       ne visite jamais revient a ne jamais les avoir. Toutes facultatives :
+       rien dans le bareme n'en depend. -->
+  <form class="form-ancrage" id="formProfil">
+    <span class="champ champ-large"><label>Prénom</label>
+      <input type="text" id="nomProfil" placeholder="Prénom" autocomplete="off"></span>
+    <span class="champ"><label>Sexe</label>
+      <select id="nouveauSexe">
+        <option value="">Non précisé</option>
+        <option value="femme">Femme</option>
+        <option value="homme">Homme</option>
+        <option value="autre">Autre</option>
+      </select></span>
+    <span class="champ"><label>Date de naissance</label>
+      <input type="date" id="nouveauNaissance"></span>
+    <span class="champ"><label>Taille (cm)</label>
+      <input type="number" min="0" max="260" id="nouveauTaille"></span>
+    <span class="champ"><label>Poids (kg)</label>
+      <input type="number" min="0" max="400" step="0.1" id="nouveauPoidsCorps"></span>
+    <button type="submit">Créer</button>
+    <span class="retour-ancrage" id="retourProfil"></span>
+  </form>
+  <div class="actions" style="justify-content:flex-start;margin-top:1.4rem">
+    <button class="bouton secondaire" id="retourDepuisProfils">Retour aux séances</button>
+  </div>
+</section>
+
+<!-- ====================== PROGRAMMES ====================== -->
+<section class="ecran defile" id="ecranProgrammes">
+  <div class="onglets" data-onglets="ecranProgrammes"></div>
+  <h1>Programmes</h1>
+  <p class="sous-titre">
+    Un programme ne stocke aucune progression : il déclare une performance à
+    atteindre par exercice, et l'écart avec ton niveau se recalcule à chaque
+    ouverture. Les programmes s'écrivent sur l'ordinateur, comme les séances.
+  </p>
+  <div id="listeProgrammes"></div>
+</section>
+
+<!-- ====================== EXERCICES ====================== -->
+<section class="ecran defile" id="ecranExercices">
+  <div class="onglets" data-onglets="ecranExercices"></div>
+  <h1>Les exercices</h1>
+  <p class="sous-titre">
+    Chaque fiche explique comment se placer, comment exécuter le mouvement et ce
+    qu'il faut éviter — et montre où tu en es : niveau, progression, recalage.
+    Les variantes assistées sont là pour commencer : elles comptent et
+    progressent comme les autres.
+  </p>
+  <p class="sous-titre">
+    Le niveau est le plus haut palier <em>jamais</em> validé — toutes les séries,
+    sans exception. L'objectif de la prochaine séance peut passer en dessous :
+    c'est un délestage, pas une régression.
+  </p>
+  <div id="listeExercices"></div>
+</section>
+
+<!-- La fiche d'un mouvement. Un ecran et non une page : le poste fixe a des
+     URL (`/exercice/<nom>`), l'application n'en a qu'une. Le bouton retour
+     remplace donc le bouton precedent du navigateur. -->
+<section class="ecran defile" id="ecranFiche">
+  <button class="bouton secondaire" id="retourExercices">← Tous les exercices</button>
+  <div id="contenuFiche"></div>
+</section>
+
+<!-- L'ecran de seance est **le HUD du poste fixe**, aux memes classes et aux
+     memes identifiants : `hud.css` l'habille et `hud.js` le peint. La seule
+     difference est la source de l'image — un <canvas> alimente par la camera
+     de l'appareil, la ou le poste fixe recoit un flux MJPEG de Flask. -->
+<section class="ecran stage" id="ecranSeance">
+
+  <canvas class="video" id="rendu"></canvas>
+  <div class="vignette"></div>
+  <div class="scanlines"></div>
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span class="brand-name">Personal<span>Trainer</span></span>
+    </div>
+
+    <div class="topbar-center">
+      <div class="exercise-badge" id="exerciseBadge">
+        <span class="exercise-label">Exercice</span>
+        <span class="exercise-value" id="exercice">Aucun</span>
+      </div>
+
+      <div class="series-badge" id="seriesBadge">
+        <span class="series-label">Série</span>
+        <span class="series-value" id="series">1 / 1</span>
+      </div>
+
+      <div class="weight-badge" id="weightBadge">
+        <span class="weight-label">Poids</span>
+        <span class="weight-value" id="weight">—</span>
+      </div>
+    </div>
+
+    <div class="status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">En direct</span>
+    </div>
+    <div class="duration-badge">
+      <strong id="sessionDuration">0 min</strong>&nbsp;de séance
+    </div>
+  </div>
+
+  <div class="rest-overlay" id="restOverlay">
+    <span class="rest-title" id="restTitle">Récupération</span>
+
+    <span class="rest-next-label" id="restNextLabel">Prochain exercice</span>
+    <span class="rest-next-name" id="restNextName">—</span>
+
+    <div class="breathe-circle" id="breatheCircle">
+      <span class="rest-time" id="restTime">0:00</span>
+    </div>
+
+    <div class="prep-ring-wrap" id="prepRingWrap">
+      <svg class="prep-ring" viewBox="0 0 160 160">
+        <circle class="prep-ring-bg" cx="80" cy="80" r="70"></circle>
+        <circle class="prep-ring-progress" id="prepRingProgress" cx="80" cy="80" r="70"></circle>
+      </svg>
+      <span class="prep-percent" id="prepPercent">0%</span>
+    </div>
+
+    <span class="rest-next" id="restNext">Prochain : —</span>
+    <div class="overlay-session-info">Temps total : <strong id="overlaySessionDuration">0:00</strong></div>
+    <div class="overlay-session-progress" aria-label="Progression de la séance">
+      <div id="overlaySessionProgressSegments"></div>
+    </div>
+
+    <!-- Propre a l'application : personne ne doit rester bloque parce que le
+         geste bras en X ne se declenche pas chez lui. Le poste fixe a un
+         clavier pour ca, une tablette posee par terre n'a rien. -->
+    <button class="bouton" id="boutonCommencer" hidden>Je commence</button>
+  </div>
+
+  <div class="hold-container" id="holdContainer">
+    <div class="hold-ring-wrap">
+      <svg class="hold-ring" viewBox="0 0 160 160">
+        <circle class="hold-ring-bg" cx="80" cy="80" r="70"></circle>
+        <circle class="hold-ring-progress" id="holdRingProgress" cx="80" cy="80" r="70"></circle>
+      </svg>
+      <div class="hold-bubble" id="holdBubble"></div>
+      <span class="hold-percent" id="holdPercent">0%</span>
+      <div class="burst" id="burst"></div>
+    </div>
+    <span class="hold-caption">Maintien</span>
+  </div>
+
+  <div class="error-alert" id="errorAlert" role="alert" aria-live="assertive">
+    <span class="error-asset" aria-hidden="true">!</span>
+    <span class="error-message" id="errorMessage"></span>
+  </div>
+
+  <!-- Deux bandeaux et non un : l'erreur reproche une faute de forme, la
+       consigne dit quoi faire (« place-toi devant la camera »). -->
+  <div class="consigne-alert" id="consigneAlert" role="status" aria-live="polite">
+    <span class="consigne-asset" aria-hidden="true">i</span>
+    <span class="consigne-message" id="consigneMessage"></span>
+  </div>
+
+  <div class="side-panel">
+
+    <div class="card position-card">
+      <span class="label">Position</span>
+      <span class="position-value" id="position">Aucune</span>
+    </div>
+
+    <div class="card stage-card">
+      <span class="label">Étape</span>
+      <span class="stage-value" id="stage">Aucune</span>
+    </div>
+
+    <div class="card comment-card" id="commentCard" hidden>
+      <span class="label">Note exercice</span>
+      <span class="stage-value" id="exerciseComment"></span>
+    </div>
+
+  </div>
+
+  <div class="right-column">
+
+    <div class="card fiche-card" id="ficheCard" hidden>
+      <span class="label" id="ficheLabel">Consignes</span>
+      <ol id="ficheInstructions"></ol>
+    </div>
+
+    <div class="hud">
+
+      <div class="card reps-card workout-card" id="workoutCard" data-mode="repetitions">
+
+        <!-- MODE_REPETITIONS : "8 / 12 repetitions" -->
+        <div class="workout-block workout-block--repetitions">
+          <span class="label">Répétitions</span>
+          <div class="reps-value-wrap">
+            <span class="impact-ring" id="ring"></span>
+            <span class="reps-value" id="reps">0</span>
+          </div>
+          <span class="reps-target">objectif : <strong id="repsCible">10</strong></span>
+          <div class="reps-progress-track">
+            <div class="reps-progress-fill" id="repsProgressFill"></div>
+          </div>
+        </div>
+
+        <!-- MODE_MAINTIEN : "7 / 15 secondes" -->
+        <div class="workout-block workout-block--maintien">
+          <span class="label">Maintien</span>
+          <div class="reps-value-wrap">
+            <span class="impact-ring" id="maintienRing"></span>
+            <span class="reps-value" id="maintienTemps">0</span>
+          </div>
+          <span class="reps-target">
+            <strong id="maintienTempsTexte">0</strong> / <span id="maintienDureeTexte">0</span> secondes
+          </span>
+          <div class="reps-progress-track">
+            <div class="reps-progress-fill" id="maintienProgressFill"></div>
+          </div>
+          <span class="maintien-status" id="maintienStatus">Maintenir la position</span>
+        </div>
+
+        <!-- MODE_CHRONO : "45 secondes restantes" -->
+        <div class="workout-block workout-block--chrono">
+          <span class="label">Chrono</span>
+          <span class="chrono-value" id="chronoTemps">0</span>
+          <span class="reps-target">secondes restantes</span>
+        </div>
+
+        <!-- MODE_AMRAP : "12 repetitions en 60 secondes" -->
+        <div class="workout-block workout-block--amrap">
+          <span class="label">AMRAP</span>
+          <div class="amrap-row">
+            <span class="reps-value" id="amrapReps">0</span>
+          </div>
+          <span class="reps-target"><strong id="amrapTempsRestant">60</strong> secondes restantes</span>
+        </div>
+
+        <!-- MODE_ECHAUFFEMENT : "18 / 30 secondes" -->
+        <div class="workout-block workout-block--echauffement">
+          <span class="label">Échauffement</span>
+          <span class="chrono-value" id="echauffementTemps">0</span>
+          <span class="reps-target">
+            <strong id="echauffementTempsTexte">0</strong> / <span id="echauffementDureeTexte">0</span> secondes
+          </span>
+          <div class="reps-progress-track">
+            <div class="reps-progress-fill" id="echauffementProgressFill"></div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <nav class="series-controls" aria-label="Commandes de série">
+    <button type="button" data-contexte="exercice" data-commande="reset">Reset série</button>
+    <button type="button" data-contexte="exercice" data-commande="recommencer">Recommencer</button>
+    <button type="button" data-contexte="exercice" data-commande="precedente">Série précédente</button>
+    <button type="button" data-contexte="exercice" data-commande="suivante">Série suivante</button>
+    <button type="button" data-contexte="exercice" data-commande="terminer">Série terminée</button>
+    <button type="button" data-contexte="exercice" data-commande="pause">Pause</button>
+    <button type="button" data-contexte="pause" data-commande="reprendre">Reprendre</button>
+    <button type="button" data-contexte="pause" data-commande="passer_pause">Passer la pause</button>
+    <button type="button" data-contexte="pause" data-commande="refaire">Refaire cette série</button>
+    <button type="button" data-contexte="pause" data-commande="terminer_seance">Terminer la séance</button>
+    <button type="button" data-contexte="exercice" data-commande="abandonner">Abandonner</button>
+  </nav>
+  <div class="session-progress" aria-label="Progression de la séance">
+    <div id="sessionProgressSegments"></div>
+  </div>
+
+</section>
+
+<!-- ====================== FIN ====================== -->
+<section class="ecran defile" id="ecranFin">
+  <h1>Séance terminée</h1>
+  <p class="sous-titre" id="resumeDuree"></p>
+  <div class="etat-sauvegarde" id="etatSauvegarde"></div>
+  <div class="resume" id="resume"></div>
+  <p class="muet" id="aideRessenti" hidden>
+    Dis-moi si c'était trop facile ou trop dur : le moteur avance plus vite ou
+    freine. Ne rien répondre est déjà une réponse — c'est le rythme normal.
+  </p>
+  <div class="actions" style="justify-content:flex-start">
+    <button class="bouton" id="boutonRetour">Retour aux séances</button>
+    <button class="bouton secondaire" id="boutonExporterFin">Exporter</button>
+  </div>
+  <p class="muet" style="margin-top:1.2rem" id="noteCamera"></p>
+</section>
+
+<script type="module">
+import { Camera, POSES_SEUL, dessiner_squelette } from "../js/camera.js";
+import { construire_corps } from "../js/landmarks.js";
+import { DETECTIONS } from "../js/detections.js";
+import {
+  catalogue_effectif,
+  circuit_pour,
+  payload_etat,
+  problemes_des_blocs,
+  resultats_par_exercice,
+} from "../js/seance.js";
+import { brancher_commandes, peindre_hud } from "../js/hud.js";
+import { executer_mode, duree_realisee, oublier_durees, mettre_a_jour_prochain_exercice, poser_etape, annoncer_temps_repos } from "../js/moteur.js";
+import { CompteurMouvement } from "../js/compteur.js";
+import { HoldPosition } from "../js/outils.js";
+import {
+  bras_droit_leve,
+  bras_en_x,
+  bras_gauche_leve,
+  deux_bras_leves,
+} from "../js/positions.js";
+import { creer_etat } from "../js/etat.js";
+import { texte, libelle_etape } from "../js/messages.js";
+import { points_utilises, consigne_de_cadrage } from "../js/cadrage.js";
+import * as historique from "../js/historique.js";
+import * as stockage from "../js/stockage.js";
+import { Lecteur } from "../js/lecteur.js";
+import { Baremes } from "../js/paliers.js";
+import { Niveaux } from "../js/niveaux.js";
+import { ECHELLE, Ressenti } from "../js/ressenti.js";
+import { construire_ligne } from "../js/ressentis_ui.js";
+import { Calibration } from "../js/calibration.js";
+import { Objectifs } from "../js/objectifs.js";
+import { normaliser } from "../js/materiel.js";
+import { VerrouEcran } from "../js/veille.js";
+import { cle_de_progression, graphique_progression } from "../js/graphique.js";
+import {
+  etat_programme,
+  etats_programmes,
+  liaison_seances,
+  prochaine_seance,
+  resume_palier,
+} from "../js/programmes.js";
+import { enteriner_cibles_manuelles, est_cible_manuelle } from "../js/cible_manuelle.js";
+import { UNITE_SECONDES } from "../js/paliers.js";
+
+//: Ou le dernier profil choisi est retenu. `localStorage` et non la base :
+//: c'est une **commodite de cet appareil**, pas une donnee d'entrainement —
+//: elle n'a rien a faire dans une sauvegarde qu'on reimporte ailleurs, ou
+//: elle designerait un identifiant qui n'existe peut-etre pas.
+const CLE_PROFIL = "coach.profil";
+
+//: Le profil dont on lit et ecrit l'historique. Variable et non constante
+//: depuis l'ecran de profils — tout le cloisonnement etait deja en place
+//: (`historique.js` filtre comme le fait SQLite), seule cette valeur figee
+//: empechait d'en avoir plusieurs.
+let PROFIL = 1;
+
+/**
+ * Retient le profil courant, sans jamais faire echouer le reste.
+ *
+ * `localStorage` peut lever — navigation privee, stockage refuse, quota —, et
+ * ne pas se souvenir du profil est un desagrement, pas une panne : on retombe
+ * alors sur le premier profil au prochain lancement.
+ */
+function retenir_profil(id) {
+  PROFIL = id;
+  try {
+    localStorage.setItem(CLE_PROFIL, String(id));
+  } catch {
+    /* rien a faire : on redemandera au prochain lancement */
+  }
+}
+
+function profil_retenu() {
+  try {
+    const valeur = Number(localStorage.getItem(CLE_PROFIL));
+    return Number.isInteger(valeur) && valeur > 0 ? valeur : null;
+  } catch {
+    return null;
+  }
+}
+
+// Duree du geste « bras en X » pour lancer une serie, puis du decompte qui
+// suit. Memes valeurs que `main.py` : le geste doit etre tenu assez longtemps
+// pour ne pas se declencher en s'installant, et le decompte laisse le temps de
+// redescendre les bras.
+//: Combien de temps un geste doit etre tenu. Trois valeurs et non une :
+//: entrer dans la seance est anodin (1,5 s), valider une serie ou la
+//: remettre a zero ne l'est pas (3 s, comme `main.py`). L'application les
+//: confondait a 1,5 s, si bien qu'un bras en X fugace pendant l'effort
+//: pouvait terminer la serie deux fois plus vite que sur le poste fixe.
+const TENUE_PREPARATION = 1.5;
+const TENUE_VALIDATION = 3;
+const DECOMPTE = 3;
+
+//: Deux clics sur le meme point du graphique dans cet intervalle valent
+//: « ouvre la seance ». Volontairement plus large que le double-clic du
+//: systeme (souvent 300 ms au pointeur) : au doigt, sur une cible de six
+//: pixels, deux appuis se separent davantage.
+const DELAI_DOUBLE_CLIC = 500;
+
+//: Les modes dont la cible se compte en secondes. Meme liste que le
+//: `MODES_DUREE` des gabarits du poste fixe, et pour la meme raison : la
+//: regle etait ecrite en clair a chaque endroit qui en avait besoin, et un
+//: mode absent d'une des copies voyait sa duree remise a zero.
+const MODES_DUREE = ["maintien", "chrono", "echauffement"];
+
+const $ = (id) => document.getElementById(id);
+const montrer = (id) => {
+  for (const ecran of document.querySelectorAll(".ecran")) {
+    ecran.classList.toggle("actif", ecran.id === id);
+  }
+};
+
+// La barre d'onglets, en un seul endroit.
+//
+// Elle etait recopiee a la main dans les cinq ecrans, et le bouton de profil
+// n'existait que dans la copie de l'accueil. C'est exactement l'histoire de
+// `web/templates/_navigation.html` cote Flask : c'est en voulant y ajouter le
+// profil que la duplication est devenue intenable. Meme cause, meme remede.
+//
+// L'ecran de seance n'a volontairement pas de barre : on ne quitte pas une
+// seance par un onglet.
+const ONGLETS = [
+  ["ecranSeances", "Accueil"],
+  ["ecranHistorique", "Historique"],
+  ["ecranProgrammes", "Programmes"],
+  ["ecranExercices", "Exercices"],
+];
+
+function remplir_barres_onglets() {
+  for (const barre of document.querySelectorAll(".onglets[data-onglets]")) {
+    // La section dit elle-meme quel ecran elle porte : pas de table de
+    // correspondance a cote, donc rien qui puisse deriver.
+    const courant = barre.dataset.onglets;
+    barre.innerHTML =
+      ONGLETS.map(([ecran, libelle]) =>
+        `<button class="onglet${ecran === courant ? " actif" : ""}" ` +
+        `data-ecran="${ecran}">${libelle}</button>`
+      ).join("") +
+      // Sans `data-ecran` : le cablage generique l'ignore, et son propre
+      // gestionnaire ouvre le profil.
+      `<button class="onglet onglet-profil${courant === "ecranProfil" ? " actif" : ""}" ` +
+      `title="Mon profil"></button>`;
+  }
+}
+
+// Avant tout cablage : la boucle qui branche les `.onglet` tourne plus bas,
+// dans le corps du module, et ne verrait rien a brancher si la barre etait
+// rendue apres elle.
+remplir_barres_onglets();
+
+// ---------------------------------------------------------------- donnees
+
+let mouvements = {};
+let seances = {};
+let base = historique.base_vide();
+let tables_baremes = null;
+let programmes_declares = {};
+//: Le catalogue tel qu'il est deploye, avant les modifications locales.
+//: Le garder a part est ce qui permet de rendre une seance au fichier.
+let seances_du_fichier = {};
+let moteur = null;
+
+async function charger_donnees() {
+  const [m, s, sons, baremes, progs] = await Promise.all([
+    fetch("../donnees/mouvements.json").then((r) => r.json()),
+    fetch("../donnees/seances.json").then((r) => r.json()),
+    fetch("../donnees/sons.json").then((r) => r.json()),
+    fetch("../donnees/baremes.json").then((r) => r.json()),
+    fetch("../donnees/programmes.json").then((r) => r.json()),
+  ]);
+  mouvements = m;
+  seances_du_fichier = s;
+  tables_baremes = baremes;
+  programmes_declares = progs;
+  lecteur = new Lecteur("../sons", sons);
+  base = await stockage.charger();
+  if (!base.utilisateurs.length) {
+    historique.creer_utilisateur(base, "Moi");
+  }
+  // Le dernier profil utilise, s'il existe encore — il a pu etre remplace par
+  // un import. A defaut, le premier : ne jamais rester sans profil, sinon
+  // toute lecture d'historique porterait sur un identifiant fantome.
+  const retenu = profil_retenu();
+  const connu = base.utilisateurs.some((u) => u.id === retenu);
+  retenir_profil(connu ? retenu : base.utilisateurs[0].id);
+  // Le fichier d'abord, puis ce que l'appareil a modifie par-dessus.
+  seances = catalogue_effectif(seances_du_fichier, base.seances_locales);
+  construire_moteur();
+}
+
+/**
+ * Le moteur de progression, reconstruit a chaque changement de materiel.
+ *
+ * Il porte l'inventaire du profil : le recreer est le seul moyen d'en changer,
+ * puisque `Baremes` normalise une fois pour toutes a la construction.
+ */
+function construire_moteur() {
+  const profil = base.utilisateurs.find((u) => u.id === PROFIL);
+  const baremes = new Baremes(tables_baremes, profil?.materiel ?? null);
+  const niveaux = new Niveaux(baremes);
+  const calibration = new Calibration(baremes);
+  // `Ressenti` est nomme plutot qu'anonyme : les ecrans s'en servent aussi
+  // pour *juger* une seance passee (« reussi » ou « non atteint », et quelles
+  // reponses proposer), pas seulement le moteur pour calculer un objectif.
+  const ressenti = new Ressenti(baremes, niveaux);
+  moteur = {
+    baremes,
+    niveaux,
+    calibration,
+    ressenti,
+    objectifs: new Objectifs(baremes, niveaux, ressenti, calibration),
+  };
+}
+
+/** L'historique et les ancrages du profil, tels que le moteur les attend. */
+function lecture_du_profil() {
+  return {
+    seances: historique.recuperer_historique(base, PROFIL),
+    ancrages: historique.recuperer_ancrages(base, PROFIL),
+  };
+}
+
+// ---------------------------------------------------------------- son
+
+// Le lecteur porte la file d'attente a priorites du desktop : un son a la
+// fois, le plus urgent d'abord, et un evenement important vide les petits
+// sons en attente. Sans lui les annonces se chevauchaient — « le compte se
+// marche un peu dessus ».
+let lecteur = null;
+const coach = (cle, valeur = null) => lecteur?.coach(cle, valeur);
+
+// ---------------------------------------------------------------- seance
+
+const camera = new Camera(POSES_SEUL);
+let seance = null;
+let nom_seance = null;
+let etat = creer_etat();
+let compteur = new CompteurMouvement();
+let derniere_rep = 0;
+let points_requis = [];
+let geste_preparation = null;
+let geste_fin = null;
+//: Deux bras leves remettent la serie a zero sans la valider. Tenu 3 s,
+//: comme sur le poste fixe : un geste destructeur ne doit pas partir au
+//: premier etirement.
+const geste_reset = new HoldPosition(deux_bras_leves, TENUE_VALIDATION);
+let fin_decompte = null;
+let dernier_decompte = null;
+let en_cours = false;
+//: L'appareil ne doit pas s'endormir pendant une seance. L'objet retient
+//: ce qu'on lui a demande et **redemande le verrou a chaque retour au
+//: premier plan** : le systeme le relache des que la page devient
+//: invisible, et il ne revient pas tout seul.
+const verrou_ecran = new VerrouEcran();
+//: « running » ou « paused ». Jumeau du statut de `SessionManager` :
+//: l'application n'a pas de controleur, mais elle a les memes commandes.
+let statut = "running";
+let phase_precedente = null;
+
+async function demarrer(nom) {
+  // **Avant de construire quoi que ce soit.** Une seance dont un bloc n'a pas
+  // de cible dans l'unite que son mode joue s'acheve a la premiere image et
+  // affiche l'ecran de fin — un defaut spectaculaire et parfaitement muet.
+  // L'editeur refuse desormais d'en creer, mais une seance deja stockee (ou
+  // venue d'un fichier plus ancien) doit dire pourquoi elle ne demarre pas.
+  const problemes = problemes_des_blocs(mouvements, seances[nom] ?? []);
+  if (problemes.length) {
+    $("sousTitre").textContent = `Cette séance ne peut pas démarrer — ${problemes[0]}`;
+    return;
+  }
+
+  nom_seance = nom;
+  seance = circuit_pour(mouvements, seances[nom]);
+  // **Les cibles viennent de l'historique, plus du fichier.** Le JSON ne fait
+  // plus autorite que sur la structure : quel exercice, quel mode, quels
+  // repos, quel entrelacement.
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  moteur.objectifs.appliquer_a_circuit(
+    seance,
+    moteur.objectifs.objectifs_par_exercice(histoire, ancrages),
+    moteur.objectifs.exercices_sans_donnees(histoire, ancrages),
+    PROFIL
+  );
+  etat = creer_etat();
+  compteur = new CompteurMouvement();
+  derniere_rep = 0;
+  phase_precedente = null;
+  fin_decompte = null;
+  geste_preparation = new HoldPosition(bras_en_x, TENUE_PREPARATION);
+  geste_fin = new HoldPosition(bras_en_x, TENUE_VALIDATION);
+
+  // Le contexte audio se cree pendant le clic, jamais avant : iOS refuse de
+  // jouer quoi que ce soit sans geste de l'utilisateur.
+  await lecteur.preparer();
+  // Les nombres et les bips sont demandes des la premiere repetition : les
+  // charger d'avance evite une annonce en retard, ou muette.
+  lecteur.precharger([...Array(21).keys()].slice(1).map(String)
+    .concat([
+      "bip", "debut_serie", "preparation", "fin_serie", "repos",
+      // Le decompte de repos : demande 20, 10 puis 5 secondes avant la fin
+      // d'une pause, donc trop tard pour un telechargement.
+      "repos_20", "repos_10", "repos_5", "changement_exercice",
+    ]));
+  $("sousTitre").textContent = "Préparation de la caméra…";
+
+  try {
+    if (!camera.vivante()) await camera.ouvrir();
+    else await camera.reprendre();
+    await camera.preparer();
+  } catch (erreur) {
+    $("sousTitre").textContent = `Impossible de démarrer : ${erreur.message}`;
+    return;
+  }
+
+  montrer("ecranSeance");
+  changer_exercice();
+  en_cours = true;
+  // Le repli video s'arme maintenant : il a besoin du flux, qui vient
+  // seulement d'etre ouvert. Le verrou, lui, a deja ete demande au clic.
+  veille_annoncee = null;
+  await verrou_ecran.tenir(camera.flux);
+  requestAnimationFrame(boucle);
+}
+
+/** Ce qui doit etre refait a chaque fois que le bloc courant change. */
+function changer_exercice() {
+  const bloc = seance.bloc_actuel;
+  if (!bloc) return;
+  points_requis = bloc.exercice.detection
+    ? points_utilises(bloc.exercice.detection)
+    : [];
+  compteur.reset();
+  derniere_rep = 0;
+  etat.fiche = bloc.exercice.fiche();
+}
+
+function boucle(horodatage) {
+  if (!en_cours) return;
+  const instant = horodatage / 1000;
+
+  const poses = camera.detecter(horodatage);
+  const corps_brut = camera.choisir(poses);
+  peindre(corps_brut);
+
+  // En pause, l'image continue de defiler mais plus rien n'avance : ni le
+  // circuit, ni le comptage. Meme traitement que `main.py`, qui annule le
+  // corps detecte plutot que de sortir de la boucle — c'est ce qui laisse le
+  // flux visible pendant qu'on reprend son souffle.
+  if (statut === "paused") {
+    poser_etape(etat, "pause", libelle_etape);
+    etat.consigne = texte("pause");
+    rafraichir_affichage();
+    requestAnimationFrame(boucle);
+    return;
+  }
+
+  // L'horloge de la seance avance toujours : c'est elle qui fait expirer un
+  // repos, meme si personne n'est devant la camera.
+  const avant = seance.phase;
+  seance.update();
+
+  // Meme decoupage que la boucle camera du desktop : la **preparation est une
+  // phase du circuit**, pas une porte a l'interieur de l'exercice. Les
+  // confondre laissait la seance bloquee en `preparation`, ou rien ne
+  // tournait — ni cadrage, ni geste, ni meme un message.
+  if (corps_brut) {
+    const corps = construire_corps(corps_brut);
+    observer_gestes(corps);
+    if (seance.phase === "preparation") preparer(corps, instant);
+    else if (seance.phase === "exercice") jouer_exercice(corps, instant);
+    else etat.consigne = null;
+  } else if (seance.phase === "preparation" || seance.phase === "exercice") {
+    etat.consigne = texte("corps_absent");
+  }
+
+  if (seance.phase !== avant || seance.phase !== phase_precedente) {
+    annoncer_changement(avant);
+  }
+
+  // Le decompte des dernieres secondes de repos. `Math.trunc` et non
+  // `Math.round` : le Python tronque (`int(...)`), et un demi-seconde d'ecart
+  // suffit a decaler le franchissement d'un seuil.
+  if (seance.phase === "recuperation_serie" || seance.phase === "repos_exercice") {
+    annoncer_temps_repos(coach, seance, Math.trunc(seance.temps_restant));
+  }
+
+  rafraichir_affichage();
+
+  if (seance.phase === "termine") {
+    terminer();
+    return;
+  }
+  requestAnimationFrame(boucle);
+}
+
+/**
+ * Les gestes de controle, releves a **chaque** image quelle que soit la phase.
+ *
+ * Jumeau de la section correspondante de `main.py`, et il manquait trois
+ * choses a l'application. (1) `position_actuelle`, qui alimente la carte
+ * « Position » du HUD — sans elle la carte affichait « Aucune » en permanence.
+ * (2) La **bulle de maintien** : le poste fixe montre l'avancement du bras en
+ * X pendant tout l'exercice, ce qui est le seul retour disant « ton geste est
+ * pris ». (3) Les **deux bras leves**, qui remettent le compteur a zero sans
+ * valider la serie — un geste qui existait sur le poste fixe et nulle part
+ * dans le navigateur.
+ */
+function observer_gestes(corps) {
+  etat.position_actuelle = deux_bras_leves(corps)
+    ? "Deux bras levés"
+    : bras_droit_leve(corps)
+      ? "Bras droit levé"
+      : bras_gauche_leve(corps)
+        ? "Bras gauche levé"
+        : bras_en_x(corps)
+          ? "Bras en X"
+          : "Aucune";
+
+  // Pendant la preparation c'est le geste d'entree qui remplit la bulle,
+  // pendant l'effort celui de validation : les deux se tiennent de la meme
+  // facon, et montrer l'un puis l'autre evite d'avoir deux indicateurs.
+  const geste = seance.phase === "preparation" ? geste_preparation : geste_fin;
+  // **Lecture seule** : `update` ne doit etre appele qu'une fois par image, et
+  // c'est la phase qui s'en charge. L'appeler ici aussi consommerait la
+  // transition « termine », que `HoldPosition` ne rend qu'une seule fois — la
+  // serie ne se validerait plus jamais.
+  etat.progression_maintien =
+    !geste || geste.debut === null
+      ? 0
+      : Math.min(100, ((geste.horloge() - geste.debut) / geste.duree) * 100);
+  etat.maintien_termine = Boolean(geste && geste.termine);
+
+  const [, reset] = geste_reset.update(corps);
+  if (reset && seance.phase === "exercice") {
+    compteur.reset();
+    etat.repetitions = 0;
+    derniere_rep = 0;
+  }
+}
+
+/**
+ * La phase de preparation : cadrage, geste bras en X, puis decompte.
+ *
+ * Elle n'a lieu **qu'une fois par seance** : apres un repos, `update()`
+ * repasse directement en `exercice`, et `passer_exercice_suivant` aussi. Ne
+ * pas la rearmer entre deux series — ca obligerait a refaire le geste a
+ * chaque fois, alors qu'on est deja en place.
+ */
+function preparer(corps, instant) {
+  // Le cadrage passe avant le geste, pour la meme raison que dans la demo :
+  // quelqu'un d'immobile hors champ franchirait toutes les etapes suivantes.
+  if (fin_decompte === null) {
+    const cadrage = points_requis.length
+      ? consigne_de_cadrage(corps, points_requis)
+      : null;
+    if (cadrage) {
+      etat.consigne = cadrage;
+      return;
+    }
+
+    const [progression, valide] = geste_preparation.update(corps);
+    etat.progression_preparation = progression;
+    if (!valide) {
+      etat.consigne = texte("preparation_bras_en_x");
+      return;
+    }
+    fin_decompte = instant + DECOMPTE;
+    dernier_decompte = null;
+  }
+
+  const restant = Math.ceil(fin_decompte - instant);
+  if (restant > 0) {
+    if (restant !== dernier_decompte) {
+      dernier_decompte = restant;
+      coach("bip");
+    }
+    etat.consigne = `${texte("preparation_decompte")} ${restant}…`;
+    return;
+  }
+
+  lancer_effort();
+}
+
+/** Sortie unique de la preparation — le bouton de secours passe par ici aussi. */
+function lancer_effort() {
+  fin_decompte = null;
+  etat.consigne = null;
+  coach("debut_serie");
+  seance.commencer_exercice();
+  geste_fin = new HoldPosition(bras_en_x, TENUE_VALIDATION);
+}
+
+function jouer_exercice(corps, instant) {
+  const bloc = seance.bloc_actuel;
+  if (!bloc) return;
+
+  // Le geste bras en X termine la serie a la main, et c'est le seul chemin
+  // qui peut produire une serie **non reussie** : `objectif_serie_atteint` en
+  // decide, on ne force jamais `completee` a vrai.
+  const [, valide] = geste_fin.update(corps);
+  if (valide) {
+    seance.terminer_serie_manuellement({
+      repetitions: etat.repetitions,
+      duree: duree_realisee(bloc, etat),
+    });
+    oublier_durees(etat);
+    apres_serie();
+    return;
+  }
+
+  const [rep, , terminee] = executer_mode({
+    seance,
+    corps,
+    compteur,
+    etat,
+    coach,
+    derniere_rep,
+    messages: { texte, libelle_etape },
+  });
+  derniere_rep = rep;
+  if (terminee) apres_serie();
+}
+
+/**
+ * Pose l'ancrage d'un test de calibration, si la serie qui vient de finir en
+ * etait un.
+ *
+ * **Ici et pas a la fin de la seance** : la performance vient d'etre mesuree,
+ * et l'ancrage doit exister avant que le moteur ne recalcule quoi que ce soit.
+ * Refaire la serie repose un ancrage, sans dommage — seul le dernier de chaque
+ * exercice compte.
+ */
+async function cloturer_test_eventuel() {
+  const repere = seance._derniere_serie_terminee;
+  if (!repere) return;
+  const bloc = seance.exercices[repere.index_exercice];
+  if (!bloc?.test_max) return;
+
+  const resultat = seance.resultats_series.find(
+    (r) => r.index_exercice === repere.index_exercice && r.serie === repere.serie
+  );
+  if (!resultat) return;
+
+  const nom = bloc.exercice.nom;
+  const maximum =
+    moteur.baremes.unite(nom) === UNITE_SECONDES
+      ? resultat.duree
+      : resultat.repetitions;
+  if (!maximum) return;
+
+  const niveau = moteur.calibration.niveau_a_ancrer(nom, bloc.poids, maximum);
+  historique.enregistrer_ancrage(base, nom, niveau, {
+    raison: "Test en séance",
+    utilisateur_id: PROFIL,
+  });
+  await stockage.sauver(base);
+  etat.consigne = `Niveau de départ enregistré pour ${nom}.`;
+}
+
+function apres_serie() {
+  cloturer_test_eventuel();
+  compteur.reset();
+  derniere_rep = 0;
+  // Un geste neuf : sans ca, `HoldPosition` reste « termine » et la serie
+  // suivante s'arreterait a la premiere image ou les bras sont encore croises.
+  geste_fin = new HoldPosition(bras_en_x, TENUE_VALIDATION);
+  if (seance.bloc_actuel) changer_exercice();
+}
+
+function annoncer_changement(avant) {
+  const phase = seance.phase;
+  if (phase === phase_precedente) return;
+  phase_precedente = phase;
+  mettre_a_jour_prochain_exercice(seance, etat);
+  if (phase === "preparation") {
+    coach("preparation");
+  } else if (phase === "recuperation_serie") {
+    coach("repos");
+    // Armer le repere du decompte : `annoncer_temps_repos` ne dit rien tant
+    // qu'il vaut null, et sa premiere lecture ne fait que le poser.
+    seance.repos_restant_precedent = null;
+  } else if (phase === "repos_exercice") {
+    // Les deux, comme `main.py` : « repos » dit qu'on s'arrete, « changement
+    // d'exercice » dit ce qui vient — ce n'est pas la meme information.
+    coach("repos");
+    coach("changement_exercice");
+    seance.repos_restant_precedent = null;
+  } else if (phase === "exercice") {
+    // Le decompte du repos est fini : desarmer, sinon le repos suivant
+    // heriterait de ce compte et croirait un seuil deja franchi.
+    seance.repos_restant_precedent = null;
+  } else if (phase === "termine") {
+    coach("fin_seance");
+  }
+  if (avant === "recuperation_serie" || avant === "repos_exercice") {
+    // On revient a l'effort : la preparation recommence a zero.
+    if (phase === "exercice") {
+      coach("debut_serie");
+      changer_exercice();
+    }
+  }
+}
+
+// ---------------------------------------------------------------- affichage
+
+function peindre(pose, nombre) {
+  const canvas = $("rendu");
+  const video = camera.video;
+  if (!video?.videoWidth) return;
+  if (canvas.width !== video.videoWidth) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+  }
+  const ctx = canvas.getContext("2d");
+  ctx.save();
+  if (camera.miroir) {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  if (pose) dessiner_squelette(ctx, pose);
+  ctx.restore();
+}
+
+/**
+ * Peint le HUD — **avec la meme fonction que le poste fixe**.
+ *
+ * Tout ce qui etait ecrit ici (badges, compteur multi-modes, fiche, voile de
+ * repos, barres de progression) vivait en double : une version Flask, une
+ * version navigateur, qui ne se ressemblaient plus. `payload_etat` fabrique
+ * l'objet que `/etat` renvoie, `peindre_hud` s'en charge, et les deux ecrans
+ * ne peuvent plus diverger sans qu'on l'ait decide.
+ *
+ * Ne restent ici que les deux choses que le poste fixe n'a pas : un bouton de
+ * secours pour demarrer sans le geste, et l'anneau de geste bras en X pendant
+ * l'effort — cote Flask, la meme information passe par `progression_maintien`,
+ * que le serveur calcule.
+ */
+/**
+ * Previent quand l'ecran risque de s'eteindre.
+ *
+ * **Un echec silencieux se paie en seance** : l'ecran s'eteint au milieu d'un
+ * gainage, on ne sait pas pourquoi, et on ne peut rien y faire. Le dire permet
+ * au moins de poser le doigt sur l'ecran, ou de sortir du mode economie
+ * d'energie — qui est la cause la plus frequente sur iOS, et que le message du
+ * navigateur ne nomme jamais.
+ */
+//: Dernier etat annonce, pour ne pas reecrire le bandeau a chaque image.
+let veille_annoncee = null;
+
+function signaler_veille() {
+  // **Pas dans `consigne`** : la boucle la reecrit a chaque image, et
+  // l'avertissement aurait clignote une fois avant de disparaitre. Le voyant
+  // de statut du HUD, lui, est libre — il annonce « connexion perdue » sur le
+  // poste fixe, et le navigateur n'a aucune connexion a perdre. Le detourner
+  // ici lui rend un sens : « quelque chose ne va pas dans cette seance ».
+  const tenu = verrou_ecran.tenu;
+  if (tenu === veille_annoncee) return;
+  veille_annoncee = tenu;
+
+  const point = $("statusDot");
+  const texte = $("statusText");
+  point.classList.toggle("offline", !tenu);
+  texte.textContent = tenu ? "Écran gardé allumé" : "L'écran peut s'éteindre";
+  texte.title = tenu ? "" : (verrou_ecran.raison ?? "");
+}
+
+function rafraichir_affichage() {
+  peindre_hud(payload_etat(seance, etat, statut, PROFIL));
+  // Reevalue a chaque image, et n'ecrit que si l'etat a change : un verrou
+  // perdu en cours de seance est exactement le cas qu'on cherche a voir.
+  signaler_veille();
+
+  // Le geste de fin de serie reutilise la bulle de maintien du HUD : c'est le
+  // meme retour visuel, pour le meme genre d'action tenue.
+  $("boutonCommencer").hidden = seance.phase !== "preparation";
+}
+
+// ---------------------------------------------------------------- fin
+
+async function terminer(abandonnee = false) {
+  en_cours = false;
+  verrou_ecran.relacher();
+  camera.suspendre();
+  // La seance est finie : ce qui restait a annoncer ne veut plus rien dire.
+  lecteur.taire();
+
+  const resultats = resultats_par_exercice(seance);
+  let seance_id = null;
+  let enregistree = false;
+
+  if (resultats.length) {
+    seance_id = historique.enregistrer_seance(base, {
+      duree: seance.duree_totale,
+      exercices: resultats,
+      statut: abandonnee ? "abandoned" : "finished",
+      nom_seance,
+      utilisateur_id: PROFIL,
+    });
+    enregistree = await stockage.sauver(base);
+  }
+
+  if (!abandonnee) await enteriner_cibles_figees();
+
+  $("resumeDuree").textContent =
+    `${nom_seance} · ${Math.round(seance.duree_totale / 60)} min` +
+    (abandonnee ? " · arrêtée en cours" : "");
+
+  const etat_sauvegarde = $("etatSauvegarde");
+  if (!resultats.length) {
+    etat_sauvegarde.className = "etat-sauvegarde pasok";
+    etat_sauvegarde.textContent =
+      "Aucune série terminée : rien n'a été enregistré.";
+  } else if (enregistree) {
+    etat_sauvegarde.className = "etat-sauvegarde ok";
+    etat_sauvegarde.textContent = `Séance enregistrée sur cet appareil (n°${seance_id}).`;
+  } else {
+    etat_sauvegarde.className = "etat-sauvegarde pasok";
+    etat_sauvegarde.textContent =
+      "Le stockage de cet appareil a refusé l'écriture. Exporte cette séance maintenant, sinon elle sera perdue.";
+  }
+
+  $("resume").replaceChildren();
+  for (const exercice of resultats) {
+    const fait =
+      exercice.mode === "maintien" || exercice.mode === "chrono"
+        ? `${Math.round(exercice.duree)} s`
+        : `${exercice.repetitions} reps`;
+
+    const ligne = document.createElement("div");
+    ligne.className = "ligne-resume";
+    ligne.innerHTML = `<span>${exercice.nom}</span><b>${exercice.series} × · ${fait}</b>`;
+
+    const retour = document.createElement("div");
+    retour.className = "feedback";
+    $("resume").append(ligne, retour);
+    ligne.after(retour);
+  }
+
+  proposer_ressentis(seance_id);
+
+  $("noteCamera").textContent =
+    "La caméra reste autorisée tant que tu ne quittes pas la page — son voyant peut rester allumé.";
+
+  montrer("ecranFin");
+}
+
+
+/**
+ * La seance a ete menee a son terme : ses cibles figees deviennent la reference.
+ *
+ * Le badge orange signale une cible que le moteur ne pilote plus. Une fois la
+ * seance jouee a cette cible, il n'y a plus rien a signaler — l'historique
+ * porte la performance realisee, et c'est d'elle que le moteur repartira. On
+ * leve donc la marque plutot que de la laisser figer la valeur pour toujours.
+ *
+ * **Seulement sur une seance editee ici.** Quand elle vient du fichier
+ * deploye, lever la marque imposerait d'en ecrire une copie locale, qui
+ * masquerait desormais le fichier : on echangerait un badge contre un autre.
+ * Le cas ne se pose pas en pratique — une cible figee sur cet appareil vient
+ * forcement de l'editeur de cet appareil.
+ */
+async function enteriner_cibles_figees() {
+  const blocs = seances[nom_seance];
+  if (!blocs || !historique.est_seance_locale(base, nom_seance)) return;
+  if (!enteriner_cibles_manuelles(blocs, PROFIL)) return;
+  historique.enregistrer_seance_locale(base, nom_seance, blocs);
+  await stockage.sauver(base);
+}
+
+/**
+ * Propose de declarer un ressenti sur chaque exercice de la seance ecoulee.
+ *
+ * **Le module `ressenti.js` etait porte et branche dans le moteur, mais rien
+ * ne permettait d'y repondre** : le moteur lisait donc toujours « pas de
+ * reponse », c'est-a-dire +1 apres une reussite, pendant que le poste fixe
+ * accelerait a +2 ou +3 et reculait a -1. Les deux versions ne progressaient
+ * pas au meme rythme, et ca ne se voyait sur aucun ecran — seulement trois
+ * seances plus tard, sur un objectif qui n'etait pas le meme.
+ *
+ * La difference avec le poste fixe est ou vit la base : il interroge
+ * `/api/historique/<id>/ressentis`, le navigateur calcule le meme jugement sur
+ * place avec le meme `Ressenti`. Les reponses proposees, elles, viennent du
+ * module partage.
+ *
+ * Une seance sans resultat n'est jamais ecrite : `seance_id` vaut alors null
+ * et il n'y a rien a annoter.
+ */
+function proposer_ressentis(seance_id) {
+  $("aideRessenti").hidden = true;
+  if (seance_id === null) return;
+
+  const { seances: histoire } = lecture_du_profil();
+  const jugements = moteur.ressenti.evaluation_seance(seance_id, histoire);
+
+  let proposees = 0;
+  $("resume")
+    .querySelectorAll(".ligne-resume")
+    .forEach((ligne) => {
+      const nom = ligne.querySelector("span").textContent;
+      const jugement = jugements[nom];
+      if (!jugement) return;
+      proposees += 1;
+      construire_ligne(ligne.nextElementSibling, nom, jugement, async (exercice, valeur) => {
+        historique.enregistrer_ressentis(base, seance_id, { [exercice]: valeur }, ECHELLE);
+        await stockage.sauver(base);
+      });
+    });
+
+  $("aideRessenti").hidden = proposees === 0;
+}
+
+
+// ---------------------------------------------------------------- materiel
+
+/**
+ * Le questionnaire de materiel, jumeau de celui du site.
+ *
+ * Un `<select>` par poids plutot que deux cases : « une paire » et « un
+ * haltere seul » ne sont pas deux options independantes, c'est une quantite.
+ * Le formuler autrement laisserait cocher « paire » sans « seul », ce qui n'a
+ * pas de sens et que `normaliser` devrait rattraper.
+ */
+function dessiner_materiel() {
+  const inventaire = normaliser(tables_baremes, profil_courant()?.materiel ?? null);
+
+  $("listeHalteres").innerHTML = tables_baremes.echelles.reference
+    .map((poids) => {
+      const quantite = inventaire.halteres[poids] || 0;
+      const option = (valeur, libelle) =>
+        `<option value="${valeur}"${quantite === valeur || (valeur === 2 && quantite >= 2) ? " selected" : ""}>${libelle}</option>`;
+      return (
+        `<label class="haltere"><span>${poids} kg</span>` +
+        `<select data-poids="${poids}">` +
+        option(0, "Aucun") + option(1, "Un") + option(2, "Une paire") +
+        `</select></label>`
+      );
+    })
+    .join("");
+
+  $("listeAccessoires").innerHTML = Object.entries(tables_baremes.accessoires)
+    .map(
+      ([cle, libelle]) =>
+        `<label><input type="checkbox" data-accessoire="${cle}"` +
+        `${inventaire.accessoires.includes(cle) ? " checked" : ""}> ${libelle}</label>`
+    )
+    .join("");
+
+  // Le resume se **lit** avant de s'editer, et une seule longue ligne
+  // « paires : 3 kg, 4 kg · seuls : 2 kg… » ne se lit pas : les trois natures
+  // d'objet y sont separees par le meme point median que les poids entre eux,
+  // donc rien ne se detache. Trois groupes etiquetes, chacun une rangee de
+  // pastilles, disent la meme chose d'un coup d'oeil — et la distinction qui
+  // compte, « une paire n'est pas un haltere seul », devient visible au lieu
+  // d'etre a reconstituer.
+  const halteres = inventaire.halteres || {};
+  const poids_ou = (garde) =>
+    Object.keys(halteres).filter((p) => garde(halteres[p])).map(Number).sort((a, b) => a - b);
+
+  const groupe = (libelle, valeurs, aide) =>
+    valeurs.length
+      ? `<div class="inventaire-groupe"><span class="inventaire-libelle">${libelle}` +
+        (aide ? ` <i>${aide}</i>` : "") +
+        `</span><div class="pastilles">` +
+        valeurs.map((v) => `<b class="pastille">${echapper(v)}</b>`).join("") +
+        `</div></div>`
+      : "";
+
+  const paires = poids_ou((q) => q >= 2).map((p) => `${p} kg`);
+  const seuls = poids_ou((q) => q === 1).map((p) => `${p} kg`);
+  const accessoires = (inventaire.accessoires ?? []).map(
+    (a) => tables_baremes.accessoires[a] ?? a
+  );
+
+  const resume =
+    groupe("Paires d'haltères", paires, "les mouvements à deux bras s'appuient dessus") +
+    groupe("Haltères seuls", seuls, "pour les mouvements à un bras") +
+    groupe("Accessoires", accessoires, "");
+  $("resumeMateriel").innerHTML = resume
+    ? `<div class="inventaire">${resume}</div>`
+    : `<p class="muet">Rien de déclaré — le barème te proposera donc du poids du corps.</p>`;
+
+  $("etatMateriel").textContent = "";
+}
+
+function profil_courant() {
+  return base.utilisateurs.find((u) => u.id === PROFIL) ?? null;
+}
+
+async function enregistrer_materiel() {
+  const halteres = {};
+  for (const select of $("listeHalteres").querySelectorAll("select")) {
+    const quantite = Number(select.value) || 0;
+    if (quantite > 0) halteres[select.dataset.poids] = quantite;
+  }
+  const accessoires = [...$("listeAccessoires").querySelectorAll("input:checked")].map(
+    (input) => input.dataset.accessoire
+  );
+
+  const profil = profil_courant();
+  if (!profil) return;
+  profil.materiel = { halteres, accessoires };
+
+  const ecrit = await stockage.sauver(base);
+  // **Le moteur porte l'inventaire** : `Baremes` le normalise une fois pour
+  // toutes a la construction, donc il faut le refaire. Sans ca les cibles
+  // resteraient calculees sur l'ancien materiel, en silence.
+  construire_moteur();
+  dessiner_liste();
+  dessiner_materiel();
+  if (ecrit) editer_materiel(false);
+  $("etatMateriel").textContent = ecrit
+    ? "Matériel enregistré. Tes objectifs ont été recalculés."
+    : "Le stockage a refusé l'écriture : le matériel n'est pas retenu.";
+}
+
+// ---------------------------------------------------------------- historique
+
+
+const echapper = (texte) =>
+  String(texte).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/**
+ * Une seance, telle que le site desktop la presente : un `<details>` replie,
+ * son statut, et ses exercices avec le detail des series.
+ *
+ * Le detail des series compte plus qu'il n'en a l'air : c'est lui qui montre
+ * **le maillon faible**. « 12, 12, 10, 12 » prouve 10, et une ligne agregee
+ * (« 46 repetitions ») ne permet pas de le voir.
+ */
+function dessiner_seance(seance, montees) {
+  const minutes = Math.floor((seance.duree || 0) / 60);
+  const abandonnee = seance.statut === "abandoned";
+  const montee = montees[seance.id] ?? {};
+
+  const exercices = seance.exercices
+    .map((exercice) => {
+      const unite = exercice.mode === "maintien" || exercice.mode === "chrono";
+      const fait = unite
+        ? `${Math.round(exercice.duree)} s`
+        : `${exercice.repetitions} reps`;
+      const charge = exercice.poids ? ` · ${exercice.poids} kg` : "";
+
+      const series = resume_series(exercice.series_detaillees, exercice.mode);
+
+      const gain = montee[exercice.nom];
+      const badge = gain
+        ? `<div class="montee">Niveau ${gain.depuis ?? "—"} → ${gain.vers}</div>`
+        : "";
+
+      return (
+        `<div class="exercice-fait">` +
+        `<div class="exercice-ligne">` +
+        `<button type="button" class="vers-fiche" ` +
+        `data-mouvement="${echapper(exercice.nom)}">${echapper(exercice.nom)}</button>` +
+        `<span>${exercice.series} séries · ${fait}${charge}</span></div>` +
+        `<div class="series-detail">${series}</div>${badge}` +
+        // Rempli apres coup par `construire_ligne` : il faut des ecouteurs,
+        // donc des noeuds, la ou cette fonction rend une chaine.
+        `<div class="feedback" data-seance="${seance.id}" ` +
+        `data-exercice="${echapper(exercice.nom)}"></div></div>`
+      );
+    })
+    .join("");
+
+  return (
+    // L'identifiant sert d'ancre : un point du graphique de progression
+    // ramene ici, sur la seance exacte.
+    `<details class="fiche-seance" id="seance-${seance.id}">` +
+    `<summary><div class="fiche-entete"><b>${echapper(seance.nom ?? "Séance")}</b>` +
+    `<span class="statut${abandonnee ? " abandonnee" : ""}">` +
+    `${abandonnee ? "abandonnée" : "terminée"}</span></div>` +
+    `<div class="meta"><span>${echapper(seance.date)}</span><span>${minutes} min</span>` +
+    `<span>${seance.exercices.length} exercice${seance.exercices.length > 1 ? "s" : ""}</span></div>` +
+    `</summary>` +
+    exercices +
+    `<button type="button" class="bouton secondaire supprimer-seance" ` +
+    `data-supprimer="${seance.id}">Supprimer cette séance</button>` +
+    `</details>`
+  );
+}
+
+function dessiner_historique() {
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  const montees = moteur.niveaux.montees_de_niveau(histoire, ancrages);
+
+  mettre_a_jour_etat_base();
+  $("resumeHistorique").textContent = histoire.length
+    ? `${histoire.length} séance${histoire.length > 1 ? "s" : ""} sur cet appareil.`
+    : "";
+  $("listeHistorique").innerHTML = histoire.length
+    ? histoire.map((seance) => dessiner_seance(seance, montees)).join("")
+    : `<p class="vide">Aucune séance enregistrée pour l'instant.</p>`;
+
+  // Le ressenti se saisit **aussi a posteriori**, comme sur le poste fixe :
+  // l'ecran de fin est le moment naturel, mais on ne sait pas toujours sur le
+  // coup si c'etait trop dur. `jugements_par_seance` n'ecarte aucune seance,
+  // pas meme une seance abandonnee — on decrit ici ce qui s'est passe, pas ce
+  // qu'il faut viser ensuite.
+  const jugements = moteur.ressenti.jugements_par_seance(histoire);
+  $("listeHistorique")
+    .querySelectorAll(".feedback[data-exercice]")
+    .forEach((zone) => {
+      const { seance, exercice } = zone.dataset;
+      const jugement = jugements[seance]?.[exercice];
+      // Un exercice hors bareme n'a pas d'objectif chiffre : `juger` rend
+      // quand meme un verdict, et le ressenti reste utile.
+      if (!jugement) return;
+      construire_ligne(zone, exercice, jugement, async (nom, valeur) => {
+        historique.enregistrer_ressentis(base, Number(seance), { [nom]: valeur }, ECHELLE);
+        await stockage.sauver(base);
+      });
+    });
+
+  $("listeHistorique")
+    .querySelectorAll(".vers-fiche[data-mouvement]")
+    .forEach((bouton) => {
+      bouton.addEventListener("click", (evenement) => {
+        // Le bouton vit dans un <details> : sans ca, cliquer le replierait.
+        evenement.preventDefault();
+        ouvrir_fiche(bouton.dataset.mouvement, "ecranHistorique");
+      });
+    });
+
+  $("listeHistorique")
+    .querySelectorAll("[data-supprimer]")
+    .forEach((bouton) => {
+      bouton.addEventListener("click", async (evenement) => {
+        // Le bouton vit dans un <details> : sans ca, cliquer le replierait.
+        evenement.preventDefault();
+        const id = Number(bouton.dataset.supprimer);
+        const seance = histoire.find((s) => s.id === id);
+        if (!confirm(
+          `Supprimer « ${seance?.nom ?? "cette séance"} » de l'historique ? ` +
+          "Les niveaux et les objectifs seront recalculés sans elle."
+        )) return;
+        historique.supprimer_seance(base, id, PROFIL);
+        await stockage.sauver(base);
+        dessiner_historique();
+      });
+    });
+}
+
+// ---------------------------------------------------------------- editeur
+
+//: Les modes proposes, avec leur libelle. `MODES_CONNUS` vit dans
+//: `circuit.js` ; ici on n'en donne que la traduction, et l'ordre dans lequel
+//: on veut les voir.
+const LIBELLES_MODE = {
+  repetitions: "Répétitions",
+  maintien: "Maintien (secondes)",
+  chrono: "Chrono (secondes)",
+  amrap: "AMRAP",
+  echauffement: "Échauffement",
+};
+
+
+//: La seance en cours d'edition, et ses blocs de travail. Une **copie** : tant
+//: qu'on n'a pas enregistre, rien ne doit bouger dans le catalogue affiche.
+let seance_editee = null;
+let blocs_edites = [];
+
+function ouvrir_editeur(nom) {
+  seance_editee = nom;
+  blocs_edites = blocs_a_editer(nom);
+  $("titreEditeur").textContent = nom;
+  dessiner_editeur("");
+  montrer("ecranEditeur");
+}
+
+/**
+ * Les blocs tels que le moteur les jouerait, et non tels que le fichier les
+ * ecrit.
+ *
+ * **C'est indispensable, et le contraire produit un defaut silencieux.**
+ * `marquer_cibles_manuelles` fige tout bloc dont la cible s'ecarte de ce que
+ * le moteur propose ; si l'editeur affiche les valeurs brutes du fichier — qui
+ * datent d'avant plusieurs seances —, alors *enregistrer sans rien toucher*
+ * fige tous les exercices d'un coup, y compris ceux qui ont progresse. Mesure :
+ * modifier une seule cible marquait les deux blocs de la seance « bras ».
+ *
+ * Le poste fixe n'a pas ce probleme parce que son formulaire est rendu depuis
+ * `catalogue()`, qui applique deja le moteur. L'application doit faire le meme
+ * geste, explicitement.
+ */
+function blocs_a_editer(nom) {
+  const blocs = structuredClone(seances[nom] ?? []);
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  return moteur.objectifs.appliquer_a_blocs(
+    blocs,
+    moteur.objectifs.objectifs_par_exercice(histoire, ancrages),
+    moteur.objectifs.exercices_sans_donnees(histoire, ancrages),
+    PROFIL
+  );
+}
+
+function dessiner_editeur(message = null) {
+  const locale = historique.est_seance_locale(base, seance_editee);
+  $("sousTitreEditeur").innerHTML = locale
+    ? "Cette séance est <b>modifiée sur cet appareil</b> : les mises à jour " +
+      "faites sur l'ordinateur ne l'atteignent plus tant qu'elle l'est."
+    : "Enregistrer ici garde la modification <b>sur cet appareil</b>. Le " +
+      "fichier de l'ordinateur ne sera pas mis à jour, et cette séance cessera " +
+      "de suivre ses futures versions.";
+  $("rendreAuFichier").hidden = !locale;
+  // `null` veut dire « laisse ce qui est affiche » : redessiner apres un
+  // enregistrement effacerait sinon la confirmation au moment ou elle apparait.
+  if (message !== null) $("retourEditeurMessage").textContent = message;
+
+  const conteneur = $("blocsEditeur");
+  conteneur.replaceChildren();
+
+  blocs_edites.forEach((bloc, index) => {
+    const suivant = blocs_edites[index + 1];
+    // **Le dernier bloc ne peut pas etre entrelace** : il n'a pas de suivant.
+    // La regle se reapplique a chaque redessin, donc deplacer un bloc en
+    // derniere position defait son entrelacement de lui-meme.
+    if (!suivant) bloc.entrelace_avec = null;
+    else if (bloc.entrelace_avec) bloc.entrelace_avec = suivant.exercice;
+
+    const ligne = ligne_editeur(bloc, index);
+    ligne.classList.toggle("entrelace", Boolean(bloc.entrelace_avec));
+    ligne.querySelector('.move-btn[data-sens="-1"]').disabled = index === 0;
+    ligne.querySelector('.move-btn[data-sens="1"]').disabled =
+      index === blocs_edites.length - 1;
+    ligne.querySelector(".entrelace-btn").title = bloc.entrelace_avec
+      ? `Entrelacé avec : ${bloc.entrelace_avec}`
+      : "Entrelacer avec l'exercice suivant";
+    conteneur.appendChild(ligne);
+
+    // La paire se lit sous la ligne, comme sur le poste fixe : « ⟷ » seul ne
+    // dit pas avec quoi.
+    if (bloc.entrelace_avec) {
+      const paire = document.createElement("p");
+      paire.className = "paire";
+      paire.textContent = `⟷ séries alternées avec ${bloc.entrelace_avec}`;
+      conteneur.appendChild(paire);
+    }
+  });
+}
+
+/** Les mouvements proposes, exercices et echauffements separes comme ailleurs. */
+function options_mouvements(courant) {
+  const noms = Object.keys(mouvements).sort((a, b) => a.localeCompare(b, "fr"));
+  const groupe = (titre, liste) =>
+    `<optgroup label="${titre}">` +
+    liste
+      .map(
+        (n) =>
+          `<option value="${echapper(n)}"${n === courant ? " selected" : ""}>${echapper(n)}</option>`
+      )
+      .join("") +
+    `</optgroup>`;
+
+  // Un nom orphelin — venu d'un fichier plus recent, ou renomme — doit rester
+  // selectionne : sans cette option, le navigateur choisirait la premiere et
+  // remplacerait silencieusement l'exercice a l'enregistrement.
+  const inconnu = courant && !(courant in mouvements)
+    ? groupe("Inconnu", [courant])
+    : "";
+
+  return (
+    inconnu +
+    groupe("Exercices", noms.filter((n) => !mouvements[n].est_echauffement)) +
+    groupe("Échauffements", noms.filter((n) => mouvements[n].est_echauffement))
+  );
+}
+
+/**
+ * Une ligne d'edition, aux memes classes que celles du poste fixe.
+ *
+ * `editeur.css` l'habille, y compris la **pastille de couleur du mode** et le
+ * liseret d'entrelacement : ce sont des reperes qu'on lit d'un coup d'oeil, et
+ * les redessiner autrement ici aurait donne deux editeurs qui ne se
+ * ressemblent pas.
+ */
+function ligne_editeur(bloc, index) {
+  const ligne = document.createElement("div");
+  ligne.className = "bloc";
+  ligne.dataset.mode = bloc.mode ?? "repetitions";
+
+  const champ = (classe, libelle, unite, valeur, attributs = 'type="number" min="0"') =>
+    `<div class="champ"><label>${libelle}` +
+    (unite ? `<span>${unite}</span>` : "") +
+    `</label><input class="${classe}" ${attributs} value="${valeur}"></div>`;
+
+  ligne.innerHTML =
+    `<button type="button" class="move-btn" data-sens="-1" title="Monter">▲</button>` +
+    `<button type="button" class="move-btn" data-sens="1" title="Descendre">▼</button>` +
+    `<button type="button" class="entrelace-btn" title="Entrelacer avec l'exercice suivant">⟷</button>` +
+    `<div class="champ"><label>Exercice</label>` +
+    `<select class="exercice">${options_mouvements(bloc.exercice)}</select></div>` +
+    `<div class="champ"><label><span class="mode-pastille"></span> Mode</label>` +
+    `<select class="mode">` +
+    Object.entries(LIBELLES_MODE)
+      .map(
+        ([valeur, libelle]) =>
+          `<option value="${valeur}"${valeur === bloc.mode ? " selected" : ""}>${libelle}</option>`
+      )
+      .join("") +
+    `</select></div>` +
+    champ("poids", "Poids", "en kg", bloc.poids ?? 0, 'type="number" min="0" step="0.5"') +
+    champ("series", "Séries", "", bloc.series ?? 1, 'type="number" min="1"') +
+    champ("repetitions", "Répétitions", "", bloc.repetitions ?? 0) +
+    champ("duree", "Durée", "secondes", bloc.duree ?? 0) +
+    champ("reposEntre", "Repos série", "secondes", bloc.repos_entre_series ?? 0) +
+    champ("reposApres", "Repos exercice", "secondes", bloc.repos_apres ?? 0) +
+    `<button type="button" class="sup-btn" aria-label="Supprimer cet exercice">X</button>`;
+
+  // Le commentaire se modifie depuis la liste des seances : on le transporte
+  // tel quel pour ne pas l'effacer en enregistrant depuis ici.
+  ligne.dataset.commentaire = bloc.commentaire ?? "";
+
+  // **L'entrelacement est un drapeau « avec le bloc suivant »**, pas un nom.
+  // Le partenaire est recalcule a l'enregistrement, ce qui lui permet de
+  // survivre a un reordonnancement — deplacer un bloc ne doit pas laisser un
+  // entrelacement pointant vers un exercice qui n'est plus a cote.
+  const entrelace = ligne.querySelector(".entrelace-btn");
+  if (bloc.entrelace_avec) entrelace.classList.add("active");
+  entrelace.addEventListener("click", () => {
+    if (!entrelace.classList.contains("active") && index >= blocs_edites.length - 1) {
+      alert("Aucun exercice suivant à entrelacer.");
+      return;
+    }
+    lire_ligne(ligne, bloc);
+    bloc.entrelace_avec = entrelace.classList.contains("active") ? null : "?";
+    dessiner_editeur();
+  });
+
+  for (const bouton of ligne.querySelectorAll(".move-btn")) {
+    bouton.addEventListener("click", () => {
+      const sens = Number(bouton.dataset.sens);
+      const vers = index + sens;
+      if (vers < 0 || vers >= blocs_edites.length) return;
+      lire_ligne(ligne, bloc);
+      [blocs_edites[index], blocs_edites[vers]] = [blocs_edites[vers], blocs_edites[index]];
+      dessiner_editeur();
+    });
+  }
+  ligne.querySelector(".sup-btn").addEventListener("click", () => {
+    blocs_edites.splice(index, 1);
+    dessiner_editeur();
+  });
+
+  for (const element of ligne.querySelectorAll("input, select")) {
+    element.addEventListener("change", () => {
+      const ancien_mode = bloc.mode;
+      lire_ligne(ligne, bloc);
+      // La pastille et la couleur du mode suivent le <select> sans redessiner.
+      ligne.dataset.mode = bloc.mode;
+      // Changer d'exercice change le libelle affiche sur le bloc precedent
+      // s'il est entrelace avec celui-ci.
+      if (bloc.mode !== ancien_mode || element.classList.contains("exercice")) {
+        dessiner_editeur();
+      }
+    });
+  }
+
+  return ligne;
+}
+
+/**
+ * Recopie la saisie dans le bloc.
+ *
+ * Appelee avant **tout** redessin, sans quoi ce qui vient d'etre tape est
+ * perdu : la ligne est reconstruite a chaque reordonnancement.
+ *
+ * `repetitions` et `duree` sont deux champs distincts, comme sur le poste
+ * fixe, et tous deux conserves : c'est ce qui permet de passer d'un mode a
+ * l'autre sans perdre la valeur de l'autre unite. Le mode decide seulement
+ * lequel sera *joue*.
+ */
+function lire_ligne(ligne, bloc) {
+  bloc.exercice = ligne.querySelector(".exercice").value;
+  bloc.mode = ligne.querySelector(".mode").value;
+  bloc.poids = Number(ligne.querySelector(".poids").value) || 0;
+  bloc.series = Math.max(1, Number(ligne.querySelector(".series").value) || 1);
+  bloc.repetitions = Number(ligne.querySelector(".repetitions").value) || 0;
+  bloc.duree = Number(ligne.querySelector(".duree").value) || 0;
+  bloc.repos_entre_series = Number(ligne.querySelector(".reposEntre").value) || 0;
+  bloc.repos_apres = Number(ligne.querySelector(".reposApres").value) || 0;
+  bloc.commentaire = ligne.dataset.commentaire ?? "";
+}
+
+/**
+ * Enregistre la seance editee sur l'appareil.
+ *
+ * Deux choses se font ici et nulle part ailleurs. La **validation**, jumelle
+ * de `construire_circuit` : un refus a l'enregistrement vaut mieux qu'une
+ * erreur en pleine seance. Et le **marquage des cibles manuelles** : une cible
+ * qui s'ecarte de ce que le moteur propose est figee, sans que l'utilisateur
+ * ait rien a declarer — c'est l'ecart qui est detecte.
+ */
+async function enregistrer_seance_editee() {
+  const retour = $("retourEditeurMessage");
+  const problemes = problemes_des_blocs(mouvements, blocs_edites);
+  if (problemes.length) {
+    retour.className = "retour-ancrage erreur";
+    retour.textContent = problemes[0];
+    return;
+  }
+
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  moteur.objectifs.marquer_cibles_manuelles(
+    blocs_edites,
+    moteur.objectifs.objectifs_par_exercice(histoire, ancrages),
+    moteur.objectifs.exercices_sans_donnees(histoire, ancrages),
+    PROFIL
+  );
+
+  historique.enregistrer_seance_locale(base, seance_editee, blocs_edites);
+  const ecrit = await stockage.sauver(base);
+  seances = catalogue_effectif(seances_du_fichier, base.seances_locales);
+
+  dessiner_editeur();
+  retour.className = "retour-ancrage" + (ecrit ? "" : " erreur");
+  retour.textContent = ecrit
+    ? "Enregistrée sur cet appareil."
+    : "Le stockage a refusé l'écriture : la modification n'est pas conservée.";
+}
+
+// ---------------------------------------------------------------- profils
+
+/**
+ * L'ecran de choix de profil.
+ *
+ * Tout le cloisonnement etait deja en place : `historique.js` filtre par
+ * `utilisateur_id` exactement comme SQLite, et `progression/` retombe dessus
+ * par en dessous. Seul `PROFIL`, fige a 1, empechait d'en avoir plusieurs —
+ * c'etait un choix provisoire assume, pas une limite de structure.
+ *
+ * Changer de profil **reconstruit le moteur** : `Baremes` porte l'inventaire
+ * du profil et le normalise une fois pour toutes a la construction. Sans ca,
+ * le second profil verrait les objectifs calcules sur les halteres du premier,
+ * en silence — exactement le piege du questionnaire de materiel.
+ */
+function dessiner_profils() {
+  const liste = $("listeProfils");
+  liste.replaceChildren();
+
+  for (const utilisateur of base.utilisateurs) {
+    const seances = historique.recuperer_historique(base, utilisateur.id).length;
+    const actif = utilisateur.id === PROFIL;
+
+    // Un <article> et non un <button> : la carte porte desormais un second
+    // bouton, et un bouton ne peut pas en contenir un autre — le navigateur
+    // deplacerait le noeud en silence. Meme geste que pour les cartes de
+    // seance : on change l'element porteur plutot que de sortir le contenu.
+    const carte = document.createElement("article");
+    carte.className = "carte" + (actif ? " carte-active" : "");
+
+    const choisir = document.createElement("button");
+    choisir.className = "carte-lancer";
+    choisir.type = "button";
+    choisir.innerHTML =
+      `<div class="carte-titre">${echapper(utilisateur.nom)}</div>` +
+      `<div class="carte-detail">` +
+      (seances ? `${seances} séance${seances > 1 ? "s" : ""}` : "aucune séance") +
+      ` · depuis ${echapper(utilisateur.cree_le ?? "—")}` +
+      (actif ? " · profil actif" : "") +
+      `</div>`;
+    choisir.addEventListener("click", () => choisir_profil(utilisateur.id));
+    carte.appendChild(choisir);
+
+    // **Le profil actif n'est pas supprimable**, et le dernier non plus :
+    // `supprimer_utilisateur` refuse le second cas de toute facon, mais un
+    // bouton qui echoue vaut moins qu'un bouton absent.
+    if (!actif && base.utilisateurs.length > 1) {
+      const supprimer = document.createElement("button");
+      supprimer.className = "carte-editer";
+      supprimer.type = "button";
+      supprimer.textContent = "✕";
+      supprimer.title = `Supprimer ${utilisateur.nom}`;
+      supprimer.setAttribute("aria-label", `Supprimer ${utilisateur.nom}`);
+      supprimer.addEventListener("click", (evenement) => {
+        evenement.stopPropagation();
+        supprimer_profil(utilisateur, seances);
+      });
+      carte.appendChild(supprimer);
+    }
+
+    liste.appendChild(carte);
+  }
+}
+
+/**
+ * Supprime un profil, apres avoir propose d'en garder une trace.
+ *
+ * Rien ne rattrape ce geste : l'historique, les records et les recalages
+ * partent avec le profil. La sauvegarde est donc proposee **avant** la
+ * confirmation, et elle porte la base entiere — c'est le seul format que
+ * `importer` sait relire.
+ */
+async function supprimer_profil(utilisateur, seances) {
+  const compte = seances
+    ? `${seances} séance${seances > 1 ? "s" : ""} enregistrée${seances > 1 ? "s" : ""}`
+    : "aucune séance enregistrée";
+
+  if (seances && confirm(
+    `Avant de supprimer « ${utilisateur.nom} » : télécharger une sauvegarde ?
+
+` +
+    "Elle contient tous les profils de cet appareil et se réimporte depuis " +
+    "l'écran des séances."
+  )) {
+    stockage.telecharger(base);
+  }
+
+  if (!confirm(
+    `Supprimer définitivement le profil « ${utilisateur.nom} » ?
+
+` +
+    `Il a ${compte}. Son historique, ses records et ses recalages partent ` +
+    "avec lui, et rien ne les rattrape."
+  )) return;
+
+  try {
+    historique.supprimer_utilisateur(base, utilisateur.id);
+  } catch (erreur) {
+    alert(erreur.message);
+    return;
+  }
+  await stockage.sauver(base);
+  dessiner_profils();
+}
+
+function choisir_profil(id) {
+  retenir_profil(id);
+  construire_moteur();
+  majOngletProfil();
+  dessiner_liste();
+  montrer("ecranSeances");
+}
+
+/** Le bouton d'acces porte le prenom : on voit pour qui on enregistre.
+ *
+ * Il y en a un par ecran depuis que la barre est factorisee, d'ou le
+ * `querySelectorAll` : un `getElementById` n'en toucherait qu'un seul, et les
+ * quatre autres garderaient le prenom du profil precedent.
+ */
+function majOngletProfil() {
+  const utilisateur = base.utilisateurs.find((u) => u.id === PROFIL);
+  const nom = utilisateur ? utilisateur.nom : "Profil";
+  for (const bouton of document.querySelectorAll(".onglet-profil")) {
+    bouton.textContent = nom;
+  }
+}
+
+/** Le point d'entree du profil, appele depuis n'importe quel ecran. */
+function ouvrir_profil() {
+  dessiner_profil();
+  montrer("ecranProfil");
+}
+
+/**
+ * La page du profil connecte : identite, mesures, materiel.
+ *
+ * Elle **redessine** a chaque ouverture, comme les onglets : le nombre de
+ * seances change a chaque entrainement, et un ecran dessine une fois pour
+ * toutes serait perime.
+ */
+function dessiner_profil() {
+  const profil = profil_courant();
+  if (!profil) return;
+
+  const faites = historique.recuperer_historique(base, PROFIL).length;
+  $("titreProfil").textContent = profil.nom;
+  $("sousTitreProfil").textContent =
+    `Profil créé le ${profil.cree_le?.slice(0, 10) ?? "?"} · ` +
+    `${faites} séance${faites > 1 ? "s" : ""} enregistrée${faites > 1 ? "s" : ""}.`;
+
+  // Un champ vide vaut « non renseigne », et c'est ce que `null` doit rendre :
+  // `value = null` afficherait la chaine « null » sur un <input type=text>.
+  $("champSexe").value = profil.sexe ?? "";
+  $("champNaissance").value = profil.date_naissance ?? "";
+  $("champTaille").value = profil.taille_cm ?? "";
+  $("champPoidsCorps").value = profil.poids_corps_kg ?? "";
+
+  $("resumeMesures").innerHTML =
+    case_resume("Sexe", LIBELLES_SEXE[profil.sexe] ?? "Non précisé") +
+    case_resume("Naissance", profil.date_naissance || "—") +
+    case_resume("Taille", profil.taille_cm ? `${Math.round(profil.taille_cm)} cm` : "—") +
+    case_resume("Poids du corps", profil.poids_corps_kg ? `${profil.poids_corps_kg} kg` : "—");
+  editer_mesures(false);
+
+  dessiner_materiel();
+  editer_materiel(false);
+}
+
+//: Le stockage garde la valeur brute (`femme`, `homme`, `autre`, ou null) :
+//: l'affichage se corrige sans toucher aux donnees.
+const LIBELLES_SEXE = { femme: "Femme", homme: "Homme", autre: "Autre" };
+
+const case_resume = (libelle, valeur) =>
+  `<div><span>${libelle}</span><strong>${echapper(valeur)}</strong></div>`;
+
+/** Bascule le bloc des mesures entre lecture et edition. Une vue a la fois. */
+function editer_mesures(ouvert) {
+  $("resumeMesures").hidden = ouvert;
+  $("actionsMesures").hidden = ouvert;
+  $("formMesures").hidden = !ouvert;
+  if (!ouvert) $("retourMesures").textContent = "";
+}
+
+/** Meme bascule pour le materiel. Le resume est celui du poste fixe. */
+function editer_materiel(ouvert) {
+  $("resumeMateriel").hidden = ouvert;
+  $("actionsMateriel").hidden = ouvert;
+  $("editeurMateriel").hidden = !ouvert;
+}
+
+/** Enregistre les mesures du profil. Aucune ne pilote le bareme. */
+async function enregistrer_mesures(evenement) {
+  evenement.preventDefault();
+  const retour = $("retourMesures");
+  // Les nombres sont stockes en nombres et non en chaines : un champ vide
+  // rend "" que `definir_mesures` traduit en `null`.
+  const taille = $("champTaille").value;
+  const poids = $("champPoidsCorps").value;
+  historique.definir_mesures(base, PROFIL, {
+    sexe: $("champSexe").value,
+    date_naissance: $("champNaissance").value,
+    taille_cm: taille === "" ? "" : Number(taille),
+    poids_corps_kg: poids === "" ? "" : Number(poids),
+  });
+  const sauve = await stockage.sauver(base);
+  retour.className = sauve ? "retour-ancrage" : "retour-ancrage erreur";
+  retour.textContent = sauve
+    ? "Enregistré."
+    : "Impossible d'écrire sur cet appareil — exporte ta sauvegarde.";
+  if (sauve) dessiner_profil();
+}
+
+// ---------------------------------------------------------------- exercices
+
+/**
+ * Le catalogue des mouvements.
+ *
+ * **Exercices et echauffements restent separes**, comme partout ailleurs dans
+ * le projet : les premiers ont un niveau, un record, une progression ; les
+ * seconds n'apparaissent dans aucune statistique. Les melanger ferait croire
+ * qu'une rotation d'epaules compte quelque part.
+ */
+function dessiner_exercices() {
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
+
+  const noms = Object.keys(mouvements).sort((a, b) => a.localeCompare(b, "fr"));
+  const exercices = noms.filter((n) => !mouvements[n].est_echauffement);
+  const echauffements = noms.filter((n) => mouvements[n].est_echauffement);
+
+  $("listeExercices").innerHTML =
+    `<h2>Exercices</h2><div class="grid">` +
+    exercices.map((nom) => carte_exercice(nom, niveaux[nom])).join("") +
+    `</div>` +
+    `<h2>Échauffements</h2>` +
+    `<p class="sous-titre">Ils préparent la séance sans compter nulle part : ` +
+    `ni niveau, ni record, ni historique.</p>` +
+    `<div class="grid">` +
+    echauffements.map((nom) => carte_exercice(nom, null)).join("") +
+    `</div>`;
+
+  for (const carte of $("listeExercices").querySelectorAll("[data-mouvement]")) {
+    carte.addEventListener("click", () =>
+      ouvrir_fiche(carte.dataset.mouvement, "ecranExercices"));
+  }
+}
+
+function carte_exercice(nom, etat) {
+  const fiche = mouvements[nom];
+  const etiquettes = [];
+
+  if (etat) {
+    etiquettes.push(
+      etat.niveau
+        ? `<span class="etiquette niveau">Niveau ${etat.niveau} · ${echapper(resume_palier(etat.actuel))}</span>`
+        : `<span class="etiquette debut">À découvrir · ${echapper(resume_palier(etat.premier) ?? "")}</span>`
+    );
+  }
+  if (fiche.materiel) etiquettes.push(`<span class="etiquette">${echapper(fiche.materiel)}</span>`);
+  if (fiche.variante_facile) {
+    etiquettes.push(`<span class="etiquette">Version plus facile disponible</span>`);
+  }
+  if (!fiche.analyse_la_pose) {
+    etiquettes.push(`<span class="etiquette sans-pose">Sans analyse de la caméra</span>`);
+  }
+
+  return (
+    `<button type="button" class="carte" data-mouvement="${echapper(nom)}">` +
+    `<h3>${echapper(nom)}</h3><p>${echapper(fiche.description ?? "")}</p>` +
+    (etiquettes.length ? `<div class="etiquettes">${etiquettes.join("")}</div>` : "") +
+    `</button>`
+  );
+}
+
+//: L'ecran vers lequel « Retour » ramene depuis une fiche. On arrive sur une
+//: fiche depuis le catalogue, mais aussi depuis l'historique — et repartir
+//: systematiquement vers le catalogue ferait perdre la seance qu'on lisait.
+let retour_de_la_fiche = "ecranExercices";
+
+/** La fiche d'un mouvement, ouverte depuis un autre ecran que le catalogue. */
+function ouvrir_fiche(nom, depuis) {
+  retour_de_la_fiche = depuis;
+  dessiner_fiche(nom);
+}
+
+/** L'historique, deplie et fait defiler jusqu'a une seance precise. */
+function ouvrir_historique_sur(seance_id) {
+  dessiner_historique();
+  montrer("ecranHistorique");
+  const carte = document.getElementById(`seance-${seance_id}`);
+  if (!carte) return;
+  carte.open = true;
+  carte.scrollIntoView({ block: "center" });
+}
+
+/** La fiche d'un mouvement : comment le faire, et ou j'en suis dessus. */
+function dessiner_fiche(nom) {
+  const fiche = mouvements[nom];
+  if (!fiche) return;
+
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  // Un echauffement n'a pas de bareme : `etat_niveau` n'a rien a en dire, et
+  // le bloc « ou j'en suis » n'a pas lieu d'etre.
+  const etat = moteur.baremes.est_suivi_par_le_moteur(nom)
+    ? moteur.niveaux.etats_niveaux(histoire, ancrages)[nom]
+    : null;
+  // La fiche a absorbe l'ecran des records : un niveau dit **ou l'on en est**,
+  // le graphe **comment on y est arrive**, et le recalage sert quand
+  // l'historique ne peut pas le prouver. Les trois parlaient du meme exercice
+  // depuis deux ecrans differents.
+  const statistique = historique.statistiques_exercices(histoire)[nom];
+
+  const liste = (titre, lignes, balise = "ol", classe = "") =>
+    lignes?.length
+      ? `<div class="bloc${classe}"><h2>${titre}</h2><${balise}>` +
+        lignes.map((l) => `<li>${echapper(l)}</li>`).join("") +
+        `</${balise}></div>`
+      : "";
+
+  const meta = [];
+  if (fiche.materiel) meta.push(`<span class="etiquette">${echapper(fiche.materiel)}</span>`);
+  if (!fiche.analyse_la_pose) {
+    meta.push(`<span class="etiquette">La caméra ne compte pas ce mouvement : suis le chrono</span>`);
+  }
+
+  const variantes = [fiche.variante_facile, fiche.variante_difficile]
+    .map((autre, index) =>
+      autre
+        ? `<button type="button" class="btn" data-variante="${echapper(autre)}">` +
+          `${index ? "Plus dur" : "Plus facile"} : ${echapper(autre)}</button>`
+        : ""
+    )
+    .join("");
+
+  $("contenuFiche").innerHTML =
+    `<p class="kicker">${fiche.est_echauffement ? "Échauffement" : "Exercice"}</p>` +
+    `<h1>${echapper(nom)}</h1>` +
+    `<p class="resume">${echapper(fiche.description ?? "")}</p>` +
+    (meta.length ? `<div class="meta">${meta.join("")}</div>` : "") +
+    (etat ? bloc_niveau(etat) : "") +
+    (etat ? bloc_graphique(nom, statistique) : "") +
+    (etat ? bloc_recalage(nom, etat) : "") +
+    liste("Se mettre en place", fiche.mise_en_place) +
+    liste("Exécution", fiche.instructions) +
+    liste("À éviter", fiche.erreurs_frequentes, "ul", " attention") +
+    (variantes
+      ? `<div class="bloc"><h2>Adapter la difficulté</h2><div class="variantes">${variantes}</div></div>`
+      : "");
+
+  for (const bouton of $("contenuFiche").querySelectorAll("[data-variante]")) {
+    bouton.addEventListener("click", () => dessiner_fiche(bouton.dataset.variante));
+  }
+  brancher_points_du_graphique(nom, histoire);
+  brancher_recalages($("contenuFiche"));
+  $("retourExercices").textContent =
+    retour_de_la_fiche === "ecranHistorique"
+      ? "← Retour à l'historique"
+      : "← Tous les exercices";
+  montrer("ecranFiche");
+}
+
+/**
+ * Un clic montre, un double-clic emmene.
+ *
+ * `graphique.js` rend un `<a>` par point et n'a pas eu a bouger : c'est
+ * l'appelant qui decide de ce qu'un clic fait, et il n'y a donc rien a porter
+ * cote poste fixe, ou un lien qui suit son href reste le bon comportement.
+ *
+ * Le second clic est reconnu **par le temps et par la cible**, pas par un
+ * evenement `dblclick` : celui-ci n'arrive qu'apres le premier `click`, donc
+ * l'affichage du detail aurait deja eu lieu — ce qui est acceptable — mais
+ * surtout il n'existe pas de facon fiable au toucher sur iOS.
+ */
+function brancher_points_du_graphique(nom, histoire) {
+  const detail = $("detailPoint");
+  if (!detail) return;
+
+  // Le detail des series par seance : `statistiques_exercices` n'en garde que
+  // les sommes (c'est un jumeau verifie par harnais, on ne lui ajoute pas un
+  // champ pour un affichage), alors que l'historique brut les a toutes.
+  const par_seance = {};
+  for (const seance of histoire) {
+    const exercice = (seance.exercices ?? []).find((e) => e.nom === nom);
+    if (!exercice) continue;
+    par_seance[seance.id] = {
+      date: seance.date,
+      mode: exercice.mode ?? "repetitions",
+      series: (exercice.series_detaillees ?? []).filter((serie) => serie.completee),
+    };
+  }
+
+  let dernier = { id: null, instant: 0 };
+  const points = $("contenuFiche").querySelectorAll("a.chart-point");
+  for (const point of points) {
+    point.addEventListener("click", (evenement) => {
+      evenement.preventDefault();
+      const id = Number(point.getAttribute("href").slice("#seance-".length));
+      const instant = Date.now();
+      if (dernier.id === id && instant - dernier.instant < DELAI_DOUBLE_CLIC) {
+        ouvrir_historique_sur(id);
+        return;
+      }
+      dernier = { id, instant };
+      // **Marquer le point touche**, sinon rien ne dit lequel a repondu : au
+      // doigt il n'y a pas de survol, et le detail sous le graphe ne designe
+      // pas sa source. C'est aussi ce qui rend le second appui evident — on
+      // voit ou reappuyer.
+      for (const autre of points) autre.classList.toggle("actif", autre === point);
+      const ligne = par_seance[id];
+      const puces = ligne ? bloc_series(ligne.series, ligne.mode) : "";
+      detail.innerHTML = !ligne
+        ? "Séance introuvable dans l'historique."
+        : `<span>${echapper(ligne.date)}</span>` +
+          (puces || `<span class="muet">aucune série menée au bout</span>`);
+    });
+  }
+}
+
+function bloc_niveau(etat) {
+  const cases = [
+    `<div><span>Niveau</span><strong>${etat.niveau ?? "—"}</strong></div>`,
+    `<div><span>${etat.niveau ? "Palier acquis" : "Premier palier"}</span>` +
+      `<strong>${echapper(resume_palier(etat.actuel ?? etat.premier) ?? "—")}</strong></div>`,
+  ];
+  if (etat.suivant) {
+    cases.push(
+      `<div><span>Palier suivant</span><strong>${echapper(resume_palier(etat.suivant))}</strong></div>`
+    );
+  }
+  const note = etat.niveau
+    ? ""
+    : `<p class="sous-titre" style="margin-top:14px">Rien dans l'historique n'atteint ` +
+      `encore le premier palier. Le test de calibration, ou simplement une première ` +
+      `séance, posera le niveau.</p>`;
+  return `<div class="bloc"><h2>Où j'en suis</h2><div class="niveau">${cases.join("")}</div>${note}</div>`;
+}
+
+// ---------------------------------------------------------------- programmes
+
+/**
+ * Les programmes et leur avancement.
+ *
+ * Tout se recalcule ici : le niveau requis vient du bareme, le niveau acquis
+ * de l'historique local, et l'ecart des deux. Rien n'est stocke, donc rien ne
+ * peut se perimer — c'est le principe du module cote Python.
+ */
+function dessiner_programmes() {
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
+  const etats = etats_programmes(moteur.baremes, programmes_declares, niveaux);
+
+  const cles = Object.keys(etats);
+  if (!cles.length) {
+    $("listeProgrammes").innerHTML =
+      `<p class="vide">Aucun programme défini. Ils s'écrivent depuis l'ordinateur.</p>`;
+    return;
+  }
+
+  // **On n'en suit qu'un a la fois.** Tant qu'aucun n'est choisi, la page les
+  // montre tous, replies, pour qu'on puisse comparer ; des qu'un choix est
+  // fait, elle ne montre que celui-la — c'est tout l'objet du choix, et voir
+  // les autres en dessous inviterait a papillonner.
+  const choisi = programme_suivi();
+  const montres = choisi ? [choisi] : cles;
+
+  $("listeProgrammes").innerHTML =
+    (choisi
+      ? ""
+      : `<p class="sous-titre">Choisis-en un : la page ne montrera plus que ` +
+        `celui-là, et l'accueil proposera ses séances dans l'ordre.</p>`) +
+    montres
+      .map((cle) =>
+        dessiner_programme(etats[cle], programmes_declares[cle], histoire, {
+          cle,
+          replie: !choisi,
+          actif: cle === choisi,
+        })
+      )
+      .join("") +
+    (choisi
+      ? `<div class="actions" style="justify-content:flex-start">` +
+        `<button type="button" class="bouton secondaire" data-liberer>Changer de programme</button>` +
+        `</div>`
+      : "");
+
+  for (const bouton of $("listeProgrammes").querySelectorAll("[data-suivre]")) {
+    bouton.addEventListener("click", () => definir_programme_suivi(bouton.dataset.suivre));
+  }
+  // `null` remet dans l'etat « aucun choix » : les autres programmes
+  // reapparaissent, et l'accueil cesse d'en proposer un.
+  $("listeProgrammes")
+    .querySelector("[data-liberer]")
+    ?.addEventListener("click", () => definir_programme_suivi(null));
+}
+
+/** La cle du programme suivi, ou `null` si aucun choix n'a ete fait.
+ *
+ * **Pas de repli sur le premier** : un repli n'est pas un choix, et le faire
+ * passer pour tel priverait l'utilisateur de la distinction — c'est la meme
+ * regle que `programme_de_l_accueil` cote poste fixe.
+ */
+function programme_suivi() {
+  const profil = base.utilisateurs.find((u) => u.id === PROFIL);
+  const choisi = profil?.programme_choisi;
+  return choisi && programmes_declares[choisi] ? choisi : null;
+}
+
+/** Ecrit le choix sur le profil, puis redessine les deux ecrans concernes. */
+async function definir_programme_suivi(cle) {
+  const utilisateur = base.utilisateurs.find((u) => u.id === PROFIL);
+  if (utilisateur) utilisateur.programme_choisi = cle;
+  await stockage.sauver(base);
+  dessiner_programmes();
+  dessiner_liste();
+}
+
+function dessiner_programme(etat, declare, histoire, options = {}) {
+  const suite = prochaine_seance(declare, histoire, seances);
+  const prochaine = suite
+    ? `<p class="programme-suite">À enchaîner : <b>${echapper(suite.libelle)}</b>` +
+      (suite.seance ? ` · séance <b>${echapper(suite.seance)}</b>` : " · aucune séance liée") +
+      ` <span class="muet">(${suite.position} / ${suite.total})</span></p>`
+    : "";
+
+  const groupes = Object.entries(etat.seances)
+    .map(([libelle, lignes]) => {
+      const items = lignes.map((ligne) => dessiner_exigence(ligne)).join("");
+      return `<h3>${echapper(libelle)}</h3><ul class="exigences">${items}</ul>`;
+    })
+    .join("");
+
+  // L'entete, la jauge et la prochaine seance restent toujours visibles :
+  // c'est ce qui permet de comparer deux programmes sans les deplier. Seules
+  // les exigences se replient, parce qu'elles sont longues.
+  const exigences = options.replie
+    ? `<details class="exigences-detail"><summary>Voir les ${etat.total} exigences</summary>` +
+      groupes + `</details>`
+    : groupes;
+
+  const action = options.actif
+    ? ""
+    : `<div class="actions" style="justify-content:flex-start">` +
+      `<button type="button" class="bouton" data-suivre="${echapper(options.cle ?? "")}">` +
+      `Suivre ce programme</button></div>`;
+
+  return (
+    `<section class="programme${etat.battu ? " battu" : ""}">` +
+    `<div class="entete"><h2>${echapper(etat.nom)}</h2>` +
+    `<span class="compte">${
+      etat.battu ? "Programme battu !" : `${etat.pourcentage} % de progression`
+    }</span></div>` +
+    (etat.description ? `<p class="description">${echapper(etat.description)}</p>` : "") +
+    `<div class="jauge"><span style="width:${etat.pourcentage}%"></span></div>` +
+    `<p class="description">Moyenne de l'avancement sur les ${etat.total} exigences · ` +
+    `<b>${etat.atteintes}</b> entièrement atteinte${etat.atteintes > 1 ? "s" : ""}.</p>` +
+    prochaine +
+    exigences +
+    action +
+    `</section>`
+  );
+}
+
+/**
+ * Une exigence : ce qui est prescrit, sa traduction sur le bareme, et l'ecart.
+ *
+ * **Les deux valeurs s'affichent**, et c'est indispensable : n'afficher que la
+ * traduction rendait la page incomprehensible — on saisit « 6x15 » et on relit
+ * « 4x23 » sans que rien ne relie les deux. La seconde est masquee quand elle
+ * est identique, ce qui est le cas normal depuis que l'enregistrement cale
+ * chaque exigence sur un palier.
+ */
+function dessiner_exigence(ligne) {
+  const palier = resume_palier(ligne.palier_requis);
+  const etiquette = ligne.hors_atteinte
+    ? `<span class="etat bloque">Matériel insuffisant</span>`
+    : ligne.atteint
+      ? `<span class="etat ok">Atteint</span>`
+      : `<span class="etat attente">${ligne.avancement} %</span>`;
+
+  const detail = ligne.palier_requis
+    ? `Objectif <strong>${echapper(ligne.prescription)}</strong>` +
+      (palier !== ligne.prescription ? ` · soit <strong>${echapper(palier)}</strong> sur ton barème` : "") +
+      ` · actuellement ${
+        ligne.actuel_resume ? `<strong>${echapper(ligne.actuel_resume)}</strong>` : "rien de validé"
+      }` +
+      (ligne.restant ? ` · encore ${ligne.restant} niveau${ligne.restant > 1 ? "x" : ""}` : "")
+    : `Objectif <strong>${echapper(ligne.prescription)}</strong> · hors de ton barème actuel`;
+
+  return (
+    `<li class="exigence${ligne.atteint ? " faite" : ""}">` +
+    `<div class="exigence-titre"><span class="exigence-nom">${echapper(ligne.exercice)}</span>${etiquette}</div>` +
+    `<div class="exigence-barre"><span style="width:${ligne.avancement}%"></span></div>` +
+    `<p class="exigence-detail">${detail}</p></li>`
+  );
+}
+
+/**
+ * Le graphique de progression d'un exercice.
+ *
+ * **Toujours deplie**, comme sur le poste fixe. Il etait replie du temps ou
+ * l'ecran des records les empilait tous ; depuis la fusion, une fiche ne parle
+ * que d'un mouvement, et le graphe y est la reponse a la question qu'on est
+ * venu poser — le replier revenait a la cacher.
+ *
+ * **Chaque point mene a sa seance.** Le poste fixe passe une URL
+ * (`/historique/<id>`) ; l'application n'en a pas, elle passe donc une ancre
+ * et intercepte le clic pour changer d'ecran. Dans les deux cas c'est
+ * `graphique.js` qui enveloppe le point dans un <a> — le module partage n'a
+ * pas eu a bouger.
+ *
+ * Un seul point ne fait pas une progression : on l'annonce plutot que de
+ * tracer une ligne horizontale qui n'apprend rien.
+ */
+function bloc_graphique(nom, statistique) {
+  const points = statistique?.progression ?? [];
+  if (points.length < 2) return "";
+
+  // Ce qu'on trace depend du mode, exactement comme le `pb` : le volume est
+  // structurellement nul au poids du corps, la duree n'a de sens qu'en
+  // maintien.
+  const { cle, unite } = cle_de_progression(
+    statistique.mode,
+    statistique.meilleure_charge.valeur > 0
+  );
+
+  const svg = graphique_progression(points, {
+    cle,
+    unite,
+    lien: (point) => `#seance-${point.seance_id}`,
+  });
+
+  return (
+    `<div class="progression-record">` +
+    `<strong class="progression-titre">Progression · ${points.length} séances</strong>` +
+    `<div class="chart-container">${svg}</div>` +
+    // **Un clic montre, un double-clic emmene.** Un point est une cible
+    // etroite : partir sur un autre ecran au premier contact punit un doigt
+    // approximatif. La ligne ci-dessous est l'entre-deux — on survole des
+    // seances avant d'en ouvrir une.
+    // Un `<div class="series-detail">` ne peut pas vivre dans un `<p>` : le
+    // navigateur fermerait le paragraphe avant lui, sans rien dire, et la mise
+    // en page serait fausse a partir de la.
+    `<div class="progression-detail" id="detailPoint">Touche un point pour voir ` +
+    `le détail de cette séance, deux fois pour l'ouvrir.</div>` +
+    `</div>`
+  );
+}
+
+/**
+ * Le formulaire de recalage d'un niveau.
+ *
+ * **On ne demande jamais un numero de niveau** — personne ne sait ce que vaut
+ * « niveau 27 ». On demande une performance, et le bareme en deduit le
+ * niveau : c'est la meme forme que prend le test de calibration, et c'est ce
+ * qui rend la saisie honnete.
+ *
+ * Un ancrage agit **de deux facons a la fois** — il fait table rase de
+ * l'historique anterieur *et* sert de plancher. C'est la table rase qui lui
+ * permet de corriger un niveau vers le bas ; un simple plancher ne saurait
+ * que le relever.
+ *
+ * Les valeurs par defaut viennent du palier acquis, ou du premier : elles
+ * donnent l'unite attendue et l'ordre de grandeur sans rien suggerer de plus.
+ */
+function bloc_recalage(nom, etat) {
+  const depart = etat.actuel ?? etat.premier;
+  if (!depart) return "";
+  const libelle = depart.unite === "secondes" ? "Secondes" : "Répétitions";
+
+  return (
+    `<details class="recalage"><summary>Recaler mon niveau</summary>` +
+    `<p class="niveau-note">Indique une performance que tu sais tenir sur toutes ` +
+    `les séries. Le barème en déduit ton niveau, et l'historique antérieur cesse ` +
+    `de compter pour cet exercice.</p>` +
+    `<form class="form-ancrage" data-exercice="${echapper(nom)}">` +
+    `<span class="champ"><label>Séries</label>` +
+    `<input type="number" min="1" class="champ-series" value="${depart.series}"></span>` +
+    `<span class="champ"><label>${libelle}</label>` +
+    `<input type="number" min="1" class="champ-cible" value="${depart.cible}"></span>` +
+    `<span class="champ"><label>Charge (kg)</label>` +
+    `<input type="number" min="0" step="0.5" class="champ-poids" value="${depart.poids}"></span>` +
+    `<span class="champ champ-large"><label>Pourquoi ?</label>` +
+    `<input type="text" class="champ-raison" placeholder="Séance faite sans l'app…"></span>` +
+    `<button type="submit">Recaler</button>` +
+    (etat.ancre
+      ? `<button type="button" class="bouton-secondaire" data-supprimer>Supprimer l'ancrage</button>`
+      : "") +
+    `<span class="retour-ancrage"></span></form>` +
+    `<details class="journal-ancrages" data-exercice="${echapper(nom)}">` +
+    `<summary>Historique des ancrages ▾</summary><p class="vide">Chargement…</p>` +
+    `</details></details>`
+  );
+}
+
+/**
+ * Branche les formulaires de recalage.
+ *
+ * La difference avec le poste fixe est ou vit la base : il POSTe sur
+ * `/api/niveaux/<nom>/ancrage` et laisse Flask deduire le niveau, le
+ * navigateur appelle `niveau_pour` sur place puis ecrit dans sa propre base.
+ * Le refus est le meme des deux cotes — une performance qui n'atteint pas le
+ * premier palier n'ancre rien, plutot que d'ancrer un niveau invente.
+ */
+function brancher_recalages(racine) {
+  for (const form of racine.querySelectorAll(".form-ancrage")) {
+    const nom = form.dataset.exercice;
+    const retour = form.querySelector(".retour-ancrage");
+
+    form.addEventListener("submit", async (evenement) => {
+      evenement.preventDefault();
+      const series = Number(form.querySelector(".champ-series").value) || 0;
+      const cible = Number(form.querySelector(".champ-cible").value) || 0;
+      const poids = Number(form.querySelector(".champ-poids").value) || 0;
+
+      const niveau = moteur.baremes.niveau_pour(nom, poids, series, cible);
+      if (niveau === null) {
+        const premier = resume_palier(moteur.baremes.palier(nom, 1));
+        retour.className = "retour-ancrage erreur";
+        retour.textContent = `Cette performance n'atteint pas le premier palier (${premier}).`;
+        return;
+      }
+
+      historique.enregistrer_ancrage(base, nom, niveau, {
+        raison: form.querySelector(".champ-raison").value,
+        utilisateur_id: PROFIL,
+      });
+      await stockage.sauver(base);
+      dessiner_fiche(nom);
+    });
+
+    form.querySelector("[data-supprimer]")?.addEventListener("click", async () => {
+      // `supprimer_ancrages` purge **tout** l'historique d'ancrages de
+      // l'exercice, la ou le journal ci-dessous retire une entree precise.
+      // Ce sont deux gestes differents, comme sur le poste fixe.
+      historique.supprimer_ancrages(base, nom, PROFIL);
+      await stockage.sauver(base);
+      dessiner_fiche(nom);
+    });
+  }
+
+  // Le journal se remplit a l'ouverture : il n'a aucune raison d'etre calcule
+  // pour les vingt-trois exercices a chaque affichage de l'ecran.
+  for (const journal of racine.querySelectorAll(".journal-ancrages")) {
+    journal.addEventListener("toggle", () => {
+      if (journal.open) remplir_journal_ancrages(journal);
+    });
+  }
+}
+
+/**
+ * Le journal complet des ancrages d'un exercice.
+ *
+ * Seul le **dernier** ancrage compte pour le niveau calcule : supprimer une
+ * entree anterieure ne change donc rien, par construction. C'est un nettoyage
+ * du journal, pas une correction de niveau — et c'est pour ca que ce bouton
+ * est distinct de « Supprimer l'ancrage », qui purge tout.
+ */
+function remplir_journal_ancrages(journal) {
+  const nom = journal.dataset.exercice;
+  const entrees = historique.recuperer_historique_ancrages(base, nom, PROFIL);
+  const sommaire = journal.querySelector("summary");
+
+  journal.replaceChildren(sommaire);
+  if (!entrees.length) {
+    const vide = document.createElement("p");
+    vide.className = "vide";
+    vide.textContent = "Aucun recalage posé sur cet exercice.";
+    journal.appendChild(vide);
+    return;
+  }
+
+  const liste = document.createElement("ul");
+  liste.className = "liste-ancrages";
+  for (const entree of entrees) {
+    const item = document.createElement("li");
+    const palier = resume_palier(moteur.baremes.palier(nom, entree.niveau));
+    const texte = document.createElement("span");
+    texte.innerHTML =
+      `<strong>Niveau ${entree.niveau}</strong> · ${echapper(palier ?? "")} · ` +
+      `${echapper(entree.date)}${entree.raison ? ` · ${echapper(entree.raison)}` : ""}`;
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.textContent = "Annuler";
+    bouton.addEventListener("click", async () => {
+      historique.supprimer_ancrage(base, entree.id);
+      await stockage.sauver(base);
+      dessiner_fiche(nom);
+    });
+    item.append(texte, bouton);
+    liste.appendChild(item);
+  }
+  journal.appendChild(liste);
+}
+
+// ---------------------------------------------------------------- ecran d'accueil
+
+
+//: Les ressentis qui **signalent un ecart**. `ok` et `dur` n'y sont pas :
+//: ils valent l'absence de reponse, et un drapeau neutre n'apprend rien.
+const LIBELLES_RESSENTI = {
+  trop_dur: "trop dur",
+  facile: "facile",
+  trop_facile: "trop facile",
+};
+
+/**
+ * La derniere performance de chaque exercice, seance par seance.
+ *
+ * Jumeau du calcul que `web/app.py` fait pour l'accueil : pour chaque nom de
+ * seance, la plus recente **non abandonnee**, et pour chaque exercice ses
+ * series menees au bout. L'historique arrivant du plus recent au plus ancien,
+ * la premiere rencontree est la bonne.
+ *
+ * Seules les series `completee` sont retenues : une serie interrompue ne dit
+ * pas ce qu'on a tenu, et l'afficher ferait croire a une contre-performance.
+ */
+/**
+ * Ce qu'une seance a donne, **une pastille par serie**.
+ *
+ * Rend du HTML — les pastilles de `.series-detail` / `.serie-puce`, exactement
+ * celles de l'historique. C'est le point d'entree unique des **trois** ecrans
+ * qui montrent une performance passee : le detail d'une seance dans
+ * l'historique, le depliant « Derniere fois » des cartes de seance, et la ligne
+ * qui repond a un appui sur un point du graphique. Ils disent la meme chose de
+ * la meme donnee ; trois mises en forme differentes obligeraient a relire a
+ * chaque fois de quoi il s'agit.
+ *
+ * Une case par serie, et non une phrase separee par des points medians : c'est
+ * ce qui rend l'ecart visible d'un coup d'oeil, `15x8 kg` et `12x10 kg` etant
+ * alors deux blocs a comparer plutot qu'un texte a lire.
+ *
+ * Deux regles de contenu. Une duree ne se rapporte a aucune charge — un
+ * gainage se tient, il ne se souleve pas. Et un poids nul n'est pas une charge
+ * de zero kilo mais un mouvement au poids du corps : `historique.js` normalise
+ * a l'ecriture avec `poids ?? 0`, donc un format inconditionnel afficherait
+ * « 13x0 kg » sur toutes les pompes.
+ */
+function resume_series(series, mode) {
+  if (!series?.length) return "";
+  const au_temps = mode === "maintien" || mode === "chrono";
+  return series
+    .map((serie) => {
+      const valeur = au_temps
+        ? `${Math.round(serie.duree || 0)} s`
+        : serie.repetitions || 0;
+      // La charge est plus discrete que la repetition : c'est elle qu'on lit
+      // en premier, le poids ne fait que la qualifier.
+      const charge = !au_temps && serie.poids ? `<i>×${serie.poids}&nbsp;kg</i>` : "";
+      // `=== false` et non la simple faussete : les listes deja filtrees sur
+      // les series menees au bout ne portent pas toujours le champ, et elles
+      // s'afficheraient alors toutes en rate.
+      return (
+        `<span class="serie-puce${serie.completee === false ? " ratee" : ""}">` +
+        `${valeur}${charge}</span>`
+      );
+    })
+    .join("");
+}
+
+/** Les memes pastilles, dans leur conteneur — rien si la liste est vide. */
+function bloc_series(series, mode) {
+  const puces = resume_series(series, mode);
+  return puces ? `<div class="series-detail">${puces}</div>` : "";
+}
+
+function dernieres_series(histoire) {
+  const par_seance = {};
+  for (const seance of histoire) {
+    const nom = seance.nom;
+    if (!nom || nom in par_seance || seance.statut === "abandoned") continue;
+    if (!(nom in seances)) continue;
+
+    par_seance[nom] = {};
+    for (const exercice of seance.exercices ?? []) {
+      par_seance[nom][exercice.nom] = {
+        date: seance.date,
+        mode: exercice.mode ?? "repetitions",
+        ressenti: exercice.ressenti || "",
+        series: (exercice.series_detaillees ?? []).filter((s) => s.completee !== false),
+      };
+    }
+  }
+  return par_seance;
+}
+
+/**
+ * Ce que la derniere seance de ce nom a donne, exercice par exercice.
+ *
+ * L'ecran d'accueil du poste fixe le montre sous le formulaire d'objectifs ;
+ * l'application n'a pas d'editeur — le fichier fait autorite — mais elle a
+ * exactement le meme besoin : savoir ce qu'on a tenu la derniere fois avant de
+ * relancer la meme seance.
+ */
+function detail_seance(nom, blocs, dernieres) {
+  const precedent = dernieres[nom];
+  const manuelles = blocs.filter((b) => est_cible_manuelle(b, PROFIL));
+  if (!precedent && !manuelles.length) return null;
+
+  const detail = document.createElement("details");
+  detail.className = "detail-seance";
+
+  const sommaire = document.createElement("summary");
+  sommaire.textContent = precedent ? "Dernière fois" : "Cibles figées";
+  detail.appendChild(sommaire);
+
+  for (const bloc of blocs) {
+    if (bloc.mode === "echauffement") continue;
+    const ligne = precedent?.[bloc.exercice];
+    const fige = est_cible_manuelle(bloc, PROFIL);
+    if (!ligne?.series?.length && !fige) continue;
+
+    const element = document.createElement("div");
+    element.className = "detail-ligne";
+    const puces = bloc_series(ligne?.series ?? [], ligne?.mode);
+    const ressenti = LIBELLES_RESSENTI[ligne?.ressenti];
+
+    element.innerHTML =
+      `<b>${echapper(bloc.exercice)}</b>` +
+      (puces
+        ? `<span>${echapper(ligne.date)}` +
+          (ressenti ? ` <i>(${ressenti})</i>` : "") +
+          `</span>${puces}`
+        : `<span class="muet">pas encore joué</span>`) +
+      (fige
+        ? `<span class="muet">Cible figée à la main : le moteur ne la fait plus ` +
+          `évoluer. Elle se débloque depuis l'ordinateur, en remettant les ` +
+          `valeurs que le moteur propose.</span>`
+        : "");
+    detail.appendChild(element);
+  }
+
+  return detail.children.length > 1 ? detail : null;
+}
+
+// ------------------------------------------------------ resume de programme
+
+/**
+ * La carte du programme suivi, en tete de l'ecran des seances.
+ *
+ * **Un seul programme y figure**, celui qu'on suit en ce moment : on n'en suit
+ * qu'un a la fois, et l'onglet Programmes reste celui qui les liste tous.
+ *
+ * `programme_choisi` est une preference **du profil**, stockee sur son
+ * enregistrement comme le materiel. `null` veut dire « aucun choix », et la
+ * carte **invite alors a choisir** au lieu de retomber en silence sur le
+ * premier programme : un repli n'est pas un choix, et le faire passer pour tel
+ * priverait l'utilisateur de la distinction.
+ */
+function dessiner_resume_programme() {
+  const conteneur = $("resumeProgramme");
+  conteneur.replaceChildren();
+
+  const cles = Object.keys(programmes_declares);
+  if (!cles.length) return;
+
+  const cle = programme_suivi();
+  if (!cle) {
+    const invite = document.createElement("section");
+    invite.className = "programme-resume";
+    invite.innerHTML =
+      `<div class="resume-entete"><h2>Aucun programme suivi</h2></div>` +
+      `<p class="resume-detail">Un programme enchaîne les séances dans un ordre ` +
+      `et fixe des objectifs de fin. Tant que tu n'en choisis pas, les séances ` +
+      `restent libres.</p>` +
+      `<div class="resume-pied">` +
+      `<button type="button" class="resume-lien" id="versProgrammes">Choisir un programme</button>` +
+      `</div>`;
+    conteneur.appendChild(invite);
+    invite.querySelector("#versProgrammes").addEventListener("click", () => {
+      dessiner_programmes();
+      montrer("ecranProgrammes");
+    });
+    return;
+  }
+  const declare = programmes_declares[cle];
+
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
+  const etat = etat_programme(moteur.baremes, cle, declare, niveaux);
+  const suite = prochaine_seance(declare, histoire, seances);
+  const liaison = liaison_seances(declare, seances);
+  const liees = Object.entries(liaison).filter(([, nom]) => nom);
+
+  const carte = document.createElement("section");
+  carte.className = "programme-resume";
+  carte.innerHTML =
+    `<div class="resume-entete"><h2>${echapper(etat.nom)}</h2>` +
+    `<span class="resume-compte">${
+      etat.battu ? "Programme battu !" : `${etat.pourcentage} % de progression`
+    }</span></div>` +
+    `<div class="resume-jauge"><span style="width:${etat.pourcentage}%"></span></div>` +
+    `<p class="resume-detail">${etat.atteintes} exigence${etat.atteintes > 1 ? "s" : ""} ` +
+    `sur ${etat.total} entièrement remplie${etat.atteintes > 1 ? "s" : ""}.</p>` +
+    (suite && suite.seance
+      ? `<div class="resume-prochaine">` +
+        `<div><span class="resume-etiquette">Séance choisie ` +
+        `(<span id="positionProgramme">${suite.position}</span>/${suite.total})</span>` +
+        `<strong id="libelleProgramme">${echapper(suite.seance)}</strong></div>` +
+        `<button type="button" class="resume-demarrer" id="demarrerProgramme" ` +
+        `data-seance="${echapper(suite.seance)}">Commencer</button></div>`
+      : `<p class="resume-detail">Aucune séance de ce programme n'est liée à une séance jouable.</p>`) +
+    (liees.length > 1
+      ? `<label class="resume-bascule">Commencer plutôt par <select id="choixSeanceProgramme">` +
+        liees
+          .map(
+            ([libelle, nom], index) =>
+              `<option value="${echapper(nom)}" data-position="${index + 1}"` +
+              `${nom === suite?.seance ? " selected" : ""}>${echapper(libelle)}</option>`
+          )
+          .join("") +
+        `</select></label>`
+      : "") +
+    `<div class="resume-pied">` +
+    `<button type="button" class="resume-lien" id="versProgrammes">Voir le détail du programme</button>` +
+    `</div>`;
+
+  conteneur.appendChild(carte);
+
+  carte.querySelector("#demarrerProgramme")?.addEventListener("click", (evenement) => {
+    verrou_ecran.tenir();
+    demarrer(evenement.currentTarget.dataset.seance);
+  });
+  carte.querySelector("#versProgrammes").addEventListener("click", () => {
+    dessiner_programmes();
+    montrer("ecranProgrammes");
+  });
+
+  // **Bascule ponctuelle** : elle ne stocke rien et ne fait que reecrire la
+  // cible du bouton. La proposition automatique reprend la main au prochain
+  // affichage — c'est « pour aujourd'hui », pas « desormais ».
+  carte.querySelector("#choixSeanceProgramme")?.addEventListener("change", (evenement) => {
+    const option = evenement.target.selectedOptions[0];
+    $("demarrerProgramme").dataset.seance = evenement.target.value;
+    $("libelleProgramme").textContent = evenement.target.value;
+    $("positionProgramme").textContent = option.dataset.position;
+  });
+
+}
+
+/**
+ * La cible **du fichier**, dans l'unite que son mode joue reellement.
+ *
+ * Un bloc porte les deux champs a la fois — c'est voulu, ca permet de passer
+ * d'un mode a l'autre sans perdre l'autre valeur —, donc le mode seul decide
+ * lequel est la cible. Un `repetitions || duree` prenait le premier non nul et
+ * collait l'unite de l'autre : un echauffement de 30 s saisi avec 10
+ * repetitions s'affichait « 1×10 s ».
+ */
+function cible_du_bloc(bloc) {
+  return MODES_DUREE.includes(bloc.mode) ? bloc.duree : bloc.repetitions;
+}
+
+/** La cible d'un bloc telle qu'elle sera jouee, objectif du moteur compris. */
+function cible_affichee(bloc, objectifs, sans_donnees) {
+  const unite_bloc = MODES_DUREE.includes(bloc.mode) ? " s" : "";
+  if (est_cible_manuelle(bloc, PROFIL)) {
+    return `${bloc.series}×${cible_du_bloc(bloc)}${unite_bloc}` +
+      (bloc.poids ? ` · ${bloc.poids} kg` : "") + " · figée";
+  }
+  if (moteur.objectifs.a_calibrer(bloc.exercice, bloc.mode, sans_donnees)) {
+    return "à tester";
+  }
+  const palier = moteur.objectifs.objectif_pour(bloc.exercice, bloc.mode, objectifs);
+  if (palier) {
+    return `${palier.series}×${palier.cible}${palier.unite === "secondes" ? " s" : ""}` +
+      (palier.poids ? ` · ${palier.poids} kg` : "");
+  }
+  return `${bloc.series}×${cible_du_bloc(bloc)}${unite_bloc}`;
+}
+
+/**
+ * Le contenu d'une seance, deplie a la demande.
+ *
+ * Les echauffements vont dans un <details> replie a part, comme le fait
+ * `accueil.html` cote poste fixe : ils ne comptent ni dans les statistiques ni
+ * dans la progression, et les melanger aux exercices ferait croire l'inverse.
+ */
+function contenu_seance(blocs, objectifs, sans_donnees) {
+  const exercices = blocs.filter((b) => b.mode !== "echauffement");
+  const echauffements = blocs.filter((b) => b.mode === "echauffement");
+
+  const ligne = (b) => {
+    const figee = est_cible_manuelle(b, PROFIL);
+    return (
+      `<div class="contenu-ligne"><span>${echapper(b.exercice)}</span>` +
+      `<b${figee ? ' class="contenu-cible-figee"' : ""}>` +
+      `${echapper(cible_affichee(b, objectifs, sans_donnees))}</b>` +
+      (b.entrelace_avec ? ` <em>⟷ alterné</em>` : "") +
+      `</div>`
+    );
+  };
+
+  const detail = document.createElement("details");
+  detail.className = "carte-contenu";
+  detail.innerHTML =
+    `<summary>Voir le contenu</summary>` +
+    exercices.map(ligne).join("") +
+    (echauffements.length
+      ? `<details class="contenu-echauffements"><summary>` +
+        `${echauffements.length} échauffement${echauffements.length > 1 ? "s" : ""}` +
+        `</summary>${echauffements.map(ligne).join("")}</details>`
+      : "");
+  return detail;
+}
+
+/**
+ * La seance choisie pour aujourd'hui, ou null.
+ *
+ * L'etat vit dans le document (une classe sur la carte) plutot que dans une
+ * variable a resynchroniser : `dessiner_liste` reconstruit tout, et une
+ * variable survivrait a un redessin en designant un noeud disparu.
+ */
+function selectionner_seance(nom) {
+  for (const carte of $("listeSeances").querySelectorAll("article.carte")) {
+    const choisie = carte.dataset.seance === nom;
+    carte.classList.toggle("selectionnee", choisie);
+    const demarrage = carte.querySelector(".carte-demarrage");
+    if (demarrage) demarrage.hidden = !choisie;
+    if (choisie) carte.querySelector(".carte-demarrer")?.focus({ preventScroll: true });
+  }
+  $("sousTitre").textContent = nom
+    ? `${nom} — appuie sur « Démarrer la séance » quand tu es prêt.`
+    : "Choisis ce que tu fais aujourd'hui.";
+}
+
+function dessiner_liste() {
+  dessiner_resume_programme();
+  const liste = $("listeSeances");
+  liste.innerHTML = "";
+
+  // Les objectifs sont calcules une fois pour toute la liste : chaque calcul
+  // relit l'historique entier, et il y a six seances a afficher.
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  const objectifs = moteur.objectifs.objectifs_par_exercice(histoire, ancrages);
+  const sans_donnees = moteur.objectifs.exercices_sans_donnees(histoire, ancrages);
+  const dernieres = dernieres_series(histoire);
+
+  for (const [nom, blocs] of Object.entries(seances)) {
+    const exercices = blocs.filter((b) => b.mode !== "echauffement");
+    const echauffements = blocs.length - exercices.length;
+
+    // La carte n'est **plus** un bouton : elle contient desormais le bouton de
+    // lancement, le crayon et deux <details>, qu'un <button> ne peut porter.
+    // C'est le changement d'element porteur qui permet de tout ramener dedans.
+    const carte = document.createElement("article");
+    carte.className = "carte";
+
+    // **Le contenu d'une seance ne s'affiche qu'une fois.** Le bouton portait
+    // aussi les cinq premiers exercices avec leur cible, juste au-dessus du
+    // <details> qui deplie les memes lignes — deux fois la meme liste, dont
+    // l'une tronquee. Ne reste que l'ampleur, qui elle ne se lit nulle part
+    // ailleurs sans deplier.
+    const lancer = document.createElement("button");
+    lancer.className = "carte-lancer";
+    lancer.innerHTML =
+      `<div class="carte-titre">${echapper(nom)}</div>` +
+      `<div class="carte-detail">${exercices.length} exercice${exercices.length > 1 ? "s" : ""}` +
+      (echauffements ? ` · ${echauffements} échauffement${echauffements > 1 ? "s" : ""}` : "") +
+      `</div>`;
+    // **Choisir n'est pas commencer.** Le clic sur la carte ne fait plus que
+    // selectionner la seance ; c'est le bouton « Demarrer » qui ouvre la
+    // camera. Le poste fixe a toujours fonctionne ainsi, et pour une bonne
+    // raison : on ouvre une carte pour lire son contenu et sa derniere fois,
+    // pas pour se retrouver devant l'objectif.
+    lancer.addEventListener("click", () => selectionner_seance(nom));
+    carte.appendChild(lancer);
+
+    const demarrage = document.createElement("div");
+    demarrage.className = "carte-demarrage";
+    demarrage.hidden = true;
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "bouton carte-demarrer";
+    bouton.textContent = "Démarrer la séance";
+    bouton.addEventListener("click", () => {
+      // **Au plus pres du clic, avant tout `await`.** L'activation de
+      // l'utilisateur ne survit pas a la preparation de l'audio, a
+      // l'autorisation camera et au chargement du modele — plusieurs secondes,
+      // au bout desquelles Safari peut refuser. Le geste a simplement change
+      // de bouton : il reste un geste.
+      verrou_ecran.tenir();
+      demarrer(nom);
+    });
+    demarrage.appendChild(bouton);
+    carte.appendChild(demarrage);
+    carte.dataset.seance = nom;
+
+    const editer = document.createElement("button");
+    editer.className = "carte-editer";
+    editer.type = "button";
+    editer.textContent = "✎";
+    editer.title = "Modifier cette séance";
+    editer.setAttribute("aria-label", `Modifier ${nom}`);
+    editer.addEventListener("click", (evenement) => {
+      evenement.stopPropagation();
+      ouvrir_editeur(nom);
+    });
+    carte.appendChild(editer);
+
+    // La barre ne porte plus que les decrochages. Ils restent **au-dessus** du
+    // repli : une cible figee ou une seance qui ne suit plus le fichier sont
+    // precisement ce qu'on ne doit pas avoir a deplier pour voir.
+    const barre = document.createElement("div");
+    barre.className = "barre-carte";
+    if (historique.est_seance_locale(base, nom)) {
+      const marque = document.createElement("span");
+      marque.className = "puce puce-manuelle";
+      marque.textContent = "modifiée sur cet appareil";
+      barre.appendChild(marque);
+    }
+    const figees = exercices.filter((b) => est_cible_manuelle(b, PROFIL)).length;
+    if (figees) {
+      const marque = document.createElement("span");
+      marque.className = "puce puce-manuelle";
+      marque.textContent = `${figees} cible${figees > 1 ? "s" : ""} figée${figees > 1 ? "s" : ""}`;
+      barre.appendChild(marque);
+    }
+    if (barre.childElementCount) carte.appendChild(barre);
+
+    carte.appendChild(contenu_seance(blocs, objectifs, sans_donnees));
+
+    const detail = detail_seance(nom, blocs, dernieres);
+    if (detail) carte.appendChild(detail);
+
+    liste.appendChild(carte);
+  }
+  majOngletProfil();
+  mettre_a_jour_etat_base();
+}
+
+/**
+ * La ligne d'etat de la sauvegarde.
+ *
+ * Elle vit sous l'historique depuis qu'elle y a suivi le bloc « Sauvegarde »,
+ * mais elle se recalcule aussi depuis l'accueil : une seance enregistree en
+ * fin de seance ne repasse pas forcement par l'onglet Historique.
+ */
+function mettre_a_jour_etat_base() {
+  const faites = historique.recuperer_historique(base, PROFIL).length;
+  $("etatBase").textContent = faites
+    ? `${faites} séance${faites > 1 ? "s" : ""} enregistrée${faites > 1 ? "s" : ""} sur cet appareil.`
+    : "Aucune séance enregistrée pour l'instant.";
+}
+
+// ---------------------------------------------------------------- commandes
+
+$("boutonMateriel").addEventListener("click", ouvrir_profil);
+$("boutonEnregistrerMateriel").addEventListener("click", enregistrer_materiel);
+$("versProfils").addEventListener("click", () => {
+  dessiner_profils();
+  montrer("ecranProfils");
+});
+$("formMesures").addEventListener("submit", enregistrer_mesures);
+$("boutonModifierMesures").addEventListener("click", () => editer_mesures(true));
+$("boutonModifierMateriel").addEventListener("click", () => editer_materiel(true));
+$("boutonAnnulerMateriel").addEventListener("click", () => {
+  // Redessiner avant de refermer : les <select> ont pu bouger sans etre
+  // enregistres, et les rouvrir sur d'anciennes valeurs ferait croire qu'ils
+  // le sont.
+  dessiner_materiel();
+  editer_materiel(false);
+});
+
+for (const onglet of document.querySelectorAll(".onglet")) {
+  if (!onglet.dataset.ecran) continue;
+  onglet.addEventListener("click", () => {
+    const cible = onglet.dataset.ecran;
+    if (cible === "ecranHistorique") dessiner_historique();
+    else if (cible === "ecranProgrammes") dessiner_programmes();
+    else if (cible === "ecranExercices") dessiner_exercices();
+    else dessiner_liste();
+    montrer(cible);
+  });
+}
+
+$("boutonCommencer").addEventListener("click", () => {
+  if (seance && seance.phase === "preparation") lancer_effort();
+});
+/**
+ * Les onze commandes de serie, cablees sur le `Circuit` local.
+ *
+ * C'est **toute** la difference avec le poste fixe, qui POSTe les memes noms
+ * sur des routes Flask : la couche d'affichage ne connait que des noms de
+ * commande, jamais des URL, et le reste — quel bouton est visible, lequel est
+ * grise — se decide a partir de `commandes_autorisees`, que `payload_etat`
+ * calcule comme le fait `SessionManager`.
+ */
+const COMMANDES = {
+  reset: () => seance.remettre_serie_a_zero(),
+  recommencer: () => seance.recommencer_serie(),
+  precedente: () => seance.serie_precedente(),
+  suivante: () => seance.serie_suivante(),
+  terminer: () => {
+    const bloc = seance.bloc_actuel;
+    if (!bloc) return;
+    // Le seul chemin qui puisse produire une serie **non reussie** :
+    // `objectif_serie_atteint` en juge, on ne force jamais `completee`.
+    seance.terminer_serie_manuellement({
+      repetitions: etat.repetitions,
+      duree: duree_realisee(bloc, etat),
+    });
+    oublier_durees(etat);
+    apres_serie();
+  },
+  pause: () => {
+    statut = "paused";
+    // Laisser courir le coach ferait compter a voix haute dans le vide.
+    lecteur.taire();
+  },
+  reprendre: () => {
+    statut = "running";
+  },
+  passer_pause: () => {
+    seance.passer_pause();
+    changer_exercice();
+  },
+  refaire: () => {
+    if (seance.refaire_derniere_serie()) apres_serie();
+  },
+  terminer_seance: () => terminer(),
+  abandonner: () => terminer(true),
+};
+
+brancher_commandes((nom) => {
+  if (!en_cours || !COMMANDES[nom]) return;
+  COMMANDES[nom]();
+  rafraichir_affichage();
+});
+$("retourEditeur").addEventListener("click", () => {
+  dessiner_liste();
+  montrer("ecranSeances");
+});
+$("ajouterBloc").addEventListener("click", () => {
+  const premier = Object.keys(mouvements).sort((a, b) => a.localeCompare(b, "fr"))[0];
+  blocs_edites.push({
+    exercice: premier,
+    mode: "repetitions",
+    series: 3,
+    repetitions: 10,
+    duree: 0,
+    poids: 0,
+    repos_entre_series: 30,
+    repos_apres: 30,
+    commentaire: "",
+    entrelace_avec: null,
+  });
+  dessiner_editeur();
+});
+$("enregistrerSeance").addEventListener("click", enregistrer_seance_editee);
+$("rendreAuFichier").addEventListener("click", async () => {
+  historique.oublier_seance_locale(base, seance_editee);
+  await stockage.sauver(base);
+  seances = catalogue_effectif(seances_du_fichier, base.seances_locales);
+  blocs_edites = blocs_a_editer(seance_editee);
+  dessiner_editeur("Rendue au fichier : elle suivra de nouveau l'ordinateur.");
+});
+// Delegue sur le document : les boutons de profil sont rendus par
+// `remplir_barres_onglets`, et un ecran ajoute plus tard aura le sien sans
+// qu'on ait a rebrancher quoi que ce soit.
+document.addEventListener("click", (evenement) => {
+  const bouton = evenement.target.closest(".onglet-profil");
+  if (!bouton) return;
+  ouvrir_profil();
+});
+$("retourDepuisProfils").addEventListener("click", () => {
+  dessiner_liste();
+  montrer("ecranSeances");
+});
+$("formProfil").addEventListener("submit", async (evenement) => {
+  evenement.preventDefault();
+  const retour = $("retourProfil");
+  try {
+    const cree = historique.creer_utilisateur(base, $("nomProfil").value);
+    // Les mesures sont posees dans la foulee : c'est le meme geste, et les
+    // demander plus tard revient a ne jamais les avoir.
+    const taille = $("nouveauTaille").value;
+    const poids = $("nouveauPoidsCorps").value;
+    historique.definir_mesures(base, cree.id, {
+      sexe: $("nouveauSexe").value,
+      date_naissance: $("nouveauNaissance").value,
+      taille_cm: taille === "" ? "" : Number(taille),
+      poids_corps_kg: poids === "" ? "" : Number(poids),
+    });
+    await stockage.sauver(base);
+    for (const champ of ["nomProfil", "nouveauNaissance", "nouveauTaille", "nouveauPoidsCorps"]) {
+      $(champ).value = "";
+    }
+    $("nouveauSexe").value = "";
+    retour.className = "retour-ancrage";
+    retour.textContent = "";
+    // On bascule tout de suite dessus : creer un profil sans s'en servir n'a
+    // aucun sens, et l'ecran de seances le confirme visuellement.
+    choisir_profil(cree.id);
+  } catch (erreur) {
+    retour.className = "retour-ancrage erreur";
+    retour.textContent = erreur.message;
+  }
+});
+$("retourExercices").addEventListener("click", () => {
+  if (retour_de_la_fiche === "ecranHistorique") {
+    dessiner_historique();
+    montrer("ecranHistorique");
+    return;
+  }
+  dessiner_exercices();
+  montrer("ecranExercices");
+});
+$("boutonRetour").addEventListener("click", () => {
+  dessiner_liste();
+  montrer("ecranSeances");
+});
+
+for (const id of ["boutonExporter", "boutonExporterFin"]) {
+  $(id).addEventListener("click", () => stockage.telecharger(base));
+}
+$("boutonImporter").addEventListener("click", () => $("fichierImport").click());
+$("fichierImport").addEventListener("change", async (evenement) => {
+  const fichier = evenement.target.files?.[0];
+  if (!fichier) return;
+  try {
+    base = await stockage.lire_fichier(fichier);
+    await stockage.sauver(base);
+    dessiner_liste();
+    $("etatBase").textContent = "Sauvegarde importée.";
+  } catch (erreur) {
+    $("etatBase").textContent = erreur.message;
+  }
+  evenement.target.value = "";
+});
+
+// Rendre la camera en quittant : sans ca, le voyant reste allume apres
+// fermeture de l'onglet sur certains appareils.
+window.addEventListener("pagehide", () => camera.liberer());
+
+charger_donnees()
+  .then(dessiner_liste)
+  .catch((erreur) => {
+    $("sousTitre").textContent = `Chargement impossible : ${erreur.message}`;
+  });
+</script>
