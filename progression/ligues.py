@@ -278,7 +278,15 @@ def xp_totale(etats):
 
 
 def cout_du_niveau_general(niveau):
-    """XP à accumuler pour passer du niveau général `niveau` au suivant."""
+    """XP à accumuler pour passer du niveau général `niveau` au suivant.
+
+    **Le réglage se mesure, il ne se devine pas.** À 200 + 100x(n-1), tout le
+    catalogue au niveau 30 suffisait à atteindre Maître I — c'est-à-dire presque
+    rien. Au réglage actuel (500 + 600x(n-1)), Maître I demande 90 100 XP, soit
+    le catalogue entier autour du niveau 50. Refaire la mesure après tout
+    changement de `base_niveau_general` ou d'`increment_niveau_general` : c'est
+    le seul endroit d'où l'exigence vient.
+    """
     return XP_BASE_NIVEAU_GENERAL + XP_INCREMENT_NIVEAU_GENERAL * (max(niveau, 1) - 1)
 
 
@@ -293,8 +301,9 @@ def niveau_general(xp):
     été plus élégant, mais c'est faux : l'XP cumulée croît bien plus vite que le
     volume relatif, et la table calibrée sur l'une sature sur l'autre — mesuré,
     un profil tout à fait ordinaire (le catalogue entier au niveau 20) sortait
-    déjà Maître III. Un cran par niveau place Maître I au niveau général 18,
-    c'est-à-dire 17 000 XP, soit tout le catalogue autour du niveau 27.
+    déjà Maître III. Un cran par niveau place Maître I au niveau général 18 ;
+    ce qu'il coûte dépend du seul `cout_du_niveau_general`, et se relit là plutôt
+    qu'ici — c'est lui qui porte l'exigence, pas un second réglage.
 
     Tant qu'aucune XP n'a été gagnée il n'y a **pas de ligue** — pas un Bronze
     III offert. C'est la même distinction en trois situations que partout
