@@ -3874,17 +3874,47 @@ function arreter_pratique() {
   if (camera.vivante()) camera.suspendre();
 }
 
-/** La boucle de l'accueil : une image, une consigne, rien d'autre n'avance. */
+/**
+ * La boucle de l'accueil : une image, une consigne, rien d'autre n'avance.
+ *
+ * **Deux formes du corps, et les confondre gele le flux.** `peindre` veut la
+ * pose **brute** — le tableau de 33 points que MediaPipe rend et que
+ * `dessiner_squelette` sait parcourir —, alors que `problemes_de_cadrage` et
+ * `bras_en_x` veulent le corps **nomme** de `construire_corps`, ou les points
+ * s'appellent `epaule_gauche`. Sur un tableau, `corps.epaule_gauche` vaut
+ * `undefined` et la ligne suivante leve. La boucle de seance fait exactement
+ * ce decoupage (`corps_brut` pour l'image, `construire_corps` pour la regle) ;
+ * celle-ci passait le brut aux deux.
+ *
+ * Le defaut etait la depuis l'ecriture de cet ecran et **ne pouvait pas se
+ * voir** : sans `camera.preparer()`, aucune pose n'etait jamais detectee, donc
+ * `corps` valait toujours `null` et la branche fautive n'etait jamais prise.
+ * Reparer la detection l'a revele du meme coup. *Un defaut en masquait un
+ * autre, et le second n'apparait qu'une fois le premier corrige* — c'est la
+ * raison de rejouer un parcours complet apres un correctif, et pas seulement
+ * l'etape qu'il visait.
+ */
 function boucle_accueil(horodatage) {
   if (!pratique) return;
 
   const instant = horodatage / 1000;
-  const poses = camera.detecter(horodatage);
-  const corps = camera.choisir(poses);
-  peindre(corps, $("pratiqueRendu"));
+  try {
+    const poses = camera.detecter(horodatage);
+    const corps_brut = camera.choisir(poses);
+    peindre(corps_brut, $("pratiqueRendu"));
+    const corps = corps_brut ? construire_corps(corps_brut) : null;
 
-  if (pratique.type === "cadrage") avancer_cadrage(corps, instant);
-  else avancer_gestes(corps, instant);
+    if (pratique.type === "cadrage") avancer_cadrage(corps, instant);
+    else avancer_gestes(corps, instant);
+  } catch (erreur) {
+    // **Une image ratee ne doit pas emporter la boucle.** C'est la meme regle
+    // que celle qui interdit a `texte()` de lever dans la boucle camera du
+    // poste fixe : une exception non rattrapee ici arrete le `requestAnimation
+    // Frame` suivant, donc gele l'image pour de bon, sur un iPad ou personne
+    // n'ouvre de console. On la trace et on continue — visible pour qui
+    // cherche, indolore pour qui s'entraine.
+    console.error("image d'accueil ignoree", erreur);
+  }
 
   requestAnimationFrame(boucle_accueil);
 }
