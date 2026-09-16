@@ -29,7 +29,7 @@ le texte dans `audio/annonces.py` et relance ce script : le nom de fichier
 suivra. L'inverse — renommer un fichier — ne changerait rien, le code cherche
 le nom que la table produit.
 
-**115 prises restantes.**
+**125 prises restantes.**
 
 ## Liaisons
 
@@ -87,8 +87,17 @@ Le guidage du debut de seance, dit camera ouverte pendant qu'on se place.
 | `puis_un_pas_en_arriere_et_un_pas_en_avant.wav` | « Puis un pas en arrière et un pas en avant » | **a enregistrer** |
 | `on_doit_te_voir_en_entier_a_chaque_fois.wav` | « On doit te voir en entier à chaque fois » | **a enregistrer** |
 | `parfait_tu_es_bien_cadre.wav` | « Parfait, tu es bien cadré » | **a enregistrer** |
+| `garde_l_appareil_bien_droit_pas_incline.wav` | « Garde l'appareil bien droit, pas incliné » | **a enregistrer** |
+| `une_fois_pose_ne_le_bouge_plus.wav` | « Une fois posé, ne le bouge plus » | **a enregistrer** |
+| `chaque_exercice_te_dira_comment_te_placer.wav` | « Chaque exercice te dira comment te placer » | **a enregistrer** |
+| `verifions_que_tu_tiens_dans_l_image.wav` | « Vérifions que tu tiens dans l'image » | **a enregistrer** |
 | `croise_les_bras_devant_toi_pour_demarrer.wav` | « Croise les bras devant toi pour démarrer » | **a enregistrer** |
 | `leve_les_deux_bras_pour_remettre_a_zero.wav` | « Lève les deux bras pour remettre à zéro » | **a enregistrer** |
+| `ton_compteur_monte_a_chaque_repetition.wav` | « Ton compteur monte à chaque répétition » | **a enregistrer** |
+| `leve_les_deux_bras_et_tiens_la_position.wav` | « Lève les deux bras et tiens la position » | **a enregistrer** |
+| `c_est_bien_te_voila_reparti_de_zero.wav` | « C'est bien, te voilà reparti de zéro » | **a enregistrer** |
+| `croise_les_bras_et_tiens_la_position.wav` | « Croise les bras et tiens la position » | **a enregistrer** |
+| `bravo_tu_sais_tout_piloter_de_loin.wav` | « Bravo, tu sais tout piloter de loin » | **a enregistrer** |
 
 ## Accueil d'un nouveau profil
 
@@ -97,6 +106,7 @@ Joue une seule fois dans la vie d'un profil. A enregistrer en dernier parmi les 
 | Fichier | A prononcer | Etat |
 | --- | --- | --- |
 | `bienvenue_je_suis_ton_coach.wav` | « Bienvenue, je suis ton coach » | **a enregistrer** |
+| `tu_poses_ton_appareil_et_tu_t_entraines.wav` | « Tu poses ton appareil, et tu t'entraînes » | **a enregistrer** |
 | `ma_camera_compte_tes_repetitions.wav` | « Ma caméra compte tes répétitions » | **a enregistrer** |
 | `et_je_te_guide_a_la_voix.wav` | « Et je te guide à la voix » | **a enregistrer** |
 | `aucune_image_ne_sort_de_ton_appareil.wav` | « Aucune image ne sort de ton appareil » | **a enregistrer** |

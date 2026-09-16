@@ -146,11 +146,25 @@ BRIQUES = {
     "installation_pas_arriere": "Puis un pas en arrière et un pas en avant",
     "installation_toujours_visible": "On doit te voir en entier à chaque fois",
     "installation_bien_cadre": "Parfait, tu es bien cadré",
+    "installation_appareil_droit": "Garde l'appareil bien droit, pas incliné",
+    "installation_ne_le_bouge_plus": "Une fois posé, ne le bouge plus",
+    "installation_respecte_l_angle": "Chaque exercice te dira comment te placer",
+    "installation_verifions": "Vérifions que tu tiens dans l'image",
     # --- Les deux gestes ---------------------------------------------------
     "geste_bras_en_x": "Croise les bras devant toi pour démarrer",
     "geste_deux_bras_leves": "Lève les deux bras pour remettre à zéro",
+    # Les quatre suivantes accompagnent l'exercice de l'accueil, ou les deux
+    # gestes sont **joues** et non seulement decrits : « leve les bras » au
+    # present s'adresse a quelqu'un qui doit le faire maintenant, la ou
+    # `geste_deux_bras_leves` enonce une regle.
+    "geste_compteur_monte": "Ton compteur monte à chaque répétition",
+    "geste_leve_les_bras_maintenant": "Lève les deux bras et tiens la position",
+    "geste_remis_a_zero": "C'est bien, te voilà reparti de zéro",
+    "geste_croise_les_bras": "Croise les bras et tiens la position",
+    "geste_bravo": "Bravo, tu sais tout piloter de loin",
     # --- Accueil d'un nouveau profil --------------------------------------
     "bienvenue": "Bienvenue, je suis ton coach",
+    "bienvenue_pose_et_entraine": "Tu poses ton appareil, et tu t'entraînes",
     "bienvenue_camera_compte": "Ma caméra compte tes répétitions",
     "bienvenue_je_te_guide": "Et je te guide à la voix",
     "bienvenue_rien_ne_sort": "Aucune image ne sort de ton appareil",
