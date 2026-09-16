@@ -34,12 +34,11 @@ Sortie : scripts/fixtures_ligues.jsonl, une question par ligne.
 
 import json
 import random
-from dataclasses import asdict
 from pathlib import Path
 
 import core.materiel as materiel
 from progression import ligues, niveaux, paliers
-from scripts.generer_paliers import SPECS_DU_HARNAIS, inventaires, specs_du_harnais
+from scripts.generer_paliers import inventaires, preparer_le_harnais
 from scripts.historiques_au_hasard import (
     ancrages as tirer_ancrages,
     historique as tirer_historique,
@@ -79,30 +78,19 @@ INVENTAIRE_NEUTRE = "non_declare"
 def _injecter_specs_fictives():
     """Les mêmes barèmes fictifs que le harnais des paliers, pour les mêmes raisons.
 
-    Écrit le même fichier avec le même contenu : les deux générateurs peuvent
-    donc être lancés dans n'importe quel ordre, et le comparateur fusionne ce
-    fichier comme le fait `comparer_paliers.mjs`.
-    """
-    from session.seances import MATERIEL_EXERCICES
+    **C'est `generer_paliers.preparer_le_harnais` qui écrit le fichier, pas ce
+    module.** Ce corps était recopié ici, avec une docstring qui promettait
+    « le même contenu » — une promesse que rien ne tenait. Les inventaires
+    ajoutés d'un seul côté ont suffi à l'infirmer, et comme les deux
+    générateurs écrivent le même chemin, le dernier lancé gagnait : l'ordre
+    alphabétique de la commande de régénération met `ligues` après `paliers`,
+    donc le fichier repartait systématiquement amputé et
+    `comparer_paliers.mjs` mourait sur `Object.entries(undefined)`.
 
-    supplementaires = specs_du_harnais()
-    paliers.SPECS.update(supplementaires)
-    MATERIEL_EXERCICES["Surcharge"] = "Deux haltères"
-    MATERIEL_EXERCICES["SansFin"] = ""
-    SPECS_DU_HARNAIS.write_text(
-        json.dumps(
-            {
-                "specs": {nom: asdict(spec) for nom, spec in supplementaires.items()},
-                "materiel": {
-                    "Surcharge": {"halteres": 2, "brut": "Deux haltères"},
-                    "SansFin": {"halteres": 0, "brut": ""},
-                },
-            },
-            ensure_ascii=False,
-            indent=1,
-        ),
-        encoding="utf-8",
-    )
+    *Deux écritures du même fichier ne se contredisent qu'au premier écart, et
+    la docstring qui jure qu'elles coïncident ne le vérifie pas.*
+    """
+    preparer_le_harnais()
 
 
 def _volumes(tirage, seuils):

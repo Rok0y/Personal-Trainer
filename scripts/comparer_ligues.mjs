@@ -29,20 +29,13 @@ const BAREMES = join(RACINE, "web", "static", "donnees", "baremes.json");
 
 const ECARTS_DETAILLES = 6;
 
-//: Les cinq memes inventaires que `generer_paliers.inventaires()`, dans le
-//: meme ordre de richesse : l'echelle de poids decale toutes les tranches,
-//: donc tous les volumes, donc toutes les ligues.
-const INVENTAIRES = (tables) => {
-  const complet = {};
-  for (const p of tables.echelles.reference) complet[p] = 2;
-  return {
-    non_declare: null,
-    vide: { halteres: {}, accessoires: [] },
-    debutant: { halteres: { 2: 2, 3: 2, 4: 2 }, accessoires: ["tapis"] },
-    une_paire_moyenne: { halteres: { 6: 2, 8: 2, 10: 1 }, accessoires: [] },
-    complet: { halteres: complet, accessoires: ["tapis", "chaise"] },
-  };
-};
+// Les inventaires ne sont **pas** redeclares ici : ils arrivent avec l'oracle
+// (`fixtures_paliers_specs.json`), comme les specs fictives et comme dans
+// `comparer_paliers.mjs`. Ils l'etaient, et c'est le meme piege qui s'est
+// referme deux fois : deux inventaires ajoutes cote Python, et ce fichier
+// mourait sur `moteurs[ligne.inventaire]` valant `undefined`. L'echelle de
+// poids decale toutes les tranches, donc tous les volumes, donc toutes les
+// ligues — un inventaire manquant ici n'est pas un detail.
 
 function repondre(moteur, ligne) {
   switch (ligne.question) {
@@ -97,7 +90,7 @@ function main() {
   Object.assign(tables.materiel, fictifs.materiel);
 
   const moteurs = {};
-  for (const [nom, brut] of Object.entries(INVENTAIRES(tables))) {
+  for (const [nom, brut] of Object.entries(fictifs.inventaires)) {
     const baremes = new Baremes(tables, brut);
     moteurs[nom] = {
       niveaux: new Niveaux(baremes),

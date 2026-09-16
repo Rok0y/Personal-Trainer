@@ -367,17 +367,23 @@
   /* ---------- Fin ---------- */
 
   .resume { display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 1.2rem; }
-  .ligne-resume {
+
+  /* Ce qu'on dit d'un test au lieu d'un verdict. Ni vert ni rouge : ce n'est
+     ni une reussite ni un echec, c'est une mesure — et la couleur dirait le
+     contraire du texte. */
+  .resultat-test {
     display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    background: var(--surface);
-    border: 1px solid var(--trait);
-    border-radius: 10px;
-    padding: 0.7rem 0.9rem;
-    font-size: 0.93rem;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin: 0.45rem 0 0.1rem;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--accent);
+    border-left-width: 3px;
+    border-radius: 9px;
+    background: rgba(255, 138, 61, 0.07);
   }
-  .ligne-resume b { font-variant-numeric: tabular-nums; }
+  .resultat-test b { color: var(--accent); font-size: 0.86rem; letter-spacing: 0.04em; text-transform: uppercase; }
+  .resultat-test span { color: var(--texte-doux); font-size: 0.9rem; line-height: 1.45; }
 
   .etat-sauvegarde {
     font-size: 0.88rem;
@@ -549,6 +555,68 @@
 
   /* Le guide d'exercice : plein ecran, au-dessus de tout le calque de seance.
      Il masque l'image a dessein — on lit des consignes, on ne se regarde pas. */
+  /* Deux bandeaux, un centre transparent : on doit se voir pendant qu'on se
+     cadre. Un `inset: 0` opaque comme celui du guide d'exercice rendrait
+     l'ecran inutile — c'est precisement le grief qui l'a fait naitre. */
+  .installation {
+    position: absolute;
+    inset: 0;
+    z-index: 12;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .installation-haut, .installation-bas {
+    pointer-events: auto;
+    padding: 1.4rem 1.6rem;
+    background: linear-gradient(rgba(8, 11, 17, 0.92), rgba(8, 11, 17, 0.72));
+  }
+  .installation-bas {
+    background: linear-gradient(rgba(8, 11, 17, 0.72), rgba(8, 11, 17, 0.94));
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    align-items: center;
+  }
+  .installation-titre {
+    margin: 0 0 0.4rem;
+    color: var(--texte-doux);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  /* En **tres** gros : on la lit a trois metres, debout, en bougeant. C'est la
+     seule raison d'etre de cet ecran — la meme consigne existait deja dans un
+     bandeau de 15 px que personne ne lisait de loin. */
+  .installation-consigne {
+    margin: 0;
+    font-size: clamp(1.8rem, 5.5vw, 3.2rem);
+    font-weight: 700;
+    line-height: 1.18;
+    text-wrap: balance;
+  }
+  .installation-jauge {
+    width: min(420px, 80vw);
+    height: 10px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.16);
+    overflow: hidden;
+  }
+  .installation-jauge > div {
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    transition: width 0.12s linear;
+  }
+  .installation-aide {
+    margin: 0;
+    color: var(--texte-doux);
+    font-size: 1rem;
+    text-align: center;
+  }
+
   .guide-exercice {
     position: absolute;
     inset: 0;
@@ -1176,6 +1244,31 @@
        d'autre ne doit etre cliquable. Surtout pas a l'interieur de
        `#restOverlay`, dont `afficher_phase` rebascule la visibilite a chaque
        image et qui l'ecraserait. -->
+  <!-- L'installation : le cadrage, en grand, **avant** le guide du premier
+       exercice. C'est le premier ecran d'une seance, et il corrige un defaut
+       structurel — `demarrer()` ouvrait le guide du mouvement avant le premier
+       tour de boucle, et tant que ce guide est ouvert la branche qui porte
+       tout le controle de cadrage est inatteignable. On se retrouvait donc a
+       lire les consignes du squat sans avoir jamais ete cadre.
+
+       Le calque **ne couvre pas le canvas** : deux bandeaux et un centre
+       transparent. « Recule d'un pas » n'a de sens que si l'on se voit
+       reculer, et se cadrer devant un ecran opaque est exactement ce qui
+       manquait. -->
+  <div class="installation" id="ecranCadrage" hidden>
+    <div class="installation-haut">
+      <p class="installation-titre">Installe-toi</p>
+      <p class="installation-consigne" id="cadrageConsigne"></p>
+    </div>
+    <div class="installation-bas">
+      <div class="installation-jauge"><div id="cadrageProgres"></div></div>
+      <p class="installation-aide" id="cadrageAide"></p>
+      <button class="bouton secondaire" id="cadragePasser" data-tuto="passer-installation">
+        Je commence
+      </button>
+    </div>
+  </div>
+
   <div class="guide-exercice" id="guideExercice" hidden>
     <div class="guide-carte">
       <h2 id="guideNom"></h2>
@@ -1357,7 +1450,7 @@
     freine. Ne rien répondre est déjà une réponse — c'est le rythme normal.
   </p>
   <div class="actions" style="justify-content:flex-start">
-    <button class="bouton" id="boutonRetour">Retour aux séances</button>
+    <button class="bouton" id="boutonRetour">Enregistrer la séance</button>
     <button class="bouton secondaire" id="boutonExporterFin">Exporter</button>
   </div>
   <p class="muet" style="margin-top:1.2rem" id="noteCamera"></p>
@@ -1706,6 +1799,15 @@ let tutoriel = null;
 //: `statut = "paused"` — celui-ci teinterait `payload_etat` et griserait
 //: toutes les commandes, ce qui n'est pas ce qu'on veut dire.
 let guide_exercice = null;
+//: L'installation de debut de seance : le controle de cadrage, en grand, avant
+//: le premier exercice. `null` des qu'elle est passee.
+//:
+//: **Elle est distincte du tutoriel** (`tutoriel.js`), et les deux se jouent
+//: dedans : le tutoriel est une *explication*, montree une fois par seance
+//: grace a `tuto_deja_vu` ; le controle de cadrage est une *verification*, et
+//: il se joue a chaque seance. On ne verifie pas moins souvent parce qu'on a
+//: deja compris.
+let installation = null;
 //: Le geste qui referme le guide. Le sien, et pas `geste_fin` : celui-la
 //: valide une serie, et les confondre terminerait la serie qu'on vient tout
 //: juste d'expliquer.
@@ -1812,13 +1914,137 @@ async function demarrer(nom) {
   }
 
   montrer("ecranSeance");
-  changer_exercice();
+  // **`changer_exercice()` n'est plus appele ici**, et c'est le correctif : il
+  // ouvrait le guide du premier mouvement avant meme le premier tour de
+  // boucle, et tant que `guide_exercice` est pose la branche `preparer()` —
+  // qui porte tout le controle de cadrage — n'est jamais atteinte. On lisait
+  // donc les consignes du squat sans avoir jamais ete cadre. C'est
+  // l'installation qui ouvre le guide, en sortant.
+  ouvrir_installation();
   en_cours = true;
   // Le repli video s'arme maintenant : il a besoin du flux, qui vient
   // seulement d'etre ouvert. Le verrou, lui, a deja ete demande au clic.
   veille_annoncee = null;
   await verrou_ecran.tenir(camera.flux);
   requestAnimationFrame(boucle);
+}
+
+/**
+ * Arme l'ecran d'installation : le cadrage en grand, avant le premier
+ * exercice.
+ *
+ * Il porte son **propre** `HoldPosition`, comme le guide d'exercice et pour la
+ * meme raison : `geste_preparation` valide l'entree dans une serie, et les
+ * confondre lancerait l'effort au moment ou l'on finit de se placer.
+ */
+function ouvrir_installation() {
+  installation = {
+    geste: new HoldPosition(bras_en_x, TENUE_PREPARATION),
+    cadre_depuis: null,
+  };
+  $("ecranCadrage").hidden = false;
+  $("cadrageConsigne").textContent = "";
+  $("cadrageAide").textContent = "";
+  $("cadrageProgres").style.width = "0%";
+}
+
+/** Ferme l'installation et enchaine sur le premier exercice. */
+function fermer_installation() {
+  if (!installation) return;
+  installation = null;
+  $("ecranCadrage").hidden = true;
+  // C'est **ici** que le guide du premier mouvement s'ouvre, et plus dans
+  // `demarrer()` : on explique un exercice a quelqu'un qui est deja bien
+  // place, pas a quelqu'un qu'on n'a pas encore vu.
+  changer_exercice();
+}
+
+/**
+ * Une image d'installation : cadrage verifie, puis geste d'entree.
+ *
+ * Le controle porte sur `POINTS_DU_CORPS_ENTIER` et non sur les points du
+ * premier exercice : ce qu'on regle ici est la **position de l'appareil**, et
+ * elle doit convenir a toute la seance, pas au premier mouvement. C'est le
+ * controle le plus strict des deux, et c'est voulu.
+ */
+function jouer_installation(corps, instant) {
+  const aide = $("cadrageAide");
+
+  if (!corps) {
+    ecrire_installation(texte("corps_absent"), 0);
+    aide.textContent = "Mets-toi devant la caméra.";
+    installation.cadre_depuis = null;
+    return;
+  }
+
+  const choix = message_de_cadrage(
+    problemes_de_cadrage(corps, POINTS_DU_CORPS_ENTIER)
+  );
+
+  if (choix) {
+    // Le compteur ne repart de zero que si le cadrage se **perd** : un
+    // clignotement d'une image ne doit pas tout recommencer.
+    installation.cadre_depuis = null;
+    ecrire_installation(texte_de_cadrage(choix), 0);
+    aide.textContent = "Bouge un peu : je dois te voir en entier.";
+    coach_sequence(
+      sequence_cadrage(tables_sons?.briques, choix.partie, choix.action),
+      7,
+      "cadrage"
+    );
+    return;
+  }
+
+  if (installation.cadre_depuis === null) installation.cadre_depuis = instant;
+  const tenu = instant - installation.cadre_depuis;
+
+  if (tenu < ACCUEIL_CADRAGE_STABLE) {
+    ecrire_installation(
+      "Parfait — ne bouge pas…",
+      tenu / ACCUEIL_CADRAGE_STABLE
+    );
+    aide.textContent = "";
+    return;
+  }
+
+  // Cadrage acquis : on passe la main au geste d'entree. Le guidage
+  // d'installation, quand il existe, se joue **ici** — a ce stade on sait que
+  // la personne est vue, donc ses consignes de placement ont un sens.
+  if (tutoriel) {
+    // Pas de `boutonPasserTuto` ici : le calque a le sien (`cadragePasser`),
+    // et `rafraichir_affichage` remet celui du HUD a `hidden` a chaque image
+    // tant que l'installation dure. Deux boutons pour la meme sortie, dont un
+    // qui clignote, c'est pire qu'un seul.
+    const pas = tutoriel.update({ instant, cadre: true });
+    if (pas.annonces.length) {
+      coach_sequence(
+        pas.annonces.map((cle) => tables_sons?.briques?.[cle]).filter(Boolean),
+        6
+      );
+    }
+    if (!pas.termine) {
+      const libelle = pas.etape.annonces
+        .map((cle) => tables_sons?.textes?.[cle])
+        .filter(Boolean)
+        .join(" · ");
+      ecrire_installation(libelle || "Continue…", 1);
+      aide.textContent = "";
+      return;
+    }
+    clore_tutoriel();
+  }
+
+  const [progression, valide] = installation.geste.update(corps);
+  ecrire_installation("Croise les bras quand tu es prêt", progression);
+  aide.textContent = "Tiens la position une seconde et demie.";
+  if (valide) fermer_installation();
+}
+
+/** Une consigne et un avancement : tout ce que l'installation affiche. */
+function ecrire_installation(message, part) {
+  const zone = $("cadrageConsigne");
+  if (zone.textContent !== message) zone.textContent = message;
+  $("cadrageProgres").style.width = `${Math.round(Math.min(1, part) * 100)}%`;
 }
 
 /** Ce qui doit etre refait a chaque fois que le bloc courant change. */
@@ -1979,15 +2205,23 @@ function boucle(horodatage) {
   if (corps_brut) {
     const corps = construire_corps(corps_brut);
     observer_gestes(corps);
-    // Le guide passe avant tout le reste : tant qu'il est ouvert, le mode
-    // n'est pas execute, donc rien n'est compte. C'est volontairement **en
-    // dehors de la machine a etats** — rearmer une phase ferait diverger
-    // `circuit.js` de `circuit.py`, que `comparer_seances.mjs` compare pas a
-    // pas.
-    if (guide_exercice) lire_guide(corps);
+    // **L'installation passe avant le guide, et le guide avant le reste.**
+    // L'ordre est la correction : `demarrer()` ouvrait le guide du premier
+    // mouvement avant le premier tour de boucle, et comme un guide ouvert
+    // court-circuite `preparer()`, le controle de cadrage n'etait jamais
+    // atteint. On lisait donc les consignes du squat sans avoir jamais ete
+    // cadre. Les deux restent volontairement **en dehors de la machine a
+    // etats** : rearmer une phase ferait diverger `circuit.js` de
+    // `circuit.py`, que `comparer_seances.mjs` compare pas a pas.
+    if (installation) jouer_installation(corps, instant);
+    else if (guide_exercice) lire_guide(corps);
     else if (seance.phase === "preparation") preparer(corps, instant);
     else if (seance.phase === "exercice") jouer_exercice(corps, instant);
     else etat.consigne = null;
+  } else if (installation) {
+    // Sans corps detecte, l'installation a quand meme quelque chose a dire —
+    // c'est meme le cas ou elle sert le plus.
+    jouer_installation(null, instant);
   } else if (seance.phase === "preparation" || seance.phase === "exercice") {
     etat.consigne = texte("corps_absent");
   }
@@ -2081,35 +2315,11 @@ function preparer(corps, instant) {
       ? message_de_cadrage(problemes_de_cadrage(corps, points_requis))
       : null;
 
-    // Le guidage d'installation passe **avant** le geste bras en X, et il le
-    // masque tant qu'il dure : sans ca, quelqu'un qui croise les bras par
-    // reflexe demarrerait au milieu d'une explication qu'il a demandee.
-    // Il tourne en revanche *avec* le controle de cadrage, qui est ce qui
-    // valide son etape centrale — la consigne est verifiee, pas seulement dite.
-    if (tutoriel) {
-      $("boutonPasserTuto").hidden = false;
-      const pas = tutoriel.update({ instant, cadre: choix === null });
-      if (pas.annonces.length) {
-        coach_sequence(
-          pas.annonces.map((cle) => tables_sons?.briques?.[cle]).filter(Boolean),
-          6
-        );
-      }
-      if (pas.termine) {
-        clore_tutoriel();
-      } else {
-        // Le bandeau dit **exactement** ce que la voix prononce : les deux
-        // sortent de la meme table, exportee d'`audio/annonces.py`. Un
-        // probleme de cadrage reste prioritaire — c'est la seule consigne qui
-        // demande une action tout de suite.
-        const libelle = pas.etape.annonces
-          .map((cle) => tables_sons?.textes?.[cle])
-          .filter(Boolean)
-          .join(" · ");
-        etat.consigne = texte_de_cadrage(choix) ?? (libelle || null);
-        return;
-      }
-    }
+    // Le guidage d'installation ne se joue **plus ici** : il a rejoint l'ecran
+    // d'installation, ou le cadrage se verifie en grand avant le premier
+    // exercice. `preparer()` garde le controle de cadrage, qui reste utile a
+    // chaque serie — les points requis changent d'un mouvement a l'autre,
+    // alors que la position de l'appareil, elle, se regle une fois.
 
     if (choix) {
       etat.consigne = texte_de_cadrage(choix);
@@ -2353,10 +2563,38 @@ function rafraichir_affichage() {
 
   // Le geste de fin de serie reutilise la bulle de maintien du HUD : c'est le
   // meme retour visuel, pour le meme genre d'action tenue.
-  $("boutonCommencer").hidden = seance.phase !== "preparation";
+  // Pendant l'installation ces deux-la sont caches : le calque a son propre
+  // « Je commence », et deux boutons qui font presque la meme chose au meme
+  // moment sont deux facons de se tromper.
+  $("boutonCommencer").hidden = Boolean(installation) || seance.phase !== "preparation";
+  // Les commandes de serie aussi : on n'a pas commence, donc « Serie
+  // terminee » ou « Passer la pause » ne veulent encore rien dire. Elles se
+  // superposaient au bandeau bas du calque, juste a cote du bouton qui, lui,
+  // a un sens ici.
+  document.querySelector(".series-controls").hidden = Boolean(installation);
+  // Et la colonne droite — compteur et consignes. Un « 0 / objectif : 10 » au
+  // milieu de l'ecran pendant qu'on se place est du bruit, et sur un ecran
+  // etroit il se pose exactement sur la silhouette qu'on essaie de cadrer.
+  document.querySelector(".right-column").hidden = Boolean(installation);
   // Jamais visible hors preparation, ni une fois le guidage clos : le
   // masquer seulement a la fin laisserait un bouton mort a l'ecran.
-  $("boutonPasserTuto").hidden = !tutoriel || seance.phase !== "preparation";
+  $("boutonPasserTuto").hidden =
+    Boolean(installation) || !tutoriel || seance.phase !== "preparation";
+
+  // **Le voile de repos se retire pendant qu'on se place**, et c'est le
+  // quatrieme ecart assume entre les deux montages du HUD. `afficher_phase` ne
+  // l'enleve que pour `exercice` et `termine` : en `preparation` l'image de la
+  // camera est donc couverte a 74 %, c'est-a-dire pendant tout le placement et
+  // tout le controle de cadrage. On demandait de se cadrer devant une image
+  // qu'on ne voyait qu'au quart — grief remonte tel quel d'un test reel.
+  //
+  // Cote application seulement, parce que c'est elle qui a `cadrage.js` et qui
+  // reclame explicitement de se voir. Le poste fixe garde son voile, qui y
+  // annonce le prochain exercice sans gener personne : il n'y a pas de
+  // consigne de cadrage a suivre devant lui.
+  if (installation || seance.phase === "preparation") {
+    $("restOverlay").classList.remove("visible");
+  }
 }
 
 // ---------------------------------------------------------------- fin
@@ -2442,30 +2680,67 @@ async function terminer(abandonnee = false) {
       "Le stockage de cet appareil a refusé l'écriture. Exporte cette séance maintenant, sinon elle sera perdue.";
   }
 
-  $("resume").replaceChildren();
-  for (const exercice of resultats) {
-    const fait =
-      exercice.mode === "maintien" || exercice.mode === "chrono"
-        ? `${Math.round(exercice.duree)} s`
-        : `${exercice.repetitions} reps`;
+  // **Le meme rendu que l'historique, et la meme fonction.** L'ecran de fin
+  // n'affichait qu'un total agrege (« 4 × · 46 reps »), la ou l'historique
+  // montre le detail serie par serie, les charges, les montees de niveau et
+  // les medailles de ligue. C'est pourtant le meme moment de lecture — ce
+  // qu'on vient de faire —, et on le lisait deux fois moins bien juste apres
+  // l'effort qu'une semaine plus tard. Une seule implementation, donc les deux
+  // ecrans ne peuvent plus diverger.
+  dessiner_resume_de_fin(seance_id);
 
-    const ligne = document.createElement("div");
-    ligne.className = "ligne-resume";
-    ligne.innerHTML = `<span>${exercice.nom}</span><b>${exercice.series} × · ${fait}</b>`;
-
-    const retour = document.createElement("div");
-    retour.className = "feedback";
-    $("resume").append(ligne, retour);
-    ligne.after(retour);
-  }
-
-  proposer_ressentis(seance_id);
   afficher_jalons(seance_id);
 
   $("noteCamera").textContent =
     "La caméra reste autorisée tant que tu ne quittes pas la page — son voyant peut rester allumé.";
 
+  // Le bouton dit ce qu'il fait. L'ecriture, elle, reste automatique : la
+  // faire dependre d'un clic qu'on peut oublier perdrait une seance a chaque
+  // onglet ferme trop vite.
+  $("boutonRetour").textContent = enregistree || !resultats.length
+    ? "Enregistrer la séance"
+    : "Réessayer l'enregistrement";
+
   montrer("ecranFin");
+}
+
+/**
+ * Le detail de la seance qui vient de finir, avec le rendu de l'historique.
+ *
+ * On **relit la base** au lieu de reutiliser `resultats` : `enregistrer_seance`
+ * pose les identifiants et normalise les lignes, et c'est cette forme-la que
+ * `dessiner_seance` et `jugements_par_seance` savent lire. Reconstruire un
+ * objet approchant a la main serait une deuxieme definition de ce qu'est une
+ * seance.
+ */
+function dessiner_resume_de_fin(seance_id) {
+  const zone = $("resume");
+  zone.replaceChildren();
+  if (!seance_id) return;
+
+  const { seances: histoire, ancrages } = lecture_du_profil();
+  const seance_ecrite = histoire.find((s) => s.id === seance_id);
+  if (!seance_ecrite) return;
+
+  const montees = moteur.niveaux.montees_de_niveau(histoire, ancrages);
+  zone.innerHTML = dessiner_seance(
+    seance_ecrite,
+    montees,
+    moteur.ligues.montees_de_ligue(montees),
+    {
+      ouvert: true,
+      supprimable: false,
+      // Les objectifs sont relus **apres** l'ecriture de la seance, donc apres
+      // l'ancrage qu'un test vient de poser : c'est ce qui permet d'annoncer
+      // « prochaine cible » sur un exercice qu'on decouvre.
+      objectifs: moteur.objectifs.objectifs_par_exercice(histoire, ancrages),
+    }
+  );
+
+  // L'aide n'apparait que s'il y a quelque chose a expliquer : une seance
+  // faite d'echauffements, ou d'un seul test, ne propose aucun ressenti.
+  const proposees = brancher_fiches_de_seance(zone, histoire, { retour: "ecranFin" });
+  $("aideRessenti").hidden = proposees === 0;
 }
 
 
@@ -2491,48 +2766,21 @@ async function enteriner_cibles_figees() {
   await stockage.sauver(base);
 }
 
-/**
- * Propose de declarer un ressenti sur chaque exercice de la seance ecoulee.
+/*
+ * `proposer_ressentis` a disparu avec le resume agrege qu'elle parcourait :
+ * elle cherchait des `.ligne-resume`, que l'ecran de fin n'ecrit plus depuis
+ * qu'il rend la meme fiche que l'historique. Sa seule part propre — decider si
+ * l'aide « a quoi sert le ressenti ? » a lieu d'etre — a rejoint
+ * `dessiner_resume_de_fin`, qui compte les reponses reellement proposees.
  *
- * **Le module `ressenti.js` etait porte et branche dans le moteur, mais rien
- * ne permettait d'y repondre** : le moteur lisait donc toujours « pas de
+ * Ce qu'elle portait comme decision vaut d'etre garde en memoire : le module
+ * `ressenti.js` etait porte et branche dans le moteur, mais **rien ne
+ * permettait d'y repondre**. Le moteur lisait donc toujours « pas de
  * reponse », c'est-a-dire +1 apres une reussite, pendant que le poste fixe
  * accelerait a +2 ou +3 et reculait a -1. Les deux versions ne progressaient
  * pas au meme rythme, et ca ne se voyait sur aucun ecran — seulement trois
  * seances plus tard, sur un objectif qui n'etait pas le meme.
- *
- * La difference avec le poste fixe est ou vit la base : il interroge
- * `/api/historique/<id>/ressentis`, le navigateur calcule le meme jugement sur
- * place avec le meme `Ressenti`. Les reponses proposees, elles, viennent du
- * module partage.
- *
- * Une seance sans resultat n'est jamais ecrite : `seance_id` vaut alors null
- * et il n'y a rien a annoter.
  */
-function proposer_ressentis(seance_id) {
-  $("aideRessenti").hidden = true;
-  if (seance_id === null) return;
-
-  const { seances: histoire } = lecture_du_profil();
-  const jugements = moteur.ressenti.evaluation_seance(seance_id, histoire);
-
-  let proposees = 0;
-  $("resume")
-    .querySelectorAll(".ligne-resume")
-    .forEach((ligne) => {
-      const nom = ligne.querySelector("span").textContent;
-      const jugement = jugements[nom];
-      if (!jugement) return;
-      proposees += 1;
-      construire_ligne(ligne.nextElementSibling, nom, jugement, async (exercice, valeur) => {
-        historique.enregistrer_ressentis(base, seance_id, { [exercice]: valeur }, ECHELLE);
-        await stockage.sauver(base);
-      });
-    });
-
-  $("aideRessenti").hidden = proposees === 0;
-}
-
 
 // ---------------------------------------------------------------- materiel
 
@@ -2729,7 +2977,8 @@ const echapper = (texte) =>
  * **le maillon faible**. « 12, 12, 10, 12 » prouve 10, et une ligne agregee
  * (« 46 repetitions ») ne permet pas de le voir.
  */
-function dessiner_seance(seance, montees, montees_ligue = {}) {
+function dessiner_seance(seance, montees, montees_ligue = {}, options = {}) {
+  const { ouvert = false, supprimable = true, objectifs = null } = options;
   const minutes = Math.floor((seance.duree || 0) / 60);
   const abandonnee = seance.statut === "abandoned";
   const montee = montees[seance.id] ?? {};
@@ -2754,13 +3003,29 @@ function dessiner_seance(seance, montees, montees_ligue = {}) {
           (saut ? jalon_ligue(exercice.nom, saut) : "")
         : "";
 
+      // **Un test n'est ni reussi ni echoue.** Sa cible est un plafond qu'on
+      // n'atteint jamais, donc le juger reviendrait a declarer echoue ce qui
+      // vient precisement de mesurer le niveau — c'est ce qui affichait
+      // « Non atteint » en rouge sur la toute premiere serie de quelqu'un. On
+      // annonce le resultat et ce qu'il donne pour la suite ; le ressenti,
+      // lui, n'est pas propose (`jugements_par_seance` l'ecarte deja), parce
+      // qu'il n'y a aucun objectif a ajuster.
+      const test = moteur.ressenti.est_serie_de_test(exercice);
+      const vise = test && objectifs ? objectifs[exercice.nom] : null;
+      const resultat = test
+        ? `<div class="resultat-test"><b>Test réalisé</b>` +
+          `<span>C'est ton point de départ sur ce mouvement.` +
+          (vise ? ` Prochaine cible : ${echapper(resume_palier(vise))}.` : "") +
+          `</span></div>`
+        : "";
+
       return (
         `<div class="exercice-fait">` +
         `<div class="exercice-ligne">` +
         `<button type="button" class="vers-fiche" ` +
         `data-mouvement="${echapper(exercice.nom)}">${echapper(exercice.nom)}</button>` +
         `<span>${exercice.series} séries · ${fait}${charge}</span></div>` +
-        `<div class="series-detail">${series}</div>${badge}` +
+        `<div class="series-detail">${series}</div>${badge}${resultat}` +
         // Rempli apres coup par `construire_ligne` : il faut des ecouteurs,
         // donc des noeuds, la ou cette fonction rend une chaine.
         `<div class="feedback" data-seance="${seance.id}" ` +
@@ -2772,7 +3037,7 @@ function dessiner_seance(seance, montees, montees_ligue = {}) {
   return (
     // L'identifiant sert d'ancre : un point du graphique de progression
     // ramene ici, sur la seance exacte.
-    `<details class="fiche-seance" id="seance-${seance.id}">` +
+    `<details class="fiche-seance" id="seance-${seance.id}"${ouvert ? " open" : ""}>` +
     `<summary><div class="fiche-entete"><b>${echapper(seance.nom ?? "Séance")}</b>` +
     `<span class="statut${abandonnee ? " abandonnee" : ""}">` +
     `${abandonnee ? "abandonnée" : "terminée"}</span></div>` +
@@ -2780,10 +3045,80 @@ function dessiner_seance(seance, montees, montees_ligue = {}) {
     `<span>${seance.exercices.length} exercice${seance.exercices.length > 1 ? "s" : ""}</span></div>` +
     `</summary>` +
     exercices +
-    `<button type="button" class="bouton secondaire supprimer-seance" ` +
-    `data-supprimer="${seance.id}">Supprimer cette séance</button>` +
+    // Pas de suppression sur l'ecran de fin : on vient de la faire, et le
+    // bouton « Enregistrer la seance » est juste en dessous — deux actions
+    // opposees cote a cote sont deux facons de se tromper.
+    (supprimable
+      ? `<button type="button" class="bouton secondaire supprimer-seance" ` +
+        `data-supprimer="${seance.id}">Supprimer cette séance</button>`
+      : "") +
     `</details>`
   );
+}
+
+/**
+ * Branche ce qu'une fiche de seance a d'interactif : ressenti, lien vers la
+ * fiche d'un mouvement, suppression.
+ *
+ * **Partage entre l'historique et l'ecran de fin**, qui montrent desormais le
+ * meme rendu. `dessiner_seance` rend une chaine ; il faut donc des noeuds pour
+ * y poser des ecouteurs, et ce travail-la etait entierement dans
+ * `dessiner_historique`. L'ecran de fin s'en serait fait une copie, et les
+ * deux auraient diverge a la premiere correction.
+ *
+ * @param {Element} racine     ou chercher les zones a brancher
+ * @param {Array} histoire     les seances du profil, pour retrouver un nom
+ * @param {object} options     `apres_suppression` : quoi redessiner ensuite
+ */
+function brancher_fiches_de_seance(racine, histoire, options = {}) {
+  // Le ressenti se saisit **aussi a posteriori**, comme sur le poste fixe :
+  // l'ecran de fin est le moment naturel, mais on ne sait pas toujours sur le
+  // coup si c'etait trop dur. `jugements_par_seance` n'ecarte aucune seance,
+  // pas meme une seance abandonnee — on decrit ici ce qui s'est passe, pas ce
+  // qu'il faut viser ensuite. Il ecarte en revanche les **tests**, qui n'ont
+  // pas d'objectif a ajuster.
+  const jugements = moteur.ressenti.jugements_par_seance(histoire);
+  let proposees = 0;
+
+  racine.querySelectorAll(".feedback[data-exercice]").forEach((zone) => {
+    const { seance, exercice } = zone.dataset;
+    const jugement = jugements[seance]?.[exercice];
+    // Un exercice hors bareme n'a pas d'objectif chiffre : `juger` rend quand
+    // meme un verdict, et le ressenti reste utile. Un test, lui, est absent
+    // de la table — il n'y a rien a lui demander.
+    if (!jugement) return;
+    proposees += 1;
+    construire_ligne(zone, exercice, jugement, async (nom, valeur) => {
+      historique.enregistrer_ressentis(base, Number(seance), { [nom]: valeur }, ECHELLE);
+      await stockage.sauver(base);
+    });
+  });
+
+  racine.querySelectorAll(".vers-fiche[data-mouvement]").forEach((bouton) => {
+    bouton.addEventListener("click", (evenement) => {
+      // Le bouton vit dans un <details> : sans ca, cliquer le replierait.
+      evenement.preventDefault();
+      ouvrir_fiche(bouton.dataset.mouvement, options.retour ?? "ecranHistorique");
+    });
+  });
+
+  racine.querySelectorAll("[data-supprimer]").forEach((bouton) => {
+    bouton.addEventListener("click", async (evenement) => {
+      // Le bouton vit dans un <details> : sans ca, cliquer le replierait.
+      evenement.preventDefault();
+      const id = Number(bouton.dataset.supprimer);
+      const seance = histoire.find((s) => s.id === id);
+      if (!confirm(
+        `Supprimer « ${seance?.nom ?? "cette séance"} » de l'historique ? ` +
+        "Les niveaux et les objectifs seront recalculés sans elle."
+      )) return;
+      historique.supprimer_seance(base, id, PROFIL);
+      await stockage.sauver(base);
+      dessiner_historique();
+    });
+  });
+
+  return proposees;
 }
 
 function dessiner_historique() {
@@ -2799,53 +3134,7 @@ function dessiner_historique() {
     ? histoire.map((seance) => dessiner_seance(seance, montees, montees_ligue)).join("")
     : `<p class="vide">Aucune séance enregistrée pour l'instant.</p>`;
 
-  // Le ressenti se saisit **aussi a posteriori**, comme sur le poste fixe :
-  // l'ecran de fin est le moment naturel, mais on ne sait pas toujours sur le
-  // coup si c'etait trop dur. `jugements_par_seance` n'ecarte aucune seance,
-  // pas meme une seance abandonnee — on decrit ici ce qui s'est passe, pas ce
-  // qu'il faut viser ensuite.
-  const jugements = moteur.ressenti.jugements_par_seance(histoire);
-  $("listeHistorique")
-    .querySelectorAll(".feedback[data-exercice]")
-    .forEach((zone) => {
-      const { seance, exercice } = zone.dataset;
-      const jugement = jugements[seance]?.[exercice];
-      // Un exercice hors bareme n'a pas d'objectif chiffre : `juger` rend
-      // quand meme un verdict, et le ressenti reste utile.
-      if (!jugement) return;
-      construire_ligne(zone, exercice, jugement, async (nom, valeur) => {
-        historique.enregistrer_ressentis(base, Number(seance), { [nom]: valeur }, ECHELLE);
-        await stockage.sauver(base);
-      });
-    });
-
-  $("listeHistorique")
-    .querySelectorAll(".vers-fiche[data-mouvement]")
-    .forEach((bouton) => {
-      bouton.addEventListener("click", (evenement) => {
-        // Le bouton vit dans un <details> : sans ca, cliquer le replierait.
-        evenement.preventDefault();
-        ouvrir_fiche(bouton.dataset.mouvement, "ecranHistorique");
-      });
-    });
-
-  $("listeHistorique")
-    .querySelectorAll("[data-supprimer]")
-    .forEach((bouton) => {
-      bouton.addEventListener("click", async (evenement) => {
-        // Le bouton vit dans un <details> : sans ca, cliquer le replierait.
-        evenement.preventDefault();
-        const id = Number(bouton.dataset.supprimer);
-        const seance = histoire.find((s) => s.id === id);
-        if (!confirm(
-          `Supprimer « ${seance?.nom ?? "cette séance"} » de l'historique ? ` +
-          "Les niveaux et les objectifs seront recalculés sans elle."
-        )) return;
-        historique.supprimer_seance(base, id, PROFIL);
-        await stockage.sauver(base);
-        dessiner_historique();
-      });
-    });
+  brancher_fiches_de_seance($("listeHistorique"), histoire);
 }
 
 // ---------------------------------------------------------------- editeur
@@ -4855,8 +5144,23 @@ $("boutonCommencer").addEventListener("click", () => {
   // Il court-circuite le guidage aussi : « je commence » veut dire « je sais
   // ou je suis », et laisser le tutoriel tourner derriere l'effort ferait
   // parler le coach par-dessus la premiere serie.
+  tutoriel?.passer();
   clore_tutoriel();
+  // Et l'installation avec, sinon le calque resterait pose par-dessus une
+  // serie deja lancee.
+  fermer_installation();
   if (seance && seance.phase === "preparation") lancer_effort();
+});
+
+$("cadragePasser").addEventListener("click", () => {
+  // **Le filet de securite de l'installation.** Un controle de cadrage qui se
+  // trompe — et il y en a eu un, le controle de distance qui disait « approche-
+  // toi » a une planche parfaitement cadree — ne doit jamais empecher de
+  // s'entrainer. Il ferme aussi le guidage : passer est une reponse, pas un
+  // report, exactement comme `boutonPasserTuto`.
+  tutoriel?.passer();
+  clore_tutoriel();
+  fermer_installation();
 });
 
 $("guideCompris").addEventListener("click", () => fermer_guide());
@@ -5027,7 +5331,21 @@ $("retourExercices").addEventListener("click", () => {
   dessiner_exercices();
   montrer("ecranExercices");
 });
-$("boutonRetour").addEventListener("click", () => {
+$("boutonRetour").addEventListener("click", async () => {
+  // **L'ecriture est deja faite**, et c'est volontaire : la suspendre a ce
+  // clic perdrait une seance a chaque onglet ferme trop vite, ou tue par iOS
+  // quand la memoire manque. Le bouton confirme et ferme — sauf si le
+  // stockage avait refuse, auquel cas il reessaie avant de partir.
+  if ($("boutonRetour").textContent.startsWith("Réessayer")) {
+    const ok = await stockage.sauver(base);
+    const zone = $("etatSauvegarde");
+    zone.className = `etat-sauvegarde ${ok ? "ok" : "pasok"}`;
+    zone.textContent = ok
+      ? "Séance enregistrée sur cet appareil."
+      : "Le stockage refuse toujours l'écriture. Exporte cette séance avant de quitter.";
+    if (!ok) return;
+    $("boutonRetour").textContent = "Enregistrer la séance";
+  }
   dessiner_liste();
   montrer("ecranSeances");
 });

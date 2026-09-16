@@ -131,7 +131,24 @@ def _palier_serialisable(p):
     }
 
 
-def main():
+def preparer_le_harnais():
+    """Entre les exercices fictifs dans le barème et écrit ce que le JS relira.
+
+    **Point d'entrée unique, et il a fallu un plantage pour qu'il le devienne.**
+    `generer_ligues` recopiait ce corps parce qu'il a besoin des mêmes
+    exercices fictifs — le catalogue réel n'exerce ni les surcharges de palier
+    ni le barème sans fin. Les deux copies écrivaient le même fichier, donc le
+    dernier générateur lancé gagnait ; tant qu'elles produisaient le même
+    contenu, personne ne pouvait le voir. Le jour où les inventaires ont été
+    ajoutés **ici seulement**, l'ordre alphabétique de la commande de
+    régénération (`ligues` après `paliers`) a suffi à amputer le fichier, et
+    `comparer_paliers.mjs` est mort sur `Object.entries(undefined)`.
+
+    *Une duplication reste invisible tant que les deux copies coïncident* — et
+    ce n'est pas la duplication qui se signale, c'est son premier écart.
+
+    Retourne les specs ajoutées, que l'appelant peut avoir à consulter.
+    """
     from dataclasses import asdict
 
     # Les specs fictives entrent dans le barème pour la durée du harnais, et
@@ -170,6 +187,11 @@ def main():
         ),
         encoding="utf-8",
     )
+    return supplementaires
+
+
+def main():
+    preparer_le_harnais()
 
     tirage = random.Random(GRAINE)
     lignes = 0
