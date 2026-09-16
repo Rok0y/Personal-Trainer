@@ -476,6 +476,34 @@ body {
     padding: 18px 22px 20px;
 }
 
+/* Le <summary> porte deja la classe `.label` : on ne lui retire que la puce du
+   navigateur, qui n'est pas la meme d'un moteur a l'autre, pour poser un
+   chevron dont on maitrise la taille — a trois metres, une puce de 8 px ne dit
+   pas qu'un bloc s'ouvre. */
+.fiche-card > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.fiche-card > summary::-webkit-details-marker { display: none; }
+
+.fiche-card > summary::after {
+    content: "▾";
+    margin-left: auto;
+    font-size: 15px;
+    line-height: 1;
+    opacity: .75;
+    transition: transform .18s ease;
+}
+
+.fiche-card[open] > summary::after { transform: rotate(180deg); }
+
+/* Replie, le bloc ne doit pas garder le creux du bas prevu pour la liste. */
+.fiche-card:not([open]) { padding-bottom: 14px; }
+
 .fiche-card ol {
     margin: 6px 0 0;
     padding-left: 20px;
@@ -705,13 +733,17 @@ body {
     animation-delay: 0.15s;
 }
 
+/* Une seule ligne, et plus trois. Les onze boutons a plat montaient jusqu'a
+   trois rangees et recouvraient la barre de progression, qui vit juste en
+   dessous (`bottom: 12px`) : l'action principale de la phase reste visible,
+   les autres passent dans `.series-menu`. */
 .series-controls {
     position: absolute;
     left: 28px;
-    bottom: 58px;
+    bottom: 50px;
     z-index: 10;
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
     max-width: min(620px, calc(100vw - 56px));
     pointer-events: auto;
@@ -730,6 +762,64 @@ body {
 .series-controls button:hover {
     border-color: var(--teal);
     color: var(--teal);
+}
+
+/* L'action principale de la phase : elle se vise sans regarder, a trois
+   metres, ce qui est exactement la raison d'etre du geste bras en X — ce
+   bouton en est le double au doigt. */
+.commande-vedette {
+    border-color: var(--teal) !important;
+    color: var(--teal) !important;
+    font-weight: 600;
+}
+
+.series-menu { position: relative; }
+
+.series-menu > summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 41px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--glass-strong);
+    color: var(--text);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    list-style: none;
+}
+
+.series-menu > summary::-webkit-details-marker { display: none; }
+
+.series-menu[open] > summary {
+    border-color: var(--teal);
+    color: var(--teal);
+}
+
+/* Le menu s'ouvre **vers le haut** : ancre en bas de l'ecran, il sortirait
+   sinon du cadre. `bottom: calc(100% + 8px)` le pose au-dessus de son propre
+   bouton, quel que soit le nombre de commandes que la phase laisse visibles. */
+.series-menu-contenu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 190px;
+    padding: 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: rgba(10, 13, 19, .96);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .45);
+}
+
+.series-menu-contenu button {
+    width: 100%;
+    text-align: left;
+    background: transparent;
 }
 
 .session-progress {
@@ -1053,11 +1143,15 @@ body {
 /* ---------- Responsive ---------- */
 
 @media (max-width: 760px) {
+    /* En portrait la colonne gauche passe en bas, la ou vivent deja les
+       commandes (50px) et la barre de progression (12px) : a 28px elle les
+       recouvrait toutes les deux. On la pose au-dessus de la rangee de
+       commandes plutot que dessus. */
     .side-panel {
         left: 16px;
         right: 16px;
         top: auto;
-        bottom: 28px;
+        bottom: 100px;
         transform: none;
         flex-direction: row;
         gap: 12px;
@@ -1069,6 +1163,13 @@ body {
         flex: 1;
         width: auto;
         padding: 16px 18px;
+    }
+    .series-controls {
+        left: 16px;
+        max-width: calc(100vw - 32px);
+    }
+    .series-menu-contenu {
+        min-width: 170px;
     }
     .right-column {
         left: 16px;

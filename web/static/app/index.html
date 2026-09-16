@@ -573,6 +573,28 @@
     margin: 0 0 18px;
     color: var(--muet, #8b97a8);
   }
+  /* Un encart et non un paragraphe de plus : sur un premier passage c'est la
+     seule chose a lire avant de commencer, et elle doit se distinguer des
+     consignes du mouvement, qui, elles, se relisent a chaque serie. */
+  .guide-test {
+    margin: 0 0 18px;
+    padding: 14px 16px;
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    background: rgba(255, 138, 61, 0.08);
+  }
+  .guide-test strong {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+  }
+  .guide-test p {
+    margin: 0;
+    line-height: 1.55;
+  }
   .guide-carte h3 {
     margin: 16px 0 6px;
     font-size: 0.95rem;
@@ -1034,6 +1056,13 @@
     <div class="guide-carte">
       <h2 id="guideNom"></h2>
       <p class="guide-description" id="guideDescription"></p>
+      <!-- Hors du contrat du HUD (pas de `data-commande`, pas d'id reclame par
+           `hud.js`) : ce guidage n'existe que dans l'application, le poste fixe
+           ayant un clavier et un ecran a portee de main. -->
+      <div class="guide-test" id="guideTest" hidden>
+        <strong>Premier passage : c'est un test</strong>
+        <p id="guideTestTexte"></p>
+      </div>
       <div id="guideBlocs"></div>
       <button class="bouton" id="guideCompris" data-tuto="compris">J'ai compris</button>
       <p class="guide-astuce">Ou croise les bras devant toi — tu n'as pas à revenir à l'écran.</p>
@@ -1065,17 +1094,12 @@
     <span class="consigne-message" id="consigneMessage"></span>
   </div>
 
+  <!-- Pas de cartes « Position » et « Etape » ici, contrairement au poste
+       fixe : elles ne servent qu'au reglage d'une detection, et ce reglage se
+       fait sur la demo, qui a un banc d'essai pour ca. L'ecart est declare
+       dans `scripts/verifier_hud.py` (ECARTS_ASSUMES) pour qu'il reste un
+       choix et non un oubli. -->
   <div class="side-panel">
-
-    <div class="card position-card">
-      <span class="label">Position</span>
-      <span class="position-value" id="position">Aucune</span>
-    </div>
-
-    <div class="card stage-card">
-      <span class="label">Étape</span>
-      <span class="stage-value" id="stage">Aucune</span>
-    </div>
 
     <div class="card comment-card" id="commentCard" hidden>
       <span class="label">Note exercice</span>
@@ -1086,10 +1110,14 @@
 
   <div class="right-column">
 
-    <div class="card fiche-card" id="ficheCard" hidden>
-      <span class="label" id="ficheLabel">Consignes</span>
+    <!-- Un <details> et non une carte figee : pendant l'effort les consignes
+         prennent la moitie de la colonne droite pour un texte qu'on a deja
+         lu. `afficher_fiche` les replie pendant l'exercice et les deplie
+         pendant les repos, ou l'on a justement le temps de lire. -->
+    <details class="card fiche-card" id="ficheCard" hidden>
+      <summary class="label" id="ficheLabel">Consignes</summary>
       <ol id="ficheInstructions"></ol>
-    </div>
+    </details>
 
     <div class="hud">
 
@@ -1159,17 +1187,31 @@
   </div>
 
   <nav class="series-controls" aria-label="Commandes de série">
-    <button type="button" data-contexte="exercice" data-commande="reset">Reset série</button>
-    <button type="button" data-contexte="exercice" data-commande="recommencer">Recommencer</button>
-    <button type="button" data-contexte="exercice" data-commande="precedente">Série précédente</button>
-    <button type="button" data-contexte="exercice" data-commande="suivante">Série suivante</button>
-    <button type="button" data-contexte="exercice" data-commande="terminer">Série terminée</button>
-    <button type="button" data-contexte="exercice" data-commande="pause">Pause</button>
-    <button type="button" data-contexte="pause" data-commande="reprendre">Reprendre</button>
-    <button type="button" data-contexte="pause" data-commande="passer_pause">Passer la pause</button>
-    <button type="button" data-contexte="pause" data-commande="refaire">Refaire cette série</button>
-    <button type="button" data-contexte="pause" data-commande="terminer_seance">Terminer la séance</button>
-    <button type="button" data-contexte="exercice" data-commande="abandonner">Abandonner</button>
+
+      <!-- Deux niveaux, et c'est tout l'objet du regroupement : l'action
+           principale de la phase reste sous le doigt, les six autres vivent
+           dans un repli. A plat, elles montaient sur trois lignes et
+           recouvraient la barre de progression. Les onze `data-commande` sont
+           inchanges — `verifier_hud.py` exige qu'elles soient les memes des
+           deux cotes, et seul leur groupement change ici. -->
+      <button type="button" class="commande-vedette" data-contexte="exercice" data-commande="terminer">Série terminée</button>
+      <button type="button" class="commande-vedette" data-contexte="pause" data-commande="reprendre">Reprendre</button>
+      <button type="button" class="commande-vedette" data-contexte="pause" data-commande="passer_pause">Passer la pause</button>
+
+      <details class="series-menu" id="seriesMenu">
+          <summary aria-label="Autres commandes">⋯</summary>
+          <div class="series-menu-contenu">
+              <button type="button" data-contexte="exercice" data-commande="reset">Reset série</button>
+              <button type="button" data-contexte="exercice" data-commande="recommencer">Recommencer</button>
+              <button type="button" data-contexte="exercice" data-commande="precedente">Série précédente</button>
+              <button type="button" data-contexte="exercice" data-commande="suivante">Série suivante</button>
+              <button type="button" data-contexte="exercice" data-commande="pause">Pause</button>
+              <button type="button" data-contexte="exercice" data-commande="abandonner">Abandonner</button>
+              <button type="button" data-contexte="pause" data-commande="refaire">Refaire cette série</button>
+              <button type="button" data-contexte="pause" data-commande="terminer_seance">Terminer la séance</button>
+          </div>
+      </details>
+
   </nav>
   <div class="session-progress" aria-label="Progression de la séance">
     <div id="sessionProgressSegments"></div>
@@ -1690,6 +1732,12 @@ function ouvrir_guide_exercice(bloc) {
     liste_guide("Le mouvement", fiche.instructions),
     liste_guide("À éviter", fiche.erreurs_frequentes),
   ].join("");
+
+  // Un test ne se devine pas depuis le compteur : « max » dit qu'il n'y a pas
+  // de cible, pas qu'on attend un maximum ni pourquoi la charge est celle-la.
+  // C'est ici, avant de commencer, que ca se dit — et en une fois.
+  remplir_encart_test(bloc, fiche);
+
   $("guideExercice").hidden = false;
 
   // La voix dit ce que l'ecran ne peut pas : de quel cote se tourner et quoi
@@ -1702,6 +1750,35 @@ function liste_guide(titre, lignes) {
   if (!lignes?.length) return "";
   const items = lignes.map((l) => `<li>${echapper(l)}</li>`).join("");
   return `<h3>${titre}</h3><ul>${items}</ul>`;
+}
+
+/**
+ * L'encart « c'est un test », quand l'exercice n'a encore rien prouve.
+ *
+ * Il dit les trois choses qu'un compteur a « max » ne dit pas : qu'on attend
+ * un **maximum** et non une serie ordinaire, a quelle **charge** (le milieu de
+ * l'echelle reellement disponible, pose par `charge_de_test`), et comment on
+ * **s'arrete** — puisque la cible, elle, ne sera jamais atteinte.
+ */
+function remplir_encart_test(bloc, fiche) {
+  const encart = $("guideTest");
+  encart.hidden = !bloc.test_max;
+  if (!bloc.test_max) return;
+
+  // L'unite se lit sur le mode et non sur la fiche : un meme mouvement se
+  // compte en repetitions ou se tient en secondes selon le bloc joue.
+  const en_duree = MODES_DUREE.includes(bloc.mode);
+  const effort = en_duree
+    ? "tiens la position aussi longtemps que tu peux"
+    : "fais autant de répétitions propres que tu peux";
+  const charge = bloc.poids
+    ? ` avec ${bloc.poids} kg — une charge moyenne, choisie dans ce que tu as déclaré`
+    : " au poids du corps";
+
+  $("guideTestTexte").textContent =
+    `Je ne sais pas encore où tu en es sur « ${fiche.nom} ». Une seule série : ` +
+    `${effort}${charge}. Arrête-toi quand la forme se dégrade, puis croise les ` +
+    `bras : c'est ton résultat qui fixera tes objectifs, il n'y a rien à rater.`;
 }
 
 /**
@@ -1953,6 +2030,15 @@ function lancer_effort() {
 function jouer_exercice(corps, instant) {
   const bloc = seance.bloc_actuel;
   if (!bloc) return;
+
+  // Jumeau de `main.py` : sur un test de calibration la cible du bloc est un
+  // plafond hors d'atteinte, et sans ce drapeau le HUD demande « 999
+  // repetitions » sans dire pourquoi. `hud.js` sait deja afficher « max » et
+  // laisser la barre vide — c'est le branchement qui manquait, pas
+  // l'affichage. Pose ici et non dans `changer_exercice` pour la meme raison
+  // que cote poste fixe : ca ne vaut que pendant la phase exercice.
+  etat.test_max = Boolean(bloc.test_max);
+  if (etat.test_max) etat.consigne = texte("test_calibration");
 
   // Le geste bras en X termine la serie a la main, et c'est le seul chemin
   // qui peut produire une serie **non reussie** : `objectif_serie_atteint` en

@@ -45,6 +45,12 @@ const TOUCHES = {
 //: l'exercice.
 const PHASES_DE_PAUSE = ["paused", "recuperation_serie", "repos_exercice"];
 
+//: Ce que le menu des commandes secondaires montrait au dernier passage. Meme
+//: role que `fiche_affichee` : la boucle repeint trente fois par seconde, et
+//: ce qui est **ouvert par l'utilisateur** ne doit etre repris en main qu'aux
+//: instants ou son contenu change.
+let menu_affiche = null;
+
 /**
  * Branche les boutons `[data-commande]` et les raccourcis clavier.
  *
@@ -88,6 +94,24 @@ export function actualiser_commandes(autorisees, statut, phase) {
           ? statut !== "paused"
           : !(autorisees && autorisees[nom]);
   });
+
+  const menu = $("seriesMenu");
+  if (!menu) return;
+
+  // Un repli vide reste un bouton cliquable qui n'ouvre rien : on cache le
+  // menu entier quand la phase courante ne lui laisse aucune commande.
+  const utiles = [...menu.querySelectorAll("[data-commande]")].some((b) => !b.hidden);
+  menu.hidden = !utiles;
+
+  // Referme **au changement de phase**, pas a chaque image : refermer en
+  // continu arracherait le menu des doigts de quelqu'un qui vient de
+  // l'ouvrir, et le laisser ouvert d'une phase a l'autre afficherait des
+  // commandes qui viennent d'etre cachees.
+  const repere = `${en_pause ? "pause" : "exercice"}|${utiles}`;
+  if (repere !== menu_affiche) {
+    menu_affiche = repere;
+    menu.open = false;
+  }
 }
 
 /** Le voyant « En direct » : perte de connexion sur le poste fixe uniquement. */
@@ -255,10 +279,29 @@ function afficher_bandeau(id_alerte, id_message, message) {
 //: le prochain exercice peut etre celui qu'on vient de quitter.
 let fiche_affichee = null;
 
+//: Et un second repere, pour le repli. *Quoi afficher* et *ouvert ou replie*
+//: ne changent pas aux memes instants : entre `exercice` et
+//: `recuperation_serie` du meme mouvement, la cle de contenu ne bouge pas —
+//: c'est tout l'interet de la memoisation — alors que le repli, lui, doit
+//: s'inverser. Elargir `fiche_affichee` a la phase reconstruirait la liste a
+//: chaque transition pour ne changer qu'un booleen.
+let fiche_en_effort = null;
+
 function afficher_fiche(donnees) {
   const carte = $("ficheCard");
   const liste = $("ficheInstructions");
   const etiquette = $("ficheLabel");
+
+  // Repliee pendant l'effort, depliee des qu'on souffle : c'est la meme raison
+  // qui vaut a `.right-column` de passer au-dessus du voile de repos (z-index
+  // 7 contre 6) — pendant une pause on a le temps de lire, pendant une serie
+  // non. Pose **au changement** et jamais a chaque image, sinon on refermerait
+  // sous les doigts de quelqu'un qui vient d'ouvrir.
+  const en_effort = donnees.phase === "exercice";
+  if (en_effort !== fiche_en_effort) {
+    fiche_en_effort = en_effort;
+    carte.open = !en_effort;
+  }
 
   // Entre deux exercices on prepare le suivant ; partout ailleurs on relit
   // celui qu'on est en train de faire.
