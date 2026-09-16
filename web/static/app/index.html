@@ -1132,11 +1132,19 @@
     </div>
     <div class="installation-bas">
       <div class="installation-jauge"><div id="pratiqueProgres"></div></div>
+      <!-- Ce que l'on cherche a obtenir, en permanence sous la consigne. La
+           consigne dit ce qui cloche *maintenant* (« recule », « je ne vois
+           pas tes pieds ») et change a chaque image ; l'aide dit le but, et ne
+           bouge pas de la phase. Les confondre laissait quelqu'un lire une
+           correction sans jamais savoir ce qu'on attendait de lui. -->
+      <p class="installation-aide" id="pratiqueAide"></p>
       <p class="pratique-fait" id="pratiqueFait" hidden></p>
-      <button class="bouton" id="pratiqueContinuer" data-tuto="pratique-suite" hidden>Continuer</button>
-      <!-- L'accueil explique, il ne filtre pas : personne ne doit rester
-           bloque parce qu'un geste ne se declenche pas chez lui. -->
-      <button class="bouton secondaire" id="pratiquePasser" data-tuto="passer-pratique">Passer</button>
+      <!-- **Le seul bouton de tout l'enchainement, et c'est un filet.** A
+           partir d'ici on est a trois metres et l'on vient de s'entendre dire
+           de ne plus toucher l'appareil : rien ne se valide au doigt. Il passe
+           a la phase suivante plutot que de tout abandonner, pour que quelqu'un
+           bloque sur un geste puisse voir la suite. -->
+      <button class="bouton secondaire" id="pratiquePasser" data-tuto="passer-pratique">Passer cette étape</button>
     </div>
   </div>
 </section>
@@ -3613,14 +3621,18 @@ async function supprimer_profil(utilisateur, seances) {
 // ------------------------------------------- accueil d'un nouveau profil
 
 /**
- * Les etapes de l'accueil. La derniere est le questionnaire de materiel, et
- * c'est elle qui rend ce tunnel **bloquant** : un profil qui ne declare pas son
- * inventaire s'entraine sur le materiel par defaut, donc avec des objectifs
- * faux — en silence, pendant des semaines.
+ * Les etapes de l'accueil, et **l'ordre compte plus que leur contenu**.
  *
- * Les `annonces` sont des cles de briques : la voix dit exactement ce que
- * l'ecran affiche, les deux sortant de `donnees/sons.json`. Ecrire ces phrases
- * ici en plus creerait une seconde source qui deriverait de la premiere.
+ * Tout ce qui demande de toucher l'appareil vient d'abord : l'identite, le
+ * materiel, le programme, puis les explications. La camera ne s'ouvre qu'a la
+ * toute fin, et **a partir de la plus rien ne se clique** — on vient de dire
+ * « recule et ne touche plus a l'appareil », et le faire revenir pour appuyer
+ * sur « Suivant » defait la consigne au moment meme ou on la donne.
+ *
+ * Les deux etapes camera n'en font donc qu'une : une seule ouverture, un seul
+ * eloignement, et l'enchainement cadrage puis gestes se joue tout seul
+ * (`PHASES_PRATIQUE`). Elles etaient separees, et sortir de la premiere
+ * ramenait fatalement a la carte de texte, donc a l'ecran.
  */
 const ETAPES_BIENVENUE = [
   {
@@ -3632,38 +3644,6 @@ const ETAPES_BIENVENUE = [
         texte: "Une voix t'annonce les exercices, les repos et la fin des séries : tu n'as jamais besoin de revenir à l'écran." },
       { annonce: "bienvenue_rien_ne_sort",
         texte: "Tout se passe sur cet appareil. Aucune image n'est envoyée nulle part." },
-    ],
-  },
-  {
-    titre: "Où poser ton appareil",
-    pratique: "cadrage",
-    ecrans: [
-      { annonce: "installation_hauteur",
-        texte: "À deux ou trois mètres de toi, et surtout à hauteur de poitrine — idéalement entre la poitrine et le nombril." },
-      { annonce: "installation_appareil_droit",
-        texte: "Garde-le bien droit, à la verticale, à quatre-vingt-dix degrés du sol : incliné, il regarde le plafond ou tes pieds, et te coupe en deux." },
-      { annonce: "installation_pas_au_sol",
-        texte: "Posé au sol, il ne te verra pas en entier, et rien ne sera compté." },
-      { annonce: "installation_ne_le_bouge_plus",
-        texte: "Une fois posé, ne le déplace plus de la séance : chaque exercice est réglé sur ce point de vue, et le bouger en cours de route fausse le comptage." },
-      { annonce: "installation_respecte_l_angle",
-        texte: "Chaque exercice te dira aussi comment te placer — de face, de profil, la caméra d'un côté précis. C'est à respecter : une détection ne lit pas un mouvement depuis n'importe quel angle." },
-      { annonce: "installation_verifions",
-        texte: "Vérifions tout de suite que tu tiens en entier dans l'image." },
-    ],
-  },
-  {
-    titre: "Les deux gestes",
-    pratique: "gestes",
-    ecrans: [
-      { annonce: null,
-        texte: "Tu es à trois mètres de l'écran pendant une série : ces deux gestes remplacent les boutons, et tu n'as jamais à revenir à l'appareil." },
-      { annonce: "geste_deux_bras_leves",
-        texte: "Lève les deux bras tendus pour remettre le compteur à zéro sans valider — quand une série est partie de travers et que tu veux la reprendre." },
-      { annonce: "geste_bras_en_x",
-        texte: "Croise les bras devant toi pour démarrer une série, et pour la valider quand tu as fini." },
-      { annonce: null,
-        texte: "Tiens la position trois secondes : un anneau se remplit à l'écran pour te dire que le geste est pris. Essayons-les tout de suite." },
     ],
   },
   {
@@ -3690,6 +3670,37 @@ const ETAPES_BIENVENUE = [
         texte: "Ce choix se change quand tu veux, depuis l'onglet Programmes." },
     ],
   },
+  {
+    titre: "Les deux gestes",
+    ecrans: [
+      { annonce: null,
+        texte: "Tu es à trois mètres de l'écran pendant une série : deux gestes remplacent les boutons, et tu n'as jamais à revenir à l'appareil." },
+      { annonce: "geste_valide_la_serie",
+        texte: "Croiser les bras devant toi valide ta série — quand tu l'as finie, ou quand tu n'en peux plus. C'est aussi ce qui lance la suivante." },
+      { annonce: "geste_hauteur_libre",
+        texte: "Seul le croisement compte, pas la hauteur : bras en bas devant le ventre, devant la poitrine ou mains en l'air, c'est le même geste." },
+      { annonce: "geste_deux_bras_leves",
+        texte: "Lever les deux bras tendus remet le compteur à zéro sans rien valider — quand une série est partie de travers et que tu veux la reprendre." },
+    ],
+  },
+  {
+    titre: "Où poser ton appareil",
+    pratique: true,
+    ecrans: [
+      { annonce: "installation_hauteur",
+        texte: "À deux ou trois mètres de toi, et surtout à hauteur de poitrine — idéalement entre la poitrine et le nombril." },
+      { annonce: "installation_appareil_droit",
+        texte: "Garde-le bien droit, à la verticale, à quatre-vingt-dix degrés du sol : incliné, il regarde le plafond ou tes pieds, et te coupe en deux." },
+      { annonce: "installation_pas_au_sol",
+        texte: "Posé au sol, il ne te verra pas en entier, et rien ne sera compté." },
+      { annonce: "installation_ne_le_bouge_plus",
+        texte: "Une fois posé, ne le déplace plus de la séance : chaque exercice est réglé sur ce point de vue, et le bouger en cours de route fausse le comptage." },
+      { annonce: "installation_respecte_l_angle",
+        texte: "Chaque exercice te dira aussi comment te placer — de face, de profil, la caméra d'un côté précis. C'est à respecter : une détection ne lit pas un mouvement depuis n'importe quel angle." },
+      { annonce: "installation_verifions",
+        texte: "Pose-le maintenant, puis appuie et recule : à partir de là, tout se fait à distance et tu n'auras plus rien à toucher." },
+    ],
+  },
 ];
 
 let etape_bienvenue = 0;
@@ -3700,9 +3711,7 @@ let etape_bienvenue = 0;
 //:
 //: Deux compteurs et non un index a plat sur toutes les phrases, parce que
 //: `pratique` / `materiel` / `programmes` appartiennent a l'**etape** et ne
-//: s'allument qu'a son dernier ecran : c'est ce qui fait que « verifions que
-//: tu tiens dans l'image » precede l'ouverture de la camera au lieu de la
-//: suivre.
+//: s'allument qu'a son dernier ecran.
 let ecran_bienvenue = 0;
 
 //: La pratique en cours sur l'ecran d'accueil, ou `null`. Elle porte sa propre
@@ -3713,7 +3722,7 @@ let ecran_bienvenue = 0;
 let pratique = null;
 
 //: Vrai des qu'une ouverture de camera a echoue. Le bouton de l'etape redevient
-//: alors un simple « Continuer » : l'accueil explique, il ne filtre pas, et
+//: alors un simple « C'est parti » : l'accueil explique, il ne filtre pas, et
 //: reessayer en boucle sur un refus systeme ne menerait nulle part.
 let pratique_impossible = false;
 
@@ -3736,68 +3745,102 @@ const CIRCONFERENCE_ANNEAU = 2 * Math.PI * 70;
 const CADENCE_COMPTEUR_DEMO = 1;
 
 /**
- * L'exercice des deux gestes, phase par phase.
+ * La pratique, phase par phase — cadrage **puis** gestes, d'une seule traite.
  *
- * On ne les decrit pas, on les **fait** — et dans l'ordre ou ils prennent un
- * sens : d'abord un compteur qui monte, sinon « remettre a zero » ne remet
- * rien. Chaque phase porte sa consigne, son geste eventuel et sa suite ; la
- * table est la regle, et il n'y a pas de branchement ailleurs.
+ * Trois moteurs d'avancement et pas un de plus : un `controle` (le cadrage,
+ * qui se juge sur la position dans l'image), un `geste` (un `HoldPosition`),
+ * ou une `attente` en secondes. **Aucune phase ne se franchit au doigt**, et
+ * c'est la regle qui a fait reecrire cet ecran : on vient de dire de reculer
+ * et de ne plus toucher l'appareil. Les phases d'explication s'ecoulent donc
+ * au temps, la barre du bas montrant ce qu'il reste — un decompte visible vaut
+ * mieux qu'un ecran qui change sans prevenir.
  *
- * **Les durees sont celles de la seance** (`TENUE_VALIDATION`, 3 s) et non
- * celle de l'entree en serie : ce sont les deux gestes destructeurs, et
- * enseigner un geste plus court qu'il ne l'est apprendrait un faux geste.
+ * Les durees de geste sont celles de la seance (`TENUE_VALIDATION`, 3 s) : ce
+ * sont les deux gestes destructeurs, et enseigner un geste plus court qu'il ne
+ * l'est apprendrait un faux geste.
  */
-const PHASES_GESTES = {
+const PHASES_PRATIQUE = {
+  cadrage: {
+    titre: "Installe-toi",
+    aide: "Je dois te voir de la tête aux pieds. Recule jusqu'à ce que ce soit le cas.",
+    controle: "cadrage",
+    suite: "cadrage_ok",
+  },
+  cadrage_ok: {
+    titre: "Installe-toi",
+    consigne: "C'est bon : je te vois en entier.",
+    fait: "À cette distance et à cette hauteur, je te vois de la tête aux pieds. Laisse l'appareil exactement là.",
+    annonce: "installation_bien_cadre",
+    attente: 4,
+    suite: "compteur",
+  },
   compteur: {
-    consigne: "Regarde ce compteur : en séance, il monte d'une répétition à chaque fois.",
-    fait: "Il reste affiché en grand pendant tout l'effort, pour que tu le voies de loin.",
-    bouton: "Suivant",
-    suite: "reset",
+    titre: "Valider une série",
+    consigne: "Voilà ton compteur : en séance, il monte d'une répétition à chaque fois.",
+    aide: "Reste où tu es, tout se fait d'ici.",
     annonce: "geste_compteur_monte",
-  },
-  reset: {
-    consigne: "Lève les deux bras tendus vers le ciel, et tiens la position.",
-    geste: () => new HoldPosition(deux_bras_leves, TENUE_VALIDATION),
-    suite: "reset_fait",
-    annonce: "geste_leve_les_bras_maintenant",
-  },
-  reset_fait: {
-    consigne: "C'est bien : ton compteur est reparti de zéro.",
-    fait: "C'est ce que tu feras quand une série part de travers : on repart à zéro sans rien valider.",
-    bouton: "Suivant",
+    compteur: true,
+    monte: true,
+    attente: 6,
     suite: "valider",
-    annonce: "geste_remis_a_zero",
   },
   valider: {
-    consigne: "Le compteur repart. Croise maintenant les bras devant toi, et tiens la position.",
-    geste: () => new HoldPosition(bras_en_x, TENUE_VALIDATION),
-    suite: "bravo",
+    titre: "Valider une série",
+    consigne: "Croise les bras devant toi et tiens la position.",
+    aide: "En bas, devant la poitrine ou mains en l'air : seul le croisement compte.",
     annonce: "geste_croise_les_bras",
+    compteur: true,
+    monte: true,
+    geste: () => new HoldPosition(bras_en_x, TENUE_VALIDATION),
+    suite: "valide_fait",
+  },
+  valide_fait: {
+    titre: "Valider une série",
+    consigne: "Série validée.",
+    fait: "C'est exactement ce que tu feras à la fin de chaque série, sans revenir à l'écran.",
+    compteur: true,
+    attente: 4,
+    suite: "reset",
+  },
+  reset: {
+    titre: "Repartir de zéro",
+    consigne: "Maintenant lève les deux bras tendus, et tiens la position.",
+    aide: "Le compteur repart de zéro, sans rien valider.",
+    annonce: "geste_leve_les_bras_maintenant",
+    compteur: true,
+    monte: true,
+    geste: () => new HoldPosition(deux_bras_leves, TENUE_VALIDATION),
+    suite: "reset_fait",
+  },
+  reset_fait: {
+    titre: "Repartir de zéro",
+    consigne: "C'est bien : ton compteur est reparti de zéro.",
+    fait: "C'est ce que tu feras quand une série part de travers : on reprend, sans rien valider.",
+    annonce: "geste_remis_a_zero",
+    compteur: true,
+    attente: 4,
+    suite: "bravo",
   },
   bravo: {
+    titre: "C'est prêt",
     consigne: "Bravo.",
-    fait: "Tu sais tout piloter de loin : croiser les bras pour démarrer et pour valider, les lever pour repartir de zéro.",
-    bouton: "Continuer",
-    suite: null,
+    fait: "Tu sais tout piloter de loin : croiser les bras pour valider une série, les lever pour repartir de zéro.",
     annonce: "geste_bravo",
+    attente: 5,
+    suite: null,
   },
 };
 
-//: Les phases pendant lesquelles le faux compteur monte. Pas `reset_fait`, qui
-//: existe precisement pour qu'on voie le zero.
-const PHASES_COMPTEUR_MONTE = new Set(["compteur", "reset", "valider"]);
-
 /**
- * Ouvre la camera pour l'etape courante, puis bascule en plein ecran.
+ * Ouvre la camera, puis bascule en plein ecran pour la pratique.
  *
  * **`camera.preparer()` est indispensable, et il manquait.** Sans lui,
  * `Camera.detecter` sort sur `!this._detecteur` en rendant un tableau vide,
  * c'est-a-dire exactement ce que rend une image ou il n'y a personne : aucun
  * squelette, « je ne te vois pas » en boucle, et un cadrage qui n'avance
- * jamais. Aucune exception, aucun message — le defaut est remonte du premier
- * test sur tablette. `demarrer()` faisait les deux appels depuis toujours ;
- * ici il n'y en avait qu'un. *Une garde defensive qui rend une valeur
- * plausible transforme un branchement oublie en silence.*
+ * jamais. Aucune exception, aucun message. `demarrer()` faisait les deux
+ * appels depuis toujours ; ici il n'y en avait qu'un. *Une garde defensive qui
+ * rend une valeur plausible transforme un branchement oublie en silence.*
  *
  * **Un refus n'est jamais bloquant.** L'accueil sert a expliquer, pas a
  * filtrer : quelqu'un qui refuse l'autorisation ici doit pouvoir arriver
@@ -3806,7 +3849,7 @@ const PHASES_COMPTEUR_MONTE = new Set(["compteur", "reset", "valider"]);
  * hors geste utilisateur rend `NotAllowedError` exactement comme un refus
  * systeme, et pretendre distinguer les deux serait inventer.
  */
-async function ouvrir_pratique(type) {
+async function ouvrir_pratique() {
   const bouton = $("bienvenueSuivant");
   const note = $("bienvenueCameraNote");
   bouton.disabled = true;
@@ -3823,8 +3866,7 @@ async function ouvrir_pratique(type) {
       "je te la redemanderai au début de ta première séance.";
     pratique_impossible = true;
     // `dessiner_bienvenue` remet le bouton dans son etat normal — libelle
-    // compris, qui redevient « Continuer » — et affiche la note, dont elle
-    // porte deja la regle de visibilite.
+    // compris — et affiche la note, dont elle porte la regle de visibilite.
     dessiner_bienvenue();
     return;
   }
@@ -3833,32 +3875,21 @@ async function ouvrir_pratique(type) {
   // Le sujet suivi est oublie : la derniere personne vue l'a ete a une autre
   // etape, et `choisir` repartirait de son centre.
   camera.oublier_sujet();
-  demarrer_pratique(type);
+  demarrer_pratique();
   montrer("ecranPratique");
 }
 
-/** Arme la boucle de pratique. Deux exercices, une seule mecanique. */
-function demarrer_pratique(type) {
+/** Arme la boucle de pratique, au tout debut de l'enchainement. */
+function demarrer_pratique() {
   pratique = {
-    type,
-    // Le cadrage compte un temps de stabilite, les gestes comptent des gestes
-    // reussis : deux avancements differents, une seule barre a remplir.
     cadre_depuis: null,
-    fini: false,
     phase: null,
-    consigne: "",
     geste: null,
+    attente_jusqu_a: null,
     compteur: 0,
     derniere_image: null,
   };
-  $("pratiqueTitre").textContent =
-    type === "cadrage" ? "Installe-toi" : "Les deux gestes";
-  $("pratiqueFait").hidden = true;
-  $("pratiqueContinuer").hidden = true;
-  $("pratiqueCompteurBloc").hidden = type !== "gestes";
-  $("pratiqueAnneau").hidden = true;
-  ecrire_pratique("", 0);
-  if (type === "gestes") entrer_phase("compteur");
+  entrer_phase("cadrage");
   requestAnimationFrame(boucle_accueil);
 }
 
@@ -3883,16 +3914,14 @@ function arreter_pratique() {
  * `bras_en_x` veulent le corps **nomme** de `construire_corps`, ou les points
  * s'appellent `epaule_gauche`. Sur un tableau, `corps.epaule_gauche` vaut
  * `undefined` et la ligne suivante leve. La boucle de seance fait exactement
- * ce decoupage (`corps_brut` pour l'image, `construire_corps` pour la regle) ;
- * celle-ci passait le brut aux deux.
+ * ce decoupage ; celle-ci passait le brut aux deux.
  *
  * Le defaut etait la depuis l'ecriture de cet ecran et **ne pouvait pas se
  * voir** : sans `camera.preparer()`, aucune pose n'etait jamais detectee, donc
  * `corps` valait toujours `null` et la branche fautive n'etait jamais prise.
- * Reparer la detection l'a revele du meme coup. *Un defaut en masquait un
- * autre, et le second n'apparait qu'une fois le premier corrige* — c'est la
- * raison de rejouer un parcours complet apres un correctif, et pas seulement
- * l'etape qu'il visait.
+ * *Un defaut en masque un autre, et le second n'apparait qu'une fois le
+ * premier corrige* — d'ou la regle de rejouer le parcours entier apres un
+ * correctif, et pas seulement l'etape qu'il visait.
  */
 function boucle_accueil(horodatage) {
   if (!pratique) return;
@@ -3903,20 +3932,40 @@ function boucle_accueil(horodatage) {
     const corps_brut = camera.choisir(poses);
     peindre(corps_brut, $("pratiqueRendu"));
     const corps = corps_brut ? construire_corps(corps_brut) : null;
-
-    if (pratique.type === "cadrage") avancer_cadrage(corps, instant);
-    else avancer_gestes(corps, instant);
+    avancer_pratique(corps, instant);
   } catch (erreur) {
     // **Une image ratee ne doit pas emporter la boucle.** C'est la meme regle
     // que celle qui interdit a `texte()` de lever dans la boucle camera du
-    // poste fixe : une exception non rattrapee ici arrete le `requestAnimation
-    // Frame` suivant, donc gele l'image pour de bon, sur un iPad ou personne
-    // n'ouvre de console. On la trace et on continue — visible pour qui
-    // cherche, indolore pour qui s'entraine.
+    // poste fixe : une exception non rattrapee ici arrete le
+    // `requestAnimationFrame` suivant, donc gele l'image pour de bon, sur un
+    // iPad ou personne n'ouvre de console. On la trace et on continue.
     console.error("image d'accueil ignoree", erreur);
   }
 
   requestAnimationFrame(boucle_accueil);
+}
+
+/** Une image de pratique : le compteur monte, puis la phase avance. */
+function avancer_pratique(corps, instant) {
+  const phase = PHASES_PRATIQUE[pratique.phase];
+
+  // Le delta est plafonne comme celui des modes : un onglet suspendu par iOS
+  // ne doit pas crediter d'un coup toute la duree ecoulee.
+  const delta =
+    pratique.derniere_image === null
+      ? 0
+      : Math.min(INTERVALLE_MAX, instant - pratique.derniere_image);
+  pratique.derniere_image = instant;
+  // **`monte` et `compteur` sont deux choses**, et les confondre ferait rater
+  // toute la demonstration : `compteur` dit que le chiffre est a l'ecran,
+  // `monte` qu'il avance. Les phases qui suivent un geste l'affichent fige,
+  // puisque c'est justement le resultat du geste qu'on donne a voir.
+  if (phase.monte) pratique.compteur += delta * CADENCE_COMPTEUR_DEMO;
+  $("pratiqueCompteur").textContent = String(Math.floor(pratique.compteur));
+
+  if (phase.controle === "cadrage") return avancer_cadrage(corps, instant);
+  if (phase.geste) return avancer_geste(corps);
+  if (phase.attente) return avancer_attente(instant);
 }
 
 /**
@@ -3929,10 +3978,6 @@ function boucle_accueil(horodatage) {
  * convenir a n'importe quel exercice.
  */
 function avancer_cadrage(corps, instant) {
-  // Une fois acquis, on ne redemande rien : le bouton a la main, et perdre le
-  // cadrage en allant lire la phrase de felicitations serait absurde.
-  if (pratique.fini) return;
-
   if (!corps) {
     pratique.cadre_depuis = null;
     ecrire_pratique(texte("corps_absent"), 0);
@@ -3959,90 +4004,79 @@ function avancer_cadrage(corps, instant) {
   if (pratique.cadre_depuis === null) pratique.cadre_depuis = instant;
   const tenu = instant - pratique.cadre_depuis;
   ecrire_pratique(
-    "Parfait, tu tiens en entier dans l'image — ne bouge pas…",
+    "Parfait, ne bouge plus…",
     Math.min(1, tenu / ACCUEIL_CADRAGE_STABLE)
   );
-
-  if (tenu >= ACCUEIL_CADRAGE_STABLE) {
-    pratique.fini = true;
-    coach_sequence([tables_sons?.briques?.installation_bien_cadre], 6);
-    ecrire_pratique("C'est bon : je te vois en entier.", 1);
-    annoncer_fait(
-      "À cette distance et à cette hauteur, je te vois en entier. " +
-        "Laisse l'appareil exactement là.",
-      "Continuer"
-    );
-  }
+  if (tenu >= ACCUEIL_CADRAGE_STABLE) entrer_phase(PHASES_PRATIQUE.cadrage.suite);
 }
 
 /**
- * Les deux gestes, essayes pour de vrai.
+ * Un geste tenu, avec son anneau.
  *
  * `HoldPosition.update()` est appele **une fois et une seule par image**,
  * comme dans `lire_guide` : l'objet ne rend la transition « termine » qu'une
  * fois, et un second appel la consommerait — le geste ne se validerait alors
  * jamais.
  */
-function avancer_gestes(corps, instant) {
-  // Le delta est plafonne comme celui des modes : un onglet suspendu par iOS
-  // ne doit pas crediter d'un coup toute la duree ecoulee.
-  const delta =
-    pratique.derniere_image === null
-      ? 0
-      : Math.min(INTERVALLE_MAX, instant - pratique.derniere_image);
-  pratique.derniere_image = instant;
-  if (PHASES_COMPTEUR_MONTE.has(pratique.phase)) {
-    pratique.compteur += delta * CADENCE_COMPTEUR_DEMO;
-  }
-  $("pratiqueCompteur").textContent = String(Math.floor(pratique.compteur));
-
-  // Les phases d'explication n'attendent rien du corps : leur consigne est
-  // deja ecrite, et se plaindre de ne voir personne pendant qu'on lit une
-  // phrase serait du bruit.
-  if (!pratique.geste) return;
-
+function avancer_geste(corps) {
   if (!corps) {
     ecrire_pratique(texte("corps_absent"), 0);
     return;
   }
-
   // `update` rend une progression **en pourcents** (0 a 100) et non une part :
   // l'oublier faisait poser `width: 10000%` sur la barre, qui sautait donc a
   // plein des la premiere image ou le geste etait reconnu.
   const [avancement, valide] = pratique.geste.update(corps);
-  ecrire_pratique(pratique.consigne, avancement / 100);
-  if (valide) entrer_phase(PHASES_GESTES[pratique.phase].suite);
+  ecrire_pratique(PHASES_PRATIQUE[pratique.phase].consigne, avancement / 100);
+  if (valide) entrer_phase(PHASES_PRATIQUE[pratique.phase].suite);
 }
 
-/** Entre dans une phase de l'exercice des gestes, et n'ecrit rien d'autre. */
+/**
+ * Une phase qui s'ecoule au temps, sa barre montrant ce qu'il reste.
+ *
+ * C'est ce qui remplace le bouton « Suivant » des phases d'explication : a ce
+ * moment de l'accueil on est a trois metres, on vient de s'entendre dire de ne
+ * plus toucher l'appareil, et revenir appuyer defait la consigne.
+ */
+function avancer_attente(instant) {
+  const phase = PHASES_PRATIQUE[pratique.phase];
+  if (pratique.attente_jusqu_a === null) {
+    pratique.attente_jusqu_a = instant + phase.attente;
+  }
+  const reste = pratique.attente_jusqu_a - instant;
+  ecrire_pratique(phase.consigne, 1 - Math.max(0, reste) / phase.attente);
+  if (reste <= 0) {
+    if (phase.suite) entrer_phase(phase.suite);
+    else quitter_pratique();
+  }
+}
+
+/** Entre dans une phase de la pratique, et n'ecrit rien d'autre. */
 function entrer_phase(nom) {
-  const phase = PHASES_GESTES[nom];
+  const phase = PHASES_PRATIQUE[nom];
   pratique.phase = nom;
-  pratique.consigne = phase.consigne;
   pratique.geste = phase.geste ? phase.geste() : null;
-  // La remise a zero se voit **ici**, a l'entree de la phase qui l'annonce :
-  // le compteur et la phrase changent au meme instant.
+  pratique.attente_jusqu_a = null;
+  pratique.cadre_depuis = null;
+  // Le resultat du geste se voit **a l'entree de la phase qui l'annonce** : le
+  // compteur et la phrase changent au meme instant.
   if (nom === "reset_fait") pratique.compteur = 0;
 
-  ecrire_pratique(phase.consigne, 0);
+  $("pratiqueTitre").textContent = phase.titre;
+  ecrire_pratique(phase.consigne ?? "", 0);
   $("pratiqueAnneau").hidden = !phase.geste;
+  $("pratiqueCompteurBloc").hidden = !phase.compteur;
+  // Un `<p>` vide occupe quand meme sa ligne, et le bandeau du bas en porte
+  // deja deux : on le retire plutot que de le vider.
+  $("pratiqueAide").textContent = phase.aide ?? "";
+  $("pratiqueAide").hidden = !phase.aide;
   if (phase.fait) {
     $("pratiqueFait").textContent = phase.fait;
     $("pratiqueFait").hidden = false;
   } else {
     $("pratiqueFait").hidden = true;
   }
-  $("pratiqueContinuer").hidden = !phase.bouton;
-  if (phase.bouton) $("pratiqueContinuer").textContent = phase.bouton;
   coach_sequence([tables_sons?.briques?.[phase.annonce]].filter(Boolean), 6);
-}
-
-/** Le mot de la fin d'une pratique, et le bouton qui en sort. */
-function annoncer_fait(message, libelle) {
-  $("pratiqueFait").textContent = message;
-  $("pratiqueFait").hidden = false;
-  $("pratiqueContinuer").textContent = libelle;
-  $("pratiqueContinuer").hidden = false;
 }
 
 /** Une consigne, une barre et un anneau : tout ce que la pratique affiche. */
@@ -4056,7 +4090,7 @@ function ecrire_pratique(message, part) {
   );
 }
 
-/** Quitte la pratique et reprend le tunnel a l'etape suivante. */
+/** Quitte la pratique et referme le tunnel. */
 async function quitter_pratique() {
   const etape = ETAPES_BIENVENUE[etape_bienvenue];
   arreter_pratique();
@@ -4127,7 +4161,7 @@ function dessiner_bienvenue() {
  */
 function libelle_bouton_bienvenue(etape, dernier) {
   if (!dernier) return "Suivant";
-  if (etape.pratique && !pratique_impossible) return "Allumer la caméra";
+  if (etape.pratique && !pratique_impossible) return "J'ai posé l'appareil";
   return etape_bienvenue === ETAPES_BIENVENUE.length - 1 ? "C'est parti" : "Continuer";
 }
 
@@ -4141,11 +4175,12 @@ async function avancer_bienvenue() {
     return;
   }
 
-  // Une etape a pratique ne se quitte pas par ce bouton : il ouvre la camera,
-  // et c'est la sortie de la pratique qui fait avancer. Sauf si la camera a
-  // deja refuse de s'ouvrir — on ne bloque personne ici.
+  // **C'est le dernier clic du tunnel.** L'etape a pratique ne se quitte pas
+  // par ce bouton : il ouvre la camera, et tout ce qui suit se joue a trois
+  // metres. Sauf si la camera a deja refuse de s'ouvrir — on ne bloque
+  // personne ici.
   if (etape.pratique && !pratique_impossible) {
-    await ouvrir_pratique(etape.pratique);
+    await ouvrir_pratique();
     return;
   }
 
@@ -5524,26 +5559,19 @@ $("bienvenueSuivant").addEventListener("click", () => {
 
 $("bienvenuePrecedent").addEventListener("click", () => reculer_bienvenue());
 
-// Le bouton de la pratique porte **deux sens** selon la phase : il enchaine
-// les explications de l'exercice des gestes tant qu'il en reste une, et sort
-// de la pratique au bout. Un seul bouton parce qu'il n'y a qu'une action a
-// chaque instant — en proposer deux obligerait a choisir la ou il n'y a rien
-// a choisir.
-$("pratiqueContinuer").addEventListener("click", async () => {
-  const suite = pratique?.type === "gestes"
-    ? PHASES_GESTES[pratique.phase]?.suite
-    : null;
+// **L'accueil explique, il ne filtre pas** : personne ne doit rester bloque
+// parce qu'un geste ne se declenche pas chez lui, ou parce que la piece est
+// trop petite pour reculer. Il passe a la phase suivante et non a la sortie —
+// rester bloque sur le cadrage ne doit pas priver de la demonstration des
+// gestes, qui est la partie qu'on ne peut apprendre nulle part ailleurs.
+$("pratiquePasser").addEventListener("click", async () => {
+  const suite = pratique ? PHASES_PRATIQUE[pratique.phase]?.suite : null;
   if (suite) {
     entrer_phase(suite);
     return;
   }
   await quitter_pratique();
 });
-
-// **L'accueil explique, il ne filtre pas** : personne ne doit rester bloque
-// parce qu'un geste ne se declenche pas chez lui, ou parce que la piece est
-// trop petite pour reculer.
-$("pratiquePasser").addEventListener("click", () => quitter_pratique());
 
 $("boutonRejouerGuides").addEventListener("click", async () => {
   // On **efface la memoire** plutot que de forcer un drapeau : le

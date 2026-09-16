@@ -29,7 +29,7 @@ le texte dans `audio/annonces.py` et relance ce script : le nom de fichier
 suivra. L'inverse — renommer un fichier — ne changerait rien, le code cherche
 le nom que la table produit.
 
-**125 prises restantes.**
+**127 prises restantes.**
 
 ## Liaisons
 
@@ -93,6 +93,8 @@ Le guidage du debut de seance, dit camera ouverte pendant qu'on se place.
 | `verifions_que_tu_tiens_dans_l_image.wav` | « Vérifions que tu tiens dans l'image » | **a enregistrer** |
 | `croise_les_bras_devant_toi_pour_demarrer.wav` | « Croise les bras devant toi pour démarrer » | **a enregistrer** |
 | `leve_les_deux_bras_pour_remettre_a_zero.wav` | « Lève les deux bras pour remettre à zéro » | **a enregistrer** |
+| `croise_les_bras_pour_valider_ta_serie.wav` | « Croise les bras pour valider ta série » | **a enregistrer** |
+| `en_haut_ou_en_bas_seul_le_croisement_compte.wav` | « En haut ou en bas, seul le croisement compte » | **a enregistrer** |
 | `ton_compteur_monte_a_chaque_repetition.wav` | « Ton compteur monte à chaque répétition » | **a enregistrer** |
 | `leve_les_deux_bras_et_tiens_la_position.wav` | « Lève les deux bras et tiens la position » | **a enregistrer** |
 | `c_est_bien_te_voila_reparti_de_zero.wav` | « C'est bien, te voilà reparti de zéro » | **a enregistrer** |

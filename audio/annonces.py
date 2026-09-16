@@ -157,6 +157,8 @@ BRIQUES = {
     # gestes sont **joues** et non seulement decrits : « leve les bras » au
     # present s'adresse a quelqu'un qui doit le faire maintenant, la ou
     # `geste_deux_bras_leves` enonce une regle.
+    "geste_valide_la_serie": "Croise les bras pour valider ta série",
+    "geste_hauteur_libre": "En haut ou en bas, seul le croisement compte",
     "geste_compteur_monte": "Ton compteur monte à chaque répétition",
     "geste_leve_les_bras_maintenant": "Lève les deux bras et tiens la position",
     "geste_remis_a_zero": "C'est bien, te voilà reparti de zéro",
