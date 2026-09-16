@@ -547,6 +547,52 @@
     letter-spacing: 0.04em;
   }
 
+  /* Le guide d'exercice : plein ecran, au-dessus de tout le calque de seance.
+     Il masque l'image a dessein — on lit des consignes, on ne se regarde pas. */
+  .guide-exercice {
+    position: absolute;
+    inset: 0;
+    z-index: 11;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(8, 11, 17, 0.94);
+    overflow-y: auto;
+  }
+  .guide-carte {
+    max-width: 640px;
+    width: 100%;
+  }
+  .guide-carte h2 {
+    margin: 0 0 6px;
+    font-family: var(--titre, inherit);
+    letter-spacing: 0.04em;
+  }
+  .guide-description {
+    margin: 0 0 18px;
+    color: var(--muet, #8b97a8);
+  }
+  .guide-carte h3 {
+    margin: 16px 0 6px;
+    font-size: 0.95rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muet, #8b97a8);
+  }
+  .guide-carte ul {
+    margin: 0;
+    padding-left: 20px;
+    line-height: 1.55;
+  }
+  .guide-carte li { margin-bottom: 4px; }
+  .guide-astuce {
+    margin: 10px 0 0;
+    text-align: center;
+    color: var(--muet, #8b97a8);
+    font-size: 0.9rem;
+  }
+
   .halteres {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
@@ -714,6 +760,16 @@
   </div>
   <p class="muet" id="etatMateriel" style="margin-top:0.9rem"></p>
 
+  <h2 class="titre-section">Les guides</h2>
+  <p class="muet">
+    Le guide d'installation s'affiche la première fois que tu joues une séance,
+    et chaque mouvement s'explique la première fois que tu le rencontres.
+  </p>
+  <div class="actions" style="justify-content:flex-start">
+    <button class="bouton secondaire" id="boutonRejouerGuides">Revoir tous les guides</button>
+  </div>
+  <p class="muet" id="etatGuides" style="margin-top:0.6rem"></p>
+
   <h2 class="titre-section">Changer de personne</h2>
   <div class="actions" style="justify-content:flex-start">
     <button class="bouton secondaire" id="versProfils">Changer de profil</button>
@@ -780,6 +836,39 @@
      n'est qu'en le demandant qu'on arrive ici. Un appareil personnel ne doit
      pas faire choisir son proprietaire a chaque seance ; un appareil prete a
      quelqu'un le doit, et c'est le meme ecran. -->
+<!-- L'accueil d'un profil neuf. **Bloquant**, et c'est ce qui le distingue
+     des guides de seance : `choisir_profil` s'y arrete tant que
+     `onboarding_termine` vaut 0, parce qu'un profil qui n'a pas declare son
+     materiel s'entrainerait sur l'inventaire par defaut — en silence, avec des
+     objectifs faux pendant des semaines.
+     La colonne existait depuis le portage de SQLite, ecrite a la creation et
+     **lue nulle part** : cet ecran est ce qui lui donne enfin un sens. -->
+<section class="ecran defile" id="ecranBienvenue">
+  <h1 id="bienvenueTitre">Bienvenue</h1>
+  <p class="muet" id="bienvenueEtapeNum"></p>
+
+  <div class="carte" id="bienvenueCarte">
+    <h2 id="bienvenueSousTitre" style="margin-top:0"></h2>
+    <div id="bienvenueCorps"></div>
+  </div>
+
+  <!-- Le questionnaire de materiel, montre a la derniere etape. Ce sont les
+       **memes** identifiants que l'ecran de profil : `dessiner_materiel` et
+       `enregistrer_materiel` les retrouvent, et il n'y a donc qu'un
+       questionnaire dans toute l'application. -->
+  <div id="bienvenueMateriel" hidden>
+    <h3 style="font-size:1rem">Haltères</h3>
+    <div class="halteres" id="listeHalteresAccueil"></div>
+    <h3 style="font-size:1rem">Accessoires</h3>
+    <div class="accessoires" id="listeAccessoiresAccueil"></div>
+  </div>
+
+  <div class="actions" style="justify-content:space-between">
+    <button class="bouton secondaire" id="bienvenuePrecedent" hidden>Retour</button>
+    <button class="bouton" id="bienvenueSuivant">Continuer</button>
+  </div>
+</section>
+
 <section class="ecran defile" id="ecranProfils">
   <h1>Qui s'entraîne ?</h1>
   <p class="sous-titre">
@@ -927,6 +1016,28 @@
          geste bras en X ne se declenche pas chez lui. Le poste fixe a un
          clavier pour ca, une tablette posee par terre n'a rien. -->
     <button class="bouton" id="boutonCommencer" hidden>Je commence</button>
+    <!-- Le tutoriel d'installation. Pas de `data-commande` : `verifier_hud.py`
+         exige que celles-ci soient identiques dans les deux pages, et ce
+         guidage n'existe que dans l'application — le poste fixe a un clavier
+         et un ecran a portee de main. -->
+    <button class="bouton secondaire" id="boutonPasserTuto" data-tuto="passer" hidden>
+      Passer le guide
+    </button>
+  </div>
+
+  <!-- Le guide d'un exercice rencontre pour la premiere fois. **z-index 11**,
+       donc au-dessus des commandes de serie (10) : tant qu'il est la, rien
+       d'autre ne doit etre cliquable. Surtout pas a l'interieur de
+       `#restOverlay`, dont `afficher_phase` rebascule la visibilite a chaque
+       image et qui l'ecraserait. -->
+  <div class="guide-exercice" id="guideExercice" hidden>
+    <div class="guide-carte">
+      <h2 id="guideNom"></h2>
+      <p class="guide-description" id="guideDescription"></p>
+      <div id="guideBlocs"></div>
+      <button class="bouton" id="guideCompris" data-tuto="compris">J'ai compris</button>
+      <p class="guide-astuce">Ou croise les bras devant toi — tu n'as pas à revenir à l'écran.</p>
+    </div>
   </div>
 
   <div class="hold-container" id="holdContainer">
@@ -1109,8 +1220,19 @@ import {
 } from "../js/positions.js";
 import { creer_etat } from "../js/etat.js";
 import { texte, libelle_etape } from "../js/messages.js";
-import { points_utilises, consigne_de_cadrage } from "../js/cadrage.js";
+import {
+  points_utilises,
+  message_de_cadrage,
+  problemes_de_cadrage,
+  texte_de_cadrage,
+} from "../js/cadrage.js";
+import {
+  sequence_cadrage,
+  sequence_orientation,
+  sequence_prochain_exercice,
+} from "../js/annonces.js";
 import * as historique from "../js/historique.js";
+import { Tutoriel, etapes_de_seance } from "../js/tutoriel.js";
 import * as stockage from "../js/stockage.js";
 import { Lecteur } from "../js/lecteur.js";
 import { Baremes } from "../js/paliers.js";
@@ -1247,6 +1369,10 @@ let mouvements = {};
 let seances = {};
 let base = historique.base_vide();
 let tables_baremes = null;
+//: Les tables du coach, dont `briques` — le vocabulaire compose. Gardees au
+//: niveau du module comme celles des baremes : `annoncer_changement` en a
+//: besoin bien apres le chargement.
+let tables_sons = null;
 let programmes_declares = {};
 //: Le catalogue tel qu'il est deploye, avant les modifications locales.
 //: Le garder a part est ce qui permet de rendre une seance au fichier.
@@ -1265,6 +1391,7 @@ async function charger_donnees() {
   seances_du_fichier = s;
   tables_baremes = baremes;
   programmes_declares = progs;
+  tables_sons = sons;
   lecteur = new Lecteur("../sons", sons);
   base = await stockage.charger();
   if (!base.utilisateurs.length) {
@@ -1325,6 +1452,48 @@ function lecture_du_profil() {
 let lecteur = null;
 const coach = (cle, valeur = null) => lecteur?.coach(cle, valeur);
 
+/**
+ * Une phrase composee, jouee **d'un seul tenant**.
+ *
+ * Priorite d'evenement important (>= 5) : une annonce longue doit chasser les
+ * petits sons en attente plutot que de faire la queue derriere eux, et surtout
+ * ne jamais etre coupee en son milieu. `Lecteur.sequence` garantit le second
+ * point, cette priorite le premier.
+ */
+const coach_sequence = (sons, priorite = 5) => lecteur?.sequence(sons, priorite);
+
+/**
+ * Le nombre d'halteres qu'un mouvement demande, ou 0.
+ *
+ * Jumeau de `session.seances.nombre_halteres`, lu dans la table exportee. Les
+ * echauffements n'y figurent pas — ils se font au poids du corps — et le 0 les
+ * rend muets sur le materiel, ce qui est la bonne reponse.
+ */
+const nombre_halteres = (nom) =>
+  tables_baremes?.materiel?.[nom]?.halteres ?? 0;
+
+/**
+ * « Prochain exercice. Curl biceps droit. Prepare un haltere de 8 kilos. Place
+ * -toi de profil, la camera a ta droite. »
+ *
+ * Jumelle d'`audio.coach.annoncer_prochaine_etape`. Les deux informations
+ * ajoutees a la simple nomination sont celles qu'un ecran regarde de trois
+ * metres ne donne pas : ce qu'il faut sortir du placard, et de quel cote se
+ * tourner.
+ */
+function annoncer_prochain_exercice(bloc) {
+  if (!bloc) return;
+  const etape = { exercice: bloc.exercice.nom, poids: bloc.poids };
+  const sons = sequence_prochain_exercice(
+    tables_sons?.briques,
+    etape,
+    nombre_halteres(bloc.exercice.nom)
+  ).concat(
+    sequence_orientation(tables_sons?.briques, bloc.exercice.orientation)
+  );
+  coach_sequence(sons);
+}
+
 // ---------------------------------------------------------------- seance
 
 const camera = new Camera(POSES_SEUL);
@@ -1352,6 +1521,64 @@ const verrou_ecran = new VerrouEcran();
 //: l'application n'a pas de controleur, mais elle a les memes commandes.
 let statut = "running";
 let phase_precedente = null;
+//: Le guidage d'installation, arme seulement la premiere fois qu'un profil
+//: joue une seance. `null` veut dire « rien a guider », et c'est le cas le
+//: plus courant : on ne reexplique pas une seance connue.
+let tutoriel = null;
+//: Le guide du mouvement en cours, tant qu'il n'a pas ete lu. Il **suspend
+//: le comptage** sans suspendre la seance : l'image continue de defiler et
+//: l'horloge d'avancer, comme en pause, mais sans passer par
+//: `statut = "paused"` — celui-ci teinterait `payload_etat` et griserait
+//: toutes les commandes, ce qui n'est pas ce qu'on veut dire.
+let guide_exercice = null;
+//: Le geste qui referme le guide. Le sien, et pas `geste_fin` : celui-la
+//: valide une serie, et les confondre terminerait la serie qu'on vient tout
+//: juste d'expliquer.
+let geste_guide = null;
+
+/**
+ * Le guidage d'installation d'une seance, ou null s'il a deja ete vu.
+ *
+ * **La memoire est sur le profil, pas sur l'appareil** : deux personnes
+ * partagent la tablette, et un tutoriel s'adresse a quelqu'un. Revoir se fait
+ * en effacant cette memoire (`historique.oublier_tuto`) et non en forcant un
+ * drapeau ici : un seul chemin mene a un tutoriel, donc un seul a corriger.
+ */
+function tutoriel_de_seance(nom) {
+  const profil = base.utilisateurs.find((u) => u.id === PROFIL);
+  if (historique.tuto_deja_vu(profil, "seances", nom)) return null;
+
+  const blocs = seances[nom] ?? [];
+  // Le tapis n'est annonce que s'il sert : une consigne qui se declenche a
+  // tort apprend a ne plus les ecouter, et c'est la lecon de `cadrage.js`.
+  const avec_tapis = blocs.some((b) =>
+    (mouvements[b.exercice]?.materiel ?? "").toLowerCase().includes("tapis")
+  );
+  // L'orientation du **premier** exercice : c'est celui qu'on va prendre, et
+  // les suivants seront annonces a leur tour au changement d'exercice.
+  const premier = blocs.length ? mouvements[blocs[0].exercice] : null;
+
+  return new Tutoriel(
+    etapes_de_seance({ orientation: premier?.orientation ?? null, avec_tapis }),
+    performance.now() / 1000
+  );
+}
+
+/**
+ * Referme le guidage et retient qu'il a ete vu.
+ *
+ * L'ecriture en base est **conditionnee au retour de `marquer_tuto_vu`** :
+ * `stockage.sauver` reecrit la base entiere dans un seul enregistrement, et
+ * la relancer a chaque image ou le tutoriel se termine serait du travail pur.
+ */
+async function clore_tutoriel() {
+  if (!tutoriel) return;
+  tutoriel = null;
+  $("boutonPasserTuto").hidden = true;
+  if (historique.marquer_tuto_vu(base, PROFIL, "seances", nom_seance)) {
+    await stockage.sauver(base);
+  }
+}
 
 async function demarrer(nom) {
   // **Avant de construire quoi que ce soit.** Une seance dont un bloc n'a pas
@@ -1384,6 +1611,7 @@ async function demarrer(nom) {
   fin_decompte = null;
   geste_preparation = new HoldPosition(bras_en_x, TENUE_PREPARATION);
   geste_fin = new HoldPosition(bras_en_x, TENUE_VALIDATION);
+  tutoriel = tutoriel_de_seance(nom);
 
   // Le contexte audio se cree pendant le clic, jamais avant : iOS refuse de
   // jouer quoi que ce soit sans geste de l'utilisateur.
@@ -1422,12 +1650,91 @@ async function demarrer(nom) {
 function changer_exercice() {
   const bloc = seance.bloc_actuel;
   if (!bloc) return;
+  ouvrir_guide_exercice(bloc);
   points_requis = bloc.exercice.detection
     ? points_utilises(bloc.exercice.detection)
     : [];
   compteur.reset();
   derniere_rep = 0;
   etat.fiche = bloc.exercice.fiche();
+}
+
+/**
+ * Ouvre le guide d'un mouvement rencontre pour la premiere fois.
+ *
+ * **Le probleme qu'il resout est structurel** : quand `repos_apres` vaut 0,
+ * `terminer_serie` enchaine sur l'exercice suivant sans aucune phase
+ * intermediaire — pas de voile de repos, pas de `fiche_suivante`, rien. C'est
+ * exactement le cas ou expliquer sert le plus, et le seul ou aucun crochet
+ * n'existait. D'ou un drapeau porte par la page plutot qu'une phase de plus.
+ *
+ * Le contenu vient de `mouvements[nom]`, donc d'`Exercice.fiche()` : enrichir
+ * ce qu'on montre d'un mouvement se fait la-bas et nulle part ailleurs.
+ */
+function ouvrir_guide_exercice(bloc) {
+  const nom = bloc.exercice.nom;
+  const profil = base.utilisateurs.find((u) => u.id === PROFIL);
+  if (historique.tuto_deja_vu(profil, "exercices", nom)) return;
+
+  const fiche = mouvements[nom] ?? bloc.exercice.fiche();
+  guide_exercice = bloc;
+  // Tenu 1,5 s comme le geste d'entree en seance, et non 3 s comme celui qui
+  // valide une serie : refermer une explication n'est pas destructeur, donc ca
+  // n'a pas a etre lent.
+  geste_guide = new HoldPosition(bras_en_x, TENUE_PREPARATION);
+
+  $("guideNom").textContent = fiche.nom;
+  $("guideDescription").textContent = fiche.description ?? "";
+  $("guideBlocs").innerHTML = [
+    liste_guide("Installe-toi", fiche.mise_en_place),
+    liste_guide("Le mouvement", fiche.instructions),
+    liste_guide("À éviter", fiche.erreurs_frequentes),
+  ].join("");
+  $("guideExercice").hidden = false;
+
+  // La voix dit ce que l'ecran ne peut pas : de quel cote se tourner et quoi
+  // sortir du placard. On est a trois metres, et on va poser la tablette.
+  annoncer_prochain_exercice(bloc);
+}
+
+/** Un bloc de la fiche, ou rien du tout s'il est vide. */
+function liste_guide(titre, lignes) {
+  if (!lignes?.length) return "";
+  const items = lignes.map((l) => `<li>${echapper(l)}</li>`).join("");
+  return `<h3>${titre}</h3><ul>${items}</ul>`;
+}
+
+/**
+ * Le guide est ouvert : on attend qu'il soit lu, rien d'autre n'avance.
+ *
+ * `geste_guide.update` est appele **ici et seulement ici**, une fois par
+ * image. `observer_gestes` se contente de lire sa progression pour remplir
+ * l'anneau : `HoldPosition` ne rend la transition « termine » qu'une seule
+ * fois, et un second appel la consommerait — le guide ne se refermerait alors
+ * jamais au geste.
+ */
+function lire_guide(corps) {
+  etat.consigne = null;
+  const [, valide] = geste_guide.update(corps);
+  if (valide) fermer_guide();
+}
+
+/**
+ * Referme le guide et retient qu'il a ete lu.
+ *
+ * L'ecriture en base est conditionnee au retour de `marquer_tuto_vu` :
+ * `stockage.sauver` reecrit la base entiere dans un seul enregistrement, et la
+ * relancer a chaque exercice deja connu serait du travail pur.
+ */
+async function fermer_guide() {
+  if (!guide_exercice) return;
+  const nom = guide_exercice.exercice.nom;
+  guide_exercice = null;
+  geste_guide = null;
+  $("guideExercice").hidden = true;
+  if (historique.marquer_tuto_vu(base, PROFIL, "exercices", nom)) {
+    await stockage.sauver(base);
+  }
 }
 
 function boucle(horodatage) {
@@ -1462,7 +1769,13 @@ function boucle(horodatage) {
   if (corps_brut) {
     const corps = construire_corps(corps_brut);
     observer_gestes(corps);
-    if (seance.phase === "preparation") preparer(corps, instant);
+    // Le guide passe avant tout le reste : tant qu'il est ouvert, le mode
+    // n'est pas execute, donc rien n'est compte. C'est volontairement **en
+    // dehors de la machine a etats** — rearmer une phase ferait diverger
+    // `circuit.js` de `circuit.py`, que `comparer_seances.mjs` compare pas a
+    // pas.
+    if (guide_exercice) lire_guide(corps);
+    else if (seance.phase === "preparation") preparer(corps, instant);
     else if (seance.phase === "exercice") jouer_exercice(corps, instant);
     else etat.consigne = null;
   } else if (seance.phase === "preparation" || seance.phase === "exercice") {
@@ -1515,7 +1828,11 @@ function observer_gestes(corps) {
   // Pendant la preparation c'est le geste d'entree qui remplit la bulle,
   // pendant l'effort celui de validation : les deux se tiennent de la meme
   // facon, et montrer l'un puis l'autre evite d'avoir deux indicateurs.
-  const geste = seance.phase === "preparation" ? geste_preparation : geste_fin;
+  const geste = guide_exercice
+    ? geste_guide
+    : seance.phase === "preparation"
+      ? geste_preparation
+      : geste_fin;
   // **Lecture seule** : `update` ne doit etre appele qu'une fois par image, et
   // c'est la phase qui s'en charge. L'appeler ici aussi consommerait la
   // transition « termine », que `HoldPosition` ne rend qu'une seule fois — la
@@ -1546,11 +1863,54 @@ function preparer(corps, instant) {
   // Le cadrage passe avant le geste, pour la meme raison que dans la demo :
   // quelqu'un d'immobile hors champ franchirait toutes les etapes suivantes.
   if (fin_decompte === null) {
-    const cadrage = points_requis.length
-      ? consigne_de_cadrage(corps, points_requis)
+    // Le choix est calcule **une fois** et sert aux deux canaux : le bandeau
+    // affiche la phrase, le coach prononce les deux briques. Passer par
+    // `consigne_de_cadrage` ne rendrait que le texte, et refaire le calcul
+    // pour la voix les laisserait diverger.
+    const choix = points_requis.length
+      ? message_de_cadrage(problemes_de_cadrage(corps, points_requis))
       : null;
-    if (cadrage) {
-      etat.consigne = cadrage;
+
+    // Le guidage d'installation passe **avant** le geste bras en X, et il le
+    // masque tant qu'il dure : sans ca, quelqu'un qui croise les bras par
+    // reflexe demarrerait au milieu d'une explication qu'il a demandee.
+    // Il tourne en revanche *avec* le controle de cadrage, qui est ce qui
+    // valide son etape centrale — la consigne est verifiee, pas seulement dite.
+    if (tutoriel) {
+      $("boutonPasserTuto").hidden = false;
+      const pas = tutoriel.update({ instant, cadre: choix === null });
+      if (pas.annonces.length) {
+        coach_sequence(
+          pas.annonces.map((cle) => tables_sons?.briques?.[cle]).filter(Boolean),
+          6
+        );
+      }
+      if (pas.termine) {
+        clore_tutoriel();
+      } else {
+        // Le bandeau dit **exactement** ce que la voix prononce : les deux
+        // sortent de la meme table, exportee d'`audio/annonces.py`. Un
+        // probleme de cadrage reste prioritaire — c'est la seule consigne qui
+        // demande une action tout de suite.
+        const libelle = pas.etape.annonces
+          .map((cle) => tables_sons?.textes?.[cle])
+          .filter(Boolean)
+          .join(" · ");
+        etat.consigne = texte_de_cadrage(choix) ?? (libelle || null);
+        return;
+      }
+    }
+
+    if (choix) {
+      etat.consigne = texte_de_cadrage(choix);
+      // La cle « cadrage » porte le delai minimal entre deux annonces : cette
+      // branche est evaluee a chaque image, et sans lui la consigne se
+      // repeterait des que la position vacille.
+      coach_sequence(
+        sequence_cadrage(tables_sons?.briques, choix.partie, choix.action),
+        7,
+        "cadrage"
+      );
       return;
     }
 
@@ -1560,6 +1920,10 @@ function preparer(corps, instant) {
       etat.consigne = texte("preparation_bras_en_x");
       return;
     }
+    // Le premier exercice de la seance s'annonce ici, comme `main.py` le fait
+    // a la fin du meme geste : avant le decompte, pour qu'on ait le temps
+    // d'entendre de quel cote se tourner.
+    annoncer_prochain_exercice(seance.bloc_actuel);
     fin_decompte = instant + DECOMPTE;
     dernier_decompte = null;
   }
@@ -1676,10 +2040,12 @@ function annoncer_changement(avant) {
     // qu'il vaut null, et sa premiere lecture ne fait que le poser.
     seance.repos_restant_precedent = null;
   } else if (phase === "repos_exercice") {
-    // Les deux, comme `main.py` : « repos » dit qu'on s'arrete, « changement
-    // d'exercice » dit ce qui vient — ce n'est pas la meme information.
+    // Les deux, comme `main.py` : « repos » dit qu'on s'arrete, l'annonce
+    // composee dit ce qui vient — ce n'est pas la meme information. Elle
+    // remplace le « changement d'exercice » generique, qui etait tout ce que
+    // le navigateur savait dire faute d'annonces combinatoires exportables.
     coach("repos");
-    coach("changement_exercice");
+    annoncer_prochain_exercice(seance.prochain_bloc());
     seance.repos_restant_precedent = null;
   } else if (phase === "exercice") {
     // Le decompte du repos est fini : desarmer, sinon le repos suivant
@@ -1770,6 +2136,9 @@ function rafraichir_affichage() {
   // Le geste de fin de serie reutilise la bulle de maintien du HUD : c'est le
   // meme retour visuel, pour le meme genre d'action tenue.
   $("boutonCommencer").hidden = seance.phase !== "preparation";
+  // Jamais visible hors preparation, ni une fois le guidage clos : le
+  // masquer seulement a la fin laisserait un bouton mort a l'ecran.
+  $("boutonPasserTuto").hidden = !tutoriel || seance.phase !== "preparation";
 }
 
 // ---------------------------------------------------------------- fin
@@ -1957,10 +2326,24 @@ function proposer_ressentis(seance_id) {
  * Le formuler autrement laisserait cocher « paire » sans « seul », ce qui n'a
  * pas de sens et que `normaliser` devrait rattraper.
  */
-function dessiner_materiel() {
-  const inventaire = normaliser(tables_baremes, profil_courant()?.materiel ?? null);
+/**
+ * Remplit un questionnaire de materiel dans les elements qu'on lui donne.
+ *
+ * Il y a **deux endroits** ou on le remplit — l'ecran de profil et l'accueil
+ * d'un profil neuf — et il ne doit y avoir qu'un questionnaire. Les racines
+ * sont donc passees en parametre plutot que codees en dur, exactement comme
+ * `brancher_recalages(racine)` l'a fait le jour ou les records ont fusionne
+ * avec les fiches.
+ *
+ * Un `<select>` par poids et non deux cases : « une paire » et « un haltere
+ * seul » ne sont pas deux options independantes mais une **quantite**, et deux
+ * cases laisseraient cocher « paire » sans « seul ».
+ */
+function remplir_materiel(halteres_el, accessoires_el, inventaire = null) {
+  inventaire =
+    inventaire ?? normaliser(tables_baremes, profil_courant()?.materiel ?? null);
 
-  $("listeHalteres").innerHTML = tables_baremes.echelles.reference
+  halteres_el.innerHTML = tables_baremes.echelles.reference
     .map((poids) => {
       const quantite = inventaire.halteres[poids] || 0;
       const option = (valeur, libelle) =>
@@ -1974,13 +2357,34 @@ function dessiner_materiel() {
     })
     .join("");
 
-  $("listeAccessoires").innerHTML = Object.entries(tables_baremes.accessoires)
+  accessoires_el.innerHTML = Object.entries(tables_baremes.accessoires)
     .map(
       ([cle, libelle]) =>
         `<label><input type="checkbox" data-accessoire="${cle}"` +
         `${inventaire.accessoires.includes(cle) ? " checked" : ""}> ${libelle}</label>`
     )
     .join("");
+
+  return inventaire;
+}
+
+/** Ce qu'un questionnaire deja rempli declare. */
+function lire_materiel(halteres_el, accessoires_el) {
+  const halteres = {};
+  for (const select of halteres_el.querySelectorAll("select")) {
+    const quantite = Number(select.value) || 0;
+    if (quantite > 0) halteres[select.dataset.poids] = quantite;
+  }
+  return {
+    halteres,
+    accessoires: [...accessoires_el.querySelectorAll("input:checked")].map(
+      (input) => input.dataset.accessoire
+    ),
+  };
+}
+
+function dessiner_materiel() {
+  const inventaire = remplir_materiel($("listeHalteres"), $("listeAccessoires"));
 
   // Le resume se **lit** avant de s'editer, et une seule longue ligne
   // « paires : 3 kg, 4 kg · seuls : 2 kg… » ne se lit pas : les trois natures
@@ -2024,18 +2428,9 @@ function profil_courant() {
 }
 
 async function enregistrer_materiel() {
-  const halteres = {};
-  for (const select of $("listeHalteres").querySelectorAll("select")) {
-    const quantite = Number(select.value) || 0;
-    if (quantite > 0) halteres[select.dataset.poids] = quantite;
-  }
-  const accessoires = [...$("listeAccessoires").querySelectorAll("input:checked")].map(
-    (input) => input.dataset.accessoire
-  );
-
   const profil = profil_courant();
   if (!profil) return;
-  profil.materiel = { halteres, accessoires };
+  profil.materiel = lire_materiel($("listeHalteres"), $("listeAccessoires"));
 
   const ecrit = await stockage.sauver(base);
   // **Le moteur porte l'inventaire** : `Baremes` le normalise une fois pour
@@ -2566,11 +2961,163 @@ async function supprimer_profil(utilisateur, seances) {
   dessiner_profils();
 }
 
+// ------------------------------------------- accueil d'un nouveau profil
+
+/**
+ * Les etapes de l'accueil. La derniere est le questionnaire de materiel, et
+ * c'est elle qui rend ce tunnel **bloquant** : un profil qui ne declare pas son
+ * inventaire s'entraine sur le materiel par defaut, donc avec des objectifs
+ * faux — en silence, pendant des semaines.
+ *
+ * Les `annonces` sont des cles de briques : la voix dit exactement ce que
+ * l'ecran affiche, les deux sortant de `donnees/sons.json`. Ecrire ces phrases
+ * ici en plus creerait une seconde source qui deriverait de la premiere.
+ */
+const ETAPES_BIENVENUE = [
+  {
+    titre: "Comment ça marche",
+    annonces: ["bienvenue_camera_compte", "bienvenue_je_te_guide",
+               "bienvenue_rien_ne_sort"],
+    corps: [
+      "Tu poses ton appareil, tu t'entraînes, et la caméra compte tes répétitions.",
+      "Une voix t'annonce les exercices, les repos et la fin des séries : tu n'as jamais besoin de revenir à l'écran.",
+      "Tout se passe sur cet appareil. Aucune image n'est envoyée nulle part.",
+    ],
+  },
+  {
+    titre: "Où poser ton appareil",
+    annonces: ["installation_hauteur", "installation_distance"],
+    corps: [
+      "À deux ou trois mètres de toi, et surtout à hauteur de poitrine — idéalement entre la poitrine et le nombril.",
+      "Posé au sol, il ne te verra pas en entier, et rien ne sera compté.",
+      "Avant chaque nouvelle séance, je te ferai vérifier ton cadrage en bougeant.",
+    ],
+  },
+  {
+    titre: "Les deux gestes",
+    annonces: ["geste_bras_en_x", "geste_deux_bras_leves"],
+    corps: [
+      "Croise les bras devant toi pour démarrer une série, et pour la valider quand tu as fini.",
+      "Lève les deux bras pour remettre le compteur à zéro sans valider.",
+      "Tiens la position une à trois secondes : un anneau se remplit à l'écran pour te dire que le geste est pris.",
+    ],
+  },
+  {
+    titre: "Ton matériel",
+    annonces: [],
+    materiel: true,
+    corps: [
+      "Coche ce que tu as sous la main. C'est ce qui décide des charges que je te proposerai.",
+      "Si tu n'as rien, laisse tout à « Aucun » : tous les mouvements au poids du corps restent jouables.",
+    ],
+  },
+];
+
+let etape_bienvenue = 0;
+
+function dessiner_bienvenue() {
+  const etape = ETAPES_BIENVENUE[etape_bienvenue];
+  const profil = profil_courant();
+
+  $("bienvenueTitre").textContent = `Bienvenue ${profil?.nom ?? ""}`.trim();
+  $("bienvenueEtapeNum").textContent =
+    `Étape ${etape_bienvenue + 1} sur ${ETAPES_BIENVENUE.length}`;
+  $("bienvenueSousTitre").textContent = etape.titre;
+  $("bienvenueCorps").innerHTML = etape.corps
+    .map((ligne) => `<p>${echapper(ligne)}</p>`)
+    .join("");
+
+  $("bienvenueMateriel").hidden = !etape.materiel;
+  if (etape.materiel) {
+    // **Le questionnaire d'accueil part vide, et c'est deliberement different
+    // de celui du profil.** `normaliser(null)` rend la gamme complete — la
+    // bonne regle pour un profil deja la, qui ne doit pas changer de bareme du
+    // jour au lendemain, et la mauvaise pour quelqu'un a qui on pose la
+    // question : cocher a sa place, c'est repondre a sa place. Quelqu'un qui
+    // traverse sans lire repartirait avec des objectifs a 18 kg qu'il ne peut
+    // pas soulever, et ca ne se voit pas, ca se subit. Sous-declarer est
+    // l'erreur inverse, et elle se corrige d'elle-meme : les objectifs sont
+    // trop faciles, on s'en apercoit.
+    remplir_materiel(
+      $("listeHalteresAccueil"),
+      $("listeAccessoiresAccueil"),
+      { halteres: {}, accessoires: [] }
+    );
+  }
+
+  $("bienvenuePrecedent").hidden = etape_bienvenue === 0;
+  $("bienvenueSuivant").textContent = etape.materiel
+    ? "C'est parti"
+    : "Continuer";
+
+  // Le son n'est prepare qu'au premier clic — iOS l'exige —, donc la premiere
+  // etape est muette et les suivantes parlent. Mieux vaut ca qu'un bouton
+  // « activer le son » de plus, et le texte porte deja tout le message.
+  coach_sequence(
+    etape.annonces.map((cle) => tables_sons?.briques?.[cle]).filter(Boolean),
+    6
+  );
+}
+
+async function avancer_bienvenue() {
+  const etape = ETAPES_BIENVENUE[etape_bienvenue];
+
+  if (etape.materiel) {
+    const profil = profil_courant();
+    if (profil) {
+      profil.materiel = lire_materiel(
+        $("listeHalteresAccueil"),
+        $("listeAccessoiresAccueil")
+      );
+      profil.onboarding_termine = 1;
+      await stockage.sauver(base);
+      // **Sans ca les objectifs resteraient calcules sur l'ancien
+      // inventaire**, en silence : `Baremes` normalise une fois pour toutes a
+      // la construction.
+      construire_moteur();
+    }
+    dessiner_liste();
+    montrer("ecranSeances");
+    return;
+  }
+
+  etape_bienvenue += 1;
+  dessiner_bienvenue();
+}
+
+/** L'accueil est-il encore a faire pour ce profil ? */
+function accueil_a_faire(profil) {
+  return !profil?.onboarding_termine;
+}
+
 function choisir_profil(id) {
   retenir_profil(id);
   construire_moteur();
   majOngletProfil();
   dessiner_liste();
+  // **Le tunnel s'impose avant tout le reste.** C'est le seul endroit qui lit
+  // `onboarding_termine`, ecrite a la creation d'un profil depuis le portage
+  // de SQLite et jamais consultee jusqu'ici.
+  ouvrir_pour_le_profil();
+}
+
+/**
+ * Montre l'accueil si le profil ne l'a pas fait, la liste des seances sinon.
+ *
+ * **Deux chemins mènent a un profil courant**, et les deux doivent passer
+ * ici : le demarrage de l'application, et le changement de personne. Ne garder
+ * que le second laissait le tunnel inoperant precisement au moment ou il sert
+ * — un profil neuf arrive au premier lancement, pas en changeant de profil.
+ * Meme piege que `ROUTES_ONBOARDING` cote Flask : une entree oubliee ne leve
+ * rien, elle rend la garde muette.
+ */
+function ouvrir_pour_le_profil() {
+  if (accueil_a_faire(profil_courant())) {
+    etape_bienvenue = 0;
+    dessiner_bienvenue();
+    montrer("ecranBienvenue");
+    return;
+  }
   montrer("ecranSeances");
 }
 
@@ -3772,7 +4319,43 @@ for (const onglet of document.querySelectorAll(".onglet")) {
 }
 
 $("boutonCommencer").addEventListener("click", () => {
+  // Il court-circuite le guidage aussi : « je commence » veut dire « je sais
+  // ou je suis », et laisser le tutoriel tourner derriere l'effort ferait
+  // parler le coach par-dessus la premiere serie.
+  clore_tutoriel();
   if (seance && seance.phase === "preparation") lancer_effort();
+});
+
+$("guideCompris").addEventListener("click", () => fermer_guide());
+
+$("bienvenueSuivant").addEventListener("click", () => {
+  // Le contexte audio se cree **dans le clic** : iOS refuse de jouer quoi que
+  // ce soit sans geste de l'utilisateur, et c'est le premier qu'on ait.
+  lecteur?.preparer();
+  avancer_bienvenue();
+});
+
+$("bienvenuePrecedent").addEventListener("click", () => {
+  etape_bienvenue = Math.max(0, etape_bienvenue - 1);
+  dessiner_bienvenue();
+});
+
+$("boutonRejouerGuides").addEventListener("click", async () => {
+  // On **efface la memoire** plutot que de forcer un drapeau : le
+  // declenchement ordinaire fait le reste, donc il n'y a qu'un seul chemin
+  // vers un guide, donc un seul a corriger le jour ou il change.
+  historique.oublier_tuto(base, PROFIL);
+  const ecrit = await stockage.sauver(base);
+  $("etatGuides").textContent = ecrit
+    ? "Les guides rejoueront à ta prochaine séance."
+    : "Le stockage a refusé l'écriture : les guides ne rejoueront pas.";
+});
+
+$("boutonPasserTuto").addEventListener("click", () => {
+  // `passer()` d'abord : `clore_tutoriel` retient que le guidage a ete vu, et
+  // c'est bien ce qu'on veut — le passer est une reponse, pas un report.
+  tutoriel?.passer();
+  clore_tutoriel();
 });
 /**
  * Les onze commandes de serie, cablees sur le `Circuit` local.
@@ -3931,7 +4514,11 @@ $("fichierImport").addEventListener("change", async (evenement) => {
 window.addEventListener("pagehide", () => camera.liberer());
 
 charger_donnees()
-  .then(dessiner_liste)
+  .then(() => {
+    dessiner_liste();
+    // Le second chemin d'entree. Voir `ouvrir_pour_le_profil`.
+    ouvrir_pour_le_profil();
+  })
   .catch((erreur) => {
     $("sousTitre").textContent = `Chargement impossible : ${erreur.message}`;
   });

@@ -124,13 +124,48 @@ export class Lecteur {
     this._empiler(fichier, this.priorites[cle] ?? PRIORITE_PAR_DEFAUT);
   }
 
-  _empiler(fichier, priorite) {
+  /**
+   * Joue une phrase composee de plusieurs fichiers, **comme un seul son**.
+   * Jumeau de `jouer_sequence` dans `audio/lecteur.py`.
+   *
+   * C'est l'indivisibilite qui compte. Empiler quatre `coach()` d'affilee
+   * ordonnerait bien les morceaux — le rang departage les priorites egales —
+   * mais rien n'empecherait un evenement urgent de se glisser au milieu : on
+   * entendrait « prochain exercice… 12 repetitions ». Une sequence est donc
+   * **une** entree de la file, que la purge garde ou jette en entier.
+   *
+   * Un fichier manquant est un silence et non une panne (`_tampon` rend null) :
+   * c'est ce qui permet d'enregistrer les prises par lots, une phrase
+   * s'abregeant au lieu de disparaitre.
+   */
+  sequence(fichiers, priorite = PRIORITE_PAR_DEFAUT, cle = null) {
+    if (!this.contexte) return;
+    const propres = (fichiers ?? []).filter(Boolean);
+    if (!propres.length) return;
+
+    // Meme garde-fou que `coach()`, et sur la meme table exportee du Python :
+    // sans lui, une consigne evaluee a chaque image se repete des que la
+    // position vacille. C'est le defaut qu'avait la correction de gainage, et
+    // il se reproduirait a l'identique sur le guidage de cadrage.
+    if (cle) {
+      const delai = this.delais[cle] ?? 0;
+      const maintenant = performance.now() / 1000;
+      const derniere = this._dernieres.get(cle);
+      if (derniere !== undefined && maintenant - derniere < delai) return;
+      this._dernieres.set(cle, maintenant);
+    }
+
+    this._empiler(propres, priorite);
+  }
+
+  _empiler(fichiers, priorite) {
     if (priorite >= PRIORITE_IMPORTANTE) {
       this._file = this._file.filter((e) => e.priorite >= PRIORITE_IMPORTANTE);
     }
     // Le rang departage deux sons de meme priorite : le premier demande passe
     // en premier, ce qu'un tri sur la seule priorite ne garantirait pas.
-    this._file.push({ fichier, priorite, rang: this._rang++ });
+    const propres = Array.isArray(fichiers) ? fichiers : [fichiers];
+    this._file.push({ fichiers: propres, priorite, rang: this._rang++ });
     this._file.sort((a, b) => b.priorite - a.priorite || a.rang - b.rang);
     this._servir();
   }
@@ -140,10 +175,14 @@ export class Lecteur {
     this._joue = true;
     try {
       while (this._file.length) {
-        const { fichier } = this._file.shift();
-        const tampon = await this._tampon(fichier);
-        if (!tampon) continue;
-        await this._jouer_tampon(tampon);
+        const { fichiers } = this._file.shift();
+        // Une entree est une sequence : ses morceaux s'enchainent sans que la
+        // file puisse etre reordonnee entre deux.
+        for (const fichier of fichiers) {
+          const tampon = await this._tampon(fichier);
+          if (!tampon) continue;
+          await this._jouer_tampon(tampon);
+        }
       }
     } finally {
       this._joue = false;

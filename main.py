@@ -243,8 +243,23 @@ try:
 
                     coach("repos")
 
+                    # Le nombre d'haltères et l'orientation sont fournis ici
+                    # plutôt que lus par le coach : `audio.annonces` n'importe
+                    # que la bibliothèque standard, et c'est ce qui permet à
+                    # `preparer_demo` de l'exporter vers le navigateur sans
+                    # tirer tout le catalogue ni pygame.
+                    prochain = seance.prochain_bloc()
+
                     annoncer_prochaine_etape(
-                        etat.prochaine_etape, "changement_exercice"
+                        etat.prochaine_etape,
+                        nombre_halteres=(
+                            session.seances.nombre_halteres(prochain.exercice.nom)
+                            if prochain
+                            else 0
+                        ),
+                        orientation=(
+                            prochain.exercice.orientation if prochain else None
+                        ),
                     )
 
                     seance.repos_restant_precedent = int(seance.temps_restant)
@@ -291,8 +306,24 @@ try:
                         etat.consigne = texte("preparation_bras_en_x")
 
                         if termine:
+                            # Le premier exercice de la séance : en phase
+                            # `preparation`, `prochaine_etape` décrit le bloc
+                            # **courant** et non le suivant, donc on lit
+                            # `bloc_actuel`.
+                            bloc = seance.bloc_actuel
+
                             annoncer_prochaine_etape(
-                                etat.prochaine_etape, "debut_serie"
+                                etat.prochaine_etape,
+                                nombre_halteres=(
+                                    session.seances.nombre_halteres(
+                                        bloc.exercice.nom
+                                    )
+                                    if bloc
+                                    else 0
+                                ),
+                                orientation=(
+                                    bloc.exercice.orientation if bloc else None
+                                ),
                             )
                             fin_preparation = time.time()
 

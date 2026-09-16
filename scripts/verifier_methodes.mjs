@@ -27,7 +27,9 @@
 //
 // Usage : node scripts/verifier_methodes.mjs
 
-import { readdirSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -110,15 +112,84 @@ function main() {
     }
   }
 
+  const pages = verifier_modules_inline();
+  problemes.push(...pages.problemes);
+
   if (problemes.length) {
-    console.log(`${problemes.length} appels sans definition :\n`);
+    console.log(`${problemes.length} problemes :\n`);
     for (const probleme of problemes) console.log(`  - ${probleme}`);
     process.exitCode = 1;
     return;
   }
 
   console.log(`${verifiees} appels de methode verifies dans ${fichiers.length} modules`);
+  console.log(`${pages.verifiees} modules inline sans faute de syntaxe`);
   console.log("\nAucun appel orphelin.");
+}
+
+/**
+ * Les `<script type="module">` des pages sont-ils syntaxiquement valides ?
+ *
+ * Angle mort symetrique de celui du reste de ce fichier. `node --check` ne
+ * regarde que les fichiers `.js`, or le module de l'application fait pres de
+ * trois mille lignes et vit **inline** dans `app/index.html` : une faute de
+ * syntaxe y emporte la page entiere — ecran blanc, aucun rendu — et rien dans
+ * la chaine de verification ne la voyait.
+ *
+ * Mesure a l'appui : melanger `??` et `||` sans parentheses est refuse par le
+ * parseur, et l'erreur n'apparait que dans la console d'un onglet. Sur une
+ * tablette posee par terre, personne ne la verra jamais.
+ *
+ * Extraction dans un `.mjs` jetable, puis `node --check`. Verification
+ * **bornee a la syntaxe** : elle ne resout aucun import, ce qui la rend
+ * independante du CDN de MediaPipe — la raison meme pour laquelle `camera.js`
+ * echappe a tous les harnais.
+ */
+function verifier_modules_inline() {
+  const pages = ["app/index.html", "demo/index.html"];
+  const problemes = [];
+  let verifiees = 0;
+
+  const dossier = mkdtempSync(join(tmpdir(), "verif-inline-"));
+  try {
+    for (const page of pages) {
+      let source;
+      try {
+        source = readFileSync(join(MODULES, "..", page), "utf-8");
+      } catch {
+        continue;
+      }
+
+      const modules = [
+        ...source.matchAll(/<script type="module">([\s\S]*?)<\/script>/g),
+      ];
+
+      for (const module of modules) {
+        const jetable = join(dossier, `module-${verifiees}.mjs`);
+        writeFileSync(jetable, module[1], "utf-8");
+        verifiees += 1;
+        try {
+          execFileSync(process.execPath, ["--check", jetable], {
+            stdio: ["ignore", "ignore", "pipe"],
+          });
+        } catch (erreur) {
+          // La premiere ligne utile du diagnostic de Node ; le reste est une
+          // pile d'appels de son propre parseur, qui n'apprend rien.
+          const detail =
+            String(erreur.stderr ?? erreur.message)
+              .split("\n")
+              .find((l) => l.includes("Error")) ?? "";
+          problemes.push(
+            `${page} : faute de syntaxe dans le module inline — ${detail.trim()}`
+          );
+        }
+      }
+    }
+  } finally {
+    rmSync(dossier, { recursive: true, force: true });
+  }
+
+  return { problemes, verifiees };
 }
 
 main();

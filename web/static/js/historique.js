@@ -115,9 +115,107 @@ export function creer_utilisateur(base, nom, maintenant) {
     date_naissance: null,
     taille_cm: null,
     poids_corps_kg: null,
+    // Ce que ce profil a deja vu expliquer. **Sur le profil et non en
+    // `localStorage`** : deux personnes partagent la meme tablette, et un
+    // tutoriel s'adresse a quelqu'un, pas a un appareil. Le profil courant,
+    // lui, reste bien une commodite d'appareil — la distinction est la meme
+    // que celle qui gouverne `CLE_PROFIL`.
+    //
+    // Les collections etant recopiees **entieres** a l'import, ce champ
+    // voyage sans une ligne de code. En revanche les profils anterieurs et
+    // ceux venus de SQLite ne l'ont pas : toute lecture passe par
+    // `tutos_vus(profil)`, et « pas de champ » veut dire « rien vu ».
+    tutos_vus: { general: 0, seances: [], exercices: [] },
   };
   base.utilisateurs.push(utilisateur);
   return { ...utilisateur };
+}
+
+//: Les trois familles de tutoriel, et l'ordre dans lequel on les rencontre.
+//: `general` est un drapeau (vu ou pas), les deux autres des listes de noms.
+export const FAMILLES_TUTORIEL = ["general", "seances", "exercices"];
+
+/**
+ * Ce qu'un profil a deja vu, sous une forme toujours exploitable.
+ *
+ * Il n'existe **aucune migration cote JavaScript** — c'est l'asymetrie assumee
+ * avec le `PRAGMA table_info` + `ALTER TABLE` du SQLite. Un profil cree avant
+ * ce champ, ou importe depuis le poste fixe, rend donc `undefined`, et c'est
+ * ici que ca se rattrape une fois pour toutes plutot qu'a chaque site de
+ * lecture.
+ */
+export function tutos_vus(profil) {
+  const brut = profil?.tutos_vus ?? {};
+  return {
+    general: brut.general ? 1 : 0,
+    seances: Array.isArray(brut.seances) ? [...brut.seances] : [],
+    exercices: Array.isArray(brut.exercices) ? [...brut.exercices] : [],
+  };
+}
+
+/** Ce tutoriel-la a-t-il deja ete vu par ce profil ? */
+export function tuto_deja_vu(profil, famille, nom = null) {
+  const vus = tutos_vus(profil);
+  if (famille === "general") return Boolean(vus.general);
+  return vus[famille]?.includes(nom) ?? false;
+}
+
+/**
+ * Note un tutoriel comme vu. Rend `true` si quelque chose a change.
+ *
+ * Le retour n'est pas decoratif : l'appelant doit savoir s'il vaut la peine
+ * d'ecrire en base. Revoir un tutoriel deja vu ne doit declencher aucune
+ * sauvegarde — `stockage.sauver` reecrit la base entiere dans un seul
+ * enregistrement, et le faire a chaque exercice d'une seance serait du travail
+ * pur pour rien.
+ */
+export function marquer_tuto_vu(base, utilisateur_id, famille, nom = null) {
+  const profil = base.utilisateurs.find((u) => u.id === utilisateur_id);
+  if (!profil) return false;
+  if (!FAMILLES_TUTORIEL.includes(famille)) return false;
+
+  const vus = tutos_vus(profil);
+
+  if (famille === "general") {
+    if (vus.general) return false;
+    vus.general = 1;
+  } else {
+    if (!nom || vus[famille].includes(nom)) return false;
+    vus[famille].push(nom);
+  }
+
+  profil.tutos_vus = vus;
+  return true;
+}
+
+/**
+ * Oublie ce qui a ete vu, pour tout rejouer.
+ *
+ * `famille` a null remet les trois a zero. Sert au bouton « revoir le tuto » :
+ * on ne rejoue pas en forcant un drapeau au site d'appel, on efface la
+ * memoire, et le declenchement ordinaire fait le reste — un seul chemin pour
+ * montrer un tutoriel, donc un seul a corriger.
+ */
+export function oublier_tuto(base, utilisateur_id, famille = null, nom = null) {
+  const profil = base.utilisateurs.find((u) => u.id === utilisateur_id);
+  if (!profil) return false;
+
+  const vus = tutos_vus(profil);
+
+  if (famille === null) {
+    profil.tutos_vus = { general: 0, seances: [], exercices: [] };
+    return true;
+  }
+  if (famille === "general") {
+    if (!vus.general) return false;
+    vus.general = 0;
+  } else {
+    if (!vus[famille].includes(nom)) return false;
+    vus[famille] = vus[famille].filter((n) => n !== nom);
+  }
+
+  profil.tutos_vus = vus;
+  return true;
 }
 
 //: Les mesures du corps, et elles seules : ni le nom, ni le materiel, ni le

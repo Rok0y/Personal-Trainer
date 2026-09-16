@@ -89,7 +89,7 @@ exercice isolé, qui sert à faire tester la détection par quelqu'un d'autre et
 diagnostiquer un comptage qui ne démarre pas (`?banc=1`).
 
 **Comment les deux restent alignées.** Le code qui *calcule* existe en double,
-Python d'un côté et JavaScript de l'autre, et neuf harnais de comparaison
+Python d'un côté et JavaScript de l'autre, et dix harnais de comparaison
 vérifient que les deux rendent exactement les mêmes réponses (voir *Tests*). Le
 code qui *affiche* l'écran de séance, lui, n'existe qu'une fois : `hud.css` et
 `hud.js` sont chargés par les deux pages, tout comme la palette, les feuilles
@@ -108,16 +108,16 @@ réel : il est écrit hors du dépôt, et le script refuse d'écrire dedans.
 - `vision/` — Détection de pose avec MediaPipe (`detector.py`), extraction des points clés du corps (`body.py`, `landmarks.py`) et dessin du squelette sur l'image (`dessin.py`).
 - `mouvements/` — Règles métier des exercices : comptage des répétitions (`compteur.py`), définitions des exercices (`exercices.py`), mouvements d'échauffement (`echauffements.py`), positions de contrôle comme le bras en X ou les bras levés (`positions.py`), utilitaires de maintien de position (`outils.py`).
 - `session/` — Machine à états de la séance : le circuit d'exercices (`circuit.py`), le moteur qui fait avancer une répétition/série/exercice (`moteur.py`), le `SessionManager` qui coordonne les commandes web et la séance en cours (`controleur.py`), et le catalogue des séances prédéfinies/personnalisées (`seances.py`, `seances_personnalisees.json`).
-- `audio/` — Coach vocal : sélection et déclenchement des annonces (`coach.py`), lecture des fichiers son (`lecteur.py`), banque de fichiers audio (`Fichiers/`) et outils de génération/nettoyage des sons (`nettoyer_sons.py`, `generer_annonces_manquantes.py`).
+- `audio/` — Coach vocal : sélection et déclenchement des annonces (`coach.py`), lecture des fichiers son (`lecteur.py`), briques d'annonces composées (`annonces.py`), banque de fichiers audio (`Fichiers/`), nettoyage des prises (`nettoyer_sons.py`) et la feuille de ce qu'il reste à enregistrer (`A_ENREGISTRER.md`, générée).
 - `historique/` — Persistance SQLite des séances, statistiques et records (`database.py`, base `personaltrainer.db`).
 - `web/` — Deux choses distinctes. Le **serveur Flask** (`app.py`) exposant l'API et les pages (démarrage/pause de séance, historique, programmes, fiches d'exercice, profil, création/édition de séances), avec ses templates (`templates/`). Et le **portage navigateur** dans `static/` : `static/js/` porte les jumeaux JavaScript des modules de calcul plus le code d'affichage partagé avec les templates, `static/app/` l'application complète, `static/demo/` le banc d'essai, `static/donnees/` les fichiers dérivés du Python. Les feuilles de style de la racine (`palette.css`, `hud.css`, `programmes.css`, `exercices.css`, `ressentis.css`, `ancrages.css`) sont chargées par les deux applications : c'est ce qui les empêche de diverger à chaque correction.
 - `progression/` — Moteur de progression : le barème de paliers de chaque exercice (`paliers.py`), la déduction du niveau atteint à partir de l'historique (`niveaux.py`), l'application des objectifs aux séances (`objectifs.py`), l'ajustement par le ressenti déclaré en fin de séance (`ressenti.py`), les programmes sportifs (`programmes.py`), la traduction d'un maximum en niveau de départ (`calibration.py`) et les ligues, divisions et XP qui rendent tout cela lisible (`ligues.py`). **Tous les nombres réglables — barèmes, seuils de ligue, table d'XP — vivent dans `reglages.json`**, lu par le Python comme par le JavaScript, et éditable depuis la page `web/static/dev/baremes.html` qui le rend prêt à coller.
 - `core/` — État partagé entre la boucle caméra et le site web (`state.py`), identité du profil connecté (`utilisateur.py`), matériel déclaré par le profil (`materiel.py`) et catalogue des messages affichés à l'utilisateur (`messages.py`).
-- `scripts/` — Trois genres d'outils, tous hors du chemin critique. Les **vérifications manuelles** (`script_verification_positions.py`, `script_niveaux.py`, `verifier_hud.py`), les **harnais de portage** par paires `generer_*.py` / `comparer_*.mjs`, et les **exports** : `preparer_demo.py` (tout ce que le navigateur relit) et `exporter_profil.py` (un historique SQLite vers l'application).
+- `scripts/` — Trois genres d'outils, tous hors du chemin critique. Les **vérifications manuelles** (`script_verification_positions.py`, `script_niveaux.py`, `verifier_hud.py`, `verifier_annonces.py`), les **harnais de portage** par paires `generer_*.py` / `comparer_*.mjs`, et les **exports** : `preparer_demo.py` (tout ce que le navigateur relit), `exporter_profil.py` (un historique SQLite vers l'application) et `lister_annonces.py` (la feuille de prise de son du coach, `audio/A_ENREGISTRER.md`, **dérivée** des tables et donc toujours d'accord avec ce que le code réclame).
 
 Le point d'entrée de l'application est `main.py`, qui orchestre la boucle caméra, la machine à séances, le coach vocal et le serveur web. L'état partagé entre la boucle caméra et le site web transite par `core/state.py`.
 
-`audio/generer_annonces_manquantes.py`, `scripts/script_verification_positions.py` et `scripts/script_niveaux.py` important des modules du projet par chemin absolu (`audio.coach`, `session.seances`, `mouvements.positions`...), il faut les lancer avec `python -m`, depuis la racine du dépôt, pour que ces imports se résolvent correctement — par exemple `python -m scripts.script_verification_positions` (un simple `python scripts/script_verification_positions.py` échouerait, Python n'ajoutant que le dossier du script à son chemin d'import).
+`scripts/script_verification_positions.py` et `scripts/script_niveaux.py` important des modules du projet par chemin absolu (`audio.coach`, `session.seances`, `mouvements.positions`...), il faut les lancer avec `python -m`, depuis la racine du dépôt, pour que ces imports se résolvent correctement — par exemple `python -m scripts.script_verification_positions` (un simple `python scripts/script_verification_positions.py` échouerait, Python n'ajoutant que le dossier du script à son chemin d'import).
 
 ## Prérequis
 
@@ -138,7 +138,7 @@ Au lancement, l'application initialise la base de données d'historique, ouvre l
 
 ## Tests
 
-Il n'y a pas de suite de tests unitaires, mais **neuf harnais de comparaison**
+Il n'y a pas de suite de tests unitaires, mais **dix harnais de comparaison**
 qui répondent à la seule question qui compte pour le portage : les deux
 implémentations rendent-elles la même réponse ? Chacun se joue en deux temps —
 un script Python écrit l'oracle, un script Node le rejoue et diffe.
@@ -151,16 +151,26 @@ python -m scripts.generer_scenarios     # 6 228 pas de seance, images comprises
 node scripts/comparer_seances.mjs
 ```
 
-Les sept autres suivent la même forme : `historique`, `paliers`, `niveaux`,
-`ressenti`, `objectifs`, `programmes`, `ligues`. Attention, deux noms ne coïncident pas —
+Les huit autres suivent la même forme : `historique`, `paliers`, `niveaux`,
+`ressenti`, `objectifs`, `programmes`, `ligues`, `annonces`. Attention, deux noms ne coïncident pas —
 `generer_fixtures` alimente `comparer_detections` et `generer_scenarios`
 alimente `comparer_seances` — et les fixtures **ne sont pas versionnées** : un
 comparateur lancé sans son générateur compare de vieilles réponses.
 `python -m scripts.verifier_hud` vérifie en plus que les deux montages de
-l'écran de séance portent les mêmes points d'accroche.
-`node scripts/verifier_methodes.mjs` signale les `this.methode()` appelées
+l'écran de séance portent les mêmes points d'accroche, et
+`python -m scripts.verifier_annonces` que les tables du coach vocal se
+tiennent — une clé sans fichier, deux phrases qui produiraient le même nom,
+une orientation hors vocabulaire. Ce contrôle-là compte particulièrement :
+`coach()` sort en silence sur une clé inconnue, donc rien d'autre ne
+signalerait une annonce muette.
+`node scripts/verifier_methodes.mjs` signale deux défauts qu'aucun autre
+outil ne voit : les `this.methode()` appelées
 mais inexistantes — une erreur que la syntaxe ne révèle pas et qui n'apparaît
-qu'à l'exécution, donc souvent en séance.
+qu'à l'exécution, donc souvent en séance ; et les fautes de **syntaxe dans
+les modules inline** des pages, que `node --check` ne regarde pas puisqu'il ne
+lit que les fichiers `.js` — or le module de l'application fait près de trois
+mille lignes et vit dans son `index.html`, où une faute emporte la page
+entière.
 
 Ces harnais prouvent que deux codes s'accordent, **pas qu'ils ont raison** : un
 défaut présent des deux côtés y passe inaperçu, et c'est arrivé. C'est pourquoi

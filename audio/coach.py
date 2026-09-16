@@ -1,10 +1,9 @@
 import random
-import re
 import time
-import unicodedata
-from pathlib import Path
 
-from audio.lecteur import jouer
+from audio import annonces
+from audio.annonces import normaliser_nom  # noqa: F401  (reexport historique)
+from audio.lecteur import jouer, jouer_sequence
 
 messages = {
     "rep": ["rep.wav"],
@@ -67,7 +66,14 @@ priorites = {
     "encore_5": 4,
     "encore_3": 5,
     "correction_gainage": 7,
-    "temps_30": 4,
+    # `temps_30` vivait ici sans fichier ni entrée dans `messages`, et sans
+    # qu'aucun seuil ne la demande : `annoncer_temps_restant` s'arrête à 20.
+    # Une priorité orpheline ne fait rien de mal, mais elle laisse croire qu'un
+    # palier existe — c'est `scripts/verifier_annonces.py` qui l'a sortie, et
+    # c'est exactement la classe de défaut pour laquelle il a été écrit :
+    # `coach()` sortant en silence sur une clé inconnue, rien ne l'aurait dit.
+    # Rétablir un seuil de 30 s se fait dans `annoncer_temps_restant`, avec sa
+    # clé, son fichier et sa priorité — les trois, ou aucun.
     "temps_20": 6,
     "temps_10": 7,
     "temps_5": 8,
@@ -79,10 +85,17 @@ priorites = {
 
 DELAIS_ENTRE_ANNONCES = {
     "correction_gainage": 8,
+    # Le guidage de cadrage est réévalué à **chaque image** de la préparation :
+    # sans ce délai, il se répéterait dès que la position vacille — le défaut
+    # exact qu'avait la correction de gainage juste au-dessus. Six secondes
+    # laissent le temps de faire le pas demandé avant qu'on le redemande.
+    # Il n'y a pas de clé `messages` correspondante : la consigne est
+    # **composée** de deux briques (`annonces.sequence_cadrage`), et seul le
+    # délai est partagé. C'est pour ça que `Lecteur.sequence` accepte une clé.
+    "cadrage": 6,
 }
 
 dernieres_annonces = {}
-DOSSIER_SONS = Path(__file__).with_name("Fichiers")
 
 
 def coach(event, valeur=None):
@@ -108,72 +121,36 @@ def coach(event, valeur=None):
     jouer(son, priorites.get(event, 5))
 
 
-DOSSIER_ANNONCES_ETAPES = Path(__file__).with_name("Fichiers") / "annonces_etapes"
+def annoncer_prochaine_etape(etape, nombre_halteres=0, orientation=None):
+    """« Prochain exercice. Curl biceps droit. Prépare un haltère de 8 kilos. »
 
+    **Composée de briques, plus cherchée toute faite.** Cette fonction cherchait
+    un `.wav` pré-enregistré par combinaison exercice × poids × séries ×
+    répétitions, dans `Fichiers/annonces_etapes/` : seize fichiers pour les
+    seules combinaisons déjà jouées, et rien à dire dès qu'un objectif bougeait
+    — c'est-à-dire à chaque progression. Elle retombait alors sur un
+    « changement d'exercice » générique, ce qui est exactement le moment où
+    l'annonce servait le plus.
 
-def normaliser_nom(texte):
-    texte_sans_accents = unicodedata.normalize("NFD", texte)
-    texte_sans_accents = "".join(
-        caractere
-        for caractere in texte_sans_accents
-        if unicodedata.category(caractere) != "Mn"
-    )
+    Elle en profite pour rappeler **comment se placer**, qui était l'autre
+    information manquante d'un changement d'exercice : on se tourne, on sort
+    son matériel, et ni l'un ni l'autre ne se lit sur un écran à trois mètres.
 
-    return re.sub(r"[^a-z0-9]+", "_", texte_sans_accents.lower()).strip("_")
+    `nombre_halteres` et `orientation` sont **injectés** : ils viennent de
+    `session.seances` et du catalogue, qu'`audio.annonces` ne peut pas importer
+    sans perdre sa légèreté d'imports (voir son en-tête).
 
-
-def nom_annonce_etape(etape):
-
-    exercice = normaliser_nom(etape["exercice"])
-    series = etape["series"]
-    mot_series = "serie" if series == 1 else "series"
-    poids = etape.get("poids", 0)
-
-    if poids > 0:
-        debut = f"prochain_{exercice}_{poids}_kilos_{series}_{mot_series}"
-    else:
-        debut = f"prochain_{exercice}_{series}_{mot_series}"
-
-    if etape["mode"] == "repetitions":
-        return f"{debut}_{etape['repetitions']}_repetitions"
-
-    if etape["mode"] == "maintien":
-        return f"{debut}_{etape['duree']}_secondes"
-
-    if etape["mode"] == "chrono":
-        return f"{debut}_chrono_{etape['duree']}_secondes"
-
-    if etape["mode"] == "amrap":
-        return f"{debut}_amrap_{etape['duree']}_secondes"
-
-    return None
-
-
-def annoncer_prochaine_etape(etape, annonce_secours):
-
-    print("ANNONCE PROCHAINE ETAPE APPELEE")
-    print(etape)
-
+    La priorité vaut celle d'un événement important : une annonce longue doit
+    chasser les petits sons en attente plutôt que de faire la queue derrière
+    eux, et surtout ne pas être coupée en son milieu.
+    """
     if etape is None:
         return
 
-    nom = nom_annonce_etape(etape)
+    sons = annonces.sequence_prochain_exercice(etape, nombre_halteres)
+    sons += annonces.sequence_orientation(orientation)
 
-    if nom is None:
-        coach(annonce_secours)
-        return
-
-    candidats = list(DOSSIER_ANNONCES_ETAPES.glob(f"{nom}_*.wav"))
-
-    if not candidats:
-        print("AUCUN WAV ETAPE TROUVE")
-        print("Recherche :", nom)
-        coach(annonce_secours)
-        return
-
-    fichier = random.choice(candidats)
-
-    jouer(fichier.name)
+    jouer_sequence(sons, priorites.get("changement_exercice", 5))
 
 
 def annoncer_progression(repetitions, cible):

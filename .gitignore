@@ -102,3 +102,7 @@ scripts/fixtures_ressenti.jsonl
 scripts/fixtures_objectifs.jsonl
 scripts/fixtures_programmes.jsonl
 scripts/fixtures_ligues.jsonl
+
+# Oracle du harnais des annonces : derive, regenere en une seconde par
+# `python -m scripts.generer_annonces` (graine fixe).
+scripts/fixtures_annonces.jsonl

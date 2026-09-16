@@ -18,6 +18,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "allonge_camera_de_cote",
     "analyse_la_pose": true,
     "detection": "crunches_detection",
     "erreurs": []
@@ -42,6 +43,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "face",
     "analyse_la_pose": true,
     "detection": "curl_biceps_droit_detection",
     "erreurs": [
@@ -68,6 +70,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "face",
     "analyse_la_pose": true,
     "detection": "curl_biceps_gauche_detection",
     "erreurs": [
@@ -94,6 +97,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "allonge_camera_de_cote",
     "analyse_la_pose": true,
     "detection": "developpe_couche_sol_detection",
     "erreurs": []
@@ -118,6 +122,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "face",
     "analyse_la_pose": true,
     "detection": "developpe_epaule_detection",
     "erreurs": []
@@ -140,6 +145,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "face",
     "analyse_la_pose": true,
     "detection": "elevation_laterale_detection",
     "erreurs": []
@@ -164,6 +170,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "face",
     "analyse_la_pose": true,
     "detection": "extension_triceps_au_dessus_de_la_tete_detection",
     "erreurs": []
@@ -189,6 +196,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "profil_camera_gauche",
     "analyse_la_pose": true,
     "detection": "fente_droite_detection",
     "erreurs": []
@@ -214,6 +222,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "profil_camera_droite",
     "analyse_la_pose": true,
     "detection": "fente_gauche_detection",
     "erreurs": []
@@ -238,6 +247,7 @@
     ],
     "variante_facile": "Gainage sur les genoux",
     "variante_difficile": null,
+    "orientation": "profil",
     "analyse_la_pose": true,
     "detection": "detection_gainage",
     "erreurs": []
@@ -262,6 +272,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "face",
     "analyse_la_pose": true,
     "detection": "detection_gainage_laterale_droite",
     "erreurs": []
@@ -286,6 +297,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "face",
     "analyse_la_pose": true,
     "detection": "detection_gainage_laterale_gauche",
     "erreurs": []
@@ -309,6 +321,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": "Gainage planche",
+    "orientation": "profil",
     "analyse_la_pose": true,
     "detection": "detection_gainage",
     "erreurs": []
@@ -335,6 +348,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "face",
     "analyse_la_pose": true,
     "detection": "oiseau_detection",
     "erreurs": [
@@ -347,7 +361,7 @@
     "mise_en_place": [
       "Mains au sol un peu plus larges que les épaules, bras tendus.",
       "Corps aligné des talons aux épaules, regard vers le sol.",
-      "Place-toi face à la caméra, corps entier dans le champ."
+      "Place-toi de profil face à la caméra, corps entier dans le champ."
     ],
     "instructions": [
       "Garde la tête dans le prolongement du dos, regard vers le sol.",
@@ -361,6 +375,7 @@
     ],
     "variante_facile": "Pompes sur les genoux",
     "variante_difficile": null,
+    "orientation": "profil",
     "analyse_la_pose": true,
     "detection": "pompe_detection",
     "erreurs": []
@@ -385,6 +400,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": "Pompes sur les genoux",
+    "orientation": "profil",
     "analyse_la_pose": true,
     "detection": "pompe_detection",
     "erreurs": []
@@ -408,6 +424,7 @@
     ],
     "variante_facile": "Pompes inclinées",
     "variante_difficile": "Pompes",
+    "orientation": "profil",
     "analyse_la_pose": true,
     "detection": "pompe_detection",
     "erreurs": []
@@ -436,6 +453,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "profil_camera_gauche",
     "analyse_la_pose": true,
     "detection": "rowing_penche_detection",
     "erreurs": [
@@ -465,6 +483,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "profil_camera_droite",
     "analyse_la_pose": true,
     "detection": "rowing_unilateral_droit_detection",
     "erreurs": [
@@ -493,6 +512,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "profil_camera_gauche",
     "analyse_la_pose": true,
     "detection": "rowing_unilateral_gauche_detection",
     "erreurs": [
@@ -521,6 +541,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": null,
+    "orientation": "face",
     "analyse_la_pose": true,
     "detection": "souleve_de_terre_roumain_detection",
     "erreurs": []
@@ -546,6 +567,7 @@
     ],
     "variante_facile": "Squat sur chaise",
     "variante_difficile": null,
+    "orientation": "face",
     "analyse_la_pose": true,
     "detection": "squat_detection",
     "erreurs": []
@@ -570,6 +592,7 @@
     ],
     "variante_facile": null,
     "variante_difficile": "Squat",
+    "orientation": "face",
     "analyse_la_pose": true,
     "detection": "squat_sur_chaise_detection",
     "erreurs": []

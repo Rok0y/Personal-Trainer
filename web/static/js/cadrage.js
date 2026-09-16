@@ -183,11 +183,26 @@ export function message_de_cadrage(problemes) {
   return { partie: problemes[0].partie, action: "centre" };
 }
 
-export function consigne_de_cadrage(corps, points_requis) {
-  const choix = message_de_cadrage(problemes_de_cadrage(corps, points_requis));
+/**
+ * La phrase que porte un `{partie, action}` deja choisi.
+ *
+ * Separee de `consigne_de_cadrage` parce que l'appelant a parfois besoin des
+ * **deux cles en plus du texte** : le bandeau affiche la phrase, et le coach
+ * prononce les deux briques correspondantes (`annonces.sequence_cadrage`).
+ * Recalculer le choix pour l'un puis pour l'autre ferait tourner la detection
+ * deux fois par image, et surtout laisserait les deux diverger le jour ou
+ * l'arbitrage change.
+ */
+export function texte_de_cadrage(choix) {
   if (!choix) return null;
   const action = QUOI_FAIRE[choix.action];
   return choix.partie
     ? `${CE_QUI_MANQUE[choix.partie]} — ${action}`
     : action.charAt(0).toUpperCase() + action.slice(1);
+}
+
+export function consigne_de_cadrage(corps, points_requis) {
+  return texte_de_cadrage(
+    message_de_cadrage(problemes_de_cadrage(corps, points_requis))
+  );
 }

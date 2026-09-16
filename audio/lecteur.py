@@ -53,28 +53,33 @@ def lecteur_audio():
 
     while True:
 
-        priorite, _, nom = file_audio.get()
+        priorite, _, noms = file_audio.get()
 
-        chemin = os.path.join(DOSSIER_SONS, nom)
+        # Une entrée de la file est une **séquence**, pas un son : les morceaux
+        # d'une phrase composée se jouent à la suite sans que rien ne puisse
+        # s'intercaler entre eux. Voir `jouer_sequence`.
+        for nom in noms:
 
-        if os.path.exists(chemin):
+            chemin = os.path.join(DOSSIER_SONS, nom)
 
-            son = pygame.mixer.Sound(chemin)
+            if os.path.exists(chemin):
 
-            # Les annonces courtes doivent rester clairement audibles.
-            if nom == "bip.wav":
-                son.set_volume(1.0)
+                son = pygame.mixer.Sound(chemin)
 
-            son.play()
+                # Les annonces courtes doivent rester clairement audibles.
+                if nom == "bip.wav":
+                    son.set_volume(1.0)
 
-            while pygame.mixer.get_busy():
-                time.sleep(0.05)
+                son.play()
 
-        else:
-            print("\n" + "=" * 60)
-            print("AUDIO MANQUANT À ENREGISTRER")
-            print(os.path.basename(chemin))
-            print("=" * 60 + "\n")
+                while pygame.mixer.get_busy():
+                    time.sleep(0.05)
+
+            else:
+                print("\n" + "=" * 60)
+                print("AUDIO MANQUANT À ENREGISTRER")
+                print(os.path.basename(chemin))
+                print("=" * 60 + "\n")
 
         file_audio.task_done()
 
@@ -95,9 +100,22 @@ def vider_petits_sons():
         file_audio.put(item)
 
 
-def jouer(nom, priorite=5):
+def jouer_sequence(noms, priorite=5):
+    """Empile une phrase composée de plusieurs fichiers, **comme un seul son**.
 
+    C'est l'indivisibilité qui compte. Empiler quatre `jouer()` d'affilée
+    ordonnerait bien les morceaux — `compteur_audio` départage les priorités
+    égales — mais rien n'empêcherait un événement urgent de se glisser au
+    milieu : on entendrait « prochain exercice… 12 répétitions ». Une séquence
+    est donc **une** entrée de la file, que `vider_petits_sons` garde ou jette
+    en entier.
+    """
     global compteur_audio
+
+    noms = tuple(noms)
+
+    if not noms:
+        return
 
     if not _demarrer_lecteur():
         return
@@ -109,4 +127,9 @@ def jouer(nom, priorite=5):
 
     compteur_audio += 1
 
-    file_audio.put((-priorite, compteur_audio, nom))
+    file_audio.put((-priorite, compteur_audio, noms))
+
+
+def jouer(nom, priorite=5):
+    """Un son seul : la séquence à un élément."""
+    jouer_sequence((nom,), priorite)

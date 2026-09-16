@@ -40,6 +40,7 @@ def coude_avance_curl_gauche(corps):
 
 curl_biceps_droit = Exercice(
     nom="Curl biceps droit",
+    orientation="face",
     detection=curl_biceps_droit_detection,
     description="Curl biceps avec haltère du bras droit.",
     instructions=[
@@ -78,6 +79,7 @@ def curl_biceps_gauche_detection(corps):
 
 curl_biceps_gauche = Exercice(
     nom="Curl biceps gauche",
+    orientation="face",
     detection=curl_biceps_gauche_detection,
     description="Curl biceps avec haltère du bras gauche.",
     instructions=[
@@ -121,6 +123,7 @@ def elevation_laterale_detection(corps):
 
 elevation_laterale = Exercice(
     nom="Elevations latérales",
+    orientation="face",
     detection=elevation_laterale_detection,
     description="Élévations latérales à deux haltères : monter les bras sur les côtés jusqu'à hauteur des épaules.",
     instructions=["Contrôle la descente.", "Ne balance pas le mouvement."],
@@ -157,6 +160,16 @@ def pompe_detection(corps):
 
 pompe = Exercice(
     nom="Pompes",
+    # De profil, et c'est un changement assume. La fiche disait « face a la
+    # camera » pendant que ses deux variantes assistees — meme mouvement,
+    # meme detection — disaient « de profil » : une contradiction qui restait
+    # muette tant que personne ne la prononcait. De face, le comptage
+    # « buggait parfois », ce qui est le symptome attendu — les coudes flechis
+    # dans un plan oblique se projettent mal, et c'est la lecon deja payee sur
+    # le squat, ou un angle sagittal lu de face bloquait la detection a « fin »
+    # et ne comptait rien. A re-evaluer apres quelques seances : si le profil
+    # ne compte pas mieux, c'est le seuil qu'il faut regarder, pas la vue.
+    orientation="profil",
     detection=pompe_detection,
     description="Pompes au sol, mains sous les épaules, corps aligné des talons à la tête.",
     instructions=[
@@ -167,7 +180,7 @@ pompe = Exercice(
     mise_en_place=[
         "Mains au sol un peu plus larges que les épaules, bras tendus.",
         "Corps aligné des talons aux épaules, regard vers le sol.",
-        "Place-toi face à la caméra, corps entier dans le champ.",
+        "Place-toi de profil face à la caméra, corps entier dans le champ.",
     ],
     erreurs_frequentes=[
         "Les hanches qui tombent ou qui remontent : garde une ligne droite.",
@@ -199,6 +212,7 @@ def developpe_couche_sol_detection(corps):
 
 developpe_couche_sol = Exercice(
     nom="Developpé couché altères",
+    orientation="allonge_camera_de_cote",
     detection=developpe_couche_sol_detection,
     description="Développé couché au sol, un haltère dans chaque main, poussée verticale.",
     instructions=[
@@ -240,6 +254,7 @@ def extension_triceps_au_dessus_de_la_tete_detection(corps):
 
 extension_triceps_au_dessus_de_la_tete = Exercice(
     nom="Extension Triceps",
+    orientation="face",
     detection=extension_triceps_au_dessus_de_la_tete_detection,
     description="Extension triceps à un haltère tenu à deux mains, derrière la tête.",
     instructions=[
@@ -291,6 +306,7 @@ def developpe_epaule_detection(corps):
 
 developpe_epaule = Exercice(
     nom="Développé épaule",
+    orientation="face",
     detection=developpe_epaule_detection,
     description="Développé épaule debout : pousser les haltères au-dessus de la tête.",
     instructions=[
@@ -336,6 +352,7 @@ def crunches_detection(corps):
 
 crunches = Exercice(
     nom="Crunches",
+    orientation="allonge_camera_de_cote",
     detection=crunches_detection,
     description="Crunch au sol : décoller les épaules en contractant les abdominaux.",
     instructions=[
@@ -396,6 +413,7 @@ def detection_gainage(corps):
 
 planche = Exercice(
     nom="Gainage planche",
+    orientation="profil",
     detection=detection_gainage,
     description="Maintenir une position de planche avec le corps aligné.",
     instructions=[
@@ -436,6 +454,7 @@ def squat_detection(corps):
 
 squat = Exercice(
     nom="Squat",
+    orientation="face",
     detection=squat_detection,
     description="Squat avec descente jusqu'à ce que les coudes se rapprochent des genoux.",
     instructions=[
@@ -477,6 +496,7 @@ def fente_droite_detection(corps):
 
 fente_droite = Exercice(
     nom="Fente droite",
+    orientation="profil_camera_gauche",
     detection=fente_droite_detection,
     description="Fente avec la jambe droite vers l'avant, jusqu'à ce que le genou droit soit fléchi à environ 90 degrés.",
     instructions=[
@@ -516,6 +536,7 @@ def fente_gauche_detection(corps):
 
 fente_gauche = Exercice(
     nom="Fente gauche",
+    orientation="profil_camera_droite",
     detection=fente_gauche_detection,
     description="Fente avec la jambe gauche vers l'avant, jusqu'à ce que le genou gauche soit fléchi à environ 90 degrés.",
     instructions=[
@@ -556,6 +577,7 @@ def souleve_de_terre_roumain_detection(corps):
 
 souleve_roumain = Exercice(
     nom="Souleve de terre roumain",
+    orientation="face",
     detection=souleve_de_terre_roumain_detection,
     description="Souleve de terre roumain : descente des mains vers les pieds, jambes semi-tendues.",
     instructions=[
@@ -625,6 +647,7 @@ def detection_gainage_laterale_gauche(corps):
 
 planche_laterale_gauche = Exercice(
     nom="Gainage planche laterale gauche",
+    orientation="face",
     detection=detection_gainage_laterale_gauche,
     description="Maintenir une position de planche latérale sur le côté gauche, corps aligné.",
     instructions=[
@@ -682,6 +705,7 @@ def detection_gainage_laterale_droite(corps):
 
 planche_laterale_droite = Exercice(
     nom="Gainage planche laterale droite",
+    orientation="face",
     detection=detection_gainage_laterale_droite,
     description="Maintenir une position de planche latérale sur le côté droit, corps aligné.",
     instructions=[
@@ -736,6 +760,7 @@ def rowing_unilateral_gauche_erreur_buste(corps):
 
 rowing_unilateral_gauche = Exercice(
     nom="Rowing unilateral gauche",
+    orientation="profil_camera_gauche",
     detection=rowing_unilateral_gauche_detection,
     description="Rowing unilatéral bras gauche : tirer l'haltère vers la hanche en contractant le dos.",
     instructions=[
@@ -792,6 +817,7 @@ def rowing_unilateral_droit_erreur_buste(corps):
 
 rowing_unilateral_droit = Exercice(
     nom="Rowing unilateral droit",
+    orientation="profil_camera_droite",
     detection=rowing_unilateral_droit_detection,
     description="Rowing unilatéral bras droit : tirer l'haltère vers la hanche en contractant le dos.",
     instructions=[
@@ -857,6 +883,7 @@ def rowing_penche_erreur_genoux(corps):
 
 rowing_penche = Exercice(
     nom="Rowing penche",
+    orientation="profil_camera_gauche",
     detection=rowing_penche_detection,
     description="Rowing penché à deux haltères en prise neutre : tirer les coudes le plus haut possible.",
     instructions=[
@@ -920,6 +947,7 @@ def oiseau_erreur_coudes(corps):
 
 oiseau = Exercice(
     nom="Oiseau",
+    orientation="face",
     detection=oiseau_detection,
     description="Oiseau debout à deux haltères : écarter les bras sur les côtés, coudes légèrement fléchis.",
     instructions=[
@@ -1011,6 +1039,7 @@ def squat_sur_chaise_detection(corps):
 
 pompes_inclinees = Exercice(
     nom="Pompes inclinées",
+    orientation="profil",
     # Les angles de coude ne dépendent pas de l'inclinaison : la détection des
     # pompes s'applique telle quelle.
     detection=pompe_detection,
@@ -1039,6 +1068,7 @@ pompes_inclinees = Exercice(
 
 pompes_sur_les_genoux = Exercice(
     nom="Pompes sur les genoux",
+    orientation="profil",
     detection=pompe_detection,
     description=(
         "Pompes au sol avec les genoux posés : la moitié du corps à soulever en moins."
@@ -1064,6 +1094,7 @@ pompes_sur_les_genoux = Exercice(
 
 gainage_sur_les_genoux = Exercice(
     nom="Gainage sur les genoux",
+    orientation="profil",
     # L'angle épaule-hanche-genou reste celui d'un corps aligné, genoux au sol
     # ou non : la détection du gainage complet convient sans retouche.
     detection=detection_gainage,
@@ -1088,6 +1119,7 @@ gainage_sur_les_genoux = Exercice(
 
 squat_sur_chaise = Exercice(
     nom="Squat sur chaise",
+    orientation="face",
     detection=squat_sur_chaise_detection,
     description=(
         "Squat au poids du corps, en s'asseyant sur une chaise puis en se relevant."
