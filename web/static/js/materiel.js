@@ -22,6 +22,32 @@
  * reste vide — quelqu'un qui ne coche aucun haltere n'en a pas. Les deux ne
  * veulent pas dire la meme chose.
  */
+//: Bornes d'un poids saisi a la main, jumelles de `core/materiel.py`. Larges
+//: a dessein : il ne s'agit pas de juger ce que quelqu'un souleve, seulement
+//: d'ecarter une faute de frappe qui ferait sortir le bareme de tout sens.
+const POIDS_MIN_DECLARABLE = 1;
+const POIDS_MAX_DECLARABLE = 60;
+
+/**
+ * Un poids d'haltere utilisable, ou null.
+ *
+ * Remplace le `reference.includes(poids)` d'avant, qui confondait « ce que le
+ * questionnaire propose » et « ce qui est acceptable » : quelqu'un possedant
+ * des halteres de 20 kg ne pouvait ni les cocher ni les faire accepter, et son
+ * inventaire etait silencieusement ampute au chargement.
+ *
+ * Arrondi au demi-kilo, qui est le pas reel du materiel. Et **`parseFloat` et
+ * non `parseInt`** : ce dernier tronquait « 17.5 » en 17, c'est-a-dire qu'il
+ * inventait un haltere que personne ne possede.
+ */
+export function poids_declarable(valeur) {
+  const brut = Number.parseFloat(valeur);
+  if (Number.isNaN(brut)) return null;
+  const poids = Math.round(brut * 2) / 2;
+  if (poids < POIDS_MIN_DECLARABLE || poids > POIDS_MAX_DECLARABLE) return null;
+  return poids;
+}
+
 export function normaliser(tables, brut) {
   const defaut = () => ({
     halteres: { ...tables.materiel_par_defaut.halteres },
@@ -38,16 +64,13 @@ export function normaliser(tables, brut) {
   }
   if (typeof brut !== "object" || Array.isArray(brut)) return defaut();
 
-  const reference = tables.echelles.reference;
   const halteres = {};
   for (const [cle, valeur] of Object.entries(brut.halteres ?? {})) {
-    const poids = Number.parseInt(cle, 10);
+    const poids = poids_declarable(cle);
     const quantite = Number.parseInt(valeur, 10);
-    if (Number.isNaN(poids) || Number.isNaN(quantite)) continue;
+    if (poids === null || Number.isNaN(quantite)) continue;
     // Deux exemplaires au plus : au-dela, c'est la meme paire.
-    if (reference.includes(poids) && quantite > 0) {
-      halteres[poids] = Math.min(2, quantite);
-    }
+    if (quantite > 0) halteres[poids] = Math.min(2, quantite);
   }
 
   const connus = Object.keys(tables.accessoires);
@@ -58,14 +81,13 @@ export function normaliser(tables, brut) {
 /**
  * Les charges praticables avec `nb_halteres` halteres identiques.
  *
- * Croissant, **jamais vide** : un stock qui ne couvre pas ce besoin rend la
- * gamme de reference complete. Le bareme reste ainsi calculable pour tout le
+ * Croissant, **jamais vide** : un stock qui ne couvre pas ce besoin rend
+ * l'echelle supposee par defaut. Le bareme reste ainsi calculable pour tout le
  * monde, et c'est `exercice_realisable` — pas une echelle vide — qui dit
  * qu'un mouvement est hors de portee.
  */
 export function echelle_disponible(echelles, inventaire, nb_halteres) {
   if (nb_halteres <= 0) return null;
-  const reference = echelles.reference;
   // `inventaire` est toujours **normalise** : cote Python, `echelle_disponible`
   // passe par `materiel_du_profil`, qui appelle `normaliser` — il n'y a donc
   // jamais de stock absent, seulement un stock par defaut. Court-circuiter ce
@@ -73,9 +95,20 @@ export function echelle_disponible(echelles, inventaire, nb_halteres) {
   // materiel par defaut n'a **qu'un exemplaire** au-dela de 10 kg : un
   // exercice a deux halteres s'arretait a 18 au lieu de 10, et tout le bareme
   // se decalait a partir du niveau 34.
+  //
+  // On parcourt le **stock declare** et non la gamme du questionnaire : depuis
+  // qu'un poids se saisit a la main, un haltere de 17,5 kg peut exister sans
+  // figurer dans `reference`, et le filtrer par la gamme le ferait disparaitre
+  // du bareme sans rien dire.
   const stock = inventaire.halteres;
-  const possedes = reference.filter((poids) => (stock[poids] ?? 0) >= nb_halteres);
-  return possedes.length ? possedes : reference;
+  const possedes = Object.entries(stock)
+    .filter(([, nombre]) => nombre >= nb_halteres)
+    .map(([poids]) => Number(poids))
+    .sort((a, b) => a - b);
+  // Le repli est la gamme **supposee** et non celle du questionnaire : cette
+  // derniere s'est allongee jusqu'a 40 kg, et y retomber donnerait d'un coup
+  // un bareme de culturiste a qui n'a rien declare.
+  return possedes.length ? possedes : echelles.supposes;
 }
 
 /** Accessoires que cet exercice reclame et que le profil n'a pas coches. */

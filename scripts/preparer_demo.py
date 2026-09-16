@@ -124,7 +124,12 @@ def exporter_baremes():
     """
     from dataclasses import asdict
 
-    from core.materiel import ACCESSOIRES, MATERIEL_PAR_DEFAUT, POIDS_REFERENCE
+    from core.materiel import (
+        ACCESSOIRES,
+        MATERIEL_PAR_DEFAUT,
+        POIDS_REFERENCE,
+        POIDS_SUPPOSES,
+    )
     from progression import ligues, paliers
     from progression.reglages import CHEMIN as CHEMIN_REGLAGES
 
@@ -159,6 +164,11 @@ def exporter_baremes():
             "deux_halteres": list(paliers.ECHELLE_DEUX_HALTERES),
             "sans_charge": list(paliers.SANS_CHARGE),
             "reference": list(POIDS_REFERENCE),
+            # Et la gamme **supposee**, qui n'est pas la meme : `reference`
+            # dit ce que le questionnaire propose de cocher, `supposes` ce
+            # qu'on suppose a qui n'a rien declare. Les confondre donnerait
+            # d'un coup un bareme de culturiste a tout profil muet.
+            "supposes": list(POIDS_SUPPOSES),
         },
         # Le descriptif **brut** et non une liste d'accessoires deja
         # deduite : `core.materiel.accessoires_manquants` cherche une

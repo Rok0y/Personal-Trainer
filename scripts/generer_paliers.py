@@ -85,6 +85,16 @@ def inventaires():
     `None` veut dire « rien de déclaré », et rend le matériel par défaut : ce
     n'est pas la même chose qu'un inventaire vide, et les deux doivent être
     vérifiés.
+
+    Les deux derniers visent la règle « un poids se déclare, il ne se choisit
+    pas dans une liste » — celle qui distingue la gamme du questionnaire des
+    valeurs acceptables. `hors_gamme` porte des charges qui ne figurent dans
+    aucune des deux listes exportées et un **demi-kilo**, parce que c'est là
+    que les deux implémentations pouvaient diverger sans bruit : le JavaScript
+    lisait ses poids avec `parseInt`, qui tronque « 17.5 » en 17 et invente
+    donc un haltère que personne ne possède. `absurdes` vérifie l'autre bord :
+    ce qui est refusé doit l'être des deux côtés, sinon un inventaire n'a pas
+    le même contenu ici et là.
     """
     reference = list(materiel.POIDS_REFERENCE)
     return {
@@ -95,6 +105,14 @@ def inventaires():
         "complet": {
             "halteres": {poids: 2 for poids in reference},
             "accessoires": ["tapis", "chaise"],
+        },
+        "hors_gamme": {
+            "halteres": {7: 2, 17.5: 2, 21: 1, 26: 2, 33: 2, 45: 2},
+            "accessoires": ["chaise"],
+        },
+        "absurdes": {
+            "halteres": {0: 2, -4: 2, 0.4: 2, 61: 2, 500: 2, 8: 2, "": 2},
+            "accessoires": ["tapis"],
         },
     }
 
@@ -137,6 +155,15 @@ def main():
                     "Surcharge": {"halteres": 2, "brut": "Deux haltères"},
                     "SansFin": {"halteres": 0, "brut": ""},
                 },
+                # Les inventaires voyagent **avec l'oracle** et ne sont plus
+                # redéclarés en JavaScript. Ils l'étaient, et le comparateur
+                # est mécaniquement devenu muet le jour où deux inventaires
+                # ont été ajoutés ici : `baremes[nom]` valait `undefined`. Il
+                # a au moins échoué bruyamment — mais rien ne garantissait
+                # qu'un jeu d'entrées divergent le fasse, et deux harnais qui
+                # comparent des entrées différentes en croyant les trouver
+                # identiques ne prouvent rien.
+                "inventaires": inventaires(),
             },
             ensure_ascii=False,
             indent=1,

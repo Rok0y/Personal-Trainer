@@ -64,6 +64,17 @@ const PARTIES = [
   ["pieds", ["cheville_gauche", "cheville_droite"]],
 ];
 
+/**
+ * Tous les points que `PARTIES` sait nommer, pour un controle « corps entier ».
+ *
+ * L'accueil verifie un cadrage **sans exercice** : personne n'a encore choisi
+ * de mouvement, donc `points_utilises` n'a aucune detection a espionner. Cette
+ * liste est **derivee de `PARTIES`** et non ecrite a cote : une partie ajoutee
+ * la-haut est couverte ici le jour ou elle est ecrite, et les deux ne peuvent
+ * pas se desaccorder.
+ */
+export const POINTS_DU_CORPS_ENTIER = PARTIES.flatMap(([, points]) => points);
+
 // Marge au-dela du bord avant de declarer un point sorti. MediaPipe extrapole
 // les landmarks hors champ au lieu de les omettre : un pied a y = 1.01 est en
 // pratique sur le bord, pas dehors. Sans cette marge, la consigne clignote

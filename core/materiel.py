@@ -23,10 +23,30 @@ modules consomment celui-ci.
 
 import json
 
-#: Les poids que le questionnaire propose de cocher. Ce n'est pas ce que
-#: quelqu'un possède, c'est la gamme dans laquelle il choisit — elle reprend
-#: l'ancienne `ECHELLE_UN_HALTERE`, qui décrivait déjà le matériel réel.
-POIDS_REFERENCE = (2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18)
+#: Les poids que le questionnaire **propose** de cocher. Ce n'est ni ce que
+#: quelqu'un possède, ni ce qu'il a le droit de déclarer : c'est une liste de
+#: raccourcis, celle des haltères qu'on trouve couramment. Quelqu'un qui a du
+#: 17,5 kg le saisit à la main (`poids_declarable`) — la gamme n'est là que
+#: pour éviter de taper onze nombres.
+POIDS_REFERENCE = (
+    2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18,
+    20, 22, 24, 25, 28, 30, 35, 40,
+)
+
+#: **Et surtout pas `POIDS_REFERENCE`.** Le matériel par défaut doit rester
+#: figé sur la gamme d'avant l'extension : il est construit par compréhension,
+#: si bien qu'allonger la liste ci-dessus donnerait d'un coup, à tout profil
+#: qui n'a rien déclaré, des haltères jusqu'à 40 kg — donc un barème différent
+#: du jour au lendemain, silencieusement, sur tout l'historique déjà
+#: interprété. Les deux listes ne répondent pas à la même question : l'une dit
+#: ce qu'on peut cocher, l'autre ce qu'on suppose à qui n'a rien dit.
+POIDS_SUPPOSES = (2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18)
+
+#: Bornes d'un poids saisi à la main. Larges à dessein — il ne s'agit pas de
+#: juger ce que quelqu'un soulève, seulement d'écarter une faute de frappe qui
+#: ferait sortir le barème de tout sens (un « 200 » pour « 20 »).
+POIDS_MIN_DECLARABLE = 1
+POIDS_MAX_DECLARABLE = 60
 
 #: Accessoires reconnus par `session.seances._decomposer_materiel`. La clé sert
 #: au stockage et au formulaire, le libellé à l'affichage.
@@ -37,9 +57,32 @@ ACCESSOIRES = {"tapis": "Un tapis", "chaise": "Une chaise"}
 #: haltère seul jusqu'à 18, tapis et chaise). Un profil d'avant la migration ne
 #: change donc pas de niveau du jour au lendemain.
 MATERIEL_PAR_DEFAUT = {
-    "halteres": {poids: (2 if poids <= 10 else 1) for poids in POIDS_REFERENCE},
+    "halteres": {poids: (2 if poids <= 10 else 1) for poids in POIDS_SUPPOSES},
     "accessoires": list(ACCESSOIRES),
 }
+
+
+def poids_declarable(valeur):
+    """Un poids d'haltère utilisable, ou None.
+
+    Remplace le `poids in POIDS_REFERENCE` d'avant, qui confondait « ce que le
+    questionnaire propose » et « ce qui est acceptable » : quelqu'un possédant
+    des haltères de 20 kg ne pouvait ni les cocher ni les faire accepter, et
+    son inventaire était silencieusement amputé au chargement.
+
+    Arrondi au demi-kilo, parce que c'est le pas réel du matériel et que rien
+    dans le barème ne tire profit d'une précision plus fine.
+    """
+    try:
+        poids = float(valeur)
+    except (TypeError, ValueError):
+        return None
+    poids = round(poids * 2) / 2
+    if not POIDS_MIN_DECLARABLE <= poids <= POIDS_MAX_DECLARABLE:
+        return None
+    # Un entier reste un entier : il traverse le JSON, les clés de dict et
+    # l'affichage sans jamais devenir « 8.0 kg ».
+    return int(poids) if poids == int(poids) else poids
 
 
 def normaliser(brut):
@@ -65,12 +108,12 @@ def normaliser(brut):
 
     halteres = {}
     for poids, quantite in (brut.get("halteres") or {}).items():
+        poids = poids_declarable(poids)
         try:
-            poids = int(poids)
             quantite = int(quantite)
         except (TypeError, ValueError):
             continue
-        if poids in POIDS_REFERENCE and quantite > 0:
+        if poids is not None and quantite > 0:
             halteres[poids] = min(2, quantite)
 
     accessoires = [
@@ -102,19 +145,21 @@ def echelle_disponible(nb_halteres, utilisateur_id=None):
     """Les charges praticables avec `nb_halteres` haltères identiques.
 
     Retourne un tuple croissant, jamais vide : un stock qui ne couvre pas ce
-    besoin rend la gamme de référence complète. Le barème reste ainsi
-    calculable pour tout le monde, et c'est `exercice_realisable` — pas une
-    échelle vide — qui dit qu'un mouvement est hors de portée.
+    besoin rend l'échelle supposée par défaut. Le barème reste ainsi calculable
+    pour tout le monde, et c'est `exercice_realisable` — pas une échelle vide —
+    qui dit qu'un mouvement est hors de portée.
     """
     if nb_halteres <= 0:
         return None
     stock = materiel_du_profil(utilisateur_id)["halteres"]
+    # On parcourt le **stock declare** et non la gamme du questionnaire :
+    # depuis qu'un poids se saisit a la main, un halteres de 17,5 kg peut
+    # exister sans figurer dans `POIDS_REFERENCE`, et le filtrer par la gamme
+    # le ferait disparaitre du bareme sans rien dire.
     possedes = tuple(
-        poids
-        for poids in POIDS_REFERENCE
-        if stock.get(poids, 0) >= nb_halteres
+        sorted(poids for poids, nombre in stock.items() if nombre >= nb_halteres)
     )
-    return possedes or POIDS_REFERENCE
+    return possedes or POIDS_SUPPOSES
 
 
 def accessoires_manquants(nom_exercice, utilisateur_id=None):

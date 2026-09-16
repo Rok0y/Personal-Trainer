@@ -12,6 +12,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8000", "--directory", "web/static"],
       "port": 8000
+    },
+    {
+      "name": "statique-dev",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "scripts.servir_statique", "8001"],
+      "port": 8001
     }
   ]
 }

@@ -640,6 +640,101 @@
     font: inherit;
     font-size: 0.85rem;
   }
+  /* La pratique de l'accueil : on se voit, et la consigne se lit d'un coup
+     d'oeil depuis trois metres — c'est justement la distance a laquelle on se
+     place pour verifier son cadrage. */
+  #bienvenueCamera { margin: 1rem 0 0.4rem; }
+  #bienvenueRendu {
+    width: 100%;
+    max-height: 46vh;
+    /* `contain` et jamais `cover` : recadrer masquerait une partie de ce que
+       le modele analyse, donc on se verrait entier pendant que la consigne
+       reclame de reculer — exactement la confusion qu'elle leve. */
+    object-fit: contain;
+    border-radius: 12px;
+    background: #000;
+  }
+  .pratique-consigne {
+    margin: 0.8rem 0 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.35;
+    min-height: 1.7rem;
+  }
+  .pratique-jauge {
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.14);
+    overflow: hidden;
+  }
+  .pratique-jauge > div {
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    transition: width 0.12s linear;
+  }
+  .pratique-fait {
+    margin: 0.7rem 0 0;
+    color: var(--ok, #4ade80);
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  /* Un programme se juge sur ce qu'il contient, pas sur son nom : des cartes
+     et non un <select>, parce qu'a l'accueil personne ne sait encore ce que
+     recouvre « Road to TKT ». */
+  #bienvenueProgrammes { display: flex; flex-direction: column; gap: 0.6rem; margin: 1rem 0 0.4rem; }
+  .choix-programme {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--trait);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--texte);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .choix-programme span { color: var(--texte-doux); font-size: 0.85rem; }
+  .choix-programme.choisi { border-color: var(--accent); background: rgba(255, 138, 61, 0.09); }
+  .choix-programme.choisi strong { color: var(--accent); }
+
+  /* La saisie libre occupe toute la largeur de la grille : c'est une action et
+     non un cran de plus, et la noyer dans la liste la rendrait invisible.
+     `1 / -1` la fait traverser quel que soit le nombre de colonnes. */
+  .ajout-poids {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.2rem;
+  }
+  .ajout-poids input {
+    width: 8rem;
+    background: var(--surface-haut);
+    color: var(--texte);
+    border: 1px dashed var(--trait);
+    border-radius: 7px;
+    padding: 0.5rem 0.6rem;
+    font: inherit;
+    font-size: 0.85rem;
+  }
+  .ajout-poids button {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 7px;
+    padding: 0.5rem 0.9rem;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .ajout-erreur { color: var(--alerte); font-size: 0.82rem; }
+
   /* Le materiel **en lecture** : trois groupes etiquetes, pas une phrase. */
   .inventaire { display: flex; flex-direction: column; gap: 0.8rem; margin: 0.8rem 0 0.4rem; }
   .inventaire-libelle {
@@ -873,6 +968,35 @@
     <h2 id="bienvenueSousTitre" style="margin-top:0"></h2>
     <div id="bienvenueCorps"></div>
   </div>
+
+  <!-- La pratique, camera ouverte. Deux etapes s'en servent — le cadrage et
+       les gestes —, et c'est toute leur raison d'etre : « recule d'un pas »
+       n'a de sens que si l'on se voit reculer, et un geste sans retour visuel
+       est indistinguable d'un geste qui ne marche pas. C'est le meme argument
+       que celui de `tutoriel.js`, un cran plus tot : une consigne *verifiee*
+       vaut mieux qu'une consigne prononcee. -->
+  <div id="bienvenueCamera" hidden>
+    <!-- La demande d'autorisation ne part **jamais** au chargement : elle part
+         de ce bouton, donc d'un geste de l'utilisateur, apres la phrase qui
+         l'annonce. Une demande surprise est le meilleur moyen de se faire
+         refuser — et c'est aussi ce qu'iOS exige. -->
+    <button class="bouton" id="bienvenueAllumer">Allumer la caméra</button>
+    <p class="muet" id="bienvenueCameraNote" hidden></p>
+
+    <div id="bienvenueApercu" hidden>
+      <canvas id="bienvenueRendu"></canvas>
+      <p class="pratique-consigne" id="bienvenueConsigne"></p>
+      <div class="pratique-jauge"><div id="bienvenueProgres"></div></div>
+      <p class="pratique-fait" id="bienvenueFait" hidden></p>
+    </div>
+  </div>
+
+  <!-- Le choix de programme. Non bloquant, contrairement au materiel : ne pas
+       choisir ne fausse aucun objectif, alors qu'un inventaire non declare
+       fait travailler sur du materiel qu'on n'a pas. `programme_choisi` reste
+       donc a `null`, que `programme_suivi()` lit deja comme « aucun choix »
+       sans jamais retomber sur le premier. -->
+  <div id="bienvenueProgrammes" hidden></div>
 
   <!-- Le questionnaire de materiel, montre a la derniere etape. Ce sont les
        **memes** identifiants que l'ecran de profil : `dessiner_materiel` et
@@ -1263,6 +1387,7 @@ import {
 import { creer_etat } from "../js/etat.js";
 import { texte, libelle_etape } from "../js/messages.js";
 import {
+  POINTS_DU_CORPS_ENTIER,
   points_utilises,
   message_de_cadrage,
   problemes_de_cadrage,
@@ -1285,7 +1410,7 @@ import { ECHELLE, Ressenti } from "../js/ressenti.js";
 import { construire_ligne } from "../js/ressentis_ui.js";
 import { Calibration } from "../js/calibration.js";
 import { Objectifs } from "../js/objectifs.js";
-import { normaliser } from "../js/materiel.js";
+import { normaliser, poids_declarable } from "../js/materiel.js";
 import { VerrouEcran } from "../js/veille.js";
 import { cle_de_progression, graphique_progression } from "../js/graphique.js";
 import {
@@ -1502,7 +1627,15 @@ const coach = (cle, valeur = null) => lecteur?.coach(cle, valeur);
  * ne jamais etre coupee en son milieu. `Lecteur.sequence` garantit le second
  * point, cette priorite le premier.
  */
-const coach_sequence = (sons, priorite = 5) => lecteur?.sequence(sons, priorite);
+// La **cle** est transmise, et ce n'est pas un detail : elle porte le delai
+// minimal entre deux annonces du meme type (`DELAIS_ENTRE_ANNONCES`). Le
+// raccourci l'avalait en silence — JavaScript ignore un argument en trop —,
+// si bien que le site d'appel du cadrage la passait, avec un commentaire
+// expliquant pourquoi elle etait indispensable, pour aucun effet : la consigne
+// se repetait a chaque image ou la position vacillait. C'est exactement le
+// defaut que la correction de gainage avait deja paye une fois.
+const coach_sequence = (sons, priorite = 5, cle = null) =>
+  lecteur?.sequence(sons, priorite, cle);
 
 /**
  * Le nombre d'halteres qu'un mouvement demande, ou 0.
@@ -2151,8 +2284,7 @@ function annoncer_changement(avant) {
 
 // ---------------------------------------------------------------- affichage
 
-function peindre(pose, nombre) {
-  const canvas = $("rendu");
+function peindre(pose, canvas = $("rendu")) {
   const video = camera.video;
   if (!video?.videoWidth) return;
   if (canvas.width !== video.videoWidth) {
@@ -2429,19 +2561,69 @@ function remplir_materiel(halteres_el, accessoires_el, inventaire = null) {
   inventaire =
     inventaire ?? normaliser(tables_baremes, profil_courant()?.materiel ?? null);
 
-  halteres_el.innerHTML = tables_baremes.echelles.reference
-    .map((poids) => {
-      const quantite = inventaire.halteres[poids] || 0;
-      const option = (valeur, libelle) =>
-        `<option value="${valeur}"${quantite === valeur || (valeur === 2 && quantite >= 2) ? " selected" : ""}>${libelle}</option>`;
-      return (
-        `<label class="haltere"><span>${poids} kg</span>` +
-        `<select data-poids="${poids}">` +
-        option(0, "Aucun") + option(1, "Un") + option(2, "Une paire") +
-        `</select></label>`
-      );
-    })
-    .join("");
+  // La gamme exportee n'est qu'une liste de **raccourcis** — les halteres
+  // qu'on trouve couramment —, jamais la liste de ce qu'on a le droit de
+  // declarer. On y ajoute donc les poids deja declares qui n'y figurent pas :
+  // sans ca, un haltere de 17,5 kg saisi a la main disparaitrait du
+  // questionnaire au rechargement, et se ferait effacer au premier
+  // enregistrement.
+  const declares = Object.keys(inventaire.halteres).map(Number);
+  const poids_affiches = [
+    ...new Set([...tables_baremes.echelles.reference, ...declares]),
+  ].sort((a, b) => a - b);
+
+  halteres_el.innerHTML =
+    poids_affiches
+      .map((poids) => {
+        const quantite = inventaire.halteres[poids] || 0;
+        const option = (valeur, libelle) =>
+          `<option value="${valeur}"${quantite === valeur || (valeur === 2 && quantite >= 2) ? " selected" : ""}>${libelle}</option>`;
+        return (
+          `<label class="haltere"><span>${poids} kg</span>` +
+          `<select data-poids="${poids}">` +
+          option(0, "Aucun") + option(1, "Un") + option(2, "Une paire") +
+          `</select></label>`
+        );
+      })
+      .join("") +
+    `<div class="ajout-poids">
+      <input type="number" step="0.5" min="1" max="60" inputmode="decimal"
+             placeholder="autre poids" aria-label="Ajouter un poids en kilos">
+      <button type="button">Ajouter</button>
+      <span class="ajout-erreur" hidden></span>
+    </div>`;
+
+  // Branche ici et non par delegation : `remplir_materiel` reconstruit tout le
+  // bloc a chaque appel, donc un ecouteur pose ailleurs viserait un noeud
+  // disparu. C'est aussi pourquoi les racines sont **passees en parametre** —
+  // il y a deux endroits ou l'on remplit ce questionnaire, et il ne doit y
+  // avoir qu'une fonction.
+  const zone = halteres_el.querySelector(".ajout-poids");
+  const champ = zone.querySelector("input");
+  const erreur = zone.querySelector(".ajout-erreur");
+
+  const ajouter = () => {
+    const poids = poids_declarable(champ.value);
+    if (poids === null) {
+      erreur.textContent = "Entre un poids entre 1 et 60 kg.";
+      erreur.hidden = false;
+      return;
+    }
+    // On repart de ce qui est **affiche** et non de l'inventaire d'entree :
+    // entre-temps l'utilisateur a pu changer des quantites qu'un redessin
+    // effacerait sans rien dire.
+    const courant = lire_materiel(halteres_el, accessoires_el);
+    courant.halteres[poids] = courant.halteres[poids] ?? 1;
+    remplir_materiel(halteres_el, accessoires_el, normaliser(tables_baremes, courant));
+  };
+
+  zone.querySelector("button").addEventListener("click", ajouter);
+  champ.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    // Le questionnaire vit dans un formulaire : sans ca, Entree l'envoie.
+    e.preventDefault();
+    ajouter();
+  });
 
   accessoires_el.innerHTML = Object.entries(tables_baremes.accessoires)
     .map(
@@ -2457,7 +2639,9 @@ function remplir_materiel(halteres_el, accessoires_el, inventaire = null) {
 /** Ce qu'un questionnaire deja rempli declare. */
 function lire_materiel(halteres_el, accessoires_el) {
   const halteres = {};
-  for (const select of halteres_el.querySelectorAll("select")) {
+  // `querySelectorAll("select")` et non `[data-poids]` : le bloc porte aussi
+  // le champ d'ajout, qui n'a pas de poids et n'est pas un `select`.
+  for (const select of halteres_el.querySelectorAll("select[data-poids]")) {
     const quantite = Number(select.value) || 0;
     if (quantite > 0) halteres[select.dataset.poids] = quantite;
   }
@@ -3073,19 +3257,24 @@ const ETAPES_BIENVENUE = [
   {
     titre: "Où poser ton appareil",
     annonces: ["installation_hauteur", "installation_distance"],
+    pratique: "cadrage",
     corps: [
       "À deux ou trois mètres de toi, et surtout à hauteur de poitrine — idéalement entre la poitrine et le nombril.",
       "Posé au sol, il ne te verra pas en entier, et rien ne sera compté.",
-      "Avant chaque nouvelle séance, je te ferai vérifier ton cadrage en bougeant.",
+      "Une fois posé, ne le déplace plus de la séance : chaque exercice est réglé sur ce point de vue, et le bouger en cours de route fausse le comptage.",
+      "Chaque exercice te dira aussi comment te placer — de face, de profil, la caméra d'un côté précis. C'est à respecter : une détection ne lit pas un mouvement depuis n'importe quel angle.",
+      "Vérifions tout de suite que tu tiens en entier dans l'image.",
     ],
   },
   {
     titre: "Les deux gestes",
     annonces: ["geste_bras_en_x", "geste_deux_bras_leves"],
+    pratique: "gestes",
     corps: [
+      "Tu es à trois mètres de l'écran pendant une série : ces deux gestes remplacent les boutons, et tu n'as jamais à revenir à l'appareil.",
       "Croise les bras devant toi pour démarrer une série, et pour la valider quand tu as fini.",
-      "Lève les deux bras pour remettre le compteur à zéro sans valider.",
-      "Tiens la position une à trois secondes : un anneau se remplit à l'écran pour te dire que le geste est pris.",
+      "Lève les deux bras pour remettre le compteur à zéro sans valider — quand une série est partie de travers et que tu veux la reprendre.",
+      "Tiens la position une à trois secondes : un anneau se remplit à l'écran pour te dire que le geste est pris. Essaie-les maintenant.",
     ],
   },
   {
@@ -3094,12 +3283,199 @@ const ETAPES_BIENVENUE = [
     materiel: true,
     corps: [
       "Coche ce que tu as sous la main. C'est ce qui décide des charges que je te proposerai.",
+      "La liste n'est qu'un raccourci : si tu as un poids qui n'y figure pas, ajoute-le.",
       "Si tu n'as rien, laisse tout à « Aucun » : tous les mouvements au poids du corps restent jouables.",
+    ],
+  },
+  {
+    titre: "Ton programme",
+    annonces: [],
+    programmes: true,
+    corps: [
+      "Un programme enchaîne les séances dans un ordre et fixe des objectifs à atteindre. Je te dirai laquelle faire à chaque fois.",
+      "Tu peux aussi t'entraîner sans : les séances restent toutes jouables librement.",
+      "Ce choix se change quand tu veux, depuis l'onglet Programmes.",
     ],
   },
 ];
 
 let etape_bienvenue = 0;
+
+//: La pratique en cours sur l'ecran d'accueil, ou `null`. Elle porte sa propre
+//: boucle d'images : celle de la seance est armee par `demarrer()` et n'a rien
+//: a connaitre de l'accueil, qui n'a ni circuit, ni compteur, ni coach a faire
+//: avancer. Deux boucles qui ne tournent jamais en meme temps valent mieux
+//: qu'une boucle qui saurait faire les deux.
+let pratique = null;
+
+//: Combien de temps un cadrage doit tenir avant d'etre declare bon. **La meme
+//: valeur que `CADRAGE_STABLE` de `tutoriel.js`**, et pour la meme raison :
+//: les landmarks tremblent, et exiger une perfection prolongee bloquerait
+//: quelqu'un de correctement place.
+const ACCUEIL_CADRAGE_STABLE = 2;
+
+/**
+ * Ouvre la camera pour l'etape courante, ou explique pourquoi ca n'a pas pu.
+ *
+ * **Un refus n'est jamais bloquant.** L'accueil sert a expliquer, pas a
+ * filtrer : quelqu'un qui refuse l'autorisation ici doit pouvoir arriver
+ * jusqu'a la liste des seances, ou la camera lui sera redemandee au moment ou
+ * elle sert vraiment. Le message ne nomme d'ailleurs aucune cause — un appel
+ * hors geste utilisateur rend `NotAllowedError` exactement comme un refus
+ * systeme, et pretendre distinguer les deux serait inventer.
+ */
+async function allumer_camera_accueil() {
+  const note = $("bienvenueCameraNote");
+  $("bienvenueAllumer").disabled = true;
+  $("bienvenueAllumer").textContent = "Ouverture…";
+  try {
+    if (!camera.vivante()) await camera.ouvrir();
+    else await camera.reprendre();
+  } catch (erreur) {
+    note.textContent =
+      "Je n'ai pas pu ouvrir la caméra. Ce n'est pas grave : tu peux continuer, " +
+      "je te la redemanderai au début de ta première séance.";
+    note.hidden = false;
+    $("bienvenueAllumer").hidden = true;
+    return;
+  }
+  $("bienvenueAllumer").hidden = true;
+  note.hidden = true;
+  $("bienvenueApercu").hidden = false;
+  demarrer_pratique(ETAPES_BIENVENUE[etape_bienvenue].pratique);
+}
+
+/** Arme la boucle de pratique. Deux exercices, une seule mecanique. */
+function demarrer_pratique(type) {
+  pratique = {
+    type,
+    // Le cadrage compte un temps de stabilite, les gestes comptent des gestes
+    // reussis : deux avancements differents, un seul champ, parce que la barre
+    // de progression n'a besoin que d'une part entre 0 et 1.
+    cadre_depuis: null,
+    gestes: { bras_en_x: new HoldPosition(bras_en_x, TENUE_PREPARATION),
+              deux_bras_leves: new HoldPosition(deux_bras_leves, TENUE_PREPARATION) },
+    faits: new Set(),
+  };
+  $("bienvenueFait").hidden = true;
+  requestAnimationFrame(boucle_accueil);
+}
+
+/**
+ * Coupe la pratique et **suspend** la camera, sans la fermer.
+ *
+ * Suspendre plutot qu'arreter garde l'autorisation acquise : chaque
+ * `getUserMedia` est une demande potentielle, et Safari en a redemande trois
+ * fois a un testeur sur une seule session. Meme regle qu'entre deux exercices.
+ */
+function arreter_pratique() {
+  pratique = null;
+  if (camera.vivante()) camera.suspendre();
+}
+
+/** La boucle de l'accueil : une image, une consigne, rien d'autre n'avance. */
+function boucle_accueil(horodatage) {
+  if (!pratique) return;
+
+  const poses = camera.detecter(horodatage);
+  const corps = camera.choisir(poses);
+  peindre(corps, $("bienvenueRendu"));
+
+  if (!corps) {
+    ecrire_pratique(texte("corps_absent"), 0);
+  } else if (pratique.type === "cadrage") {
+    avancer_cadrage(corps, horodatage / 1000);
+  } else {
+    avancer_gestes(corps);
+  }
+
+  requestAnimationFrame(boucle_accueil);
+}
+
+/**
+ * Le cadrage d'accueil : le corps **entier**, sans exercice choisi.
+ *
+ * `points_utilises` espionne une detection pour savoir de quels landmarks elle
+ * a besoin — ici personne n'a encore choisi de mouvement, donc on demande tout
+ * ce que `cadrage.js` sait nommer. C'est le controle le plus strict des deux,
+ * et c'est voulu : a ce stade on regle la *position de l'appareil*, qui doit
+ * convenir a n'importe quel exercice.
+ */
+function avancer_cadrage(corps, instant) {
+  const choix = message_de_cadrage(
+    problemes_de_cadrage(corps, POINTS_DU_CORPS_ENTIER)
+  );
+
+  if (choix) {
+    // Le compteur ne repart de zero que si le cadrage se **perd** : un
+    // clignotement d'une image ne doit pas tout recommencer.
+    pratique.cadre_depuis = null;
+    ecrire_pratique(texte_de_cadrage(choix), 0);
+    coach_sequence(
+      sequence_cadrage(tables_sons?.briques, choix.partie, choix.action),
+      7,
+      "cadrage"
+    );
+    return;
+  }
+
+  if (pratique.cadre_depuis === null) pratique.cadre_depuis = instant;
+  const tenu = instant - pratique.cadre_depuis;
+  ecrire_pratique(
+    "Parfait, tu tiens en entier dans l'image — ne bouge pas…",
+    Math.min(1, tenu / ACCUEIL_CADRAGE_STABLE)
+  );
+
+  if (tenu >= ACCUEIL_CADRAGE_STABLE && !pratique.faits.has("cadrage")) {
+    pratique.faits.add("cadrage");
+    coach_sequence([tables_sons?.briques?.installation_bien_cadre], 6);
+    $("bienvenueFait").textContent =
+      "C'est bon : à cette distance et à cette hauteur, je te vois en entier. " +
+      "Laisse l'appareil exactement là.";
+    $("bienvenueFait").hidden = false;
+  }
+}
+
+/**
+ * Les deux gestes, essayes pour de vrai.
+ *
+ * Chaque `HoldPosition` a son `update()` appele **une seule fois par image**,
+ * comme dans `lire_guide` : l'objet ne rend la transition « termine » qu'une
+ * fois, et un second appel la consommerait — le geste ne se validerait alors
+ * jamais.
+ */
+function avancer_gestes(corps) {
+  let part = 0;
+  for (const [nom, hold] of Object.entries(pratique.gestes)) {
+    const [avancement, valide] = hold.update(corps);
+    if (valide) pratique.faits.add(nom);
+    if (!pratique.faits.has(nom)) part = Math.max(part, avancement);
+  }
+
+  const reste = Object.keys(pratique.gestes).filter((n) => !pratique.faits.has(n));
+  if (!reste.length) {
+    ecrire_pratique("Les deux gestes sont pris. Tu sais tout piloter de loin.", 1);
+    $("bienvenueFait").hidden = false;
+    $("bienvenueFait").textContent =
+      "Pendant une série, ce sont exactement ces deux gestes : croiser les bras " +
+      "pour valider, les lever pour repartir de zéro.";
+    return;
+  }
+
+  ecrire_pratique(
+    reste.includes("bras_en_x")
+      ? "Croise les bras devant toi et tiens la position…"
+      : "Maintenant lève les deux bras et tiens la position…",
+    part
+  );
+}
+
+/** Une consigne et un avancement : tout ce que la pratique affiche. */
+function ecrire_pratique(message, part) {
+  const zone = $("bienvenueConsigne");
+  if (zone.textContent !== message) zone.textContent = message;
+  $("bienvenueProgres").style.width = `${Math.round(part * 100)}%`;
+}
 
 function dessiner_bienvenue() {
   const etape = ETAPES_BIENVENUE[etape_bienvenue];
@@ -3112,6 +3488,28 @@ function dessiner_bienvenue() {
   $("bienvenueCorps").innerHTML = etape.corps
     .map((ligne) => `<p>${echapper(ligne)}</p>`)
     .join("");
+
+  // Chaque etape n'allume que son bloc. Une etape qui en oublierait un le
+  // laisserait visible par-dessus la suivante — d'ou la remise a zero groupee
+  // plutot qu'un `hidden` pose au cas par cas.
+  arreter_pratique();
+  $("bienvenueCamera").hidden = !etape.pratique;
+  $("bienvenueApercu").hidden = true;
+  $("bienvenueProgrammes").hidden = !etape.programmes;
+  if (etape.pratique) {
+    // Le bouton repart neuf a chaque passage : on peut revenir en arriere.
+    const allumer = $("bienvenueAllumer");
+    allumer.hidden = false;
+    allumer.disabled = false;
+    allumer.textContent = camera.vivante()
+      ? "Reprendre la caméra"
+      : "Allumer la caméra";
+    $("bienvenueCameraNote").hidden = true;
+    $("bienvenueFait").hidden = true;
+    ecrire_pratique("", 0);
+  }
+
+  if (etape.programmes) dessiner_programmes_accueil();
 
   $("bienvenueMateriel").hidden = !etape.materiel;
   if (etape.materiel) {
@@ -3132,9 +3530,11 @@ function dessiner_bienvenue() {
   }
 
   $("bienvenuePrecedent").hidden = etape_bienvenue === 0;
-  $("bienvenueSuivant").textContent = etape.materiel
-    ? "C'est parti"
-    : "Continuer";
+  // « C'est parti » sur la derniere etape, quelle qu'elle soit : le libelle
+  // suit la position et non un drapeau, sinon ajouter une etape apres celle du
+  // materiel laisse deux « C'est parti » dans le tunnel.
+  $("bienvenueSuivant").textContent =
+    etape_bienvenue === ETAPES_BIENVENUE.length - 1 ? "C'est parti" : "Continuer";
 
   // Le son n'est prepare qu'au premier clic — iOS l'exige —, donc la premiere
   // etape est muette et les suivantes parlent. Mieux vaut ca qu'un bouton
@@ -3147,28 +3547,75 @@ function dessiner_bienvenue() {
 
 async function avancer_bienvenue() {
   const etape = ETAPES_BIENVENUE[etape_bienvenue];
+  const profil = profil_courant();
 
-  if (etape.materiel) {
-    const profil = profil_courant();
-    if (profil) {
-      profil.materiel = lire_materiel(
-        $("listeHalteresAccueil"),
-        $("listeAccessoiresAccueil")
-      );
-      profil.onboarding_termine = 1;
-      await stockage.sauver(base);
-      // **Sans ca les objectifs resteraient calcules sur l'ancien
-      // inventaire**, en silence : `Baremes` normalise une fois pour toutes a
-      // la construction.
-      construire_moteur();
-    }
-    dessiner_liste();
-    montrer("ecranSeances");
+  // Chaque etape ecrit ce qu'elle a recolte **en la quittant**, et non a la
+  // fin du tunnel : revenir en arriere ne doit pas defaire une reponse deja
+  // donnee, et le materiel se lit dans le formulaire tant qu'il est a l'ecran.
+  if (etape.materiel && profil) {
+    profil.materiel = lire_materiel(
+      $("listeHalteresAccueil"),
+      $("listeAccessoiresAccueil")
+    );
+    await stockage.sauver(base);
+    // **Sans ca les objectifs resteraient calcules sur l'ancien inventaire**,
+    // en silence : `Baremes` normalise une fois pour toutes a la construction.
+    construire_moteur();
+  }
+
+  arreter_pratique();
+
+  if (etape_bienvenue < ETAPES_BIENVENUE.length - 1) {
+    etape_bienvenue += 1;
+    dessiner_bienvenue();
     return;
   }
 
-  etape_bienvenue += 1;
-  dessiner_bienvenue();
+  // Derniere etape : c'est ici, et seulement ici, que le tunnel se referme.
+  if (profil) {
+    profil.onboarding_termine = 1;
+    await stockage.sauver(base);
+  }
+  dessiner_liste();
+  montrer("ecranSeances");
+}
+
+/**
+ * Les programmes proposes a l'accueil, plus l'option de ne pas choisir.
+ *
+ * Volontairement une **liste de boutons** et non un `<select>` : un programme
+ * se juge sur ce qu'il contient, pas sur son nom, et l'ecran d'accueil est le
+ * seul moment ou quelqu'un n'a aucune idee de ce que « Road to TKT » recouvre.
+ * `definir_programme_suivi` est la meme fonction que l'onglet Programmes — la
+ * regle « aucun choix veut dire null » ne vit qu'a un endroit.
+ */
+function dessiner_programmes_accueil() {
+  const zone = $("bienvenueProgrammes");
+  const choisi = programme_suivi();
+  const cartes = Object.entries(programmes_declares).map(([cle, programme]) => {
+    const seances = [...new Set((programme.exigences ?? []).map((e) => e.seance))];
+    return (
+      `<button type="button" class="choix-programme${cle === choisi ? " choisi" : ""}" data-programme="${echapper(cle)}">` +
+      `<strong>${echapper(programme.nom ?? cle)}</strong>` +
+      `<span>${seances.length} séance${seances.length > 1 ? "s" : ""}` +
+      (seances.length ? ` · ${echapper(seances.join(" · "))}` : "") +
+      `</span></button>`
+    );
+  });
+
+  cartes.push(
+    `<button type="button" class="choix-programme${choisi ? "" : " choisi"}" data-programme="">` +
+      `<strong>Pas de programme pour l'instant</strong>` +
+      `<span>Je choisis mes séances au jour le jour</span></button>`
+  );
+
+  zone.innerHTML = cartes.join("");
+  for (const bouton of zone.querySelectorAll("[data-programme]")) {
+    bouton.addEventListener("click", async () => {
+      await definir_programme_suivi(bouton.dataset.programme || null);
+      dessiner_programmes_accueil();
+    });
+  }
 }
 
 /** L'accueil est-il encore a faire pour ce profil ? */
@@ -4419,6 +4866,14 @@ $("bienvenueSuivant").addEventListener("click", () => {
   // ce soit sans geste de l'utilisateur, et c'est le premier qu'on ait.
   lecteur?.preparer();
   avancer_bienvenue();
+});
+
+$("bienvenueAllumer").addEventListener("click", () => {
+  // La demande de camera part **du gestionnaire de clic**, avant tout `await` :
+  // une chaine d'attentes consommerait l'activation utilisateur, et la demande
+  // serait refusee au bout. Meme regle que `verrou_ecran.tenir()`.
+  lecteur?.preparer();
+  allumer_camera_accueil();
 });
 
 $("bienvenuePrecedent").addEventListener("click", () => {
