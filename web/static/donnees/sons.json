@@ -31,25 +31,46 @@
    "preparation.wav"
   ],
   "mi_parcours": [
-   "mi_parcours_1.wav"
+   "mi_parcours_1.wav",
+   "mi_parcours_2.wav",
+   "mi_parcours_3.wav"
   ],
   "encore_5": [
-   "encore_5_1.wav"
+   "encore_5_1.wav",
+   "encore_5_2.wav",
+   "encore_5_3.wav"
   ],
   "encore_3": [
-   "encore_3_1.wav"
+   "encore_3_1.wav",
+   "encore_3_2.wav"
   ],
   "correction_gainage": [
    "correction_gainage_1.wav"
   ],
   "temps_20": [
-   "temps_20_1.wav"
+   "temps_20_1.wav",
+   "temps_20_2.wav",
+   "temps_20_3.wav"
   ],
   "temps_10": [
-   "temps_10_1.wav"
+   "temps_10_1.wav",
+   "temps_10_2.wav",
+   "temps_10_3.wav",
+   "temps_10_4.wav"
   ],
   "temps_5": [
-   "temps_5_1.wav"
+   "temps_5_1.wav",
+   "temps_5_2.wav",
+   "temps_5_3.wav"
+  ],
+  "temps_3": [
+   "temps_3_1.wav"
+  ],
+  "temps_2": [
+   "temps_2_1.wav"
+  ],
+  "temps_1": [
+   "temps_1_1.wav"
   ],
   "repos_10": [
    "repos_10.wav"
@@ -80,6 +101,9 @@
   "temps_20": 6,
   "temps_10": 7,
   "temps_5": 8,
+  "temps_3": 8,
+  "temps_2": 8,
+  "temps_1": 8,
   "repos_20": 5,
   "repos_10": 6,
   "repos_5": 8,
@@ -91,10 +115,8 @@
  },
  "briques": {
   "prochain_exercice": "prochain_exercice.wav",
-  "prepare_un_haltere_de": "prepare_un_haltere_de.wav",
-  "prepare_deux_halteres_de": "prepare_deux_halteres_de.wav",
-  "kilos": "kilos.wav",
-  "kilo": "kilo.wav",
+  "premier_exercice": "le_premier_exercice_sera.wav",
+  "dernier_exercice": "pour_finir.wav",
   "orientation_face": "place_toi_face_a_la_camera.wav",
   "orientation_profil": "place_toi_de_profil.wav",
   "orientation_profil_camera_gauche": "place_toi_de_profil_la_camera_a_ta_gauche.wav",
@@ -137,14 +159,16 @@
   "bienvenue_camera_compte": "ma_camera_compte_tes_repetitions.wav",
   "bienvenue_je_te_guide": "et_je_te_guide_a_la_voix.wav",
   "bienvenue_rien_ne_sort": "aucune_image_ne_sort_de_ton_appareil.wav",
-  "bienvenue_pret": "on_y_va_quand_tu_veux.wav"
+  "bienvenue_pret": "on_y_va_quand_tu_veux.wav",
+  "prepare_un_haltere_de": "prepare_un_haltere_de.wav",
+  "prepare_deux_halteres_de": "prepare_deux_halteres_de.wav",
+  "kilos": "kilos.wav",
+  "kilo": "kilo.wav"
  },
  "textes": {
   "prochain_exercice": "Prochain exercice",
-  "prepare_un_haltere_de": "Prépare un haltère de",
-  "prepare_deux_halteres_de": "Prépare deux haltères de",
-  "kilos": "kilos",
-  "kilo": "kilo",
+  "premier_exercice": "Le premier exercice sera",
+  "dernier_exercice": "Pour finir",
   "orientation_face": "Place-toi face à la caméra",
   "orientation_profil": "Place-toi de profil",
   "orientation_profil_camera_gauche": "Place-toi de profil, la caméra à ta gauche",

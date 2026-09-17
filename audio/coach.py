@@ -16,26 +16,61 @@ messages = {
     "fin_seance": ["fin_seance.wav"],
     "debut_serie": ["debut_serie.wav"],
     "preparation": ["preparation.wav"],
+    # Plusieurs variantes par cle : `coach()` en tire une au hasard, et c'est
+    # ce qui evite d'entendre exactement la meme phrase a chaque serie. Le
+    # suffixe `_1` existait pour ca depuis le debut, mais **les tables n'en
+    # declaraient qu'une** alors que le disque en portait deux ou trois : les
+    # prises etaient faites et ne sortaient jamais. Un fichier que rien ne
+    # declare est aussi muet qu'un fichier absent, et se voit encore moins —
+    # c'est le diff entre `audio/Fichiers/` et ce que le code reclame qui l'a
+    # sorti, pas une exception.
     "mi_parcours": [
         "mi_parcours_1.wav",
+        "mi_parcours_2.wav",
+        "mi_parcours_3.wav",
     ],
     "encore_5": [
         "encore_5_1.wav",
+        "encore_5_2.wav",
+        "encore_5_3.wav",
     ],
     "encore_3": [
         "encore_3_1.wav",
+        "encore_3_2.wav",
     ],
     "correction_gainage": [
         "correction_gainage_1.wav",
     ],
     "temps_20": [
         "temps_20_1.wav",
+        "temps_20_2.wav",
+        "temps_20_3.wav",
     ],
     "temps_10": [
         "temps_10_1.wav",
+        "temps_10_2.wav",
+        "temps_10_3.wav",
+        "temps_10_4.wav",
     ],
     "temps_5": [
         "temps_5_1.wav",
+        "temps_5_2.wav",
+        "temps_5_3.wav",
+    ],
+    # Les trois dernieres secondes, dites une par une. Les fichiers etaient
+    # sur le disque depuis le premier jet du coach, sans cle, sans priorite et
+    # sans seuil qui les demande — exactement l'inverse de `temps_30`, qui
+    # avait la priorite et rien d'autre. Rétablir un palier se fait avec sa
+    # cle, son fichier **et** sa priorite, plus le seuil qui l'appelle dans
+    # `annoncer_temps_restant` : les quatre, ou aucun.
+    "temps_3": [
+        "temps_3_1.wav",
+    ],
+    "temps_2": [
+        "temps_2_1.wav",
+    ],
+    "temps_1": [
+        "temps_1_1.wav",
     ],
     "repos_10": [
         "repos_10.wav",
@@ -77,6 +112,12 @@ priorites = {
     "temps_20": 6,
     "temps_10": 7,
     "temps_5": 8,
+    # Meme rang que `temps_5` : c'est la meme famille, et un rang >= 5 vide
+    # les petits sons en attente — donc le bip de la seconde en cours cede la
+    # place au nombre prononce, plutot que de faire la queue devant lui.
+    "temps_3": 8,
+    "temps_2": 8,
+    "temps_1": 8,
     "repos_20": 5,
     "repos_10": 6,
     "repos_5": 8,
@@ -121,7 +162,9 @@ def coach(event, valeur=None):
     jouer(son, priorites.get(event, 5))
 
 
-def annoncer_prochaine_etape(etape, nombre_halteres=0, orientation=None):
+def annoncer_prochaine_etape(
+    etape, nombre_halteres=0, orientation=None, amorce="prochain_exercice"
+):
     """« Prochain exercice. Curl biceps droit. Prépare un haltère de 8 kilos. »
 
     **Composée de briques, plus cherchée toute faite.** Cette fonction cherchait
@@ -140,6 +183,11 @@ def annoncer_prochaine_etape(etape, nombre_halteres=0, orientation=None):
     `session.seances` et du catalogue, qu'`audio.annonces` ne peut pas importer
     sans perdre sa légèreté d'imports (voir son en-tête).
 
+    `amorce` l'est pour une raison de plus : elle dépend de la **place du bloc
+    dans la séance**, que ce module ne voit pas. C'est `Circuit.amorce_annonce`
+    qui la tranche, et l'appelant qui la transmet — une séance n'est pas un
+    argument qu'un lecteur de sons ait à connaître.
+
     La priorité vaut celle d'un événement important : une annonce longue doit
     chasser les petits sons en attente plutôt que de faire la queue derrière
     eux, et surtout ne pas être coupée en son milieu.
@@ -147,7 +195,7 @@ def annoncer_prochaine_etape(etape, nombre_halteres=0, orientation=None):
     if etape is None:
         return
 
-    sons = annonces.sequence_prochain_exercice(etape, nombre_halteres)
+    sons = annonces.sequence_prochain_exercice(etape, nombre_halteres, amorce)
     sons += annonces.sequence_orientation(orientation)
 
     jouer_sequence(sons, priorites.get("changement_exercice", 5))
@@ -186,6 +234,9 @@ def annoncer_temps_restant(bloc, secondes_restantes):
         (20, "temps_20"),
         (10, "temps_10"),
         (5, "temps_5"),
+        (3, "temps_3"),
+        (2, "temps_2"),
+        (1, "temps_1"),
     ]
 
     for seuil, message in seuils:

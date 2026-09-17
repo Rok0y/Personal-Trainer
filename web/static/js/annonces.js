@@ -16,6 +16,20 @@
 // `normaliser_nom` traduit, et c'est la seule fonction de ce fichier qui doive
 // rendre exactement la meme chose que son homologue Python sur n'importe
 // quelle entree.
+//
+// **Divergence de chemin assumee, et c'est la seule du module.** Une phrase
+// s'enregistre d'un souffle plutot qu'en briques cousues a la lecture : la
+// charge (« prepare un haltere de 8 kilos »), parce que son decoupage tombait
+// au milieu d'un groupe nominal et s'entendait. Le Python en compose le
+// **texte**, puis le traduit en nom de fichier — « le nom du fichier est le
+// texte ». Ici, il n'y a pas de texte : on assemble les **noms**
+// (`fichier_assemble`). Les deux chemins doivent rendre le meme fichier, et
+// c'est `comparer_annonces.mjs` qui le prouve, pas un commentaire qui
+// l'affirmerait.
+//
+// L'amorce et le nom du mouvement, eux, restent **deux prises** : trois
+// amorces se recombinent avec trente-neuf mouvements, et la couture tombe sur
+// la pause d'un deux-points.
 
 /**
  * Le nom de fichier d'un texte : sans accents, sans ponctuation, minuscules.
@@ -48,6 +62,14 @@ export function fichier(texte) {
 //: plafond a atteindre, et une annonce sans son nombre reste utile.
 export const NOMBRE_MAXIMAL_DIT = 60;
 
+//: Les facons d'annoncer un mouvement, selon sa place dans la seance. Meme
+//: vocabulaire ferme qu'en Python, et c'est l'appelant qui choisit.
+export const AMORCES_EXERCICE = [
+  "prochain_exercice",
+  "premier_exercice",
+  "dernier_exercice",
+];
+
 /**
  * Le fichier d'une brique du vocabulaire fixe, ou `null` si elle manque.
  *
@@ -61,12 +83,56 @@ export function brique(briques, cle) {
   return (briques ?? {})[cle] ?? null;
 }
 
-/** Le nombre, s'il est enregistre. Sinon rien, et la phrase se poursuit. */
-export function sequence_nombre(valeur) {
+/**
+ * L'entier qu'on sait prononcer, ou `null`. Point d'entree unique du plafond.
+ *
+ * `Number.isInteger` refuse 17,5 — un haltere declarable qui n'a aucune prise.
+ * Le Python faisait `int(17.5)`, donc annoncait « 17 kilos » : c'est ce cote-ci
+ * qui avait raison, et la divergence est passee inapercue tant que le harnais
+ * ne tirait que des entiers.
+ */
+export function nombre_dit(valeur) {
   const entier = Number(valeur);
-  if (!Number.isInteger(entier)) return [];
-  if (entier < 1 || entier > NOMBRE_MAXIMAL_DIT) return [];
-  return [fichier(String(entier))];
+  if (!Number.isInteger(entier)) return null;
+  if (entier < 1 || entier > NOMBRE_MAXIMAL_DIT) return null;
+  return entier;
+}
+
+/**
+ * Le nombre seul, s'il est enregistre. Sinon rien.
+ *
+ * Sans appelant de production des deux cotes — les charges sont devenues des
+ * phrases entieres —, conservee comme forme « sequence » du nombre.
+ */
+export function sequence_nombre(valeur) {
+  const entier = nombre_dit(valeur);
+  return entier === null ? [] : [fichier(String(entier))];
+}
+
+/**
+ * Le `.wav` d'une phrase enregistree d'un souffle, a partir des noms de ses
+ * morceaux : `prochain_exercice.wav` + `curl_biceps_droit.wav` donne
+ * `prochain_exercice_curl_biceps_droit.wav`.
+ *
+ * C'est le pendant, cote navigateur, de la composition de texte que fait le
+ * Python. L'invariant qui autorise les deux chemins : `normaliser_nom`
+ * reduit toute suite de separateurs a un `_` unique et ne change plus rien a
+ * un nom deja normalise, donc coudre les noms revient a coudre les textes.
+ *
+ * Deux refus, qui ne disent pas la meme chose. Un morceau **absent** (`null`,
+ * table `briques` plus ancienne que le code) rend `null` : on ne fabrique pas
+ * un nom a partir d'un trou. Un morceau **vide** (`.wav` seul, cas d'un nom
+ * d'exercice vide) est simplement saute, parce que c'est ce que fait la
+ * normalisation du texte cote Python.
+ */
+export function fichier_assemble(...fichiers) {
+  if (fichiers.some((morceau) => !morceau)) return null;
+
+  const noms = fichiers
+    .map((morceau) => String(morceau).replace(/\.wav$/, ""))
+    .filter(Boolean);
+
+  return noms.length ? `${noms.join("_")}.wav` : null;
 }
 
 /**
@@ -104,31 +170,43 @@ export function sequence_orientation(briques, orientation) {
  * de `session.seances.nombre_halteres` cote Python. Un et deux ne sont pas
  * interchangeables a l'oreille : on ne sort pas la meme chose du placard, et
  * aucun ecran regarde de trois metres ne donne cette information.
+ *
+ * `amorce` est une cle d'`AMORCES_EXERCICE`, choisie par l'appelant selon la
+ * position du mouvement dans la seance : « le premier exercice sera » a
+ * l'entree, « pour finir » sur le dernier, « prochain exercice » ailleurs.
  */
-export function sequence_prochain_exercice(briques, etape, nombre_halteres = 0) {
+export function sequence_prochain_exercice(
+  briques,
+  etape,
+  nombre_halteres = 0,
+  amorce = "prochain_exercice"
+) {
   if (!etape) return [];
 
-  const sons = [brique(briques, "prochain_exercice"), fichier(etape.exercice)];
+  // L'amorce et le nom du mouvement sont deux prises, parce qu'elles se
+  // recombinent. La charge, elle, est une phrase entiere.
+  const sons = [brique(briques, amorce), fichier(etape.exercice)];
 
-  const poids = etape.poids || 0;
-  if (poids <= 0 || ![1, 2].includes(nombre_halteres)) {
-    // Poids du corps, ou materiel non declare : il n'y a rien a preparer, et
-    // le silence le dit sans ambiguite. « Zero kilo » n'existe pas.
-    return sons.filter(Boolean);
-  }
+  const poids = nombre_dit(etape.poids);
 
-  const amorce = brique(
-    briques,
-    nombre_halteres === 1 ? "prepare_un_haltere_de" : "prepare_deux_halteres_de"
-  );
-  const chiffre = sequence_nombre(poids);
-  const unite = brique(briques, poids === 1 ? "kilo" : "kilos");
+  // Poids du corps, ou materiel non declare : il n'y a rien a preparer, et le
+  // silence le dit sans ambiguite. « Zero kilo » n'existe pas.
+  if (poids !== null && [1, 2].includes(nombre_halteres)) {
+    // La clause entiere ou rien : `fichier_assemble` rend null des qu'un
+    // morceau manque, plutot qu'une amorce suivie d'un blanc — qui s'entend
+    // comme une panne, la ou son absence s'entend comme une annonce breve.
+    const charge = fichier_assemble(
+      brique(
+        briques,
+        nombre_halteres === 1
+          ? "prepare_un_haltere_de"
+          : "prepare_deux_halteres_de"
+      ),
+      fichier(String(poids)),
+      brique(briques, poids === 1 ? "kilo" : "kilos")
+    );
 
-  // La clause entiere ou rien : une amorce suivie d'un blanc — « prepare un
-  // haltere de… » — s'entend comme une panne, la ou son absence s'entend comme
-  // une annonce breve.
-  if (amorce && chiffre.length && unite) {
-    sons.push(amorce, ...chiffre, unite);
+    if (charge) sons.push(charge);
   }
 
   return sons.filter(Boolean);

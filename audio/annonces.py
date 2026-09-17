@@ -8,12 +8,37 @@ qui manquait. La seule issue etait d'enregistrer indefiniment, donc le coach
 retombait sur un « changement d'exercice » generique des qu'un objectif
 changeait — c'est-a-dire a chaque progression.
 
-Une phrase est desormais une **suite de briques** : « prochain exercice »,
-« curl biceps droit », « prepare », « 8 », « kilos ». Chaque brique est un bout
-de texte court, enregistre une fois, reutilise partout. `cadrage.js` faisait
-deja ce calcul a l'ecrit — sept parties du corps et quatre actions au lieu des
-vingt-huit phrases qu'une table unique aurait demandees — et ce module ne fait
-que l'etendre a la voix.
+Une phrase est desormais une **suite de briques** : « prochain exercice, curl
+biceps droit », « prepare un haltere de 8 kilos », « place-toi de profil ».
+Chaque brique est enregistree une fois et reutilisee partout. `cadrage.js`
+faisait deja ce calcul a l'ecrit — sept parties du corps et quatre actions au
+lieu des vingt-huit phrases qu'une table unique aurait demandees — et ce module
+ne fait que l'etendre a la voix.
+
+**Deux criteres decident d'un decoupage, et il faut les deux.** Le premier est
+la recombinaison : un morceau merite sa prise s'il se retrouve derriere ou
+devant *plusieurs* autres. Les cinq orientations servent trente-neuf
+mouvements, les sept parties du corps du cadrage se croisent avec quatre
+actions, et le nom d'un exercice se dit derriere **trois** amorces — « prochain
+exercice », « le premier exercice sera », « pour finir » — soit quarante-deux
+prises la ou les phrases entieres en demanderaient cent dix-sept. Le second
+critere est la **couture** : elle doit tomber sur une pause que la phrase a
+deja. « Prochain exercice : curl biceps droit » s'annonce comme un titre, avec
+un deux-points naturel ou le raccord ne s'entend pas.
+
+C'est le second critere qui a fait reculer le decoupage des charges. « Prepare
+un haltere de » + « 8 » + « kilos » coupe **a l'interieur d'un groupe
+nominal**, la ou la voix ne s'arrete jamais : trois attaques et trois chutes
+pour une seule clause, et ca s'entend comme un saccadement meme prononce a
+plat — pour un gain de dix-sept prises. Une charge s'enregistre donc entiere.
+*On factorise ce qui se recombine, et seulement la ou la phrase respire
+deja.*
+
+D'ou deux tables plutot qu'une. `BRIQUES` est le vocabulaire **enregistre tel
+quel**, un fichier par entree — les amorces et les noms de mouvements en font
+partie. `FRAGMENTS` ne porte que des morceaux de texte qui n'existent **jamais
+seuls sur le disque** : ils composent le texte, donc le nom, des phrases qui
+s'enregistrent entieres. Il n'y reste que les charges.
 
 La regle qui en decoule gouverne tout ajout de texte au projet : **l'ecrit est
 gratuit et peut etre exhaustif, la voix est chere et doit etre factorisee.**
@@ -87,21 +112,21 @@ def fichier(texte):
 #: **exactement** prononce : les changer impose de reenregistrer.
 #:
 #: Ce qui n'est volontairement pas ici : les noms d'exercices, dont le catalogue
-#: est deja la source, et les nombres, qui sont leur propre texte.
+#: est deja la source, les nombres, qui sont leur propre texte, et les
+#: `FRAGMENTS`, qui ne s'enregistrent jamais seuls.
 BRIQUES = {
-    # --- Liaisons ---------------------------------------------------------
-    # Assemblees au milieu d'une phrase, donc prononcees **a plat** : une
-    # intonation de fin de phrase rendrait la couture audible.
+    # --- Les amorces qui annoncent un mouvement ----------------------------
+    # Elles se disent **devant un nom d'exercice**, jamais seules, et c'est
+    # pour elles que le nom du mouvement reste une prise a part : trois
+    # amorces x trente-neuf mouvements se recombinent, et la couture tombe
+    # sur la pause d'un deux-points — « prochain exercice : curl biceps
+    # droit ». Prononce-les donc **suspendues**, sans chute de fin de phrase.
+    #
+    # Vocabulaire ferme, declare dans `AMORCES_EXERCICE` : le coach choisit
+    # selon la position du mouvement dans la seance, et non au hasard.
     "prochain_exercice": "Prochain exercice",
-    # Deux briques la ou « prepare » + « un » + « haltere » + « de » en aurait
-    # demande quatre : le nombre d'halteres ne prend que deux valeurs, alors
-    # que le **poids** en prend onze. On ne factorise que ce qui varie, et
-    # decouper une amorce figee en mots ne ferait qu'ajouter des coutures
-    # audibles au milieu d'un groupe qui se prononce d'un souffle.
-    "prepare_un_haltere_de": "Prépare un haltère de",
-    "prepare_deux_halteres_de": "Prépare deux haltères de",
-    "kilos": "kilos",
-    "kilo": "kilo",
+    "premier_exercice": "Le premier exercice sera",
+    "dernier_exercice": "Pour finir",
     # --- Orientation par rapport a la camera -------------------------------
     # Cinq valeurs couvrent les trente-neuf mouvements du catalogue. C'est le
     # gain de factorisation le plus net du module : la ligne de cadrage de
@@ -173,14 +198,61 @@ BRIQUES = {
     "bienvenue_pret": "On y va quand tu veux",
 }
 
+#: Les morceaux de texte qui ne s'enregistrent **jamais seuls**. Ils ne
+#: servent qu'a composer le texte — donc le nom de fichier — d'une phrase
+#: enregistree d'un souffle, et n'apparaissent pour cette raison ni sur la
+#: feuille de prise de son ni parmi les fichiers attendus sur le disque.
+#:
+#: Ils etaient dans `BRIQUES`, et la voix cousait « prepare un haltere de » a
+#: « 8 » puis a « kilos » au moment de lire. La couture s'entendait, parce
+#: qu'elle tombait **a l'interieur d'un groupe nominal**, la ou la voix ne
+#: s'arrete jamais (voir l'en-tete). Les garder en table plutot qu'en litteral
+#: dans les fonctions preserve ce qui les rendait utiles : la formulation se
+#: corrige en un seul endroit, et le nom de fichier suit.
+#:
+#: Le navigateur les recoit **dans la meme table que `BRIQUES`**
+#: (`donnees/sons.json`, cle `briques`) : il n'en connait que les noms de
+#: fichiers, dont il assemble les morceaux (`fichier_assemble` dans
+#: `annonces.js`). C'est ici, du cote du texte, que la distinction a un sens.
+FRAGMENTS = {
+    # Deux entrees la ou « prepare » + « un » + « haltere » + « de » en aurait
+    # demande quatre : le nombre d'halteres ne prend que deux valeurs.
+    "prepare_un_haltere_de": "Prépare un haltère de",
+    "prepare_deux_halteres_de": "Prépare deux haltères de",
+    "kilos": "kilos",
+    # Singulier du seul cas ou il sert : un haltere de 1 kg. `POIDS_REFERENCE`
+    # ne le propose pas, donc la prise n'est pas demandee — un poids saisi a
+    # la main a 1 kg laisse la clause muette, ce qui est le comportement
+    # normal d'un fichier absent.
+    "kilo": "kilo",
+}
+
 #: Plafond de longueur d'un nom de fichier, controle par
 #: `scripts/verifier_annonces.py`. Il ne protege pas le systeme de fichiers :
 #: il mesure la **phrase**, puisque le nom en est la traduction directe. Une
 #: brique qui le depasse est une brique a decouper, pas un nom a tronquer —
 #: tronquer cacherait le symptome et ouvrirait des collisions entre deux
 #: phrases de meme debut.
+#:
+#: Il s'applique aussi aux **charges**, seules phrases assemblees qui restent
+#: (« prepare deux halteres de 25 kilos » : 33 caracteres) : celles-la ne se
+#: decoupent pas, puisque c'est precisement leur decoupage qui s'entendait.
 LONGUEUR_MAXIMALE_NOM = 55
 
+
+#: Les facons d'annoncer un mouvement, selon sa place dans la seance.
+#: Vocabulaire **ferme**, sur le modele d'`ORIENTATIONS` : l'appelant choisit,
+#: et `brique()` leve sur une cle inconnue plutot que de laisser une amorce
+#: muette.
+#:
+#: C'est l'existence de ces trois valeurs qui justifie que le nom d'un
+#: mouvement reste une **prise separee**. Avec une seule amorce, les phrases
+#: entieres auraient ete le bon choix : rien ne se recombinait.
+AMORCES_EXERCICE = (
+    "prochain_exercice",
+    "premier_exercice",
+    "dernier_exercice",
+)
 
 #: Les orientations admises, dans l'ordre ou elles se lisent. Vocabulaire
 #: **ferme** : `Exercice.orientation` ne prend que ces valeurs, et
@@ -234,17 +306,46 @@ def brique(cle):
 NOMBRE_MAXIMAL_DIT = 60
 
 
-def sequence_nombre(valeur):
-    """Le nombre, s'il est enregistre. Sinon rien, et la phrase se poursuit."""
+def nombre_dit(valeur):
+    """L'entier qu'on sait prononcer, ou None. Point d'entree unique du plafond.
+
+    Extrait de `sequence_nombre` parce que deux appelants ont besoin du
+    **nombre** et non de son fichier : la composition d'une charge, qui l'ecrit
+    dans une phrase, et le choix du singulier.
+
+    Le refus d'un flottant non entier n'est pas decoratif : un haltere de
+    17,5 kg est declarable (`core.materiel.poids_declarable` arrondit au
+    demi-kilo) et n'a aucune prise. `int(17.5)` rendait 17, donc le coach
+    annoncait une charge fausse — la ou le jumeau JavaScript, qui teste
+    `Number.isInteger`, se taisait deja. Divergence reelle entre les deux
+    portages, invisible parce que le harnais ne tirait que des entiers.
+    """
     try:
         entier = int(valeur)
     except (TypeError, ValueError):
-        return []
+        return None
+
+    if isinstance(valeur, float) and valeur != entier:
+        return None
 
     if not 1 <= entier <= NOMBRE_MAXIMAL_DIT:
-        return []
+        return None
 
-    return [fichier(str(entier))]
+    return entier
+
+
+def sequence_nombre(valeur):
+    """Le nombre seul, s'il est enregistre. Sinon rien.
+
+    Plus aucun appelant de production : le compteur de repetitions passe par
+    `coach("compteur", n)`, et les charges sont desormais des phrases
+    entieres. Conservee parce qu'elle est la forme « sequence » du nombre, que
+    le portage compare, et que toute annonce chiffree a venir repassera par
+    elle plutot que de refaire le plafond.
+    """
+    entier = nombre_dit(valeur)
+
+    return [fichier(str(entier))] if entier is not None else []
 
 
 def sequence_cadrage(partie, action):
@@ -273,7 +374,47 @@ def sequence_orientation(orientation):
     return [brique(f"orientation_{orientation}")]
 
 
-def sequence_prochain_exercice(etape, nombre_halteres=0):
+def texte_charge(nombre_halteres, poids):
+    """« Prepare deux halteres de 8 kilos », ou None s'il n'y a rien a dire.
+
+    None des que la phrase serait incomplete : poids du corps, materiel non
+    declare, ou charge qu'on ne sait pas prononcer. **Entiere ou rien** — une
+    amorce suivie d'un blanc s'entend comme une panne, la ou son absence
+    s'entend comme une annonce breve.
+    """
+    entier = nombre_dit(poids)
+
+    if entier is None or nombre_halteres not in (1, 2):
+        return None
+
+    amorce = FRAGMENTS[
+        "prepare_un_haltere_de" if nombre_halteres == 1 else "prepare_deux_halteres_de"
+    ]
+    unite = FRAGMENTS["kilo" if entier == 1 else "kilos"]
+
+    return f"{amorce} {entier} {unite}"
+
+
+def fichiers_charges(poids_possibles):
+    """Les `.wav` de charge de ces poids : un par (nombre d'halteres, poids).
+
+    La gamme est **injectee**, pour la meme raison que `nombre_halteres` l'est
+    plus bas : elle vit dans `core.materiel`, que ce module ne peut pas
+    importer sans perdre sa legerete d'imports (voir l'en-tete).
+
+    Aucun appelant de production n'en a besoin — on compose toujours a partir
+    d'un poids reel, et un fichier absent est un silence. Elle ne sert qu'aux
+    scripts qui doivent **enumerer** ce qui reste a enregistrer ou a copier.
+    """
+    return {
+        fichier(texte)
+        for halteres in (1, 2)
+        for poids in poids_possibles
+        if (texte := texte_charge(halteres, poids))
+    }
+
+
+def sequence_prochain_exercice(etape, nombre_halteres=0, amorce="prochain_exercice"):
     """L'annonce du prochain exercice : ce qu'il est, et ce qu'il faut sortir.
 
     C'est **la** phrase que ce module existe pour rendre possible : celle qui
@@ -281,6 +422,11 @@ def sequence_prochain_exercice(etape, nombre_halteres=0):
     repetitions.
 
     « Prochain exercice. Curl biceps droit. Prepare un haltere de 8 kilos. »
+
+    `amorce` est une cle d'`AMORCES_EXERCICE`, choisie par l'appelant selon la
+    position du mouvement dans la seance : « le premier exercice sera » a
+    l'entree, « pour finir » sur le dernier, « prochain exercice » partout
+    ailleurs. C'est l'appelant qui sait — ce module ne voit qu'une etape.
 
     **Les series et les repetitions n'y sont volontairement pas.** Elles sont
     deja a l'ecran, et les dire allongeait l'annonce de plusieurs secondes au
@@ -302,27 +448,19 @@ def sequence_prochain_exercice(etape, nombre_halteres=0):
     if etape is None:
         return []
 
-    sons = [brique("prochain_exercice"), fichier(etape["exercice"])]
+    # L'amorce, puis le nom du mouvement — deux prises, parce qu'elles se
+    # recombinent : trois amorces x trente-neuf mouvements, et la couture
+    # tombe sur la pause d'un deux-points (voir l'en-tete). La charge, elle,
+    # est une phrase entiere : la sienne tomberait au milieu d'un groupe
+    # nominal.
+    sons = [brique(amorce), fichier(etape["exercice"])]
 
-    poids = etape.get("poids") or 0
+    # Poids du corps, ou materiel non declare : il n'y a rien a preparer, et le
+    # silence le dit sans ambiguite. « Zero kilo » n'existe pas.
+    charge = texte_charge(nombre_halteres, etape.get("poids") or 0)
 
-    if poids <= 0 or nombre_halteres not in (1, 2):
-        # Poids du corps, ou materiel non declare : il n'y a rien a preparer, et
-        # le silence le dit sans ambiguite. « Zero kilo » n'existe pas.
-        return sons
-
-    amorce = (
-        "prepare_un_haltere_de" if nombre_halteres == 1 else "prepare_deux_halteres_de"
-    )
-    chiffre = sequence_nombre(poids)
-
-    # La clause entiere ou rien : une amorce suivie d'un blanc — « prepare un
-    # haltere de… » — s'entend comme une panne, la ou son absence s'entend
-    # comme une annonce breve.
-    if chiffre:
-        sons.append(brique(amorce))
-        sons.extend(chiffre)
-        sons.append(brique("kilo" if poids == 1 else "kilos"))
+    if charge:
+        sons.append(fichier(charge))
 
     return sons
 

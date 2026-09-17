@@ -42,6 +42,11 @@ export function exercice_pour(mouvements, nom) {
     erreurs: (fiche.erreurs ?? []).map((n) => DETECTIONS[n]).filter(Boolean),
     variante_facile: fiche.variante_facile,
     variante_difficile: fiche.variante_difficile,
+    // `?? null` et non `?? undefined` : `sequence_orientation` refuse tout ce
+    // qui n'est pas au vocabulaire, donc les deux se taisent — mais `null` est
+    // ce qu'ecrit le Python pour « rien de sur a dire », et c'est cette valeur
+    // que le harnais compare.
+    orientation: fiche.orientation ?? null,
   });
 }
 

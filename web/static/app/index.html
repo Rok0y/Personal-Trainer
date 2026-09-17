@@ -1834,10 +1834,15 @@ const nombre_halteres = (nom) =>
 function annoncer_prochain_exercice(bloc) {
   if (!bloc) return;
   const etape = { exercice: bloc.exercice.nom, poids: bloc.poids };
+  // L'amorce se lit ici et non aux trois sites d'appel : cette fonction vit
+  // dans la page, donc elle voit deja `seance`. Cote Python, `audio.coach`
+  // est un module sans seance, d'ou l'argument que `main.py` lui passe —
+  // c'est la meme decision prise dans deux contextes differents.
   const sons = sequence_prochain_exercice(
     tables_sons?.briques,
     etape,
-    nombre_halteres(bloc.exercice.nom)
+    nombre_halteres(bloc.exercice.nom),
+    seance?.amorce_annonce(bloc)
   ).concat(
     sequence_orientation(tables_sons?.briques, bloc.exercice.orientation)
   );

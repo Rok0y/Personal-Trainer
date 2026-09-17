@@ -11,6 +11,17 @@
 // des memes fichiers, tout le reste compare deux choses differentes en croyant
 // les trouver identiques.
 //
+// Ce qu'il verifie de plus depuis que la charge s'enregistre d'un souffle
+// (« prepare un haltere de 8 kilos ») : les deux cotes **n'en composent pas le
+// nom par le meme chemin**. Le Python coud le texte puis le normalise — « le
+// nom du fichier est le texte » —, le JavaScript coud des noms de fichiers,
+// faute d'avoir le texte. C'est exactement le genre d'invariant qu'un
+// commentaire affirme et qu'un harnais prouve.
+//
+// L'**amorce** est l'autre ajout : trois valeurs de vocabulaire ferme, plus
+// une inconnue, jouees sur chaque etape. C'est le seul endroit du module ou le
+// choix de l'appelant entre dans le calcul.
+//
 // Une divergence d'API est assumee et relevee comme telle : `brique()` **leve**
 // cote Python sur une cle inconnue (c'est une faute de frappe dans du code) et
 // rend `null` cote JavaScript (ou une table peut venir d'un `sons.json` garde
@@ -27,6 +38,7 @@ import { dirname, join } from "node:path";
 import {
   NOMBRE_MAXIMAL_DIT,
   fichier,
+  nombre_dit,
   normaliser_nom,
   sequence_cadrage,
   sequence_nombre,
@@ -103,6 +115,14 @@ function main() {
       }
 
       case "nombre": {
+        // Le gardien du plafond avant la sequence qui s'en sert : un
+        // demi-kilo doit se taire des deux cotes, et c'est la que le Python
+        // annoncait « 17 kilos » pour un haltere de 17,5.
+        verifier(
+          `nombre_dit(${ligne.valeur})`,
+          ligne.dit,
+          nombre_dit(ligne.valeur)
+        );
         verifier(
           `sequence_nombre(${ligne.valeur})`,
           ligne.sons,
@@ -146,14 +166,27 @@ function main() {
 
       case "prochain_exercice": {
         const etiquette = ligne.etape
-          ? `prochain(${ligne.etape.exercice}, ${ligne.etape.poids} kg, ` +
-            `${ligne.halteres} halteres)`
+          ? `${ligne.amorce}(${ligne.etape.exercice}, ` +
+            `${ligne.etape.poids} kg, ${ligne.halteres} halteres)`
           : "prochain(null)";
-        verifier(
-          etiquette,
-          ligne.sons,
-          sequence_prochain_exercice(briques, ligne.etape, ligne.halteres)
+        const obtenu = sequence_prochain_exercice(
+          briques,
+          ligne.etape,
+          ligne.halteres,
+          ligne.amorce
         );
+        // `sons: null` veut dire « Python a refuse l'amorce ». Le JS rend
+        // alors une liste amputee de la brique inconnue : c'est le
+        // comportement voulu, on verifie seulement qu'il n'a pas fabrique un
+        // nom de fichier a partir d'une cle qui n'est pas dans la table.
+        if (ligne.sons === null) {
+          questions += 1;
+          if (obtenu.includes(`${ligne.amorce}.wav`)) {
+            ecarts.push({ etiquette, attendu: "aucun fichier invente", obtenu });
+          }
+        } else {
+          verifier(etiquette, ligne.sons, obtenu);
+        }
         break;
       }
 

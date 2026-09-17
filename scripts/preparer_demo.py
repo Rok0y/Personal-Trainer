@@ -18,6 +18,7 @@ import shutil
 from pathlib import Path
 
 from audio import annonces
+from core.materiel import POIDS_REFERENCE
 from session.seances import (
     CATALOGUE_EXERCICES,
     _lire_seances_personnalisees,
@@ -240,26 +241,40 @@ def tables_du_coach():
     if manquantes:
         raise RuntimeError(f"Tables introuvables dans audio/coach.py : {manquantes}")
 
+    # `BRIQUES` **et** `FRAGMENTS` dans la meme table, a dessein : le
+    # navigateur n'en connait que des noms de fichiers, dont il assemble les
+    # morceaux (`fichier_assemble`), et la distinction — « est-ce une prise ou
+    # un morceau de nom ? » — ne lui sert a rien. Elle vit du cote du texte,
+    # ou elle decide de ce qu'on enregistre.
     tables["briques"] = {
-        cle: annonces.fichier(texte) for cle, texte in annonces.BRIQUES.items()
+        cle: annonces.fichier(texte)
+        for cle, texte in {**annonces.BRIQUES, **annonces.FRAGMENTS}.items()
     }
     # Le **texte** des memes briques, pour que le bandeau affiche exactement ce
     # que la voix prononce. Sans lui, ces phrases devraient etre recopiees dans
     # `messages.js` — deux sources pour le meme contenu, dont l'une derive.
     # C'est la meme raison qui fait qu'une brique n'a pas de cle distincte de
     # son texte : pour un son, le texte *est* l'identite de la prise.
+    # Les `FRAGMENTS` n'y sont pas : rien ne les affiche, puisqu'ils ne sont
+    # jamais une phrase a eux seuls.
     tables["textes"] = dict(annonces.BRIQUES)
     return tables
 
 
-def sons_des_mouvements():
-    """Un `.wav` par nom de mouvement : le nom **est** le texte prononce.
+def sons_des_annonces():
+    """Un `.wav` par nom de mouvement, plus un par charge.
 
-    Il n'y a donc aucune table a tenir a jour a cote du catalogue — un exercice
-    ajoute reclame sa prise a la prochaine execution, et `A_ENREGISTRER.md` la
-    signale.
+    Le nom **est** le texte prononce, donc aucune table a tenir a jour a cote
+    du catalogue : un exercice ajoute reclame sa prise a la prochaine
+    execution, et `A_ENREGISTRER.md` la signale. Il reste un fichier a part
+    parce qu'il se dit derriere chacune des trois amorces.
+
+    Les charges, elles, sont des phrases entieres, enumerees sur
+    `POIDS_REFERENCE` — ce que le questionnaire propose de posseder. Au-dela,
+    la prise n'existe pas et l'annonce reste breve, jamais muette.
     """
-    return {annonces.fichier(nom) for nom in catalogue_mouvements()}
+    noms = {annonces.fichier(nom) for nom in catalogue_mouvements()}
+    return noms | annonces.fichiers_charges(POIDS_REFERENCE)
 
 
 def copier_sons():
@@ -281,13 +296,20 @@ def copier_sons():
     fichiers_application = {f"{n}.wav" for n in SONS_DEMO}
     for variantes in tables["fichiers"].values():
         fichiers_application.update(variantes)
-    # Les briques composees et les noms de mouvements : c'est avec eux que le
-    # coach nomme le prochain exercice et guide le cadrage, la ou il n'avait
-    # jusqu'ici qu'un « changement d'exercice » generique.
-    fichiers_application.update(tables["briques"].values())
-    fichiers_application.update(sons_des_mouvements())
-    # Les nombres jusqu'au plafond dicible : « prepare un haltere de 14 kilos »
-    # a besoin de `14.wav`, que le socle de la demo ne couvre pas.
+    # Les briques et les phrases assemblees : c'est avec elles que le coach
+    # nomme le prochain exercice et guide le cadrage, la ou il n'avait jusqu'ici
+    # qu'un « changement d'exercice » generique.
+    #
+    # `BRIQUES` et non `tables["briques"]`, qui porte en plus les `FRAGMENTS` :
+    # ceux-la n'auront **jamais** de fichier, et les faire figurer ici les
+    # compterait manquants a chaque execution — un manque qui ne se comblera
+    # pas est du bruit, et le bruit finit par masquer un vrai manque.
+    fichiers_application.update(
+        annonces.fichier(texte) for texte in annonces.BRIQUES.values()
+    )
+    fichiers_application.update(sons_des_annonces())
+    # Les nombres jusqu'au plafond dicible : le compteur de repetitions dit
+    # « 23 » sur une cible que le socle de la demo ne couvre pas.
     fichiers_application.update(
         f"{n}.wav" for n in range(1, annonces.NOMBRE_MAXIMAL_DIT + 1)
     )

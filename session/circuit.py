@@ -197,6 +197,18 @@ class BlocExercice:
         self.temps_restant_precedent = None
 
 
+#: Comment annoncer un bloc selon sa place dans la seance. Les valeurs sont des
+#: cles d'`audio.annonces.AMORCES_EXERCICE`, et `scripts/verifier_annonces.py`
+#: verifie l'inclusion — plutot que d'importer le module ici. `circuit.py` n'a
+#: rien a faire du vocabulaire du coach : il sait seulement ou en est la
+#: seance, et c'est deja par des chaines qu'il dit ses phases.
+AMORCES_PAR_POSITION = {
+    "premier": "premier_exercice",
+    "dernier": "dernier_exercice",
+    "milieu": "prochain_exercice",
+}
+
+
 class Circuit:
 
     def __init__(self, exercices):
@@ -292,6 +304,34 @@ class Circuit:
         if self.index_exercice >= len(self.exercices):
             return None
         return self.exercices[self.index_exercice]
+
+    def amorce_annonce(self, bloc):
+        """Comment annoncer ce bloc, selon sa place dans la seance.
+
+        Le coach dit « le premier exercice sera » a l'entree, « pour finir »
+        sur le dernier bloc, « prochain exercice » partout ailleurs. C'est
+        **ici** que la question se tranche, parce que c'est le seul objet qui
+        connaisse la liste entiere : un site d'appel qui la reconstruirait
+        depuis `index_exercice` se tromperait au premier entrelacement.
+
+        Un bloc inconnu — ou une seance vide — rend l'amorce neutre plutot que
+        de lever : cette fonction tourne dans la boucle camera.
+
+        La comparaison est **d'identite** et non d'index : deux blocs peuvent
+        porter le meme exercice (un superset, une serie refaite), et c'est bien
+        du bloc qu'on parle. Une seance d'un seul bloc est annoncee « premier »,
+        pas « dernier » : on la commence avant de la finir.
+        """
+        if bloc is None or not self.exercices:
+            return AMORCES_PAR_POSITION["milieu"]
+
+        if bloc is self.exercices[0]:
+            return AMORCES_PAR_POSITION["premier"]
+
+        if bloc is self.exercices[-1]:
+            return AMORCES_PAR_POSITION["dernier"]
+
+        return AMORCES_PAR_POSITION["milieu"]
 
     def prochain_bloc(self):
         prochain_index = self._obtenir_vrai_prochain_exercice_index()

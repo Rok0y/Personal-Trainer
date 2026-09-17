@@ -311,6 +311,28 @@ SCENARIOS_NOMMES = {
         ("terminer_serie_manuellement", None),
         ("refaire_derniere_serie", None),
     ],
+    # Les six seuils d'`annoncer_temps_restant`, franchis un par un. La marche
+    # aleatoire ne les atteint pas : son `avancer` saute de 1 a 65 secondes et
+    # ses poses sont tirees au hasard, si bien qu'une duree ne s'ecoule jamais
+    # assez regulierement pour croiser 20, 10, 5, puis 3, 2 et 1. Mesure : les
+    # trois derniers seuils ont ete ajoutes des deux cotes, et **retirer les
+    # trois du JavaScript laissait le harnais vert** — d'ou ce scenario.
+    #
+    # C'est l'echauffement qu'on pilote, et non le chrono : aucune seance du
+    # catalogue n'a de bloc `chrono`, alors que toutes commencent par un
+    # echauffement, dont le temps s'accumule **par deltas** sans dependre de la
+    # pose detectee. Chaque paire (avancer 1 s, image) lui ajoute donc
+    # `INTERVALLE_MAX`, soit une demi-seconde : soixante-deux paires couvrent
+    # les trente secondes du bloc et franchissent les six seuils.
+    "decompte_final": [
+        ("commencer_exercice", None),
+        ("image", {"pose": 0}),
+        *[
+            pas
+            for _ in range(62)
+            for pas in (("avancer", {"secondes": 1}), ("image", {"pose": 0}))
+        ],
+    ],
     "navigation": [
         ("commencer_exercice", None),
         ("terminer_serie_manuellement", None),
@@ -474,6 +496,11 @@ def main():
             "erreurs_frequentes": list(exercice.erreurs_frequentes),
             "variante_facile": exercice.variante_facile,
             "variante_difficile": exercice.variante_difficile,
+            # Sans elle, le JavaScript construit ses exercices sans
+            # orientation et `fiche()` diverge — ce qui est precisement ce que
+            # le scenario `decompte_final` a fini par montrer, apres des mois
+            # ou aucun pas du harnais n'observait `fiche_suivante`.
+            "orientation": exercice.orientation,
         }
         for nom, exercice in mouvements.items()
     }, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -488,8 +515,18 @@ def main():
             # --- Scénarios écrits ---
             for nom_scenario, etapes in SCENARIOS_NOMMES.items():
                 circuit, horloge, boucle = _nouveau_circuit(blocs)
-                for pas, (commande, _) in enumerate(etapes):
-                    args = _arguments(commande, circuit, tirage)
+                for pas, (commande, ecrits) in enumerate(etapes):
+                    # Le second membre du couple etait **ignore** : tous les
+                    # scenarios ecrits recevaient les arguments par defaut,
+                    # donc un `avancer` de 40 secondes. Impossible d'y faire
+                    # descendre une horloge seconde par seconde, c'est-a-dire
+                    # d'atteindre un seuil d'annonce autrement qu'en le
+                    # survolant. Un scenario qui le precise l'emporte.
+                    args = (
+                        ecrits
+                        if ecrits is not None
+                        else _arguments(commande, circuit, tirage)
+                    )
                     resultat, erreur = _jouer(circuit, horloge, commande, args, boucle, banque)
                     _ecrire(fichier, nom_seance, nom_scenario, pas, commande,
                             args, circuit, horloge, resultat, erreur, boucle)

@@ -19,7 +19,7 @@ import random
 import sys
 from pathlib import Path
 
-from mouvements import exercices, positions
+from mouvements import echauffements, exercices, positions
 from vision.body import Body, LandmarkPoint
 from vision.landmarks import LANDMARKS
 
@@ -87,7 +87,18 @@ def main():
     nombre = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
     rng = random.Random(GRAINE)
 
-    fonctions = {**fonctions_publiques(exercices), **fonctions_publiques(positions)}
+    # `echauffements` est dans la liste depuis qu'une detection definie la —
+    # et nulle part ailleurs — a traverse tout le harnais sans etre vue.
+    # `fonctions_publiques` filtre sur `objet.__module__`, donc les detections
+    # que ce module **importe** d'`exercices` ne sont pas comptees deux fois :
+    # seules celles qui lui sont propres s'ajoutent. C'est exactement la classe
+    # d'oubli que l'introspection devait empecher, et elle ne l'empechait que
+    # sur les modules qu'on avait pense a lui donner.
+    fonctions = {
+        **fonctions_publiques(exercices),
+        **fonctions_publiques(echauffements),
+        **fonctions_publiques(positions),
+    }
 
     with DESTINATION.open("w", encoding="utf-8") as fichier:
         for _ in range(nombre):

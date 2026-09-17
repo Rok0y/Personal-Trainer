@@ -67,10 +67,16 @@ export function annoncer_temps_restant(coach, bloc, secondes_restantes) {
     bloc.temps_restant_precedent = secondes_restantes;
     return;
   }
+  // Les six memes seuils qu'en Python, dans le meme ordre : le decompte des
+  // trois dernieres secondes en fait partie. `comparer_seances.mjs` compare
+  // les annonces pas a pas, donc un seuil ajoute d'un seul cote s'y voit.
   const seuils = [
     [20, "temps_20"],
     [10, "temps_10"],
     [5, "temps_5"],
+    [3, "temps_3"],
+    [2, "temps_2"],
+    [1, "temps_1"],
   ];
   for (const [seuil, message] of seuils) {
     if (bloc.temps_restant_precedent > seuil && secondes_restantes <= seuil) {

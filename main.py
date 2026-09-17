@@ -260,6 +260,9 @@ try:
                         orientation=(
                             prochain.exercice.orientation if prochain else None
                         ),
+                        # « Pour finir » quand c'est le dernier bloc. La
+                        # séance est seule à savoir où l'on en est.
+                        amorce=seance.amorce_annonce(prochain),
                     )
 
                     seance.repos_restant_precedent = int(seance.temps_restant)
@@ -324,6 +327,10 @@ try:
                                 orientation=(
                                     bloc.exercice.orientation if bloc else None
                                 ),
+                                # Premier bloc de la séance, donc « le premier
+                                # exercice sera » — c'est le seul endroit où
+                                # cette amorce se joue.
+                                amorce=seance.amorce_annonce(bloc),
                             )
                             fin_preparation = time.time()
 

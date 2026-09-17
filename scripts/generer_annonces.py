@@ -20,11 +20,24 @@ Trois choses qu'un tirage ordinaire ne visiterait pas sont fabriquees expres :
   plage n'y tombent quasiment jamais. 0, 1, 60, 61 sont visites nommement ;
 - **le poids a 1**, seul cas ou l'unite passe au singulier, et le poids a 0,
   qui n'est pas « zero kilo » mais un mouvement au poids du corps. Les charges
-  reelles commencant a 2, aucun tirage sur l'echelle ne les atteindrait.
+  reelles commencant a 2, aucun tirage sur l'echelle ne les atteindrait ;
+- **les poids a demi-kilo**, qui sont declarables (`poids_declarable` arrondit
+  au demi) et n'ont aucune prise. C'est la qu'une vraie divergence dormait :
+  `int(17.5)` rendait 17 cote Python, donc le coach annoncait une charge
+  fausse, la ou `Number.isInteger` se taisait deja cote JavaScript. Le harnais
+  ne tirait que des entiers, donc ne pouvait pas la voir — elle est pinnee ici.
 
 Les noms de mouvements viennent du **catalogue reel** et non d'un tirage : ce
 sont eux que la regle « le nom est le texte » doit traduire, et un exercice
-ajoute au catalogue entre ainsi dans le harnais le jour ou il est ecrit.
+ajoute au catalogue entre ainsi dans le harnais le jour ou il est ecrit. Deux
+noms **degeneres** s'y ajoutent — vide, ponctuation seule — pour eprouver
+cette traduction a l'interieur de la sequence, et non seulement dans
+`normaliser_nom` prise a part.
+
+Les **trois amorces** sont jouees sur chaque etape, plus une amorce inconnue :
+c'est le seul endroit du module ou le choix de l'appelant entre dans le
+calcul, et l'inconnue releve la divergence d'API assumee — `brique()` leve
+cote Python, rend `null` cote JavaScript.
 
 Usage : `python -m scripts.generer_annonces`
 Sortie : scripts/fixtures_annonces.jsonl
@@ -88,7 +101,18 @@ NOMBRES = [
 #: 0 et 1 ne sont pas des charges reelles — l'echelle commence a 2 — mais ils
 #: portent les deux cas particuliers : rien a preparer, et l'unite au
 #: singulier.
-POIDS = [0, 1, 2, 3, 5, 8, 10, 12, 18, 61, 100]
+POIDS = [0, 1, 2, 3, 5, 8, 10, 12, 18, 61, 100, 0.5, 2.5, 17.5, 8.0, -3]
+
+#: Des noms d'exercice que le catalogue ne produira jamais, pour l'annonce
+#: assemblee seule. Le vide est le cas interessant : cote Python la
+#: normalisation du texte avale le separateur, cote JavaScript il faut sauter
+#: un morceau vide — deux facons d'arriver au meme nom, ou pas.
+NOMS_DEGENERES = ["", "  ponctuation !?  "]
+
+#: Les trois amorces du vocabulaire ferme, plus une inconnue : celle-la
+#: releve le refus du Python comme un comportement, au meme titre qu'une
+#: partie de cadrage inconnue.
+AMORCES = list(annonces.AMORCES_EXERCICE) + ["inconnue"]
 
 
 def main():
@@ -96,6 +120,7 @@ def main():
     mouvements = sorted(catalogue_mouvements())
 
     NOMBRES.extend(hasard.sample(range(1, 120), 30))
+    NOMBRES.extend([0.5, 17.5, 60.5, 12.0])
 
     lignes = 0
     with DESTINATION.open("w", encoding="utf-8") as sortie:
@@ -109,11 +134,19 @@ def main():
         # exporte, et le JS ne travaille que sur sa version resolue. Si les
         # deux cotes ne partent pas des memes fichiers, tout le reste compare
         # deux choses differentes en croyant les trouver identiques.
+        # `BRIQUES` **et** `FRAGMENTS`, exactement comme `preparer_demo` les
+        # fusionne : le JavaScript ne recoit qu'une table de noms de fichiers,
+        # et il y puise aussi bien une phrase entiere que le morceau d'une
+        # phrase qu'il assemble. Partir d'un autre perimetre ici ferait
+        # comparer deux choses differentes en croyant les trouver identiques.
         ecrire({
             "genre": "briques",
             "table": {
                 cle: annonces.fichier(texte)
-                for cle, texte in annonces.BRIQUES.items()
+                for cle, texte in {
+                    **annonces.BRIQUES,
+                    **annonces.FRAGMENTS,
+                }.items()
             },
         })
 
@@ -129,6 +162,7 @@ def main():
             ecrire({
                 "genre": "nombre",
                 "valeur": valeur,
+                "dit": annonces.nombre_dit(valeur),
                 "sons": annonces.sequence_nombre(valeur),
             })
 
@@ -155,8 +189,8 @@ def main():
                 "sons": annonces.sequence_orientation(orientation),
             })
 
-        for nom in mouvements:
-            reel = nombre_halteres(nom)
+        for nom in mouvements + NOMS_DEGENERES:
+            reel = nombre_halteres(nom) if nom in mouvements else 0
             for poids in POIDS:
                 # On joue le nombre d'halteres **du catalogue** et les deux
                 # autres valeurs : l'injection doit produire la meme phrase
@@ -164,19 +198,26 @@ def main():
                 # joue a un doit dire « un haltere ».
                 for halteres in {reel, 0, 1, 2}:
                     etape = {"exercice": nom, "poids": poids}
-                    ecrire({
-                        "genre": "prochain_exercice",
-                        "etape": etape,
-                        "halteres": halteres,
-                        "sons": annonces.sequence_prochain_exercice(
-                            etape, halteres
-                        ),
-                    })
+                    for amorce in AMORCES:
+                        try:
+                            sons = annonces.sequence_prochain_exercice(
+                                etape, halteres, amorce
+                            )
+                        except KeyError:
+                            sons = None
+                        ecrire({
+                            "genre": "prochain_exercice",
+                            "etape": etape,
+                            "halteres": halteres,
+                            "amorce": amorce,
+                            "sons": sons,
+                        })
 
         ecrire({
             "genre": "prochain_exercice",
             "etape": None,
             "halteres": 1,
+            "amorce": "prochain_exercice",
             "sons": annonces.sequence_prochain_exercice(None, 1),
         })
 
