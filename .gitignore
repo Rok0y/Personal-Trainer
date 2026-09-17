@@ -106,3 +106,24 @@ scripts/fixtures_ligues.jsonl
 # Oracle du harnais des annonces : derive, regenere en une seconde par
 # `python -m scripts.generer_annonces` (graine fixe).
 scripts/fixtures_annonces.jsonl
+
+# =========================
+# Prises de son brutes
+# =========================
+
+# Les enregistrements non traites, tels qu'ils sortent du micro. Ils sont la
+# **source** de `audio/Fichiers/`, produite une fois par
+# `python audio/nettoyer_sons.py`, et rien d'autre ne les lit : ni
+# l'application, ni la demo, ni un script de verification.
+#
+# Ils ont ete suivis un temps — 73 fichiers, 37 Mo — et c'etait la moitie du
+# poids du depot pour un dossier que personne n'ouvre. Un WAV ne se
+# delta-compresse pas : chaque prise est un blob entier et definitif, que tout
+# clone retelechargera pour toujours. Meme regle que `personaltrainer.db` et
+# que les fixtures : ce qui est source de travail ou derive ne vit pas dans le
+# depot de code.
+#
+# Conserve-les ailleurs (disque externe, cloud) : c'est le seul master pour
+# re-rogner autrement plus tard. Les perdre n'empeche rien — `audio/Fichiers/`
+# continue de marcher indefiniment — ca ferme juste la porte a un retraitement.
+audio/a_traiter/
