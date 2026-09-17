@@ -30,11 +30,6 @@
   "preparation": [
    "preparation.wav"
   ],
-  "mi_parcours": [
-   "mi_parcours_1.wav",
-   "mi_parcours_2.wav",
-   "mi_parcours_3.wav"
-  ],
   "encore_5": [
    "encore_5_1.wav",
    "encore_5_2.wav",
@@ -94,7 +89,6 @@
   "repos": 8,
   "changement_exercice": 5,
   "fin_seance": 10,
-  "mi_parcours": 3,
   "encore_5": 4,
   "encore_3": 5,
   "correction_gainage": 7,
@@ -212,5 +206,9 @@
   "bienvenue_je_te_guide": "Et je te guide à la voix",
   "bienvenue_rien_ne_sort": "Aucune image ne sort de ton appareil",
   "bienvenue_pret": "On y va quand tu veux"
+ },
+ "silences": {
+  "entre_annonces": 0.8,
+  "presentation": 2.5
  }
 }

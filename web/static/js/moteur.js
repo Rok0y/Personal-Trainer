@@ -49,10 +49,12 @@ export function annoncer_progression(coach, repetitions, cible) {
   if (restantes === 0) return coach("fin_serie");
   if (restantes === 1) return coach("avant_derniere");
   if (restantes === 3) return coach("encore_3");
-  if (restantes === 5) return coach("encore_5");
-  // `cible // 2` en Python est une division entiere vers le bas ; sur des
-  // cibles positives, `Math.floor` lui est identique.
-  if (cible >= 8 && repetitions === Math.floor(cible / 2)) coach("mi_parcours");
+  if (restantes === 5) coach("encore_5");
+  // **« A la moitie » a ete retire** des deux cotes, avec sa cle et sa
+  // priorite : une cle qui ne sert plus laisse croire qu'un palier existe.
+  // Elle tombait en plein milieu de la serie, entre deux chiffres, et
+  // n'apprenait rien qu'on ne sache deja — le coach comptait par-dessus
+  // lui-meme.
 }
 
 /**

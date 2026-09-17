@@ -6,7 +6,12 @@ import time
 import cv2
 
 import session.seances
-from audio.coach import annoncer_prochaine_etape, annoncer_temps_repos, coach
+from audio.coach import (
+    SILENCE_PRESENTATION,
+    annoncer_prochaine_etape,
+    annoncer_temps_repos,
+    coach,
+)
 from audio.lecteur import jouer
 from core.messages import texte
 from historique.database import enregistrer_seance, initialiser
@@ -224,6 +229,35 @@ try:
             if seance.phase != ancienne_phase:
 
                 if seance.phase == "preparation":
+
+                    # **On presente, puis on demande le geste.** L'annonce se
+                    # jouait a la validation du bras en X, c'est-a-dire au
+                    # moment precis ou l'effort allait commencer — « le
+                    # prochain exercice » annonce a l'instant ou on le
+                    # commence. Elle passe donc devant la consigne, et les
+                    # deux s'enchainent dans l'ordre parce que la file
+                    # departage les priorites egales par ordre d'arrivee.
+                    #
+                    # Cette phase n'est posee qu'une fois par seance (`Circuit`
+                    # la pose dans son constructeur et ne la rearme jamais),
+                    # donc ceci se joue une fois et une seule : les series
+                    # suivantes n'entendront que « c'est parti ».
+                    bloc = seance.bloc_actuel
+
+                    annoncer_prochaine_etape(
+                        etat.prochaine_etape,
+                        nombre_halteres=(
+                            session.seances.nombre_halteres(bloc.exercice.nom)
+                            if bloc
+                            else 0
+                        ),
+                        orientation=(bloc.exercice.orientation if bloc else None),
+                        # Premier bloc de la seance, donc « le premier
+                        # exercice sera » — c'est le seul endroit ou cette
+                        # amorce se joue.
+                        amorce=seance.amorce_annonce(bloc),
+                    )
+
                     coach("preparation")
 
                 elif seance.phase == "exercice":
@@ -263,6 +297,11 @@ try:
                         # « Pour finir » quand c'est le dernier bloc. La
                         # séance est seule à savoir où l'on en est.
                         amorce=seance.amorce_annonce(prochain),
+                        # Le blanc entre les deux : sans lui, « repose-toi »
+                        # et « prochain exercice : curl biceps droit » n'en
+                        # font qu'une, et la pause commence par six secondes
+                        # de parole d'affilee.
+                        silence_avant=SILENCE_PRESENTATION,
                     )
 
                     seance.repos_restant_precedent = int(seance.temps_restant)
@@ -309,29 +348,10 @@ try:
                         etat.consigne = texte("preparation_bras_en_x")
 
                         if termine:
-                            # Le premier exercice de la séance : en phase
-                            # `preparation`, `prochaine_etape` décrit le bloc
-                            # **courant** et non le suivant, donc on lit
-                            # `bloc_actuel`.
-                            bloc = seance.bloc_actuel
-
-                            annoncer_prochaine_etape(
-                                etat.prochaine_etape,
-                                nombre_halteres=(
-                                    session.seances.nombre_halteres(
-                                        bloc.exercice.nom
-                                    )
-                                    if bloc
-                                    else 0
-                                ),
-                                orientation=(
-                                    bloc.exercice.orientation if bloc else None
-                                ),
-                                # Premier bloc de la séance, donc « le premier
-                                # exercice sera » — c'est le seul endroit où
-                                # cette amorce se joue.
-                                amorce=seance.amorce_annonce(bloc),
-                            )
+                            # **Plus d'annonce ici** : elle a remonté à
+                            # l'entrée en phase `preparation`, devant la
+                            # consigne de geste. On présente, puis on demande
+                            # le geste, puis on dit « c'est parti ».
                             fin_preparation = time.time()
 
                     else:

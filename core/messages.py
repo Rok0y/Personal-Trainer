@@ -34,7 +34,12 @@ MESSAGES = {
     ),
     # --- Consignes d'état : ce qu'il faut faire, pas ce qui est mal fait -----
     "corps_absent": "Place-toi devant la caméra, bien en pied.",
-    "preparation_bras_en_x": "Croise les bras devant toi pour lancer la série.",
+    # « la séance » et non « la série » : la phase `preparation` n'existe
+    # qu'une fois, posée par le constructeur de `Circuit` et jamais réarmée.
+    # Ce geste-là ouvre l'entraînement ; celui qui clôt une série est le même
+    # signe mais un autre moment, et les confondre à l'écran laissait croire
+    # qu'on allait le refaire à chaque fois.
+    "preparation_bras_en_x": "Croise les bras devant toi pour lancer la séance.",
     "preparation_decompte": "C'est parti ! Redescends les bras et mets-toi en place.",
     "pause": "Séance en pause. Reprends quand tu veux depuis le site.",
     # Test de calibration joué en séance : premier passage sur un exercice dont

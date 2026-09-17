@@ -25,7 +25,8 @@ export const MESSAGES = {
     "Garde le coude collé au buste, ne le laisse pas partir en avant",
   // --- Consignes d'etat : ce qu'il faut faire, pas ce qui est mal fait ---
   corps_absent: "Place-toi devant la caméra, bien en pied.",
-  preparation_bras_en_x: "Croise les bras devant toi pour lancer la série.",
+  // « la seance » et non « la serie » : cette phase n'existe qu'une fois.
+  preparation_bras_en_x: "Croise les bras devant toi pour lancer la séance.",
   preparation_decompte: "C'est parti ! Redescends les bras et mets-toi en place.",
   pause: "Séance en pause. Reprends quand tu veux depuis le site.",
   test_calibration:

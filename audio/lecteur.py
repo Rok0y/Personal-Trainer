@@ -21,6 +21,29 @@ file_audio = queue.PriorityQueue()
 
 compteur_audio = 0
 
+SILENCE_ENTRE_ANNONCES = 0.8
+"""Le blanc minimal entre deux entrées de la file, en secondes.
+
+Rien ne jouait jamais littéralement en même temps — le thread attend
+`mixer.get_busy()` —, et pourtant le coach « se chevauchait » à l'oreille :
+la file enchaînait l'entrée suivante à la milliseconde où la précédente se
+taisait, si bien que « Repose-toi » et « Prochain exercice : curl biceps
+droit » n'en faisaient plus qu'une. *Deux phrases collées s'entendent comme
+une phrase coupée.* Le silence se pose donc **dans le lecteur**, point de
+passage unique, plutôt que dans chaque site d'appel qui aurait à s'en
+souvenir.
+"""
+
+SILENCE_PRESENTATION = 2.5
+"""Le blanc demandé par l'annonce du prochain exercice, avant de commencer.
+
+C'est la seule annonce longue du projet, et la seule qui arrive collée
+derrière une autre (« Repose-toi »). Elle porte son propre silence plutôt
+que d'être déclenchée plus tard dans la pause : un délai transporté par
+l'entrée de la file ne demande ni drapeau « déjà annoncé », ni état de plus
+sur `Circuit` — que le harnais de scénarios observe pas à pas.
+"""
+
 
 def _demarrer_lecteur():
     """Ouvre la carte son et lance le thread, une seule fois.
@@ -53,7 +76,10 @@ def lecteur_audio():
 
     while True:
 
-        priorite, _, noms = file_audio.get()
+        priorite, _, noms, silence_avant = file_audio.get()
+
+        if silence_avant:
+            time.sleep(silence_avant)
 
         # Une entrée de la file est une **séquence**, pas un son : les morceaux
         # d'une phrase composée se jouent à la suite sans que rien ne puisse
@@ -81,6 +107,11 @@ def lecteur_audio():
                 print(os.path.basename(chemin))
                 print("=" * 60 + "\n")
 
+        # La respiration se prend **après** la séquence et non avant : une
+        # annonce demandée dans le silence doit partir tout de suite, c'est
+        # l'enchaînement qui a besoin d'air, pas le premier son.
+        time.sleep(SILENCE_ENTRE_ANNONCES)
+
         file_audio.task_done()
 
 
@@ -100,7 +131,7 @@ def vider_petits_sons():
         file_audio.put(item)
 
 
-def jouer_sequence(noms, priorite=5):
+def jouer_sequence(noms, priorite=5, silence_avant=0.0):
     """Empile une phrase composée de plusieurs fichiers, **comme un seul son**.
 
     C'est l'indivisibilité qui compte. Empiler quatre `jouer()` d'affilée
@@ -109,6 +140,10 @@ def jouer_sequence(noms, priorite=5):
     milieu : on entendrait « prochain exercice… 12 répétitions ». Une séquence
     est donc **une** entrée de la file, que `vider_petits_sons` garde ou jette
     en entier.
+
+    `silence_avant` retarde cette entrée-là, et elle seule : c'est ce qui
+    permet à l'annonce du prochain exercice de laisser un vrai blanc après
+    « repose-toi » sans qu'aucun appelant ait à tenir une horloge.
     """
     global compteur_audio
 
@@ -127,9 +162,9 @@ def jouer_sequence(noms, priorite=5):
 
     compteur_audio += 1
 
-    file_audio.put((-priorite, compteur_audio, noms))
+    file_audio.put((-priorite, compteur_audio, noms, silence_avant))
 
 
-def jouer(nom, priorite=5):
+def jouer(nom, priorite=5, silence_avant=0.0):
     """Un son seul : la séquence à un élément."""
-    jouer_sequence((nom,), priorite)
+    jouer_sequence((nom,), priorite, silence_avant)

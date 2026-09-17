@@ -3,7 +3,7 @@ import time
 
 from audio import annonces
 from audio.annonces import normaliser_nom  # noqa: F401  (reexport historique)
-from audio.lecteur import jouer, jouer_sequence
+from audio.lecteur import SILENCE_PRESENTATION, jouer, jouer_sequence  # noqa: F401
 
 messages = {
     "rep": ["rep.wav"],
@@ -24,11 +24,6 @@ messages = {
     # declare est aussi muet qu'un fichier absent, et se voit encore moins —
     # c'est le diff entre `audio/Fichiers/` et ce que le code reclame qui l'a
     # sorti, pas une exception.
-    "mi_parcours": [
-        "mi_parcours_1.wav",
-        "mi_parcours_2.wav",
-        "mi_parcours_3.wav",
-    ],
     "encore_5": [
         "encore_5_1.wav",
         "encore_5_2.wav",
@@ -97,7 +92,6 @@ priorites = {
     "repos": 8,
     "changement_exercice": 5,
     "fin_seance": 10,
-    "mi_parcours": 3,
     "encore_5": 4,
     "encore_3": 5,
     "correction_gainage": 7,
@@ -163,7 +157,11 @@ def coach(event, valeur=None):
 
 
 def annoncer_prochaine_etape(
-    etape, nombre_halteres=0, orientation=None, amorce="prochain_exercice"
+    etape,
+    nombre_halteres=0,
+    orientation=None,
+    amorce="prochain_exercice",
+    silence_avant=0.0,
 ):
     """« Prochain exercice. Curl biceps droit. Prépare un haltère de 8 kilos. »
 
@@ -191,6 +189,11 @@ def annoncer_prochaine_etape(
     La priorité vaut celle d'un événement important : une annonce longue doit
     chasser les petits sons en attente plutôt que de faire la queue derrière
     eux, et surtout ne pas être coupée en son milieu.
+
+    `silence_avant` est le blanc qui la précède. Il vaut `SILENCE_PRESENTATION`
+    quand elle suit un « repose-toi » — les deux collées s'entendent comme une
+    seule phrase hachée — et zéro en début de séance, où elle est la première
+    chose dite et n'a rien derrière quoi respirer.
     """
     if etape is None:
         return
@@ -198,7 +201,7 @@ def annoncer_prochaine_etape(
     sons = annonces.sequence_prochain_exercice(etape, nombre_halteres, amorce)
     sons += annonces.sequence_orientation(orientation)
 
-    jouer_sequence(sons, priorites.get("changement_exercice", 5))
+    jouer_sequence(sons, priorites.get("changement_exercice", 5), silence_avant)
 
 
 def annoncer_progression(repetitions, cible):
@@ -218,10 +221,14 @@ def annoncer_progression(repetitions, cible):
 
     if restantes == 5:
         coach("encore_5")
-        return
 
-    if cible >= 8 and repetitions == cible // 2:
-        coach("mi_parcours")
+    # **« À la moitié » a été retiré**, et ses trois prises restent sur le
+    # disque sans clé ni priorité — la règle « la clé, le fichier et la
+    # priorité : les trois, ou aucun » vaut dans ce sens-là aussi. Une clé qui
+    # ne sert plus laisse croire qu'un palier existe, et c'est exactement ce
+    # que `temps_30` avait fait croire. Elle tombait en plein milieu de la
+    # série, entre deux chiffres, et n'apprenait rien qu'on ne sache déjà :
+    # le coach comptait par-dessus lui-même.
 
 
 def annoncer_temps_restant(bloc, secondes_restantes):

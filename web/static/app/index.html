@@ -1809,8 +1809,11 @@ const coach = (cle, valeur = null) => lecteur?.coach(cle, valeur);
 // expliquant pourquoi elle etait indispensable, pour aucun effet : la consigne
 // se repetait a chaque image ou la position vacillait. C'est exactement le
 // defaut que la correction de gainage avait deja paye une fois.
-const coach_sequence = (sons, priorite = 5, cle = null) =>
-  lecteur?.sequence(sons, priorite, cle);
+// Meme raison pour `silence_avant`, ajoute ensuite : un raccourci est un site
+// d'appel comme un autre, et un parametre qu'il oublie ne se signale nulle
+// part.
+const coach_sequence = (sons, priorite = 5, cle = null, silence_avant = 0) =>
+  lecteur?.sequence(sons, priorite, cle, silence_avant);
 
 /**
  * Le nombre d'halteres qu'un mouvement demande, ou 0.
@@ -1830,8 +1833,13 @@ const nombre_halteres = (nom) =>
  * ajoutees a la simple nomination sont celles qu'un ecran regarde de trois
  * metres ne donne pas : ce qu'il faut sortir du placard, et de quel cote se
  * tourner.
+ *
+ * `silence_avant` est le blanc qui la precede. Il vaut le silence de
+ * presentation quand elle suit un « repose-toi » — les deux collees
+ * s'entendent comme une seule phrase hachee — et zero en debut de seance, ou
+ * elle est la premiere chose dite et n'a rien derriere quoi respirer.
  */
-function annoncer_prochain_exercice(bloc) {
+function annoncer_prochain_exercice(bloc, silence_avant = 0) {
   if (!bloc) return;
   const etape = { exercice: bloc.exercice.nom, poids: bloc.poids };
   // L'amorce se lit ici et non aux trois sites d'appel : cette fonction vit
@@ -1846,7 +1854,7 @@ function annoncer_prochain_exercice(bloc) {
   ).concat(
     sequence_orientation(tables_sons?.briques, bloc.exercice.orientation)
   );
-  coach_sequence(sons);
+  coach_sequence(sons, 5, null, silence_avant);
 }
 
 // ---------------------------------------------------------------- seance
@@ -1899,6 +1907,14 @@ let installation = null;
 //: valide une serie, et les confondre terminerait la serie qu'on vient tout
 //: juste d'expliquer.
 let geste_guide = null;
+//: Le bras en croix qui vient de fermer le guide vaut pour l'entree en serie.
+//: **Un demarrage ne demande qu'un geste**, et le guide se refermait sur le
+//: meme signe que celui qu'on redemandait trois secondes plus tard, depuis la
+//: meme place, a trois metres de l'appareil : c'etait demander deux fois une
+//: seule decision. Pose par le geste seulement, jamais par le bouton
+//: « J'ai compris » — celui-la se clique a l'appareil, donc il reste un
+//: chemin a refaire avant d'etre en position.
+let geste_deja_donne = false;
 
 /**
  * Le guidage d'installation d'une seance, ou null s'il a deja ete vu.
@@ -1974,6 +1990,7 @@ async function demarrer(nom) {
   phase_precedente = null;
   fin_decompte = null;
   geste_preparation = new HoldPosition(bras_en_x, TENUE_PREPARATION);
+  geste_deja_donne = false;
   geste_fin = new HoldPosition(bras_en_x, TENUE_VALIDATION);
   tutoriel = tutoriel_de_seance(nom);
 
@@ -2025,10 +2042,12 @@ async function demarrer(nom) {
  * confondre lancerait l'effort au moment ou l'on finit de se placer.
  */
 function ouvrir_installation() {
-  installation = {
-    geste: new HoldPosition(bras_en_x, TENUE_PREPARATION),
-    cadre_depuis: null,
-  };
+  // **Plus de `HoldPosition` ici.** L'installation en avait un, et il
+  // demandait de confirmer ce qu'on venait de demontrer : rester entier dans
+  // l'image, immobile, pendant deux secondes **est** deja un acte delibere.
+  // Un geste par-dessus ne prouvait rien de plus — il faisait le troisieme
+  // bras en croix d'un demarrage qui n'en demande qu'un.
+  installation = { cadre_depuis: null };
   $("ecranCadrage").hidden = false;
   $("cadrageConsigne").textContent = "";
   $("cadrageAide").textContent = "";
@@ -2044,6 +2063,15 @@ function fermer_installation() {
   // `demarrer()` : on explique un exercice a quelqu'un qui est deja bien
   // place, pas a quelqu'un qu'on n'a pas encore vu.
   changer_exercice();
+  // **Et c'est ici que la seance se presente**, dans cet ordre : le mouvement,
+  // puis la consigne de geste. La phase `preparation` ne peut pas le faire —
+  // elle vaut des la **premiere image**, donc bien avant qu'on soit cadre, et
+  // « croise les bras » s'y disait pendant qu'on cherchait encore sa place.
+  // Elle n'est posee qu'une fois par seance (`Circuit` la pose dans son
+  // constructeur et ne la rearme jamais), donc ceci se joue une fois et une
+  // seule : les series suivantes n'entendront que « c'est parti ».
+  annoncer_prochain_exercice(seance.bloc_actuel);
+  coach("preparation");
 }
 
 /**
@@ -2094,9 +2122,9 @@ function jouer_installation(corps, instant) {
     return;
   }
 
-  // Cadrage acquis : on passe la main au geste d'entree. Le guidage
-  // d'installation, quand il existe, se joue **ici** — a ce stade on sait que
-  // la personne est vue, donc ses consignes de placement ont un sens.
+  // Cadrage acquis. Le guidage d'installation, quand il existe, se joue
+  // **ici** — a ce stade on sait que la personne est vue, donc ses consignes
+  // de placement ont un sens.
   if (tutoriel) {
     // Pas de `boutonPasserTuto` ici : le calque a le sien (`cadragePasser`),
     // et `rafraichir_affichage` remet celui du HUD a `hidden` a chaque image
@@ -2121,10 +2149,9 @@ function jouer_installation(corps, instant) {
     clore_tutoriel();
   }
 
-  const [progression, valide] = installation.geste.update(corps);
-  ecrire_installation("Croise les bras quand tu es prêt", progression);
-  aide.textContent = "Tiens la position une seconde et demie.";
-  if (valide) fermer_installation();
+  // Cadrage tenu et guidage fini : on enchaine. Le seul geste du demarrage
+  // est celui qui lance la serie, et il vit dans `preparer()`.
+  fermer_installation();
 }
 
 /** Une consigne et un avancement : tout ce que l'installation affiche. */
@@ -2186,9 +2213,12 @@ function ouvrir_guide_exercice(bloc) {
 
   $("guideExercice").hidden = false;
 
-  // La voix dit ce que l'ecran ne peut pas : de quel cote se tourner et quoi
-  // sortir du placard. On est a trois metres, et on va poser la tablette.
-  annoncer_prochain_exercice(bloc);
+  // **Le guide ne parle pas.** Il l'a fait, et ca doublait systematiquement :
+  // en debut de seance la presentation vient de la sortie d'installation, en
+  // cours de seance elle vient de la pause qui precede. Le guide n'ouvrait
+  // donc jamais que dans le sillage d'une annonce qu'il repetait mot pour mot.
+  // Ce qu'il apporte est ce qu'une voix ne peut pas donner : les consignes
+  // ecrites, qu'on relit a son rythme.
 }
 
 /** Un bloc de la fiche, ou rien du tout s'il est vide. */
@@ -2239,7 +2269,7 @@ function remplir_encart_test(bloc, fiche) {
 function lire_guide(corps) {
   etat.consigne = null;
   const [, valide] = geste_guide.update(corps);
-  if (valide) fermer_guide();
+  if (valide) fermer_guide(true);
 }
 
 /**
@@ -2248,9 +2278,15 @@ function lire_guide(corps) {
  * L'ecriture en base est conditionnee au retour de `marquer_tuto_vu` :
  * `stockage.sauver` reecrit la base entiere dans un seul enregistrement, et la
  * relancer a chaque exercice deja connu serait du travail pur.
+ *
+ * `par_geste` distingue les deux sorties, et la distinction n'est pas
+ * decorative : le bras en croix se fait de loin, deja en place, donc il vaut
+ * aussi pour l'entree en serie ; le bouton se clique a l'appareil, d'ou il
+ * reste a revenir se placer.
  */
-async function fermer_guide() {
+async function fermer_guide(par_geste = false) {
   if (!guide_exercice) return;
+  if (par_geste && seance?.phase === "preparation") geste_deja_donne = true;
   const nom = guide_exercice.exercice.nom;
   guide_exercice = null;
   geste_guide = null;
@@ -2421,16 +2457,23 @@ function preparer(corps, instant) {
       return;
     }
 
-    const [progression, valide] = geste_preparation.update(corps);
-    etat.progression_preparation = progression;
-    if (!valide) {
-      etat.consigne = texte("preparation_bras_en_x");
-      return;
+    // Le cadrage est verifie meme quand le geste a deja ete donne : c'est la
+    // seule des deux choses qui ait pu changer entre-temps, et c'est la seule
+    // qui se voit — le guide couvrait l'image pendant qu'on le lisait.
+    if (!geste_deja_donne) {
+      const [progression, valide] = geste_preparation.update(corps);
+      etat.progression_preparation = progression;
+      if (!valide) {
+        etat.consigne = texte("preparation_bras_en_x");
+        return;
+      }
     }
-    // Le premier exercice de la seance s'annonce ici, comme `main.py` le fait
-    // a la fin du meme geste : avant le decompte, pour qu'on ait le temps
-    // d'entendre de quel cote se tourner.
-    annoncer_prochain_exercice(seance.bloc_actuel);
+    etat.progression_preparation = 100;
+    // **Plus d'annonce ici.** Elle s'y jouait, c'est-a-dire au moment precis
+    // ou l'effort allait commencer — « le prochain exercice » annonce a
+    // l'instant ou on le commence. La regle est desormais : on presente, puis
+    // on demande le geste, puis on dit « c'est parti ». La presentation a
+    // donc remonte a la sortie de l'installation, avec la consigne de geste.
     fin_decompte = instant + DECOMPTE;
     dernier_decompte = null;
   }
@@ -2549,7 +2592,9 @@ function annoncer_changement(avant) {
   phase_precedente = phase;
   mettre_a_jour_prochain_exercice(seance, etat);
   if (phase === "preparation") {
-    coach("preparation");
+    // Volontairement muette : cette phase vaut des la premiere image, donc
+    // pendant l'ecran d'installation. C'est `fermer_installation` qui parle,
+    // une fois la personne cadree — et elle dit les deux choses dans l'ordre.
   } else if (phase === "recuperation_serie") {
     coach("repos");
     // Armer le repere du decompte : `annoncer_temps_repos` ne dit rien tant
@@ -2561,7 +2606,13 @@ function annoncer_changement(avant) {
     // remplace le « changement d'exercice » generique, qui etait tout ce que
     // le navigateur savait dire faute d'annonces combinatoires exportables.
     coach("repos");
-    annoncer_prochain_exercice(seance.prochain_bloc());
+    // Le blanc entre les deux : sans lui, « repose-toi » et « prochain
+    // exercice : curl biceps droit » n'en font qu'une, et la pause commence
+    // par six secondes de parole d'affilee.
+    annoncer_prochain_exercice(
+      seance.prochain_bloc(),
+      lecteur?.silence_presentation ?? 0
+    );
     seance.repos_restant_precedent = null;
   } else if (phase === "exercice") {
     // Le decompte du repos est fini : desarmer, sinon le repos suivant

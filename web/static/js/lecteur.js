@@ -15,9 +15,14 @@
 // (3) **Un evenement important (>= 5) vide les petits sons en attente**
 //     plutot que de faire la queue derriere eux : quand une serie se termine,
 //     les bips de comptage n'ont plus rien a dire.
+// (4) **Un blanc entre deux entrees.** Rien ne jouait jamais litteralement en
+//     meme temps, et pourtant le coach « se chevauchait » a l'oreille : la
+//     file enchainait l'entree suivante a la milliseconde ou la precedente se
+//     taisait. *Deux phrases collees s'entendent comme une phrase coupee.*
 //
-// Les trois tables viennent de `donnees/sons.json`, exporte du Python : ni les
-// fichiers, ni les priorites, ni les delais ne sont reecrits ici.
+// Les tables viennent de `donnees/sons.json`, exporte du Python : ni les
+// fichiers, ni les priorites, ni les delais, ni les silences ne sont reecrits
+// ici.
 
 //: Priorite a partir de laquelle un son vide les petits sons en attente, et
 //: en dessous de laquelle il peut lui-meme etre vide. La meme valeur des deux
@@ -41,6 +46,12 @@ export class Lecteur {
     this.fichiers = tables.fichiers ?? {};
     this.priorites = tables.priorites ?? {};
     this.delais = tables.delais ?? {};
+    // Les deux silences, exportes de `audio/lecteur.py`. Les valeurs de repli
+    // ne sont pas une seconde source : elles servent le seul cas ou
+    // `sons.json` est trop ancien pour les porter, et valent alors zero —
+    // c'est-a-dire le comportement d'avant, jamais un reglage invente ici.
+    this.silence_entre = tables.silences?.entre_annonces ?? 0;
+    this.silence_presentation = tables.silences?.presentation ?? 0;
 
     this.contexte = null;
     this._tampons = new Map();
@@ -138,7 +149,7 @@ export class Lecteur {
    * c'est ce qui permet d'enregistrer les prises par lots, une phrase
    * s'abregeant au lieu de disparaitre.
    */
-  sequence(fichiers, priorite = PRIORITE_PAR_DEFAUT, cle = null) {
+  sequence(fichiers, priorite = PRIORITE_PAR_DEFAUT, cle = null, silence_avant = 0) {
     if (!this.contexte) return;
     const propres = (fichiers ?? []).filter(Boolean);
     if (!propres.length) return;
@@ -155,17 +166,22 @@ export class Lecteur {
       this._dernieres.set(cle, maintenant);
     }
 
-    this._empiler(propres, priorite);
+    this._empiler(propres, priorite, silence_avant);
   }
 
-  _empiler(fichiers, priorite) {
+  _empiler(fichiers, priorite, silence_avant = 0) {
     if (priorite >= PRIORITE_IMPORTANTE) {
       this._file = this._file.filter((e) => e.priorite >= PRIORITE_IMPORTANTE);
     }
     // Le rang departage deux sons de meme priorite : le premier demande passe
     // en premier, ce qu'un tri sur la seule priorite ne garantirait pas.
     const propres = Array.isArray(fichiers) ? fichiers : [fichiers];
-    this._file.push({ fichiers: propres, priorite, rang: this._rang++ });
+    this._file.push({
+      fichiers: propres,
+      priorite,
+      rang: this._rang++,
+      silence_avant,
+    });
     this._file.sort((a, b) => b.priorite - a.priorite || a.rang - b.rang);
     this._servir();
   }
@@ -175,7 +191,8 @@ export class Lecteur {
     this._joue = true;
     try {
       while (this._file.length) {
-        const { fichiers } = this._file.shift();
+        const { fichiers, silence_avant } = this._file.shift();
+        if (silence_avant) await this._attendre(silence_avant);
         // Une entree est une sequence : ses morceaux s'enchainent sans que la
         // file puisse etre reordonnee entre deux.
         for (const fichier of fichiers) {
@@ -183,10 +200,18 @@ export class Lecteur {
           if (!tampon) continue;
           await this._jouer_tampon(tampon);
         }
+        // La respiration se prend **apres** la sequence et non avant : une
+        // annonce demandee dans le silence doit partir tout de suite, c'est
+        // l'enchainement qui a besoin d'air, pas le premier son.
+        if (this.silence_entre) await this._attendre(this.silence_entre);
       }
     } finally {
       this._joue = false;
     }
+  }
+
+  _attendre(secondes) {
+    return new Promise((resoudre) => setTimeout(resoudre, secondes * 1000));
   }
 
   _jouer_tampon(tampon) {

@@ -17,7 +17,7 @@ import json
 import shutil
 from pathlib import Path
 
-from audio import annonces
+from audio import annonces, lecteur
 from core.materiel import POIDS_REFERENCE
 from session.seances import (
     CATALOGUE_EXERCICES,
@@ -210,7 +210,7 @@ def exporter_pour_application():
 
 
 def tables_du_coach():
-    """Les quatre tables du coach vocal, pour le navigateur.
+    """Les cinq tables du coach vocal, pour le navigateur.
 
     Les trois premieres (`fichiers`, `priorites`, `delais`) vivent dans
     `audio/coach.py` et sont **lues sans importer le module** : celui-ci
@@ -258,6 +258,15 @@ def tables_du_coach():
     # Les `FRAGMENTS` n'y sont pas : rien ne les affiche, puisqu'ils ne sont
     # jamais une phrase a eux seuls.
     tables["textes"] = dict(annonces.BRIQUES)
+    # Les silences vivent dans `audio/lecteur.py`, qu'on **importe** : ce
+    # module n'ouvre la carte son et ne lance son thread qu'au premier son
+    # joue, jamais a l'import, et pygame y est importe dans les fonctions.
+    # C'est la meme propriete qui permet a un serveur sans audio d'importer
+    # `session/`, et elle sert ici une seconde fois.
+    tables["silences"] = {
+        "entre_annonces": lecteur.SILENCE_ENTRE_ANNONCES,
+        "presentation": lecteur.SILENCE_PRESENTATION,
+    }
     return tables
 
 
