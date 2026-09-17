@@ -570,5 +570,174 @@
         1
       ]
     }
+  ],
+  "Full body sans matériel": [
+    {
+      "exercice": "Rotation du cou",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 0,
+      "duree": 20,
+      "repos_entre_series": 30,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Rotation des épaules",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 0,
+      "duree": 30,
+      "repos_entre_series": 30,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Rotation des poignets",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 0,
+      "duree": 20,
+      "repos_entre_series": 30,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Rotation des genoux",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 0,
+      "duree": 30,
+      "repos_entre_series": 30,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Rotation des chevilles",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 0,
+      "duree": 30,
+      "repos_entre_series": 30,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Jumping jacks",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 0,
+      "duree": 30,
+      "repos_entre_series": 30,
+      "repos_apres": 5,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Squat lent",
+      "mode": "echauffement",
+      "poids": 0,
+      "series": 1,
+      "repetitions": 0,
+      "duree": 30,
+      "repos_entre_series": 30,
+      "repos_apres": 60,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Pompes",
+      "mode": "repetitions",
+      "poids": 0,
+      "series": 4,
+      "repetitions": 11,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Squat",
+      "mode": "repetitions",
+      "poids": 6,
+      "series": 4,
+      "repetitions": 15,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Fente droite",
+      "mode": "repetitions",
+      "poids": 10,
+      "series": 4,
+      "repetitions": 9,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 45,
+      "commentaire": "",
+      "entrelace_avec": "Fente gauche"
+    },
+    {
+      "exercice": "Fente gauche",
+      "mode": "repetitions",
+      "poids": 10,
+      "series": 4,
+      "repetitions": 9,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Crunches",
+      "mode": "repetitions",
+      "poids": 0,
+      "series": 4,
+      "repetitions": 12,
+      "duree": 0,
+      "repos_entre_series": 45,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Gainage planche",
+      "mode": "maintien",
+      "poids": 0,
+      "series": 3,
+      "repetitions": 0,
+      "duree": 32,
+      "repos_entre_series": 45,
+      "repos_apres": 90,
+      "commentaire": ""
+    },
+    {
+      "exercice": "Gainage planche laterale droite",
+      "mode": "maintien",
+      "poids": 0,
+      "series": 2,
+      "repetitions": 0,
+      "duree": 34,
+      "repos_entre_series": 45,
+      "repos_apres": 45,
+      "commentaire": "",
+      "entrelace_avec": "Gainage planche laterale gauche"
+    },
+    {
+      "exercice": "Gainage planche laterale gauche",
+      "mode": "maintien",
+      "poids": 0,
+      "series": 2,
+      "repetitions": 0,
+      "duree": 34,
+      "repos_entre_series": 45,
+      "repos_apres": 0,
+      "commentaire": ""
+    }
   ]
 }
