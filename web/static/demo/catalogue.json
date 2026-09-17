@@ -179,7 +179,8 @@
     "nom": "Fente droite",
     "description": "Fente avec la jambe droite vers l'avant, jusqu'à ce que le genou droit soit fléchi à environ 90 degrés.",
     "mise_en_place": [
-      "Debout, un haltère dans chaque main, jambe droite avancée d'un grand pas.",
+      "Debout, jambe droite avancée d'un grand pas.",
+      "Un haltère dans chaque main si tu veux charger ; sinon mains sur les hanches.",
       "Buste droit, regard devant.",
       "Place-toi de profil, la caméra à ta gauche, jambes entières visibles."
     ],
@@ -205,7 +206,8 @@
     "nom": "Fente gauche",
     "description": "Fente avec la jambe gauche vers l'avant, jusqu'à ce que le genou gauche soit fléchi à environ 90 degrés.",
     "mise_en_place": [
-      "Debout, un haltère dans chaque main, jambe gauche avancée d'un grand pas.",
+      "Debout, jambe gauche avancée d'un grand pas.",
+      "Un haltère dans chaque main si tu veux charger ; sinon mains sur les hanches.",
       "Buste droit, regard devant.",
       "Place-toi de profil, la caméra à ta droite, jambes entières visibles."
     ],
@@ -548,16 +550,17 @@
   },
   {
     "nom": "Squat",
-    "description": "Squat avec descente jusqu'à ce que les coudes se rapprochent des genoux.",
+    "description": "Squat descendu jusqu'à ce que les coudes touchent les genoux : c'est ce contact qui valide la répétition, chargé ou à vide.",
     "mise_en_place": [
-      "Debout, un haltère dans chaque main, bras le long du corps.",
       "Pieds écartés de la largeur des hanches, pointes légèrement vers l'extérieur.",
+      "Un haltère dans chaque main si tu veux charger, bras le long du corps ; sinon à vide, bras libres.",
       "Place-toi face à la caméra, jambes entières visibles."
     ],
     "instructions": [
-      "Garde le dos droit.",
-      "Descends les hanches vers l'arrière comme pour t'asseoir.",
-      "Rapproche tes coudes de tes genoux en bas du mouvement.",
+      "Garde le dos droit, regard devant.",
+      "Descends les hanches vers l'arrière, comme pour t'asseoir.",
+      "En bas, va toucher tes genoux avec tes coudes : c'est ce contact qui compte la répétition.",
+      "À vide, laisse tes bras descendre devant toi pour aller les chercher.",
       "Remonte en poussant sur les talons."
     ],
     "erreurs_frequentes": [

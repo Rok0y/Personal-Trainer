@@ -166,6 +166,20 @@ class SpecProgression:
 # `poids_min` — un curl ne commence pas à 2 kg pour quelqu'un qui en a fait :
 #   sans cette borne, le barème gaspille ses premiers paliers. Mais la
 #   descendre est justement ce qui ouvre le barème aux débutants.
+#   **Et `0` y veut dire autre chose que « très bas » : « la charge est
+#   facultative ».** `echelle_poids` ajoute alors un cran sans charge *devant*
+#   les haltères (`charge_facultative`), et `exercice_realisable` cesse
+#   d'exiger de la fonte pour ce mouvement. C'est la seule déclaration de la
+#   règle — ne pas en tenir une seconde à côté de `MATERIEL_EXERCICES`, qui
+#   répond à une autre question : ce qu'il faut pour *charger* le mouvement,
+#   pas s'il faut le charger. Réservé aux mouvements qui gardent un sens à
+#   vide : un squat ou une fente, oui ; un curl ou un développé, non.
+#   Le prix est celui de tout changement de `poids_min` — tous les paliers se
+#   recalculent. Mesuré en ouvrant Squat et les deux fentes : les numéros de
+#   niveau montent de 6 à 8 crans alors qu'aucune performance ne change de
+#   valeur, exactement comme lors de la baisse de `cible_min`. Penser aussi à
+#   la **première borne de ligue** de l'exercice, qui vaut souvent le volume
+#   de l'ancien palier 1 et se retrouve deux crans trop haut.
 #
 # `poids_max` — le plafond de charge n'est pas celui du matériel. Sans lui, le
 #   barème proposait des paliers jusqu'à l'haltère de 18 kg au curl unilatéral,
@@ -258,6 +272,33 @@ def unite(nom_exercice):
     return spec.unite if spec else None
 
 
+def charge_facultative(nom_exercice):
+    """La charge est-elle facultative sur ce mouvement chargeable ?
+
+    Point d'entrée unique de la règle, et elle se déclare **dans la spec** :
+    `poids_min` à 0 veut dire « ce barème commence au poids du corps ». Une
+    seconde liste tenue à côté de `MATERIEL_EXERCICES` finirait par en diverger
+    sans que rien ne le signale — c'est ce que la duplication de `PROGRAMMES` a
+    déjà coûté au projet.
+
+    La question n'est pas « quel matériel ce mouvement demande » : ça, c'est
+    `MATERIEL_EXERCICES`, et un squat réclame toujours deux haltères dès qu'on
+    le charge. C'est « en dessous de quelle charge le mouvement cesse d'avoir
+    un sens », ce que `poids_min` dit déjà pour toutes ses autres valeurs — un
+    curl à vide n'est pas un curl, un squat à vide en est un.
+
+    Le nom dit « facultative » et non « au poids du corps » parce que la
+    fonction ne répond que des mouvements **chargeables**. Les pompes ou le
+    gainage rendent False alors qu'ils se font évidemment sans charge : ils
+    n'ont aucune échelle de poids (`nombre_halteres` vaut 0), donc ni
+    `echelle_poids` ni `exercice_realisable` ne l'interrogent à leur sujet —
+    les deux ont déjà répondu. Un prédicat qui ne couvre qu'une moitié des cas
+    doit le dire dans son nom, sinon c'est le lecteur suivant qui paie.
+    """
+    spec = SPECS.get(nom_exercice)
+    return spec is not None and spec.poids_min == 0
+
+
 def echelle_poids(nom_exercice):
     """Échelle du matériel : ce que les haltères du profil connecté permettent.
 
@@ -274,7 +315,25 @@ def echelle_poids(nom_exercice):
     nb_halteres = nombre_halteres(nom_exercice)
     if nb_halteres <= 0:
         return SANS_CHARGE
-    return echelle_disponible(nb_halteres)
+
+    echelle = echelle_disponible(nb_halteres)
+    # Le poids du corps est un **cran du barème**, pas une absence de matériel :
+    # un squat à vide est un vrai palier — celui par lequel on commence — et il
+    # se place avant le premier haltère au lieu de manquer. Sans ce cran, le
+    # barème n'a aucun palier jouable par qui n'a pas de fonte, et le moteur
+    # n'a donc rien à lui proposer.
+    if charge_facultative(nom_exercice):
+        return SANS_CHARGE + echelle
+    return echelle
+
+
+def _dans_la_fourchette(echelle, spec):
+    return tuple(
+        poids
+        for poids in echelle
+        if (spec.poids_min is None or poids >= spec.poids_min)
+        and (spec.poids_max is None or poids <= spec.poids_max)
+    )
 
 
 def echelle_exercice(nom_exercice):
@@ -282,20 +341,45 @@ def echelle_exercice(nom_exercice):
 
     C'est elle que le barème utilise : une extension triceps ne commence pas à
     2 kg et une élévation latérale ne finira jamais à 18 kg.
+
+    **C'est ici que vit le garde « le barème reste calculable pour tout le
+    monde »**, et il y vit parce que c'est le seul endroit qui sache si
+    l'exercice a un cran au poids du corps. `echelle_disponible` rend
+    honnêtement un tuple vide quand le profil n'a pas de quoi charger ; un
+    squat retombe alors sur `(0,)`, qui est sa **vraie** échelle et non un
+    repli, tandis qu'un curl retombe sur la gamme supposée, faute de mieux et
+    parce qu'un barème vide casserait jusqu'à l'écran des records.
+
+    Le repli portait auparavant sur l'inventaire (`possedes or POIDS_SUPPOSES`),
+    ce qui rendait la gamme entière à qui ne possède rien — et faisait tester
+    le squat à 8 kg à quelqu'un qui n'a pas d'haltères. *Un repli placé trop
+    tôt répond à la place de celui qui savait.*
     """
     echelle = echelle_poids(nom_exercice)
     spec = SPECS.get(nom_exercice)
     if spec is None:
-        return echelle
-    retenue = tuple(
-        poids
-        for poids in echelle
-        if (spec.poids_min is None or poids >= spec.poids_min)
-        and (spec.poids_max is None or poids <= spec.poids_max)
-    )
-    # Une fourchette qui ne retient rien (matériel absent, bornes trop
-    # étroites) laisserait un barème vide : on garde alors le cran le plus bas.
-    return retenue or echelle[:1]
+        return echelle or _gamme_supposee()
+
+    retenue = _dans_la_fourchette(echelle, spec)
+    if retenue:
+        return retenue
+    # Des bornes trop étroites sur une échelle non vide : on garde le cran le
+    # plus bas plutôt que de laisser un barème sans aucun palier.
+    if echelle:
+        return echelle[:1]
+    # Rien à charger, et pas de cran au poids du corps (un curl, un développé).
+    # La gamme supposée garde le barème calculable et les niveaux comparables
+    # d'un profil à l'autre ; `exercice_realisable` reste seul juge de savoir
+    # si la personne peut réellement faire ce mouvement.
+    supposee = _gamme_supposee()
+    return _dans_la_fourchette(supposee, spec) or supposee[:1]
+
+
+def _gamme_supposee():
+    """La gamme d'haltères qu'on suppose à qui n'a rien déclaré."""
+    from core.materiel import POIDS_SUPPOSES
+
+    return POIDS_SUPPOSES
 
 
 def _premiere_cible(spec, volume_a_egaler, series, poids, plafonnee=True):

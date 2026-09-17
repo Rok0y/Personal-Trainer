@@ -144,10 +144,28 @@ def materiel_du_profil(utilisateur_id=None):
 def echelle_disponible(nb_halteres, utilisateur_id=None):
     """Les charges praticables avec `nb_halteres` haltères identiques.
 
-    Retourne un tuple croissant, jamais vide : un stock qui ne couvre pas ce
-    besoin rend l'échelle supposée par défaut. Le barème reste ainsi calculable
-    pour tout le monde, et c'est `exercice_realisable` — pas une échelle vide —
-    qui dit qu'un mouvement est hors de portée.
+    Tuple croissant, **et il peut être vide** : un stock qui ne couvre pas ce
+    besoin ne rend plus la gamme supposée par défaut. La réponse honnête à
+    « avec quoi peut-il charger ce mouvement ? » est parfois « rien », et
+    `normaliser` distingue déjà un inventaire *non déclaré* (qui reçoit le
+    matériel complet d'avant la colonne) d'un inventaire *déclaré vide*.
+    Effacer cette distinction ici la perdait là où elle compte.
+
+    Ce que ça coûtait, mesuré : quelqu'un qui coche « aucun haltère » recevait
+    quand même l'échelle supposée, donc `calibration.charge_de_test` prenait
+    son milieu — **8 kg au squat**. L'écran et la voix lui réclamaient deux
+    haltères de 8 kg, il faisait le test à vide faute d'autre choix, et
+    `cloturer_test` ancrait 15 squats au poids du corps au **niveau 36** au lieu
+    de 8. Un ancrage faisant table rase *et* plancher, et `base_apres_echec`
+    redemandant la même cible après un échec, il lui fallait ensuite vingt-huit
+    séances de « c'était trop dur » pour rejoindre la réalité.
+
+    Le garde « le barème reste calculable pour tout le monde » n'a pas disparu,
+    il a **déménagé dans `paliers.echelle_exercice`** — seul endroit qui sache
+    si l'exercice a un cran au poids du corps sur lequel se rabattre. Un squat
+    sans haltères rend `(0,)`, ce qui est sa vraie échelle ; un curl sans
+    haltères retombe sur la gamme supposée, parce qu'il n'a rien d'autre et
+    qu'un barème vide casserait jusqu'à l'écran des records.
     """
     if nb_halteres <= 0:
         return None
@@ -156,10 +174,9 @@ def echelle_disponible(nb_halteres, utilisateur_id=None):
     # depuis qu'un poids se saisit a la main, un halteres de 17,5 kg peut
     # exister sans figurer dans `POIDS_REFERENCE`, et le filtrer par la gamme
     # le ferait disparaitre du bareme sans rien dire.
-    possedes = tuple(
+    return tuple(
         sorted(poids for poids, nombre in stock.items() if nombre >= nb_halteres)
     )
-    return possedes or POIDS_SUPPOSES
 
 
 def accessoires_manquants(nom_exercice, utilisateur_id=None):
@@ -181,6 +198,7 @@ def exercice_realisable(nom_exercice, utilisateur_id=None):
     Retourne `(réalisable, [ce qui manque])` — la liste sert à l'expliquer à
     l'écran plutôt que de se contenter de griser une ligne.
     """
+    from progression.paliers import charge_facultative
     from session.seances import nombre_halteres
 
     manquants = accessoires_manquants(nom_exercice, utilisateur_id)
@@ -189,8 +207,14 @@ def exercice_realisable(nom_exercice, utilisateur_id=None):
     # casserait tout le moteur de progression, ici rien ne casse. Quelqu'un qui
     # ne possède qu'un haltère ne fait pas un développé couché « en dégradé »,
     # il ne le fait pas.
+    #
+    # Sauf quand le barème admet un palier sans charge : un squat ou une fente
+    # se font à vide, et la question est posée **au barème** plutôt que
+    # redemandée au matériel. `MATERIEL_EXERCICES` dit ce qu'il faut pour
+    # charger le mouvement, `charge_facultative` dit s'il faut le
+    # charger — deux questions distinctes, une seule réponse chacune.
     besoin = nombre_halteres(nom_exercice)
-    if besoin > 0:
+    if besoin > 0 and not charge_facultative(nom_exercice):
         stock = materiel_du_profil(utilisateur_id)["halteres"]
         if not any(quantite >= besoin for quantite in stock.values()):
             manquants.append("Un haltère" if besoin == 1 else "Deux haltères")

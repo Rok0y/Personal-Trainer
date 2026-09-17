@@ -456,16 +456,29 @@ squat = Exercice(
     nom="Squat",
     orientation="face",
     detection=squat_detection,
-    description="Squat avec descente jusqu'à ce que les coudes se rapprochent des genoux.",
+    description="Squat descendu jusqu'à ce que les coudes touchent les genoux : c'est ce contact qui valide la répétition, chargé ou à vide.",
+    # La consigne dit ce que la detection mesure, et c'est tout son objet.
+    # `squat_detection` compte la repetition sur le **contact coude-genou** ;
+    # la fiche decrivait jusqu'ici une position (« descends les hanches vers
+    # l'arriere ») et ne mentionnait ce contact qu'en troisieme ligne, comme
+    # un detail de style. La machine notait une chose, l'ecran en demandait
+    # une autre — et un comptage qui ne prend pas parait alors capricieux.
+    #
+    # Le contact vient donc avant la remontee, puisque c'est le point bas qui
+    # valide, et il est nomme comme un but a atteindre plutot que comme une
+    # tolerance a respecter. La ligne des bras a vide n'est pas decorative :
+    # sans halteres on ne sait pas quoi en faire, et c'est precisement eux qui
+    # portent la mesure.
     instructions=[
-        "Garde le dos droit.",
-        "Descends les hanches vers l'arrière comme pour t'asseoir.",
-        "Rapproche tes coudes de tes genoux en bas du mouvement.",
+        "Garde le dos droit, regard devant.",
+        "Descends les hanches vers l'arrière, comme pour t'asseoir.",
+        "En bas, va toucher tes genoux avec tes coudes : c'est ce contact qui compte la répétition.",
+        "À vide, laisse tes bras descendre devant toi pour aller les chercher.",
         "Remonte en poussant sur les talons.",
     ],
     mise_en_place=[
-        "Debout, un haltère dans chaque main, bras le long du corps.",
         "Pieds écartés de la largeur des hanches, pointes légèrement vers l'extérieur.",
+        "Un haltère dans chaque main si tu veux charger, bras le long du corps ; sinon à vide, bras libres.",
         "Place-toi face à la caméra, jambes entières visibles.",
     ],
     erreurs_frequentes=[
@@ -506,7 +519,8 @@ fente_droite = Exercice(
         "Remonte en poussant sur le talon avant.",
     ],
     mise_en_place=[
-        "Debout, un haltère dans chaque main, jambe droite avancée d'un grand pas.",
+        "Debout, jambe droite avancée d'un grand pas.",
+        "Un haltère dans chaque main si tu veux charger ; sinon mains sur les hanches.",
         "Buste droit, regard devant.",
         "Place-toi de profil, la caméra à ta gauche, jambes entières visibles.",
     ],
@@ -546,7 +560,8 @@ fente_gauche = Exercice(
         "Remonte en poussant sur le talon avant.",
     ],
     mise_en_place=[
-        "Debout, un haltère dans chaque main, jambe gauche avancée d'un grand pas.",
+        "Debout, jambe gauche avancée d'un grand pas.",
+        "Un haltère dans chaque main si tu veux charger ; sinon mains sur les hanches.",
         "Buste droit, regard devant.",
         "Place-toi de profil, la caméra à ta droite, jambes entières visibles.",
     ],

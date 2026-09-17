@@ -175,7 +175,7 @@
     3240
    ],
    "Fente droite": [
-    24,
+    12,
     48,
     72,
     96,
@@ -195,7 +195,7 @@
     1800
    ],
    "Fente gauche": [
-    24,
+    12,
     48,
     72,
     96,
@@ -455,7 +455,7 @@
     2400
    ],
    "Squat": [
-    24,
+    12,
     56,
     88,
     120,
@@ -675,7 +675,7 @@
    "pas": 1,
    "unite": "repetitions",
    "series_max": 6,
-   "poids_min": 2,
+   "poids_min": 0,
    "poids_max": null,
    "surcharges": {}
   },
@@ -697,7 +697,7 @@
    "pas": 1,
    "unite": "repetitions",
    "series_max": 6,
-   "poids_min": 2,
+   "poids_min": 0,
    "poids_max": null,
    "surcharges": {}
   },
@@ -708,7 +708,7 @@
    "pas": 1,
    "unite": "repetitions",
    "series_max": 6,
-   "poids_min": 2,
+   "poids_min": 0,
    "poids_max": null,
    "surcharges": {}
   },

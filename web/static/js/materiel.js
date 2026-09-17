@@ -81,10 +81,20 @@ export function normaliser(tables, brut) {
 /**
  * Les charges praticables avec `nb_halteres` halteres identiques.
  *
- * Croissant, **jamais vide** : un stock qui ne couvre pas ce besoin rend
- * l'echelle supposee par defaut. Le bareme reste ainsi calculable pour tout le
- * monde, et c'est `exercice_realisable` — pas une echelle vide — qui dit
- * qu'un mouvement est hors de portee.
+ * Croissant, **et il peut etre vide** : un stock qui ne couvre pas ce besoin ne
+ * rend plus la gamme supposee. La reponse honnete a « avec quoi peut-il charger
+ * ce mouvement ? » est parfois « rien », et `normaliser` distingue deja un
+ * inventaire non declare d'un inventaire declare vide — effacer la distinction
+ * ici la perdait la ou elle compte.
+ *
+ * Mesure cote Python : avec le repli, qui coche « aucun haltere » recevait quand
+ * meme l'echelle supposee, donc `charge_de_test` prenait son milieu — 8 kg au
+ * squat. Le test se jouait forcement a vide, et l'ancrage creditait 15 squats au
+ * poids du corps du niveau 36 au lieu de 8.
+ *
+ * Le garde « le bareme reste calculable » a demenage dans
+ * `Baremes.echelle_exercice` (paliers.js), seul endroit qui sache si l'exercice
+ * a un cran au poids du corps sur lequel se rabattre.
  */
 export function echelle_disponible(echelles, inventaire, nb_halteres) {
   if (nb_halteres <= 0) return null;
@@ -105,10 +115,7 @@ export function echelle_disponible(echelles, inventaire, nb_halteres) {
     .filter(([, nombre]) => nombre >= nb_halteres)
     .map(([poids]) => Number(poids))
     .sort((a, b) => a - b);
-  // Le repli est la gamme **supposee** et non celle du questionnaire : cette
-  // derniere s'est allongee jusqu'a 40 kg, et y retomber donnerait d'un coup
-  // un bareme de culturiste a qui n'a rien declare.
-  return possedes.length ? possedes : echelles.supposes;
+  return possedes;
 }
 
 /** Accessoires que cet exercice reclame et que le profil n'a pas coches. */
