@@ -138,9 +138,16 @@ BRIQUES = {
     "orientation_profil_camera_droite": "Place-toi de profil, la caméra à ta droite",
     "orientation_allonge_camera_de_cote": "Allonge-toi, la caméra sur le côté",
     # --- Cadrage : ce qui manque ------------------------------------------
-    # Jumeaux vocaux de `CE_QUI_MANQUE` dans `web/static/js/cadrage.js`. Sept
-    # parties et quatre actions, assemblees deux a deux : onze prises couvrent
-    # les vingt-huit consignes possibles.
+    # **Ces sept briques ne sont plus jouees, et c'est deliberement qu'elles
+    # restent ici.** Le cadrage disait autrefois quelle partie du corps sortait
+    # du champ et de quel cote ; il ne dit plus qu'une chose, « recule » (voir
+    # `message_de_cadrage` dans `web/static/js/cadrage.js`, qui porte le
+    # pourquoi). Les enlever de la table rendrait orphelins dix `.wav` deja
+    # enregistres — c'est-a-dire des fichiers que plus rien ne declare, ce qui
+    # se voit encore moins qu'une brique inutilisee — et obligerait a repasser
+    # au micro le jour ou l'on voudrait rebrancher une consigne fine.
+    # `sequence_cadrage` sait toujours les assembler : sept parties et quatre
+    # actions, deux a deux, onze prises pour vingt-huit consignes possibles.
     "cadrage_manque_tete": "Je ne vois pas ta tête",
     "cadrage_manque_epaules": "Je ne vois pas tes épaules",
     "cadrage_manque_coudes": "Je ne vois pas tes coudes",
@@ -149,9 +156,11 @@ BRIQUES = {
     "cadrage_manque_genoux": "Je ne vois pas tes genoux",
     "cadrage_manque_pieds": "Je ne vois pas tes pieds",
     # --- Cadrage : quoi faire ---------------------------------------------
-    # Volontairement sans gauche ni droite, pour la meme raison qu'a l'ecrit :
-    # l'image peut etre affichee en miroir, donc un cote a l'ecran est l'autre
-    # dans la piece. Le centre, lui, est le meme des deux cotes.
+    # Seule `cadrage_action_recule` est encore prononcee ; les trois autres
+    # sont conservees pour la raison ci-dessus. Volontairement sans gauche ni
+    # droite, pour la meme raison qu'a l'ecrit : l'image peut etre affichee en
+    # miroir, donc un cote a l'ecran est l'autre dans la piece. Le centre, lui,
+    # est le meme des deux cotes.
     "cadrage_action_recule": "Recule, tu ne tiens pas dans l'image",
     "cadrage_action_baisse_camera": "Baisse la caméra ou incline-la vers le bas",
     "cadrage_action_monte_camera": "Monte la caméra ou incline-la vers le haut",
@@ -167,6 +176,14 @@ BRIQUES = {
     "installation_pas_au_sol": "Posé au sol, il ne te verra pas en entier",
     "installation_distance": "Recule à deux ou trois mètres",
     "installation_tapis": "Place ton tapis perpendiculaire à la caméra",
+    # **De la place autour de soi s'annonce, elle ne se fait pas repeter.** Le
+    # tutoriel de seance faisait executer un rituel de seize secondes — un pas
+    # a droite, un pas a gauche, un pas en arriere — sans rien verifier pendant
+    # ces pas : on demandait un exercice pour transmettre une information. Les
+    # trois briques qui le portaient (`installation_pas_de_cote`,
+    # `installation_pas_arriere`, `installation_toujours_visible`) restent ici
+    # pour la meme raison que celles du cadrage, et une seule les remplace.
+    "installation_espace_libre": "Garde de la place : un pas dans chaque direction",
     "installation_pas_de_cote": "Fais un pas à droite, puis un pas à gauche",
     "installation_pas_arriere": "Puis un pas en arrière et un pas en avant",
     "installation_toujours_visible": "On doit te voir en entier à chaque fois",
@@ -190,6 +207,12 @@ BRIQUES = {
     "geste_croise_les_bras": "Croise les bras et tiens la position",
     "geste_bravo": "Bravo, tu sais tout piloter de loin",
     # --- Accueil d'un nouveau profil --------------------------------------
+    # **Dormantes elles aussi, et pour la meme raison que le cadrage.** Le
+    # tunnel d'accueil prononcait sa phrase pendant qu'on la lisait ; il est
+    # muet depuis (voir `dessiner_bienvenue`), et la voix ne reprend qu'une
+    # fois qu'on s'est eloigne de l'appareil. Les prises restent ici : la table
+    # est le **vocabulaire enregistre**, pas la liste de ce qui est joue, et
+    # `A_ENREGISTRER.md` les marque « deja fait » sans rien reclamer.
     "bienvenue": "Bienvenue, je suis ton coach",
     "bienvenue_pose_et_entraine": "Tu poses ton appareil, et tu t'entraînes",
     "bienvenue_camera_compte": "Ma caméra compte tes répétitions",

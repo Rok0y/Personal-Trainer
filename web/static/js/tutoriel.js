@@ -60,14 +60,15 @@ export function etapes_de_seance({ orientation = null, avec_tapis = false } = {}
       cadrage_stable: CADRAGE_STABLE,
     },
     {
-      cle: "pas_de_cote",
-      annonces: ["installation_pas_de_cote", "installation_toujours_visible"],
-      duree: 9,
-    },
-    {
-      cle: "pas_arriere",
-      annonces: ["installation_pas_arriere"],
-      duree: 7,
+      // **Une information, pas un exercice.** Deux etapes occupaient ici seize
+      // secondes a faire executer des pas — a droite, a gauche, en arriere —
+      // en annoncant « on doit te voir en entier a chaque fois », sans rien
+      // verifier pendant ces pas. C'etait donc une consigne deguisee en
+      // controle : le cout d'une verification pour la valeur d'une phrase. La
+      // phrase seule suffit, et elle se dit en cinq secondes.
+      cle: "espace",
+      annonces: ["installation_espace_libre"],
+      duree: 5,
     },
   ];
 

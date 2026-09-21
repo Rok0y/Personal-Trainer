@@ -769,6 +769,23 @@
     text-align: center;
   }
 
+  /* Le tunnel d'accueil se lit **une phrase a la fois, en gros**. Le texte
+     heritait de la taille du corps de page, c'est-a-dire de celle d'une liste
+     d'exercices : au milieu d'une carte grise, avec un titre d'etape au-dessus
+     et un compteur « 3/6 », il devenait un paragraphe parmi d'autres qu'on
+     survole. Ici il n'y a qu'une chose a lire, donc elle porte l'ecran. Le
+     titre de l'etape et le compteur, eux, se font discrets : ce sont des
+     reperes, pas le message. */
+  #bienvenueCorps p {
+    margin: 0;
+    font-size: clamp(1.15rem, 4.6vw, 1.55rem);
+    line-height: 1.45;
+    text-wrap: balance;
+  }
+  #bienvenueSousTitre { font-size: 0.8rem; color: var(--texte-doux); letter-spacing: 0.1em; text-transform: uppercase; }
+  #bienvenueEtapeNum { font-size: 0.78rem; }
+  #bienvenueCarte { padding: 1.3rem 1.15rem; }
+
   /* Un programme se juge sur ce qu'il contient, pas sur son nom : des cartes
      et non un <select>, parce qu'a l'accueil personne ne sait encore ce que
      recouvre « Road to TKT ». */
@@ -3689,72 +3706,51 @@ async function supprimer_profil(utilisateur, seances) {
  * eloignement, et l'enchainement cadrage puis gestes se joue tout seul
  * (`PHASES_PRATIQUE`). Elles etaient separees, et sortir de la premiere
  * ramenait fatalement a la carte de texte, donc a l'ecran.
+ *
+ * **Deux ecrans par etape au maximum, et aucune voix.** Le decoupage « une
+ * phrase par ecran » avait ete fait pour qu'on lise chacune d'elles, et le
+ * volume n'a pas baisse en meme temps : dix-neuf ecrans a cliquer produisent
+ * exactement ce qu'ils voulaient eviter, on les survole. Une etape qui
+ * reclamerait un troisieme ecran est une etape qui en dit trop — la reponse
+ * est de couper, pas d'ajouter une page. Les ecrans n'ont plus de champ
+ * `annonce` : la voix reprend des qu'on s'eloigne de l'appareil, pas avant
+ * (voir `dessiner_bienvenue`).
  */
 const ETAPES_BIENVENUE = [
   {
     titre: "Comment ça marche",
     ecrans: [
-      { annonce: "bienvenue_pose_et_entraine",
-        texte: "Tu poses ton appareil, tu t'entraînes, et la caméra compte tes répétitions." },
-      { annonce: "bienvenue_je_te_guide",
-        texte: "Une voix t'annonce les exercices, les repos et la fin des séries : tu n'as jamais besoin de revenir à l'écran." },
-      { annonce: "bienvenue_rien_ne_sort",
-        texte: "Tout se passe sur cet appareil. Aucune image n'est envoyée nulle part." },
+      { texte: "Tu poses ton appareil, tu t'entraînes. La caméra compte tes répétitions et la voix te guide." },
+      { texte: "Tout reste sur cet appareil. Aucune image n'est envoyée nulle part." },
     ],
   },
   {
     titre: "Ton matériel",
     materiel: true,
     ecrans: [
-      { annonce: null,
-        texte: "Coche ce que tu as sous la main. C'est ce qui décide des charges que je te proposerai." },
-      { annonce: null,
-        texte: "La liste n'est qu'un raccourci : si tu as un poids qui n'y figure pas, ajoute-le." },
-      { annonce: null,
-        texte: "Si tu n'as rien, laisse tout à « Aucun » : tous les mouvements au poids du corps restent jouables." },
+      { texte: "Coche ce que tu as sous la main : c'est ce qui décide de tes charges. Rien ? Laisse tout à « Aucun »." },
     ],
   },
   {
     titre: "Ton programme",
     programmes: true,
     ecrans: [
-      { annonce: null,
-        texte: "Un programme enchaîne les séances dans un ordre et fixe des objectifs à atteindre. Je te dirai laquelle faire à chaque fois." },
-      { annonce: null,
-        texte: "Tu peux aussi t'entraîner sans : les séances restent toutes jouables librement." },
-      { annonce: null,
-        texte: "Ce choix se change quand tu veux, depuis l'onglet Programmes." },
+      { texte: "Un programme enchaîne les séances et te dit laquelle faire aujourd'hui. Tu peux aussi t'en passer." },
     ],
   },
   {
     titre: "Les deux gestes",
     ecrans: [
-      { annonce: null,
-        texte: "Tu es à trois mètres de l'écran pendant une série : deux gestes remplacent les boutons, et tu n'as jamais à revenir à l'appareil." },
-      { annonce: "geste_valide_la_serie",
-        texte: "Croiser les bras devant toi valide ta série — quand tu l'as finie, ou quand tu n'en peux plus. C'est aussi ce qui lance la suivante." },
-      { annonce: "geste_hauteur_libre",
-        texte: "Seul le croisement compte, pas la hauteur : bras en bas devant le ventre, devant la poitrine ou mains en l'air, c'est le même geste." },
-      { annonce: "geste_deux_bras_leves",
-        texte: "Lever les deux bras tendus remet le compteur à zéro sans rien valider — quand une série est partie de travers et que tu veux la reprendre." },
+      { texte: "Croise les bras devant toi pour valider une série. Peu importe la hauteur : seul le croisement compte." },
+      { texte: "Lève les deux bras tendus pour remettre le compteur à zéro, sans rien valider." },
     ],
   },
   {
     titre: "Où poser ton appareil",
     pratique: true,
     ecrans: [
-      { annonce: "installation_hauteur",
-        texte: "À deux ou trois mètres de toi, et surtout à hauteur de poitrine — idéalement entre la poitrine et le nombril." },
-      { annonce: "installation_appareil_droit",
-        texte: "Garde-le bien droit, à la verticale, à quatre-vingt-dix degrés du sol : incliné, il regarde le plafond ou tes pieds, et te coupe en deux." },
-      { annonce: "installation_pas_au_sol",
-        texte: "Posé au sol, il ne te verra pas en entier, et rien ne sera compté." },
-      { annonce: "installation_ne_le_bouge_plus",
-        texte: "Une fois posé, ne le déplace plus de la séance : chaque exercice est réglé sur ce point de vue, et le bouger en cours de route fausse le comptage." },
-      { annonce: "installation_respecte_l_angle",
-        texte: "Chaque exercice te dira aussi comment te placer — de face, de profil, la caméra d'un côté précis. C'est à respecter : une détection ne lit pas un mouvement depuis n'importe quel angle." },
-      { annonce: "installation_verifions",
-        texte: "Pose-le maintenant, puis appuie et recule : à partir de là, tout se fait à distance et tu n'auras plus rien à toucher." },
+      { texte: "À deux ou trois mètres de toi, à hauteur de poitrine, bien droit. Posé au sol, il te coupe en deux." },
+      { texte: "Garde un pas de libre dans chaque direction. Pose-le maintenant, appuie, et recule : tu n'auras plus rien à toucher." },
     ],
   },
 ];
@@ -3814,6 +3810,12 @@ const CADENCE_COMPTEUR_DEMO = 1;
  * Les durees de geste sont celles de la seance (`TENUE_VALIDATION`, 3 s) : ce
  * sont les deux gestes destructeurs, et enseigner un geste plus court qu'il ne
  * l'est apprendrait un faux geste.
+ *
+ * **Une confirmation confirme, elle ne commente pas.** Les phases qui suivent
+ * un geste portaient chacune un `fait` de deux lignes expliquant ce qu'on
+ * venait de faire — trois fois de suite, treize secondes en tout, a lire a
+ * trois metres apres avoir deja reussi. Elles sont revenues a une phrase
+ * breve : c'est le geste qui enseigne, pas le paragraphe qui le suit.
  */
 const PHASES_PRATIQUE = {
   cadrage: {
@@ -3825,9 +3827,9 @@ const PHASES_PRATIQUE = {
   cadrage_ok: {
     titre: "Installe-toi",
     consigne: "C'est bon : je te vois en entier.",
-    fait: "À cette distance et à cette hauteur, je te vois de la tête aux pieds. Laisse l'appareil exactement là.",
+    aide: "Laisse l'appareil exactement là.",
     annonce: "installation_bien_cadre",
-    attente: 4,
+    attente: 2,
     suite: "compteur",
   },
   compteur: {
@@ -3853,9 +3855,8 @@ const PHASES_PRATIQUE = {
   valide_fait: {
     titre: "Valider une série",
     consigne: "Série validée.",
-    fait: "C'est exactement ce que tu feras à la fin de chaque série, sans revenir à l'écran.",
     compteur: true,
-    attente: 4,
+    attente: 2,
     suite: "reset",
   },
   reset: {
@@ -3870,19 +3871,17 @@ const PHASES_PRATIQUE = {
   },
   reset_fait: {
     titre: "Repartir de zéro",
-    consigne: "C'est bien : ton compteur est reparti de zéro.",
-    fait: "C'est ce que tu feras quand une série part de travers : on reprend, sans rien valider.",
+    consigne: "Compteur reparti de zéro.",
     annonce: "geste_remis_a_zero",
     compteur: true,
-    attente: 4,
+    attente: 2,
     suite: "bravo",
   },
   bravo: {
     titre: "C'est prêt",
-    consigne: "Bravo.",
-    fait: "Tu sais tout piloter de loin : croiser les bras pour valider une série, les lever pour repartir de zéro.",
+    consigne: "Bravo, tu sais tout piloter de loin.",
     annonce: "geste_bravo",
-    attente: 5,
+    attente: 3,
     suite: null,
   },
 };
@@ -4202,10 +4201,17 @@ function dessiner_bienvenue() {
   $("bienvenueSuivant").disabled = false;
   $("bienvenueSuivant").textContent = libelle_bouton_bienvenue(etape, dernier);
 
-  // Le son n'est prepare qu'au premier clic — iOS l'exige —, donc le premier
-  // ecran est muet et les suivants parlent. Mieux vaut ca qu'un bouton
-  // « activer le son » de plus, et le texte porte deja tout le message.
-  coach_sequence([tables_sons?.briques?.[page.annonce]].filter(Boolean), 6);
+  // **Le tunnel lu est muet, et c'est une decision.** Chaque ecran prononcait
+  // sa propre phrase pendant qu'on la lisait : on ecoutait au lieu de lire, et
+  // l'on ne faisait bien ni l'un ni l'autre. La voix reprend des qu'on
+  // s'eloigne de l'appareil — la pratique camera (`entrer_phase`) et
+  // l'installation de seance parlent toujours, parce que la on ne peut plus
+  // lire. *Le canal suit la distance, pas l'ecran.*
+  //
+  // `lecteur.preparer()` reste appele au clic de `#bienvenueSuivant` : c'est
+  // ce geste utilisateur qui autorise iOS a jouer du son **plus tard**, dans
+  // la pratique. Le retirer avec la voix rendrait celle-ci muette trois ecrans
+  // plus loin, sans qu'aucune erreur ne le dise.
 }
 
 /**
@@ -4370,7 +4376,11 @@ function ouvrir_pour_le_profil() {
     return;
   }
   if (accueil_a_faire(profil_courant())) {
+    // Les **deux** compteurs, comme `etape_suivante` : n'en remettre qu'un
+    // ouvrirait l'accueil d'un profil neuf au milieu d'une etape, si le tunnel
+    // avait deja ete parcouru dans cette session.
     etape_bienvenue = 0;
+    ecran_bienvenue = 0;
     dessiner_bienvenue();
     montrer("ecranBienvenue");
     return;
