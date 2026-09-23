@@ -491,6 +491,12 @@ export function squat_sur_chaise_detection(corps) {
   return "milieu";
 }
 
+// Les deux mesures privees sont exportees sous un nom prefixe pour que
+// instruments.js les reprenne au lieu de les recopier. Elles restent hors de
+// DETECTIONS : le harnais n'apparie que cette table, et elles n'ont pas de
+// jumelle publique cote Python.
+export { appui_sur_le_bras as _appui_sur_le_bras, descente_hanche as _descente_hanche };
+
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par
 // la couche de seance. Les cles reprennent exactement les noms Python.
 export const DETECTIONS = {
