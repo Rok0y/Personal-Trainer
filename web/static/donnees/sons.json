@@ -211,6 +211,8 @@
  },
  "silences": {
   "entre_annonces": 0.8,
-  "presentation": 2.5
+  "presentation": 2.5,
+  "repos_minimal": 15,
+  "priorite_rythme_max": 2
  }
 }

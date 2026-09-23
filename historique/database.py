@@ -921,7 +921,21 @@ def supprimer_ancrage(id_ancrage, utilisateur_id=None):
 
 
 def statistiques_exercices(seances=None):
-    """Calcule les records uniquement sur les séances détaillées terminées."""
+    """Records, totaux et progression de chaque exercice : **ce qui a été fait**.
+
+    Toutes les séries réalisées comptent, qu'elles aient atteint leur objectif
+    ou non. Le filtre `completee` qui vivait ici faisait disparaître une série
+    de 8 sur 9 du volume tracé : trois séries faites, deux au graphique. Il
+    était resté muet tant que `completee` valait toujours vrai, et s'est mis à
+    fausser le graphe le jour où `terminer_serie_manuellement` a rendu ce champ
+    honnête. La preuve stricte — toutes les séries réussies — vit dans
+    `progression/niveaux.py`, qui dit ce qui est *prouvé* ; ce module dit ce
+    qui a été *fait*, et les deux ne se contredisent pas puisqu'ils ne
+    mesurent pas la même chose.
+
+    Une série vide (ni répétition ni durée) n'apporte rien et reste écartée.
+    Une séance abandonnée aussi.
+    """
     seances = recuperer_historique() if seances is None else seances
     statistiques = {}
 
@@ -932,7 +946,7 @@ def statistiques_exercices(seances=None):
             series = [
                 serie
                 for serie in exercice.get("series_detaillees", [])
-                if serie.get("completee")
+                if (serie.get("repetitions") or 0) > 0 or (serie.get("duree") or 0) > 0
             ]
             if not series:
                 continue

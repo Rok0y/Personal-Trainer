@@ -12,7 +12,7 @@ from audio.coach import (
     annoncer_temps_repos,
     coach,
 )
-from audio.lecteur import jouer
+from audio.lecteur import REPOS_MINIMAL_PRESENTATION, jouer
 from core.messages import texte
 from historique.database import enregistrer_seance, initialiser
 from mouvements.compteur import CompteurMouvement
@@ -51,6 +51,9 @@ hold_deux_bras_leves = HoldPosition(deux_bras_leves, 3)
 preparation = HoldPosition(bras_en_x, 1.5)
 detection = PoseDetector()
 ancienne_phase = None
+# Le bloc courant a la derniere image : sans repos, l'exercice change sans que
+# la phase change, et seul ce repere le voit.
+ancien_index = None
 derniere_rep = 0
 fin_preparation = None
 DELAI_AVANT_EXERCICE = 3
@@ -275,7 +278,16 @@ try:
 
                 elif seance.phase == "repos_exercice":
 
-                    coach("repos")
+                    # **Sur un repos court, l'annonce part seule et tout de
+                    # suite** : « repose-toi », le blanc et l'annonce font une
+                    # dizaine de secondes de parole, et sur les cinq secondes
+                    # entre deux échauffements l'annonce tombait pendant
+                    # l'exercice qu'elle présentait. `temps_restant` vaut ici
+                    # le repos entier : on vient d'y entrer.
+                    repos_court = seance.temps_restant < REPOS_MINIMAL_PRESENTATION
+
+                    if not repos_court:
+                        coach("repos")
 
                     # Le nombre d'haltères et l'orientation sont fournis ici
                     # plutôt que lus par le coach : `audio.annonces` n'importe
@@ -301,7 +313,7 @@ try:
                         # et « prochain exercice : curl biceps droit » n'en
                         # font qu'une, et la pause commence par six secondes
                         # de parole d'affilee.
-                        silence_avant=SILENCE_PRESENTATION,
+                        silence_avant=0 if repos_court else SILENCE_PRESENTATION,
                     )
 
                     seance.repos_restant_precedent = int(seance.temps_restant)
@@ -310,7 +322,26 @@ try:
 
                     coach("fin_seance")
 
+            elif seance.phase == "exercice" and seance.index_exercice != ancien_index:
+
+                # **Sans repos, l'exercice change sans changer de phase**
+                # (`repos_apres` à 0 : `terminer_serie` enchaîne directement).
+                # Rien ne l'annonçait. On le dit ici, à la fin du précédent.
+                bloc = seance.bloc_actuel
+
+                annoncer_prochaine_etape(
+                    etat.prochaine_etape,
+                    nombre_halteres=(
+                        session.seances.nombre_halteres(bloc.exercice.nom)
+                        if bloc
+                        else 0
+                    ),
+                    orientation=(bloc.exercice.orientation if bloc else None),
+                    amorce=seance.amorce_annonce(bloc),
+                )
+
             ancienne_phase = seance.phase
+            ancien_index = seance.index_exercice
 
             if seance.phase == "recuperation_serie":
                 annoncer_temps_repos(seance, etat, annoncer_exercice=False)

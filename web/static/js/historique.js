@@ -628,10 +628,12 @@ export function importer(texte) {
 /**
  * Records et progression de chaque exercice — jumeau de `statistiques_exercices`.
  *
- * Calcule uniquement sur les seances **terminees** et les series **menees au
- * bout** : une serie interrompue ne prouve rien, et une seance abandonnee non
- * plus. C'est la meme regle que partout ailleurs, et c'est pour ca que les
- * chiffres d'ici et ceux d'un niveau ne se contredisent jamais.
+ * Dit **ce qui a ete fait** : toutes les series realisees comptent, objectif
+ * atteint ou non. Le filtre `completee` qui vivait ici faisait disparaitre une
+ * serie de 8 sur 9 du graphique — trois series faites, deux tracees. La preuve
+ * stricte vit dans `niveaux.js`, qui dit ce qui est *prouve* ; les deux ne se
+ * contredisent pas puisqu'ils ne mesurent pas la meme chose. Une serie vide
+ * (ni repetition ni duree) et une seance abandonnee restent ecartees.
  *
  * `pb` — le record qui compte pour cet exercice — depend de ce qu'il mesure :
  * la duree pour un maintien, le volume des qu'il y a de la charge, les
@@ -648,7 +650,9 @@ export function statistiques_exercices(seances) {
     if (seance.statut === "abandoned") continue;
 
     for (const exercice of seance.exercices ?? []) {
-      const series = (exercice.series_detaillees ?? []).filter((s) => s.completee);
+      const series = (exercice.series_detaillees ?? []).filter(
+        (s) => (s.repetitions || 0) > 0 || (s.duree || 0) > 0
+      );
       if (!series.length) continue;
 
       const nom = exercice.nom;

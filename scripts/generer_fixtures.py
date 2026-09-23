@@ -15,6 +15,7 @@ jetons attendus. A rejouer avec `node scripts/comparer_detections.mjs`.
 
 import inspect
 import json
+import math
 import random
 import sys
 from pathlib import Path
@@ -53,6 +54,46 @@ def pose_au_hasard(rng):
         points[nom] = LandmarkPoint(
             x=rng.random(), y=rng.random(), z=rng.random() * 2 - 1, visibilite=rng.random()
         )
+    return Body(points)
+
+
+NOMBRE_POSES_DE_GESTE = 500
+"""Poses construites bras leves, en plus des poses au hasard.
+
+Le hasard n'atteint presque jamais « deux bras leves » : mesure, 4 poses sur
+5 000 levent les deux bras, et aucune n'a le buste debout. La condition de
+buste ajoutee a `deux_bras_leves` n'etait donc comparee par rien — la retirer
+d'un seul cote passait vert. Meme lecon que les scenarios ecrits du harnais de
+seances : un etat etroit se vise, il ne se tire pas."""
+
+
+def pose_bras_leves(rng):
+    """Deux bras tendus au-dessus des epaules, buste oriente au hasard.
+
+    Le buste tourne de -90 a +90 degres autour du milieu des epaules : debout a
+    zero, allonge aux extremes, et la frontiere a 45 degres visitee au passage.
+    Le reste du corps garde ses valeurs tirees au hasard, ce qui fait aussi
+    tourner les detections d'exercice sur ces poses.
+    """
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    milieu_x, milieu_y = 0.3 + rng.random() * 0.4, 0.3 + rng.random() * 0.4
+    demi_largeur = 0.03 + rng.random() * 0.08
+    for cote, signe in (("gauche", -1), ("droite", 1)):
+        suffixe_bras = "gauche" if cote == "gauche" else "droit"
+        ex, ey = milieu_x + signe * demi_largeur, milieu_y
+        points[f"epaule_{cote}"] = LandmarkPoint(ex, ey, 0, 1)
+        # Le bras est tendu vers le haut, a quelques degres pres : l'angle du
+        # coude reste au-dessus de 160 la plupart du temps, pas toujours.
+        derive = (rng.random() - 0.5) * 0.04
+        points[f"coude_{suffixe_bras}"] = LandmarkPoint(ex + derive, ey - 0.12, 0, 1)
+        points[f"poignet_{suffixe_bras}"] = LandmarkPoint(ex + 2 * derive, ey - 0.24, 0, 1)
+    angle = math.radians(rng.uniform(-90, 90))
+    distance = 0.15 + rng.random() * 0.2
+    hx = milieu_x + distance * math.sin(angle)
+    hy = milieu_y + distance * math.cos(angle)
+    points["hanche_gauche"] = LandmarkPoint(hx - demi_largeur, hy, 0, 1)
+    points["hanche_droite"] = LandmarkPoint(hx + demi_largeur, hy, 0, 1)
     return Body(points)
 
 
@@ -101,15 +142,20 @@ def main():
     }
 
     with DESTINATION.open("w", encoding="utf-8") as fichier:
-        for _ in range(nombre):
-            corps = pose_au_hasard(rng)
+        # Les poses de geste viennent **apres** : les 5 000 premieres restent
+        # celles d'avant, tirees de la meme graine.
+        for indice in range(nombre + NOMBRE_POSES_DE_GESTE):
+            corps = pose_au_hasard(rng) if indice < nombre else pose_bras_leves(rng)
             jetons = {
                 nom: natif(fonction(corps)) for nom, fonction in fonctions.items()
             }
             ligne = {"landmarks": serialiser(corps), "jetons": jetons}
             fichier.write(json.dumps(ligne, ensure_ascii=False) + "\n")
 
-    print(f"{nombre} poses ecrites dans {DESTINATION}")
+    print(
+        f"{nombre} poses au hasard et {NOMBRE_POSES_DE_GESTE} poses bras leves "
+        f"ecrites dans {DESTINATION}"
+    )
     print(f"{len(fonctions)} fonctions couvertes :")
     for nom in sorted(fonctions):
         print(f"  {nom}")

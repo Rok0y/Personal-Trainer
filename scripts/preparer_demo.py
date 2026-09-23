@@ -266,6 +266,8 @@ def tables_du_coach():
     tables["silences"] = {
         "entre_annonces": lecteur.SILENCE_ENTRE_ANNONCES,
         "presentation": lecteur.SILENCE_PRESENTATION,
+        "repos_minimal": lecteur.REPOS_MINIMAL_PRESENTATION,
+        "priorite_rythme_max": lecteur.PRIORITE_RYTHME_MAX,
     }
     return tables
 

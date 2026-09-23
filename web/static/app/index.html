@@ -2600,6 +2600,19 @@ function apres_serie() {
   // Un geste neuf : sans ca, `HoldPosition` reste « termine » et la serie
   // suivante s'arreterait a la premiere image ou les bras sont encore croises.
   geste_fin = new HoldPosition(bras_en_x, TENUE_VALIDATION);
+  // **Sans repos, le bloc change sans changer de phase** (`repos_apres` a 0 :
+  // `terminer_serie` enchaine directement sur `passer_exercice_suivant`).
+  // `annoncer_changement` ne voit donc rien passer et le prochain exercice
+  // n'etait jamais annonce. On le dit ici, a la fin du precedent — c'est le
+  // seul instant ou on sait que l'exercice vient de changer.
+  const repere = seance._derniere_serie_terminee;
+  if (
+    seance.phase === "exercice" &&
+    repere &&
+    repere.index_exercice !== seance.index_exercice
+  ) {
+    annoncer_prochain_exercice(seance.bloc_actuel);
+  }
   if (seance.bloc_actuel) changer_exercice();
 }
 
@@ -2618,17 +2631,22 @@ function annoncer_changement(avant) {
     // qu'il vaut null, et sa premiere lecture ne fait que le poser.
     seance.repos_restant_precedent = null;
   } else if (phase === "repos_exercice") {
-    // Les deux, comme `main.py` : « repos » dit qu'on s'arrete, l'annonce
-    // composee dit ce qui vient — ce n'est pas la meme information. Elle
-    // remplace le « changement d'exercice » generique, qui etait tout ce que
-    // le navigateur savait dire faute d'annonces combinatoires exportables.
-    coach("repos");
+    // **Sur un repos court, l'annonce part seule et tout de suite.** « Repose-
+    // toi », le blanc et l'annonce font une dizaine de secondes de parole :
+    // sur les cinq secondes entre deux echauffements, l'annonce tombait
+    // pendant l'exercice qu'elle presentait. On garde ce qui vient, on le dit
+    // des la fin de la serie, et le reste n'a pas le temps d'exister.
+    // `temps_restant` vaut ici le repos entier : on vient d'y entrer.
+    const court = seance.temps_restant < (lecteur?.repos_minimal ?? 0);
+    // Sinon les deux, comme `main.py` : « repos » dit qu'on s'arrete,
+    // l'annonce composee dit ce qui vient — ce n'est pas la meme information.
+    if (!court) coach("repos");
     // Le blanc entre les deux : sans lui, « repose-toi » et « prochain
     // exercice : curl biceps droit » n'en font qu'une, et la pause commence
     // par six secondes de parole d'affilee.
     annoncer_prochain_exercice(
       seance.prochain_bloc(),
-      lecteur?.silence_presentation ?? 0
+      court ? 0 : lecteur?.silence_presentation ?? 0
     );
     seance.repos_restant_precedent = null;
   } else if (phase === "exercice") {
@@ -4677,6 +4695,9 @@ function brancher_points_du_graphique(nom, histoire) {
   // Le detail des series par seance : `statistiques_exercices` n'en garde que
   // les sommes (c'est un jumeau verifie par harnais, on ne lui ajoute pas un
   // champ pour un affichage), alors que l'historique brut les a toutes.
+  // **Toutes**, ratees comprises : le point du graphe les compte, et un detail
+  // qui en montrerait moins que la somme au-dessus serait incomprehensible.
+  // `resume_series` distingue deja les series manquees (`.ratee`).
   const par_seance = {};
   for (const seance of histoire) {
     const exercice = (seance.exercices ?? []).find((e) => e.nom === nom);
@@ -4684,7 +4705,7 @@ function brancher_points_du_graphique(nom, histoire) {
     par_seance[seance.id] = {
       date: seance.date,
       mode: exercice.mode ?? "repetitions",
-      series: (exercice.series_detaillees ?? []).filter((serie) => serie.completee),
+      series: exercice.series_detaillees ?? [],
     };
   }
 
@@ -5119,12 +5140,14 @@ const LIBELLES_RESSENTI = {
  * La derniere performance de chaque exercice, seance par seance.
  *
  * Jumeau du calcul que `web/app.py` fait pour l'accueil : pour chaque nom de
- * seance, la plus recente **non abandonnee**, et pour chaque exercice ses
- * series menees au bout. L'historique arrivant du plus recent au plus ancien,
- * la premiere rencontree est la bonne.
+ * seance, la plus recente **non abandonnee**, et pour chaque exercice toutes
+ * ses series. L'historique arrivant du plus recent au plus ancien, la premiere
+ * rencontree est la bonne.
  *
- * Seules les series `completee` sont retenues : une serie interrompue ne dit
- * pas ce qu'on a tenu, et l'afficher ferait croire a une contre-performance.
+ * Les series manquees sont montrees, et non plus retirees : « 9 9 » pour une
+ * seance faite en 9 9 8 disait moins que ce qu'on avait fait. Les pastilles
+ * les distinguent (`.ratee`), ce qui dit mieux la contre-performance qu'un
+ * silence.
  */
 /**
  * Ce qu'une seance a donne, **une pastille par serie**.
@@ -5188,7 +5211,7 @@ function dernieres_series(histoire) {
         date: seance.date,
         mode: exercice.mode ?? "repetitions",
         ressenti: exercice.ressenti || "",
-        series: (exercice.series_detaillees ?? []).filter((s) => s.completee !== false),
+        series: exercice.series_detaillees ?? [],
       };
     }
   }
