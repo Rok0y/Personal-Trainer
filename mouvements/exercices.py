@@ -5,9 +5,16 @@ from session.circuit import Exercice
 # ==================================
 # Curl biceps droit
 # ==================================
+# Seuil de fin resserre de 30 a 20 degres : « la validation arrive trop tot »,
+# le poignet devait encore monter vers l'epaule. Mesure au banc d'essai, une
+# repetition franche monte a 3 degres (droit) et 9 (gauche) en mediane : 20
+# laisse de la marge sans compter une demi-repetition.
+CURL_FIN = 20
+
+
 def curl_biceps_droit_detection(corps):
     angle = calculer_angle(corps.epaule_droite, corps.coude_droit, corps.poignet_droit)
-    if angle < 30:
+    if angle < CURL_FIN:
         return "fin"
     elif angle > 160:
         return "debut"
@@ -21,7 +28,9 @@ def _coude_qui_part_en_avant(hanche, epaule, coude):
     façon fiable sur une pose : l'angle hanche-épaule-coude reste petit tant
     que le bras pend le long du corps.
     """
-    if calculer_angle(hanche, epaule, coude) > 45:
+    # Seuil resserre de 45 a 23 degres, valeur donnee par le testeur en lisant
+    # la jauge : a 45, le coude etait deja franchement sorti du buste.
+    if calculer_angle(hanche, epaule, coude) > 23:
         return "forme_coude_qui_part_en_avant"
     return None
 
@@ -70,7 +79,7 @@ def curl_biceps_gauche_detection(corps):
     angle = calculer_angle(
         corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
     )
-    if angle < 30:
+    if angle < CURL_FIN:
         return "fin"
     elif angle > 160:
         return "debut"
@@ -105,20 +114,80 @@ curl_biceps_gauche = Exercice(
 # ==================================
 
 
+def _hauteur_sous_epaule(poignet, epaule, hanche):
+    """De combien le poignet est sous l'épaule, rapporté au buste.
+
+    Sans unité, donc indépendant de la taille et de la distance à la caméra :
+    environ 1 bras le long du corps, 0 à hauteur d'épaule, négatif au-dessus.
+    None quand le buste n'a pas de longueur lisible.
+    """
+    buste = calculer_distance(epaule, hanche)
+    if buste <= 0:
+        return None
+    return (poignet.y - epaule.y) / buste
+
+
+def _ecart_lateral(poignet, epaule, autre_epaule, hanche):
+    """De combien le poignet est sorti *vers l'extérieur* de son épaule.
+
+    L'extérieur est le côté opposé à l'autre épaule : de face, c'est ce qui
+    distingue une élévation latérale d'une élévation frontale, où les poignets
+    restent devant les épaules. Rapporté au buste, comme la hauteur.
+    """
+    buste = calculer_distance(epaule, hanche)
+    if buste <= 0:
+        return None
+    if epaule.x >= autre_epaule.x:
+        sortie = poignet.x - epaule.x
+    else:
+        sortie = epaule.x - poignet.x
+    return sortie / buste
+
+
 def elevation_laterale_detection(corps):
-    angle_coude_droit = calculer_angle(
-        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
+    """Bras montés sur les côtés, tendus, jusqu'à hauteur d'épaule.
+
+    La détection ne regardait que la hauteur des poignets : « pas les deux
+    mains sous les épaules » valait « fin ». Lever les bras devant soi ou au
+    hasard comptait donc aussi, et faute de zone intermédiaire le moindre
+    tremblement autour de l'épaule faisait un aller-retour. La fin exige
+    désormais les trois choses qui font une élévation latérale — la hauteur,
+    des bras tendus, et chaque poignet sorti de son côté —, et le départ des
+    mains nettement basses, d'où une vraie zone intermédiaire.
+    """
+    hauteur_droite = _hauteur_sous_epaule(
+        corps.poignet_droit, corps.epaule_droite, corps.hanche_droite
     )
-    angle_coude_gauche = calculer_angle(
+    hauteur_gauche = _hauteur_sous_epaule(
+        corps.poignet_gauche, corps.epaule_gauche, corps.hanche_gauche
+    )
+    if hauteur_droite is None or hauteur_gauche is None:
+        return "milieu"
+    if hauteur_droite > 0.6 and hauteur_gauche > 0.6:
+        return "debut"
+
+    angle_coude_droit = calculer_angle(
         corps.epaule_droite, corps.coude_droit, corps.poignet_droit
     )
+    angle_coude_gauche = calculer_angle(
+        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
+    )
+    ecart_droit = _ecart_lateral(
+        corps.poignet_droit, corps.epaule_droite, corps.epaule_gauche, corps.hanche_droite
+    )
+    ecart_gauche = _ecart_lateral(
+        corps.poignet_gauche, corps.epaule_gauche, corps.epaule_droite, corps.hanche_gauche
+    )
     if (
-        corps.poignet_droit.y > corps.epaule_droite.y
-        and corps.poignet_gauche.y > corps.epaule_gauche.y
+        hauteur_droite < 0.15
+        and hauteur_gauche < 0.15
+        and angle_coude_droit > 140
+        and angle_coude_gauche > 140
+        and ecart_droit > 0.3
+        and ecart_gauche > 0.3
     ):
-        return "debut"
-    else:
         return "fin"
+    return "milieu"
 
 
 elevation_laterale = Exercice(
@@ -126,7 +195,11 @@ elevation_laterale = Exercice(
     orientation="face",
     detection=elevation_laterale_detection,
     description="Élévations latérales à deux haltères : monter les bras sur les côtés jusqu'à hauteur des épaules.",
-    instructions=["Contrôle la descente.", "Ne balance pas le mouvement."],
+    instructions=[
+        "Monte les bras sur les côtés, pas devant toi, jusqu'à hauteur des épaules.",
+        "Garde les bras presque tendus.",
+        "Contrôle la descente jusqu'en bas, mains le long des cuisses.",
+    ],
     mise_en_place=[
         "Debout, un haltère dans chaque main, bras le long du corps.",
         "Place-toi face à la caméra, les deux bras entièrement visibles.",
@@ -144,16 +217,33 @@ elevation_laterale = Exercice(
 # ==================================
 
 
+def _bras_proche(corps):
+    """Épaule, coude et poignet du bras le plus proche de la caméra.
+
+    De profil, le bras éloigné est masqué par le corps et son coude est une
+    estimation du modèle — qui, mesuré sur des pompes, restait tendu à 173°
+    pendant que le bras visible pliait à 60°. Exiger les deux coudes revenait
+    donc à exiger que l'estimation soit juste, et la moyenne ne valait pas
+    mieux : (173 + 60) / 2 n'atteint jamais le seuil. Le bras proche est celui
+    dont l'épaule a la plus petite profondeur (`z`, plus petit = plus près).
+    De face, les deux épaules sont à la même profondeur, et l'un ou l'autre
+    bras convient puisqu'ils bougent ensemble.
+    """
+    if corps.epaule_gauche.z <= corps.epaule_droite.z:
+        return corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
+    return corps.epaule_droite, corps.coude_droit, corps.poignet_droit
+
+
+def _angle_coude_proche(corps):
+    epaule, coude, poignet = _bras_proche(corps)
+    return calculer_angle(epaule, coude, poignet)
+
+
 def pompe_detection(corps):
-    angle_coude_droit = calculer_angle(
-        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
-    )
-    angle_coude_gauche = calculer_angle(
-        corps.epaule_droite, corps.coude_droit, corps.poignet_droit
-    )
-    if angle_coude_droit < 100 and angle_coude_gauche < 100:
+    angle_coude = _angle_coude_proche(corps)
+    if angle_coude < 100:
         return "debut"
-    elif angle_coude_droit > 160 and angle_coude_gauche > 160:
+    elif angle_coude > 160:
         return "fin"
     return "milieu"
 
@@ -196,16 +286,32 @@ pompe = Exercice(
 # ==================================
 
 
+def _buste_vertical(corps):
+    """Écart vertical moins écart horizontal entre le milieu des épaules et
+    celui des hanches.
+
+    Négatif quand le buste est plus couché que debout, quel que soit le côté
+    de la caméra. Même comparaison que `positions._torse_vertical`, rendue en
+    nombre plutôt qu'en booléen pour que le banc d'essai puisse l'afficher.
+    """
+    epaules_x = (corps.epaule_gauche.x + corps.epaule_droite.x) / 2
+    epaules_y = (corps.epaule_gauche.y + corps.epaule_droite.y) / 2
+    hanches_x = (corps.hanche_gauche.x + corps.hanche_droite.x) / 2
+    hanches_y = (corps.hanche_gauche.y + corps.hanche_droite.y) / 2
+    return abs(epaules_y - hanches_y) - abs(epaules_x - hanches_x)
+
+
 def developpe_couche_sol_detection(corps):
-    angle_coude_droit = calculer_angle(
-        corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
-    )
-    angle_coude_gauche = calculer_angle(
-        corps.epaule_droite, corps.coude_droit, corps.poignet_droit
-    )
-    if angle_coude_droit < 100 and angle_coude_gauche < 100:
+    # Le mouvement se fait allongé, et rien ne le vérifiait : debout, plier
+    # et tendre les coudes comptait des répétitions. Hors de la position
+    # allongée, rien n'est ni début ni fin, donc rien ne compte.
+    if _buste_vertical(corps) >= 0:
+        return "milieu"
+    # Caméra sur le côté : même raison que pour les pompes.
+    angle_coude = _angle_coude_proche(corps)
+    if angle_coude < 100:
         return "debut"
-    elif angle_coude_droit > 160 and angle_coude_gauche > 160:
+    elif angle_coude > 160:
         return "fin"
     return "milieu"
 
@@ -238,6 +344,22 @@ developpe_couche_sol = Exercice(
 # ==================================
 
 
+def _coudes_leves(corps):
+    return (
+        corps.coude_gauche.y < corps.epaule_gauche.y
+        and corps.coude_droit.y < corps.epaule_droite.y
+    )
+
+
+def _ecart_rapporte_aux_epaules(point_gauche, point_droit, corps):
+    """Distance entre deux points, rapportée à la largeur des épaules. De face
+    seulement : de profil, les épaules se superposent. None si elle est nulle."""
+    largeur = calculer_distance(corps.epaule_gauche, corps.epaule_droite)
+    if largeur <= 0:
+        return None
+    return calculer_distance(point_gauche, point_droit) / largeur
+
+
 def extension_triceps_au_dessus_de_la_tete_detection(corps):
     angle_coude_droit = calculer_angle(
         corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
@@ -245,11 +367,35 @@ def extension_triceps_au_dessus_de_la_tete_detection(corps):
     angle_coude_gauche = calculer_angle(
         corps.epaule_droite, corps.coude_droit, corps.poignet_droit
     )
+    # Seul l'angle des coudes etait lu : n'importe quelle flexion des bras,
+    # le long du corps comprise, comptait. Le mouvement se fait coudes en
+    # l'air et un seul haltere tenu a deux mains — donc poignets presque
+    # joints. Hors de cette position, ni debut ni fin.
+    ecart_poignets = _ecart_rapporte_aux_epaules(
+        corps.poignet_gauche, corps.poignet_droit, corps
+    )
+    if not _coudes_leves(corps) or ecart_poignets is None or ecart_poignets >= 0.6:
+        return "milieu"
     if angle_coude_droit < 90 and angle_coude_gauche < 90:
         return "debut"
     elif angle_coude_droit > 150 and angle_coude_gauche > 150:
         return "fin"
     return "milieu"
+
+
+def extension_triceps_erreur_coudes(corps):
+    """Coudes écartés vers l'extérieur, au-delà de la largeur des épaules.
+
+    Seulement coudes levés : bras le long du corps, pendant la mise en place,
+    les coudes sont naturellement à la largeur des épaules et la faute serait
+    signalée avant d'avoir commencé.
+    """
+    if not _coudes_leves(corps):
+        return None
+    ecart = _ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps)
+    if ecart is not None and ecart > 1.1:
+        return "forme_coudes_trop_ecartes"
+    return None
 
 
 extension_triceps_au_dessus_de_la_tete = Exercice(
@@ -258,8 +404,9 @@ extension_triceps_au_dessus_de_la_tete = Exercice(
     detection=extension_triceps_au_dessus_de_la_tete_detection,
     description="Extension triceps à un haltère tenu à deux mains, derrière la tête.",
     instructions=[
-        "Garde la tête droite, dans le prolongement du dos.",
-        "Garde les coudes serrés vers l'avant, ils ne s'écartent pas.",
+        "Garde les coudes en l'air, au-dessus des épaules, tout le mouvement.",
+        "Garde les mains jointes sur l'haltère.",
+        "Garde les coudes serrés près de la tête, ils ne s'écartent pas.",
         "Descends l'haltère derrière la nuque sans à-coup.",
     ],
     mise_en_place=[
@@ -272,7 +419,7 @@ extension_triceps_au_dessus_de_la_tete = Exercice(
         "Cambrer le dos pour compenser une charge trop lourde.",
         "Descendre l'haltère derrière la nuque sans contrôle.",
     ],
-    erreurs=[],
+    erreurs=[extension_triceps_erreur_coudes],
 )
 
 # ==================================
@@ -297,7 +444,9 @@ def developpe_epaule_detection(corps):
         corps.poignet_gauche.y < corps.epaule_gauche.y
         and corps.poignet_droit.y < corps.epaule_droite.y
     )
-    if angle_coude_droit < 40 and angle_coude_gauche < 40:
+    # Seuil bas ouvert de 40 a 60 degres : a 40 il fallait descendre les
+    # halteres bien plus bas que les oreilles, ce que la fiche ne demande pas.
+    if angle_coude_droit < 60 and angle_coude_gauche < 60:
         return "debut"
     elif angle_coude_droit > 150 and angle_coude_gauche > 150 and mains_en_haut:
         return "fin"
@@ -405,7 +554,25 @@ def detection_gainage(corps):
     hanches_droites = (angle_hanche_droite + angle_hanche_gauche) / 2 > 135
 
     hanche_au_dessus_coude = corps.hanche_gauche.y < corps.coude_gauche.y
-    if hanches_droites and hanche_au_dessus_coude:
+
+    # Tombé à plat ventre, le chrono continuait : un corps allongé est aligné,
+    # et sa hanche passe au-dessus du coude dès que celui-ci est posé devant.
+    # Comme pour la planche latérale, ce qui fait le gainage, c'est l'effort —
+    # les épaules soulevées au-dessus des coudes, et les hanches décollées du
+    # sol. Moyenne des deux côtés pour l'appui, pour la même raison que les
+    # angles de hanche : de profil, le bras éloigné est estimé.
+    appui = (
+        _appui_sur_le_bras(corps.epaule_gauche, corps.coude_gauche, corps.hanche_gauche)
+        + _appui_sur_le_bras(corps.epaule_droite, corps.coude_droit, corps.hanche_droite)
+    ) / 2
+    decollee = _hanche_decollee(
+        (corps.epaule_gauche.y + corps.epaule_droite.y) / 2,
+        (corps.hanche_gauche.y + corps.hanche_droite.y) / 2,
+        (corps.cheville_gauche.y + corps.cheville_droite.y) / 2,
+    )
+    en_appui = appui > 0.25 and decollee is not None and decollee > 0.3
+
+    if hanches_droites and hanche_au_dessus_coude and en_appui:
         return "maintien"
 
     return "repos"
@@ -634,6 +801,26 @@ def _appui_sur_le_bras(epaule, coude, hanche):
     return (coude.y - epaule.y) / buste
 
 
+def _hanche_decollee(y_epaule, y_hanche, y_cheville):
+    """Hauteur de la hanche au-dessus des pieds, rapportée à celle de l'épaule.
+
+    En planche, la hanche est sur la ligne qui va des pieds à l'épaule : vers
+    0,5. Hanches posées au sol, elle est à la hauteur des pieds : vers 0.
+    C'est la mesure qui manquait pour distinguer l'effort de la position
+    allongée — un corps au repos, appuyé sur un coude, garde le buste soulevé.
+    None quand l'épaule n'est pas plus haut que les pieds.
+    """
+    hauteur = y_cheville - y_epaule
+    if hauteur <= 0:
+        return None
+    return (y_cheville - y_hanche) / hauteur
+
+
+def _gainage_lateral_decolle(epaule, hanche, cheville):
+    decollee = _hanche_decollee(epaule.y, hanche.y, cheville.y)
+    return decollee is not None and decollee > 0.3
+
+
 def detection_gainage_laterale_gauche(corps):
     angle_hanche_gauche = calculer_angle(
         corps.epaule_gauche, corps.hanche_gauche, corps.cheville_gauche
@@ -654,7 +841,12 @@ def detection_gainage_laterale_gauche(corps):
     # buste est *soulevé* par l'appui sur l'avant-bras.
     souleve = _appui_sur_le_bras(corps.epaule_gauche, corps.coude_gauche, corps.hanche_gauche) > 0.25
 
-    if corps_aligne and cote_gauche_au_sol and hanche_au_dessus_coude and souleve:
+    # Buste soulevé ne suffisait pas : mesuré au banc d'essai, il n'est jamais
+    # descendu sous 0,43, parce qu'allongé sur le côté on reste appuyé sur
+    # le coude. Ce qui manquait, c'est la hanche décollée du sol.
+    decollee = _gainage_lateral_decolle(corps.epaule_gauche, corps.hanche_gauche, corps.cheville_gauche)
+
+    if corps_aligne and cote_gauche_au_sol and hanche_au_dessus_coude and souleve and decollee:
         return "maintien"
 
     return "repos"
@@ -712,7 +904,12 @@ def detection_gainage_laterale_droite(corps):
     # buste est *soulevé* par l'appui sur l'avant-bras.
     souleve = _appui_sur_le_bras(corps.epaule_droite, corps.coude_droit, corps.hanche_droite) > 0.25
 
-    if corps_aligne and cote_droit_au_sol and hanche_au_dessus_coude and souleve:
+    # Buste soulevé ne suffisait pas : mesuré au banc d'essai, il n'est jamais
+    # descendu sous 0,43, parce qu'allongé sur le côté on reste appuyé sur
+    # le coude. Ce qui manquait, c'est la hanche décollée du sol.
+    decollee = _gainage_lateral_decolle(corps.epaule_droite, corps.hanche_droite, corps.cheville_droite)
+
+    if corps_aligne and cote_droit_au_sol and hanche_au_dessus_coude and souleve and decollee:
         return "maintien"
 
     return "repos"
@@ -757,7 +954,10 @@ def rowing_unilateral_gauche_detection(corps):
     poignet_au_dessus_hanche = corps.poignet_gauche.y < corps.hanche_gauche.y
     buste_penche = angle_buste_gauche < 160
 
-    if angle_coude_gauche < 70 and poignet_au_dessus_hanche and buste_penche:
+    # Seuil du haut ouvert de 70 a 90 degres : a 70 le rowing demandait de
+    # replier le bras au-dela de ce que le mouvement exige, et des tirages
+    # complets s'arretaient a 74-81 degres sans compter.
+    if angle_coude_gauche < 90 and poignet_au_dessus_hanche and buste_penche:
         return "fin"
     elif angle_coude_gauche > 150:
         return "debut"
@@ -814,7 +1014,10 @@ def rowing_unilateral_droit_detection(corps):
     poignet_au_dessus_hanche = corps.poignet_droit.y < corps.hanche_droite.y
     buste_penche = angle_buste_droit < 160
 
-    if angle_coude_droit < 70 and poignet_au_dessus_hanche and buste_penche:
+    # Seuil du haut ouvert de 70 a 90 degres : a 70 le rowing demandait de
+    # replier le bras au-dela de ce que le mouvement exige, et des tirages
+    # complets s'arretaient a 74-81 degres sans compter.
+    if angle_coude_droit < 90 and poignet_au_dessus_hanche and buste_penche:
         return "fin"
     elif angle_coude_droit > 150:
         return "debut"

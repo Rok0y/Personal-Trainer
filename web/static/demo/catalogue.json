@@ -135,8 +135,9 @@
       "Place-toi face à la caméra, les deux bras entièrement visibles."
     ],
     "instructions": [
-      "Contrôle la descente.",
-      "Ne balance pas le mouvement."
+      "Monte les bras sur les côtés, pas devant toi, jusqu'à hauteur des épaules.",
+      "Garde les bras presque tendus.",
+      "Contrôle la descente jusqu'en bas, mains le long des cuisses."
     ],
     "erreurs_frequentes": [
       "Monter plus haut que les épaules : inutile, et ça sollicite le cou.",
@@ -159,8 +160,9 @@
       "Place-toi face à la caméra, tête et bras entièrement visibles."
     ],
     "instructions": [
-      "Garde la tête droite, dans le prolongement du dos.",
-      "Garde les coudes serrés vers l'avant, ils ne s'écartent pas.",
+      "Garde les coudes en l'air, au-dessus des épaules, tout le mouvement.",
+      "Garde les mains jointes sur l'haltère.",
+      "Garde les coudes serrés près de la tête, ils ne s'écartent pas.",
       "Descends l'haltère derrière la nuque sans à-coup."
     ],
     "erreurs_frequentes": [
@@ -173,7 +175,9 @@
     "orientation": "face",
     "analyse_la_pose": true,
     "detection": "extension_triceps_au_dessus_de_la_tete_detection",
-    "erreurs": []
+    "erreurs": [
+      "extension_triceps_erreur_coudes"
+    ]
   },
   {
     "nom": "Fente droite",

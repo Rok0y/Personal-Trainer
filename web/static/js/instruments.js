@@ -25,7 +25,11 @@
 // aucune zone. Les comparaisons sont strictes, comme dans les detections.
 
 import { calculer_angle, calculer_distance } from "./outils.js";
-import { _appui_sur_le_bras, _descente_hanche } from "./detections.js";
+import {
+  _appui_sur_le_bras, _descente_hanche, _hauteur_sous_epaule, _ecart_lateral,
+  _angle_coude_proche, _bras_proche, _buste_vertical, _ecart_rapporte_aux_epaules,
+  _hanche_decollee,
+} from "./detections.js";
 
 const ECHELLE_ANGLE = [0, 180];
 
@@ -75,7 +79,7 @@ function curl(cote) {
   return {
     ordre: ["fin", "debut"],
     defaut: "milieu",
-    mesures: [angle(`Coude ${cote}`, e, c, p, { fin: ["<", 30], debut: [">", 160] })],
+    mesures: [angle(`Coude ${cote}`, e, c, p, { fin: ["<", 20], debut: [">", 160] })],
   };
 }
 
@@ -87,7 +91,7 @@ function coude_avance(cote) {
     ordre: ["forme_coude_qui_part_en_avant"],
     defaut: null,
     mesures: [angle(`Coude ${cote} qui avance (angle à l'épaule)`, h, e, c,
-      { forme_coude_qui_part_en_avant: [">", 45] })],
+      { forme_coude_qui_part_en_avant: [">", 23] })],
   };
 }
 
@@ -103,6 +107,26 @@ function deux_coudes(debut, fin, { ordre = ["debut", "fin"], extra = [] } = {}) 
       angle("Coude droit", "epaule_droite", "coude_droit", "poignet_droit", { debut, fin }),
       ...extra,
     ],
+  };
+}
+
+// Le coude lu est celui du bras le plus proche de la camera, qui peut changer
+// d'une image a l'autre : le sommet ou ecrire la valeur est donc une fonction.
+function coude_proche(zones) {
+  return {
+    libelle: "Coude le plus proche de la caméra", unite: "°", echelle: ECHELLE_ANGLE, zones,
+    sommet: (corps) => (_bras_proche(corps)[1] === corps.coude_gauche ? "coude_gauche" : "coude_droit"),
+    valeur: (corps) => _angle_coude_proche(corps),
+  };
+}
+
+// Sans zone : n'entre dans aucun jeton, sert a verifier au banc d'essai que
+// le bon bras est choisi (negatif = epaule gauche plus pres).
+function profondeur_epaules() {
+  return {
+    libelle: "Profondeur épaule G − D (< 0 : gauche plus près)", unite: "", echelle: [-0.6, 0.6],
+    sommet: null, zones: {},
+    valeur: (corps) => corps.epaule_gauche.z - corps.epaule_droite.z,
   };
 }
 
@@ -135,11 +159,16 @@ function gainage_lateral(cote) {
         sommet: coude, zones: { maintien: [">", 0.25] },
         valeur: (corps) => _appui_sur_le_bras(corps[epaule], corps[coude], corps[hanche]),
       },
+      {
+        libelle: "Hanche décollée du sol (0 = posée)", unite: "", echelle: [-0.2, 1],
+        sommet: hanche, zones: { maintien: [">", 0.3] },
+        valeur: (corps) => _hanche_decollee(corps[epaule].y, corps[hanche].y, corps[cheville].y),
+      },
     ],
   };
 }
 
-function rowing(cote, seuil_buste) {
+function rowing(cote, seuil_buste, seuil_coude) {
   const [e, c, p, h, g] = cote === "gauche"
     ? ["epaule_gauche", "coude_gauche", "poignet_gauche", "hanche_gauche", "genou_gauche"]
     : ["epaule_droite", "coude_droit", "poignet_droit", "hanche_droite", "genou_droit"];
@@ -147,7 +176,7 @@ function rowing(cote, seuil_buste) {
     ordre: ["fin", "debut"],
     defaut: "milieu",
     mesures: [
-      angle(`Coude ${cote === "gauche" ? "gauche" : "droit"}`, e, c, p, { fin: ["<", 70], debut: [">", 150] }),
+      angle(`Coude ${cote === "gauche" ? "gauche" : "droit"}`, e, c, p, { fin: ["<", seuil_coude], debut: [">", 150] }),
       ecart_vertical("Poignet au-dessus de la hanche", p, h, { fin: ["<", 0] }),
       angle("Buste penché (épaule-hanche-genou)", e, h, g, { fin: ["<", seuil_buste] }),
     ],
@@ -172,21 +201,83 @@ export const INSTRUMENTS = {
   coude_avance_curl_gauche: coude_avance("gauche"),
   curl_biceps_gauche_detection: curl("gauche"),
 
-  // Seule detection sans "milieu" : tout ce qui n'est pas « mains sous les
-  // epaules » vaut "fin".
   elevation_laterale_detection: {
-    ordre: ["debut"],
-    defaut: "fin",
+    ordre: ["debut", "fin"],
+    defaut: "milieu",
     mesures: [
-      ecart_vertical("Poignet droit sous l'épaule", "poignet_droit", "epaule_droite", { debut: [">", 0] }),
-      ecart_vertical("Poignet gauche sous l'épaule", "poignet_gauche", "epaule_gauche", { debut: [">", 0] }),
+      ...["droit", "gauche"].map((cote) => {
+        const [p, e, h] = cote === "droit"
+          ? ["poignet_droit", "epaule_droite", "hanche_droite"]
+          : ["poignet_gauche", "epaule_gauche", "hanche_gauche"];
+        return {
+          libelle: `Main ${cote === "droit" ? "droite" : "gauche"} sous l'épaule (1 = en bas)`,
+          unite: "", echelle: [-0.4, 1.2], sommet: p,
+          zones: { debut: [">", 0.6], fin: ["<", 0.15] },
+          valeur: (corps) => _hauteur_sous_epaule(corps[p], corps[e], corps[h]),
+        };
+      }),
+      angle("Coude droit (bras tendu)", "epaule_droite", "coude_droit", "poignet_droit", { fin: [">", 140] }),
+      angle("Coude gauche (bras tendu)", "epaule_gauche", "coude_gauche", "poignet_gauche", { fin: [">", 140] }),
+      ...["droit", "gauche"].map((cote) => {
+        const [p, e, autre, h] = cote === "droit"
+          ? ["poignet_droit", "epaule_droite", "epaule_gauche", "hanche_droite"]
+          : ["poignet_gauche", "epaule_gauche", "epaule_droite", "hanche_gauche"];
+        return {
+          libelle: `Main ${cote === "droit" ? "droite" : "gauche"} sortie sur le côté`,
+          unite: "", echelle: [-0.5, 1.5], sommet: p,
+          zones: { fin: [">", 0.3] },
+          valeur: (corps) => _ecart_lateral(corps[p], corps[e], corps[autre], corps[h]),
+        };
+      }),
     ],
   },
 
-  pompe_detection: deux_coudes(["<", 100], [">", 160]),
-  developpe_couche_sol_detection: deux_coudes(["<", 100], [">", 160]),
-  extension_triceps_au_dessus_de_la_tete_detection: deux_coudes(["<", 90], [">", 150]),
-  developpe_epaule_detection: deux_coudes(["<", 40], [">", 150], {
+  pompe_detection: {
+    ordre: ["debut", "fin"],
+    defaut: "milieu",
+    mesures: [coude_proche({ debut: ["<", 100], fin: [">", 160] }), profondeur_epaules()],
+  },
+  developpe_couche_sol_detection: {
+    ordre: ["debut", "fin"],
+    defaut: "milieu",
+    mesures: [
+      coude_proche({ debut: ["<", 100], fin: [">", 160] }),
+      {
+        libelle: "Buste debout (< 0 = allongé)", unite: "", echelle: [-0.4, 0.4],
+        sommet: null, zones: { debut: ["<", 0], fin: ["<", 0] },
+        valeur: (corps) => _buste_vertical(corps),
+      },
+      profondeur_epaules(),
+    ],
+  },
+  extension_triceps_au_dessus_de_la_tete_detection: deux_coudes(["<", 90], [">", 150], {
+    extra: [
+      ecart_vertical("Coude gauche au-dessus de l'épaule", "coude_gauche", "epaule_gauche",
+        { debut: ["<", 0], fin: ["<", 0] }),
+      ecart_vertical("Coude droit au-dessus de l'épaule", "coude_droit", "epaule_droite",
+        { debut: ["<", 0], fin: ["<", 0] }),
+      {
+        libelle: "Écart des poignets (÷ largeur d'épaules)", unite: "", echelle: [0, 2],
+        sommet: "poignet_gauche", zones: { debut: ["<", 0.6], fin: ["<", 0.6] },
+        valeur: (corps) => _ecart_rapporte_aux_epaules(corps.poignet_gauche, corps.poignet_droit, corps),
+      },
+    ],
+  }),
+  // L'erreur ne parle que coudes leves : l'ecart y vaut donc null quand ils ne
+  // le sont pas, ce qui redit la garde de la fonction.
+  extension_triceps_erreur_coudes: {
+    ordre: ["forme_coudes_trop_ecartes"],
+    defaut: null,
+    mesures: [{
+      libelle: "Écart des coudes (÷ largeur d'épaules)", unite: "", echelle: [0, 2],
+      sommet: "coude_gauche", zones: { forme_coudes_trop_ecartes: [">", 1.1] },
+      valeur: (corps) =>
+        corps.coude_gauche.y < corps.epaule_gauche.y && corps.coude_droit.y < corps.epaule_droite.y
+          ? _ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps)
+          : null,
+    }],
+  },
+  developpe_epaule_detection: deux_coudes(["<", 60], [">", 150], {
     extra: [
       ecart_vertical("Poignet gauche au-dessus de l'épaule", "poignet_gauche", "epaule_gauche", { fin: ["<", 0] }),
       ecart_vertical("Poignet droit au-dessus de l'épaule", "poignet_droit", "epaule_droite", { fin: ["<", 0] }),
@@ -211,6 +302,22 @@ export const INSTRUMENTS = {
         ["epaule_droite", "hanche_droite", "genou_droit"],
         { maintien: [">", 135] }),
       ecart_vertical("Hanche au-dessus du coude", "hanche_gauche", "coude_gauche", { maintien: ["<", 0] }),
+      {
+        libelle: "Épaules soulevées (moyenne des deux bras)", unite: "", echelle: [-0.2, 0.8],
+        sommet: "epaule_gauche", zones: { maintien: [">", 0.25] },
+        valeur: (corps) =>
+          (_appui_sur_le_bras(corps.epaule_gauche, corps.coude_gauche, corps.hanche_gauche) +
+            _appui_sur_le_bras(corps.epaule_droite, corps.coude_droit, corps.hanche_droite)) / 2,
+      },
+      {
+        libelle: "Hanches décollées du sol (0 = posées)", unite: "", echelle: [-0.2, 1],
+        sommet: "hanche_gauche", zones: { maintien: [">", 0.3] },
+        valeur: (corps) => _hanche_decollee(
+          (corps.epaule_gauche.y + corps.epaule_droite.y) / 2,
+          (corps.hanche_gauche.y + corps.hanche_droite.y) / 2,
+          (corps.cheville_gauche.y + corps.cheville_droite.y) / 2
+        ),
+      },
     ],
   },
 
@@ -236,11 +343,11 @@ export const INSTRUMENTS = {
   detection_gainage_laterale_gauche: gainage_lateral("gauche"),
   detection_gainage_laterale_droite: gainage_lateral("droit"),
 
-  rowing_unilateral_gauche_detection: rowing("gauche", 160),
+  rowing_unilateral_gauche_detection: rowing("gauche", 160, 90),
   rowing_unilateral_gauche_erreur_buste: erreur_buste("gauche", 160),
-  rowing_unilateral_droit_detection: rowing("droit", 160),
+  rowing_unilateral_droit_detection: rowing("droit", 160, 90),
   rowing_unilateral_droit_erreur_buste: erreur_buste("droit", 160),
-  rowing_penche_detection: rowing("gauche", 165),
+  rowing_penche_detection: rowing("gauche", 165, 70),
   rowing_penche_erreur_buste: erreur_buste("gauche", 165),
   rowing_penche_erreur_genoux: {
     ordre: ["forme_genoux_trop_plies"],
@@ -335,6 +442,35 @@ export function formater_zone(mesure, zone) {
 
 // ----- suivi des tentatives -----
 
+// Part minimale du chemin entre les deux positions qu'une tentative doit avoir
+// parcourue pour meriter un commentaire. En dessous, c'est un tremblement
+// autour du seuil de depart — le coach qui dirait « pas assez haut » a chaque
+// fois parlerait a tort en permanence, et apprendrait vite a ne plus etre
+// ecoute. Au-dessus, c'est une vraie demi-repetition : 92 degres sur un curl
+// (52 %), 74 sur un rowing ouvert a 90 (95 %).
+export const PROGRESSION_SIGNIFICATIVE = 0.3;
+
+// Jusqu'ou une tentative est allee, de 0 (a peine sortie du depart) a 1 (zone
+// visee atteinte), sur la meilleure des mesures qui ont une zone de depart et
+// une zone visee **opposees** — un seuil ` < ` d'un cote, ` > ` de l'autre. Une
+// condition de position partagee par les deux zones (« coudes leves ») ne dit
+// rien du chemin parcouru. null quand aucune mesure ne s'y prete.
+export function progression(instrument, depart, cible, meilleures) {
+  let meilleure = null;
+  instrument.mesures.forEach((mesure, i) => {
+    const zone_depart = mesure.zones[depart];
+    const zone_cible = mesure.zones[cible];
+    const v = meilleures[i];
+    if (!zone_depart || !zone_cible || v === null || v === undefined || Number.isNaN(v)) return;
+    if (vers_le_bas(zone_depart) === vers_le_bas(zone_cible)) return;
+    const etendue = zone_depart[1] - zone_cible[1];
+    if (etendue === 0) return;
+    const part = Math.max(0, Math.min(1, (zone_depart[1] - v) / etendue));
+    if (meilleure === null || part > meilleure) meilleure = part;
+  });
+  return meilleure;
+}
+
 function autre(position) {
   return position === "debut" ? "fin" : "debut";
 }
@@ -378,7 +514,11 @@ export class SuiviTentatives {
     this.ouvert = null;
     this.sejour = null;
     this.journal = [];
-    this.totaux = { aller_complet: 0, aller_interrompu: 0, retour_complet: 0, retour_incomplet: 0 };
+    this.totaux = {
+      aller_complet: 0, aller_interrompu: 0, retour_complet: 0, retour_incomplet: 0,
+      // Tentatives trop courtes pour etre des echecs : voir PROGRESSION_SIGNIFICATIVE.
+      hesitations: 0,
+    };
     this.extremes = instrument.mesures.map(() => ({ min: null, max: null }));
     this.hors_zone = instrument.mesures.map(() => 0);
     this.temps_perdu = 0;
@@ -454,6 +594,7 @@ export class SuiviTentatives {
   _ouvrir(depart, cible, instant) {
     return {
       type: depart === "debut" ? "aller" : "retour",
+      depart,
       cible,
       debut: instant,
       meilleures: this.instrument.mesures.map(() => null),
@@ -481,6 +622,9 @@ export class SuiviTentatives {
           const zone = this.instrument.mesures[i].zones[demi_cycle.cible];
           return zone && !dans_zone(demi_cycle.meilleures[i], zone);
         });
+    const avance = complet
+      ? 1
+      : progression(this.instrument, demi_cycle.depart, demi_cycle.cible, demi_cycle.meilleures);
     const entree = {
       type: demi_cycle.type,
       cible: demi_cycle.cible,
@@ -488,9 +632,16 @@ export class SuiviTentatives {
       duree: instant - demi_cycle.debut,
       meilleures: demi_cycle.meilleures,
       bloquantes,
+      progression: avance,
+      // Sans mesure pour en juger, on prefere signaler que taire.
+      significatif: complet || avance === null || avance >= PROGRESSION_SIGNIFICATIVE,
     };
-    const issue = complet ? "complet" : demi_cycle.type === "aller" ? "interrompu" : "incomplet";
-    this.totaux[`${demi_cycle.type}_${issue}`] += 1;
+    if (entree.significatif) {
+      const issue = complet ? "complet" : demi_cycle.type === "aller" ? "interrompu" : "incomplet";
+      this.totaux[`${demi_cycle.type}_${issue}`] += 1;
+    } else {
+      this.totaux.hesitations += 1;
+    }
     this.journal.push(entree);
     if (this.journal.length > this.taille_journal) this.journal.shift();
     this.sejour = complet ? entree : null;
@@ -515,10 +666,11 @@ export class SuiviTentatives {
         .filter((e) => e.complet && e.type === "retour").map((e) => e.meilleures[i])),
     }));
     const echecs = this.journal
-      .filter((e) => !e.complet)
+      .filter((e) => !e.complet && e.significatif)
       .slice(-10)
       .map((e) => ({
         type: e.type,
+        progression: e.progression,
         bloquantes: e.bloquantes.map((i) => ({ mesure: i, valeur: e.meilleures[i] })),
       }));
     return {

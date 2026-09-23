@@ -1125,7 +1125,8 @@ function mesurerInstruments(corps, jeton, instant) {
     // Le suivi lit le jeton de la **detection**, qui fait autorite, et non
     // celui de l'instrument.
     if (comptage) {
-      l.suivi.observer(rang === 0 ? jeton : l.lecture.jeton, l.lecture.valeurs, instant);
+      const entree = l.suivi.observer(rang === 0 ? jeton : l.lecture.jeton, l.lecture.valeurs, instant);
+      if (rang === 0 && entree && !entree.complet && entree.significatif) signalerIncomplet(entree);
     }
   });
 
@@ -1140,6 +1141,7 @@ function mesurerInstruments(corps, jeton, instant) {
 
   majJauges(jeton);
   dessinerJournal();
+  effacerSignalementEchu();
 }
 
 // La mesure est « bloquante » quand un demi-cycle vise une zone qu'elle
@@ -1164,6 +1166,27 @@ function majJauges(jeton) {
       if (noeud.bloc.className !== classe) noeud.bloc.className = classe;
     });
   });
+}
+
+// Le coach, par ecrit pour l'instant : la voix viendra avec les prises de son.
+// Une tentative trop courte (un tremblement autour du seuil de depart) n'arrive
+// jamais ici — le suivi la classe en hesitation.
+const DUREE_SIGNALEMENT = 2.5;
+let finSignalement = 0;
+
+function signalerIncomplet(entree) {
+  const cle = entree.type === "aller" ? "amplitude_aller_incomplet" : "amplitude_retour_incomplet";
+  afficherConsigne(texte(cle) ?? cle);
+  finSignalement = performance.now() / 1000 + DUREE_SIGNALEMENT;
+}
+
+// Efface le message une fois son temps ecoule, sans toucher a une consigne
+// posee entre-temps par autre chose.
+function effacerSignalementEchu() {
+  if (finSignalement && performance.now() / 1000 > finSignalement) {
+    finSignalement = 0;
+    if (phase === "comptage" && !modeMaintien) afficherConsigne("");
+  }
 }
 
 // Une ligne de journal nomme ce qui a manque, avec la valeur atteinte et la
@@ -1206,7 +1229,7 @@ function dessinerJournal() {
   // les repetitions et les echecs. L'amplitude d'une repetition continue de
   // monter tant qu'on reste en haut, d'ou le redessin tant qu'un sejour dure.
   const entrees = l.suivi.journal
-    .filter((e) => !(e.complet && e.type === "retour"))
+    .filter((e) => e.significatif && !(e.complet && e.type === "retour"))
     .slice(-4)
     .reverse();
   const html = entrees
@@ -1221,9 +1244,9 @@ function dessinerJournal() {
     liste.hidden = !html;
   }
   const t = l.suivi.totaux;
-  totaux.textContent = t.aller_complet + t.aller_interrompu + t.retour_incomplet
+  totaux.textContent = t.aller_complet + t.aller_interrompu + t.retour_incomplet + t.hesitations
     ? `${t.aller_complet} complètes · ${t.aller_interrompu} pas jusqu'à la fin · ` +
-      `${t.retour_incomplet} pas revenu au début`
+      `${t.retour_incomplet} pas revenu au début · ${t.hesitations} hésitation(s)`
     : "";
 }
 
@@ -1239,13 +1262,16 @@ function dessinerValeurs(ctx, canvas) {
   // Les angles seulement : un ecart de hauteur (« -0.05 ») pose sur l'image
   // encombre sans rien apprendre, sa jauge le dit mieux. Un meme angle lu par
   // la detection et par une faute de forme n'est ecrit qu'une fois.
+  // Le sommet peut dependre de la pose (le coude le plus proche de la camera
+  // change de cote selon l'orientation) : c'est alors une fonction du corps.
   const dejaEcrits = {};
   lectures.forEach((l) => {
     l.instrument.mesures.forEach((mesure, i) => {
-      const point = dernierCorps[mesure.sommet];
+      const sommet = typeof mesure.sommet === "function" ? mesure.sommet(dernierCorps) : mesure.sommet;
+      const point = sommet ? dernierCorps[sommet] : null;
       if (!point || !l.lecture || mesure.unite !== "°") return;
       const valeur = formater_valeur(mesure, l.lecture.valeurs[i]);
-      const deja = (dejaEcrits[mesure.sommet] ??= []);
+      const deja = (dejaEcrits[sommet] ??= []);
       if (deja.includes(valeur)) return;
       const decalage = deja.length;
       deja.push(valeur);
@@ -1589,7 +1615,8 @@ function lignesMesures(m) {
     ].filter(Boolean).join(", ");
     lignes.push(
       `tentatives : ${t.aller_complet} complètes, ${t.aller_interrompu} pas jusqu'à la fin, ` +
-      `${t.retour_incomplet} pas revenu au début${tempo ? ` · tempo médian ${tempo}` : ""}`
+      `${t.retour_incomplet} pas revenu au début, ${t.hesitations ?? 0} hésitation(s)` +
+      `${tempo ? ` · tempo médian ${tempo}` : ""}`
     );
   }
   if (d && d.maintien && d.temps_perdu > 0) {
@@ -1614,7 +1641,7 @@ function lignesMesures(m) {
       x.amplitude_aller !== null && x.amplitude_aller !== undefined ? `fin atteinte à ${f(x.amplitude_aller)}` : null,
       x.amplitude_retour !== null && x.amplitude_retour !== undefined ? `début à ${f(x.amplitude_retour)}` : null,
     ].filter(Boolean).join(", ");
-    lignes.push(`${x.libelle} : ${f(x.min)} → ${f(x.max)} [${seuils}]` +
+    lignes.push(`${x.libelle} : ${f(x.min)} → ${f(x.max)}${seuils ? ` [${seuils}]` : ""}` +
       (amplitude ? ` · médianes : ${amplitude}` : ""));
   }
 

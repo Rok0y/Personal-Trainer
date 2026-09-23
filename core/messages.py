@@ -32,6 +32,12 @@ MESSAGES = {
     "forme_coude_qui_part_en_avant": (
         "Garde le coude collé au buste, ne le laisse pas partir en avant"
     ),
+    "forme_coudes_trop_ecartes": "Garde les coudes serrés, près de la tête",
+    # --- Répétition incomplète : une tentative a vraiment progressé, sans
+    # atteindre la position visée. L'aller vise la position qui compte la
+    # répétition, le retour celle qui réarme le compteur.
+    "amplitude_aller_incomplet": "Va jusqu'au bout du mouvement",
+    "amplitude_retour_incomplet": "Reviens complètement en position de départ",
     # --- Consignes d'état : ce qu'il faut faire, pas ce qui est mal fait -----
     "corps_absent": "Place-toi devant la caméra, bien en pied.",
     # « la séance » et non « la série » : la phase `preparation` n'existe

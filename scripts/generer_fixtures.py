@@ -97,6 +97,109 @@ def pose_bras_leves(rng):
     return Body(points)
 
 
+NOMBRE_POSES_PAR_FAMILLE = 300
+"""Poses construites pour les detections que le hasard n'atteint pas.
+
+Mesure par `verifier_instruments.mjs` : sur 5 000 poses tirees au hasard,
+aucune n'atteint la fin de l'elevation laterale (six conditions a la fois), ni
+le debut du squat (un coude a moins de 0,05 du genou), et les maintiens de
+gainage ne sont atteints que par 7 a 10 poses. Leurs seuils n'etaient donc
+compares par rien. Chaque famille construit la position visee **autour** de ses
+seuils, pour visiter les deux cotes de chacun."""
+
+
+def pose_elevation(rng):
+    """Debout de face, chaque bras leve d'un angle au hasard, plus ou moins
+    sur le cote (1) ou devant soi (0), plus ou moins plie."""
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    cx, ey = 0.35 + rng.random() * 0.3, 0.25 + rng.random() * 0.1
+    demi_largeur = 0.06 + rng.random() * 0.05
+    buste = 0.2 + rng.random() * 0.1
+    longueur = buste * (0.9 + rng.random() * 0.3)
+    # Une pose sur deux vise la position haute : sa fin demande six conditions
+    # sur les deux bras a la fois, qu'un tirage uniforme ne reunit presque jamais.
+    vise_le_haut = rng.random() < 0.5
+    for cote, signe in (("gauche", 1), ("droite", -1)):
+        bras = "gauche" if cote == "gauche" else "droit"
+        ex = cx + signe * demi_largeur
+        points[f"epaule_{cote}"] = LandmarkPoint(ex, ey, 0, 1)
+        points[f"hanche_{cote}"] = LandmarkPoint(ex, ey + buste, 0, 1)
+        if vise_le_haut:
+            leve = math.radians(rng.uniform(70, 105))
+            cote_lateral = rng.uniform(0.2, 1.0)
+            pli = rng.uniform(-0.08, 0.08) * longueur
+        else:
+            leve = math.radians(rng.uniform(0, 120))
+            cote_lateral = rng.uniform(-0.3, 1.0)
+            pli = rng.uniform(-0.12, 0.12) * longueur
+        dx, dy = signe * cote_lateral * math.sin(leve), math.cos(leve)
+        points[f"coude_{bras}"] = LandmarkPoint(
+            ex + dx * longueur / 2 - dy * pli, ey + dy * longueur / 2 + dx * pli, 0, 1
+        )
+        points[f"poignet_{bras}"] = LandmarkPoint(ex + dx * longueur, ey + dy * longueur, 0, 1)
+    return Body(points)
+
+
+def pose_planche(rng):
+    """De profil, allonge face au sol : epaules plus ou moins soulevees au-dessus
+    des coudes, hanches plus ou moins decollees, du corps a plat au gainage."""
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    sol = 0.75 + rng.random() * 0.15
+    x0 = 0.15 + rng.random() * 0.15
+    longueur = 0.5 + rng.random() * 0.2
+    epaule = rng.uniform(0, 0.2)
+    hanche = rng.uniform(-0.03, 1.3) * epaule
+    for cote, decalage in (("gauche", 0.0), ("droite", 0.01)):
+        bras = "gauche" if cote == "gauche" else "droit"
+        points[f"coude_{bras}"] = LandmarkPoint(x0 + decalage, sol, 0, 1)
+        points[f"epaule_{cote}"] = LandmarkPoint(x0 + decalage, sol - epaule, 0, 1)
+        points[f"hanche_{cote}"] = LandmarkPoint(x0 + longueur * 0.5 + decalage, sol - hanche, 0, 1)
+        genou = LandmarkPoint(x0 + longueur * 0.75, sol - hanche * rng.uniform(0.2, 0.7), 0, 1)
+        points[f"genou_{bras}"] = genou
+        points[f"cheville_{cote}"] = LandmarkPoint(x0 + longueur, sol, 0, 1)
+    return Body(points)
+
+
+def pose_planche_laterale(rng):
+    """De face, allonge sur un cote tire au hasard : buste plus ou moins
+    souleve sur l'avant-bras, hanche plus ou moins decollee du sol."""
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    bas, haut = (("gauche", "droite") if rng.random() < 0.5 else ("droite", "gauche"))
+    bras_bas = "gauche" if bas == "gauche" else "droit"
+    sol = 0.75 + rng.random() * 0.15
+    x0 = 0.15 + rng.random() * 0.15
+    longueur = 0.5 + rng.random() * 0.2
+    epaule = rng.uniform(0, 0.2)
+    hanche = rng.uniform(-0.03, 1.2) * epaule * 0.55
+    points[f"coude_{bras_bas}"] = LandmarkPoint(x0, sol, 0, 1)
+    points[f"epaule_{bas}"] = LandmarkPoint(x0, sol - epaule, 0, 1)
+    points[f"epaule_{haut}"] = LandmarkPoint(x0 + 0.01, sol - epaule - rng.uniform(-0.02, 0.1), 0, 1)
+    points[f"hanche_{bas}"] = LandmarkPoint(x0 + longueur * 0.5, sol - hanche, 0, 1)
+    points[f"cheville_{bas}"] = LandmarkPoint(x0 + longueur, sol - rng.uniform(0, 0.02), 0, 1)
+    return Body(points)
+
+
+def pose_contacts(rng):
+    """Coudes pres des genoux (squat) et poignets pres des chevilles (souleve
+    de terre), a une distance tiree autour des deux seuils de chacun."""
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    for proche, repere in (
+        ("coude_gauche", "genou_gauche"), ("coude_droit", "genou_droit"),
+        ("poignet_gauche", "cheville_gauche"), ("poignet_droit", "cheville_droite"),
+    ):
+        r, a = rng.uniform(0, 0.25), rng.uniform(0, 2 * math.pi)
+        base = points[repere]
+        points[proche] = LandmarkPoint(base.x + r * math.cos(a), base.y + r * math.sin(a), 0, 1)
+    return Body(points)
+
+
+FAMILLES = [pose_elevation, pose_planche, pose_planche_laterale, pose_contacts]
+
+
 def serialiser(corps):
     """La pose au format que lira le JS : un tableau indexe comme MediaPipe."""
     tableau = [None] * (max(LANDMARKS.values()) + 1)
@@ -142,10 +245,15 @@ def main():
     }
 
     with DESTINATION.open("w", encoding="utf-8") as fichier:
-        # Les poses de geste viennent **apres** : les 5 000 premieres restent
+        # Les poses construites viennent **apres** : les premieres restent
         # celles d'avant, tirees de la meme graine.
-        for indice in range(nombre + NOMBRE_POSES_DE_GESTE):
-            corps = pose_au_hasard(rng) if indice < nombre else pose_bras_leves(rng)
+        generateurs = (
+            [pose_au_hasard] * nombre
+            + [pose_bras_leves] * NOMBRE_POSES_DE_GESTE
+            + [f for f in FAMILLES for _ in range(NOMBRE_POSES_PAR_FAMILLE)]
+        )
+        for generateur in generateurs:
+            corps = generateur(rng)
             jetons = {
                 nom: natif(fonction(corps)) for nom, fonction in fonctions.items()
             }
@@ -153,7 +261,8 @@ def main():
             fichier.write(json.dumps(ligne, ensure_ascii=False) + "\n")
 
     print(
-        f"{nombre} poses au hasard et {NOMBRE_POSES_DE_GESTE} poses bras leves "
+        f"{nombre} poses au hasard, {NOMBRE_POSES_DE_GESTE} poses bras leves et "
+        f"{NOMBRE_POSES_PAR_FAMILLE * len(FAMILLES)} poses construites "
         f"ecrites dans {DESTINATION}"
     )
     print(f"{len(fonctions)} fonctions couvertes :")

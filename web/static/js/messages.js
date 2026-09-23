@@ -23,6 +23,11 @@ export const MESSAGES = {
   forme_coudes_trop_plies: "Ne plie pas trop les coudes",
   forme_coude_qui_part_en_avant:
     "Garde le coude collé au buste, ne le laisse pas partir en avant",
+  forme_coudes_trop_ecartes: "Garde les coudes serrés, près de la tête",
+  // --- Repetition incomplete : une tentative a vraiment progresse, sans
+  // atteindre la position visee (voir instruments.js, SuiviTentatives).
+  amplitude_aller_incomplet: "Va jusqu'au bout du mouvement",
+  amplitude_retour_incomplet: "Reviens complètement en position de départ",
   // --- Consignes d'etat : ce qu'il faut faire, pas ce qui est mal fait ---
   corps_absent: "Place-toi devant la caméra, bien en pied.",
   // « la seance » et non « la serie » : cette phase n'existe qu'une fois.
