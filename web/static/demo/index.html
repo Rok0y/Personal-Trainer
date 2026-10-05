@@ -1341,7 +1341,7 @@ function traiter(corps, instant) {
     majAffichage(Math.floor(secondesTenues), CIBLE_SECONDES);
   } else {
     dernierInstant = null;
-    const [, repetitions] = compteur.mettre_a_jour(jeton);
+    const [, repetitions] = compteur.mettre_a_jour(jeton, instant);
     majAffichage(repetitions, CIBLE_REPETITIONS);
   }
 }

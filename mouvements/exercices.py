@@ -217,19 +217,42 @@ elevation_laterale = Exercice(
 # ==================================
 
 
+# En deca de cet ecart de visibilite, les deux bras sont aussi bien vus l'un
+# que l'autre (de face, typiquement) : c'est alors la profondeur qui tranche.
+MARGE_VISIBILITE = 0.1
+
+
+def _visibilite_bras(coude, poignet):
+    return (coude.visibilite + poignet.visibilite) / 2
+
+
 def _bras_proche(corps):
-    """Épaule, coude et poignet du bras le plus proche de la caméra.
+    """Épaule, coude et poignet du bras que la caméra voit vraiment.
 
     De profil, le bras éloigné est masqué par le corps et son coude est une
     estimation du modèle — qui, mesuré sur des pompes, restait tendu à 173°
     pendant que le bras visible pliait à 60°. Exiger les deux coudes revenait
     donc à exiger que l'estimation soit juste, et la moyenne ne valait pas
-    mieux : (173 + 60) / 2 n'atteint jamais le seuil. Le bras proche est celui
-    dont l'épaule a la plus petite profondeur (`z`, plus petit = plus près).
-    De face, les deux épaules sont à la même profondeur, et l'un ou l'autre
-    bras convient puisqu'ils bougent ensemble.
+    mieux : (173 + 60) / 2 n'atteint jamais le seuil.
+
+    Le choix se faisait sur la profondeur (`z`), la coordonnée la moins fiable
+    du modèle : qu'elle désigne le bras caché, et la détection lisait un coude
+    inventé, toujours tendu — aucune pompe comptée sur toute une séance. Il se
+    fait désormais sur la **visibilité** du coude et du poignet. C'est
+    l'inverse de la règle du cadrage, qui l'écarte parce qu'elle s'effondre sur
+    le membre éloigné alors que le cadrage est bon : ici, cet effondrement est
+    précisément l'information cherchée. Prendre le bras le plus plié aurait
+    évité `z` aussi, mais un saut du bras caché y aurait armé des répétitions
+    fantômes. De face, les deux bras sont aussi visibles et bougent ensemble :
+    la profondeur départage, et l'un ou l'autre convient.
     """
-    if corps.epaule_gauche.z <= corps.epaule_droite.z:
+    gauche = _visibilite_bras(corps.coude_gauche, corps.poignet_gauche)
+    droite = _visibilite_bras(corps.coude_droit, corps.poignet_droit)
+    if abs(gauche - droite) >= MARGE_VISIBILITE:
+        bras_gauche = gauche > droite
+    else:
+        bras_gauche = corps.epaule_gauche.z <= corps.epaule_droite.z
+    if bras_gauche:
         return corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
     return corps.epaule_droite, corps.coude_droit, corps.poignet_droit
 
@@ -378,7 +401,9 @@ def extension_triceps_au_dessus_de_la_tete_detection(corps):
         return "milieu"
     if angle_coude_droit < 90 and angle_coude_gauche < 90:
         return "debut"
-    elif angle_coude_droit > 150 and angle_coude_gauche > 150:
+    # 140 et non 150 : il fallait verrouiller les bras au-dela du naturel pour
+    # que la repetition compte (retour de seance).
+    elif angle_coude_droit > 140 and angle_coude_gauche > 140:
         return "fin"
     return "milieu"
 
@@ -393,7 +418,9 @@ def extension_triceps_erreur_coudes(corps):
     if not _coudes_leves(corps):
         return None
     ecart = _ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps)
-    if ecart is not None and ecart > 1.1:
+    # 1,35 et non 1,1 : des coudes a la largeur des epaules sont deja
+    # acceptables sur ce mouvement, et l'alerte reprochait une position correcte.
+    if ecart is not None and ecart > 1.35:
         return "forme_coudes_trop_ecartes"
     return None
 
@@ -674,6 +701,43 @@ def fente_droite_detection(corps):
     return "milieu"
 
 
+def _genou_depasse_pied(genou, cheville, talon, pointe):
+    """De combien le genou avant passe devant la pointe du pied, rapporté au tibia.
+
+    Le sens du regard se lit sur le pied lui-même (du talon vers la pointe) :
+    la fonction ne suppose donc pas de quel côté est la caméra. Positif quand
+    le genou dépasse, négatif tant qu'il reste en arrière. None quand le pied
+    est vu de bout ou le tibia illisible : sans sens ni échelle, il n'y a rien
+    à mesurer.
+    """
+    longueur_pied = pointe.x - talon.x
+    tibia = calculer_distance(genou, cheville)
+    if abs(longueur_pied) < 0.01 or tibia <= 0:
+        return None
+    sens = 1 if longueur_pied > 0 else -1
+    return (genou.x - pointe.x) * sens / tibia
+
+
+def _faute_genou_avant(genou, cheville, talon, pointe):
+    """Faute affichée seulement : elle ne retire rien au comptage de la fente."""
+    depassement = _genou_depasse_pied(genou, cheville, talon, pointe)
+    if depassement is not None and depassement > 0.05:
+        return "forme_genou_avant_trop_avance"
+    return None
+
+
+def fente_droite_erreur_genou(corps):
+    return _faute_genou_avant(
+        corps.genou_droit, corps.cheville_droite, corps.talon_droit, corps.pointe_pied_droite
+    )
+
+
+def fente_gauche_erreur_genou(corps):
+    return _faute_genou_avant(
+        corps.genou_gauche, corps.cheville_gauche, corps.talon_gauche, corps.pointe_pied_gauche
+    )
+
+
 fente_droite = Exercice(
     nom="Fente droite",
     orientation="profil_camera_gauche",
@@ -696,7 +760,7 @@ fente_droite = Exercice(
         "Le buste qui bascule en avant.",
         "Un pas trop court, qui écrase le genou arrière.",
     ],
-    erreurs=[],
+    erreurs=[fente_droite_erreur_genou],
 )
 # ==================================
 # Fente gauche
@@ -737,7 +801,7 @@ fente_gauche = Exercice(
         "Le buste qui bascule en avant.",
         "Un pas trop court, qui écrase le genou arrière.",
     ],
-    erreurs=[],
+    erreurs=[fente_gauche_erreur_genou],
 )
 
 # ==================================
@@ -1140,7 +1204,10 @@ def oiseau_detection(corps):
     )
     angle_bras_moyen = (angle_bras_gauche + angle_bras_droit) / 2
 
-    if angle_bras_moyen > 80:
+    # 65 et non 80 : buste penche face a la camera, le torse se raccourcit a
+    # l'image et 80 degres demandaient des bras plus haut que l'horizontale —
+    # la seance n'en comptait presque aucune.
+    if angle_bras_moyen > 65:
         return "fin"
     elif angle_bras_moyen < 30:
         return "debut"

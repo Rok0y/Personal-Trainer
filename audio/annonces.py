@@ -179,11 +179,14 @@ BRIQUES = {
     # **De la place autour de soi s'annonce, elle ne se fait pas repeter.** Le
     # tutoriel de seance faisait executer un rituel de seize secondes — un pas
     # a droite, un pas a gauche, un pas en arriere — sans rien verifier pendant
-    # ces pas : on demandait un exercice pour transmettre une information. Les
-    # trois briques qui le portaient (`installation_pas_de_cote`,
-    # `installation_pas_arriere`, `installation_toujours_visible`) restent ici
-    # pour la meme raison que celles du cadrage, et une seule les remplace.
-    "installation_espace_libre": "Garde de la place : un pas dans chaque direction",
+    # ces pas : on demandait un exercice pour transmettre une information. Il
+    # n'en garde qu'une phrase, `installation_pas_de_cote`, la seule des trois
+    # qui dise *combien* de place il faut. Une brique de remplacement
+    # (« garde de la place : un pas dans chaque direction ») avait ete ecrite
+    # et jamais enregistree : le tutoriel etait donc muet sur sa seule etape
+    # dite, sans que rien le signale hors de la liste des manquants de
+    # `preparer_demo`. Elle a ete retiree plutot que gardee en reserve — sans
+    # fichier, elle n'aurait fait que du bruit sur la feuille de prise de son.
     "installation_pas_de_cote": "Fais un pas à droite, puis un pas à gauche",
     "installation_pas_arriere": "Puis un pas en arrière et un pas en avant",
     "installation_toujours_visible": "On doit te voir en entier à chaque fois",

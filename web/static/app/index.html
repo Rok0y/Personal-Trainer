@@ -1944,21 +1944,10 @@ let geste_deja_donne = false;
 function tutoriel_de_seance(nom) {
   const profil = base.utilisateurs.find((u) => u.id === PROFIL);
   if (historique.tuto_deja_vu(profil, "seances", nom)) return null;
-
-  const blocs = seances[nom] ?? [];
-  // Le tapis n'est annonce que s'il sert : une consigne qui se declenche a
-  // tort apprend a ne plus les ecouter, et c'est la lecon de `cadrage.js`.
-  const avec_tapis = blocs.some((b) =>
-    (mouvements[b.exercice]?.materiel ?? "").toLowerCase().includes("tapis")
-  );
-  // L'orientation du **premier** exercice : c'est celui qu'on va prendre, et
-  // les suivants seront annonces a leur tour au changement d'exercice.
-  const premier = blocs.length ? mouvements[blocs[0].exercice] : null;
-
-  return new Tutoriel(
-    etapes_de_seance({ orientation: premier?.orientation ?? null, avec_tapis }),
-    performance.now() / 1000
-  );
+  // Plus d'orientation ni de tapis a calculer ici : l'orientation du premier
+  // exercice est annoncee par sa presentation, juste apres, et le tutoriel
+  // se reduit a ce que personne d'autre ne dit.
+  return new Tutoriel(etapes_de_seance(), performance.now() / 1000);
 }
 
 /**
@@ -2147,7 +2136,7 @@ function jouer_installation(corps, instant) {
     // et `rafraichir_affichage` remet celui du HUD a `hidden` a chaque image
     // tant que l'installation dure. Deux boutons pour la meme sortie, dont un
     // qui clignote, c'est pire qu'un seul.
-    const pas = tutoriel.update({ instant, cadre: true });
+    const pas = tutoriel.update({ instant });
     if (pas.annonces.length) {
       coach_sequence(
         pas.annonces.map((cle) => tables_sons?.briques?.[cle]).filter(Boolean),

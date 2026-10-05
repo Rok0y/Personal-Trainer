@@ -40,7 +40,7 @@ le texte dans `audio/annonces.py` et relance ce script : le nom de fichier
 suivra. L'inverse — renommer un fichier — ne changerait rien, le code cherche
 le nom que la table produit.
 
-**21 prises restantes.**
+**20 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -92,7 +92,6 @@ Le guidage du debut de seance, dit camera ouverte pendant qu'on se place.
 | `pose_au_sol_il_ne_te_verra_pas_en_entier.wav` | « Posé au sol, il ne te verra pas en entier » | deja fait |
 | `recule_a_deux_ou_trois_metres.wav` | « Recule à deux ou trois mètres » | deja fait |
 | `place_ton_tapis_perpendiculaire_a_la_camera.wav` | « Place ton tapis perpendiculaire à la caméra » | deja fait |
-| `garde_de_la_place_un_pas_dans_chaque_direction.wav` | « Garde de la place : un pas dans chaque direction » | **a enregistrer** |
 | `fais_un_pas_a_droite_puis_un_pas_a_gauche.wav` | « Fais un pas à droite, puis un pas à gauche » | deja fait |
 | `puis_un_pas_en_arriere_et_un_pas_en_avant.wav` | « Puis un pas en arrière et un pas en avant » | deja fait |
 | `on_doit_te_voir_en_entier_a_chaque_fois.wav` | « On doit te voir en entier à chaque fois » | deja fait |

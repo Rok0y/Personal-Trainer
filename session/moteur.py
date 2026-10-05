@@ -148,7 +148,7 @@ def gerer_mode_repetitions(
     mettre_a_jour_erreur(exercice, corps, etat)
     stage_detecte = exercice.detection(corps)
 
-    stage, repetitions = compteur.mettre_a_jour(stage_detecte)
+    stage, repetitions = compteur.mettre_a_jour(stage_detecte, seance.maintenant())
 
     if repetitions > derniere_rep:
         coach("compteur", repetitions)
@@ -264,7 +264,7 @@ def gerer_mode_amrap(corps, bloc, compteur, seance, etat, coach, derniere_rep):
     # détection du mouvement
     stage_detecte = bloc.exercice.detection(corps)
 
-    stage, repetitions = compteur.mettre_a_jour(stage_detecte)
+    stage, repetitions = compteur.mettre_a_jour(stage_detecte, maintenant)
 
     if repetitions > derniere_rep:
 

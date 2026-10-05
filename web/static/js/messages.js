@@ -24,6 +24,8 @@ export const MESSAGES = {
   forme_coude_qui_part_en_avant:
     "Garde le coude collé au buste, ne le laisse pas partir en avant",
   forme_coudes_trop_ecartes: "Garde les coudes serrés, près de la tête",
+  forme_genou_avant_trop_avance:
+    "Attention à ne pas trop avancer ton genou avant",
   // --- Repetition incomplete : une tentative a vraiment progresse, sans
   // atteindre la position visee (voir instruments.js, SuiviTentatives).
   amplitude_aller_incomplet: "Va jusqu'au bout du mouvement",

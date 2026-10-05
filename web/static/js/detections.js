@@ -119,12 +119,29 @@ export function elevation_laterale_detection(corps) {
   return "milieu";
 }
 
-// Epaule, coude et poignet du bras le plus proche de la camera. De profil, le
+// En deca de cet ecart de visibilite, les deux bras sont aussi bien vus l'un
+// que l'autre (de face, typiquement) : c'est alors la profondeur qui tranche.
+const MARGE_VISIBILITE = 0.1;
+
+// `visibility` est le nom du point MediaPipe brut ; le Python l'appelle
+// `visibilite`, d'ou la seule ligne qui differe entre les deux jumeaux.
+function visibilite_bras(coude, poignet) {
+  return (coude.visibility + poignet.visibility) / 2;
+}
+
+// Epaule, coude et poignet du bras que la camera voit vraiment. De profil, le
 // coude eloigne est estime par le modele et restait tendu pendant que l'autre
-// pliait ; ni la conjonction ni la moyenne n'y resistent. Plus petit `z` =
-// plus pres. De face, l'un ou l'autre convient.
+// pliait ; ni la conjonction ni la moyenne n'y resistent. Le choix se faisait
+// sur `z`, la coordonnee la moins fiable du modele, et un bras cache designe
+// a tort ne comptait plus aucune pompe : il se fait desormais sur la
+// visibilite, `z` ne departageant que deux bras aussi bien vus.
 function bras_proche(corps) {
-  if (corps.epaule_gauche.z <= corps.epaule_droite.z) {
+  const gauche = visibilite_bras(corps.coude_gauche, corps.poignet_gauche);
+  const droite = visibilite_bras(corps.coude_droit, corps.poignet_droit);
+  const bras_gauche = Math.abs(gauche - droite) >= MARGE_VISIBILITE
+    ? gauche > droite
+    : corps.epaule_gauche.z <= corps.epaule_droite.z;
+  if (bras_gauche) {
     return [corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche];
   }
   return [corps.epaule_droite, corps.coude_droit, corps.poignet_droit];
@@ -198,7 +215,7 @@ export function extension_triceps_au_dessus_de_la_tete_detection(corps) {
     return "milieu";
   }
   if (angle_coude_droit < 90 && angle_coude_gauche < 90) return "debut";
-  else if (angle_coude_droit > 150 && angle_coude_gauche > 150) return "fin";
+  else if (angle_coude_droit > 140 && angle_coude_gauche > 140) return "fin";
   return "milieu";
 }
 
@@ -207,7 +224,7 @@ export function extension_triceps_au_dessus_de_la_tete_detection(corps) {
 export function extension_triceps_erreur_coudes(corps) {
   if (!coudes_leves(corps)) return null;
   const ecart = ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps);
-  if (ecart !== null && ecart > 1.1) return "forme_coudes_trop_ecartes";
+  if (ecart !== null && ecart > 1.35) return "forme_coudes_trop_ecartes";
   return null;
 }
 
@@ -330,6 +347,37 @@ export function fente_gauche_detection(corps) {
   if (angle_genou_gauche < 100) return "debut";
   else if (angle_genou_gauche > 150) return "fin";
   return "milieu";
+}
+
+// De combien le genou avant passe devant la pointe du pied, rapporte au
+// tibia. Le sens du regard se lit sur le pied (talon vers pointe), donc rien
+// n'est suppose du cote de la camera. null quand le pied est vu de bout ou le
+// tibia illisible.
+function genou_depasse_pied(genou, cheville, talon, pointe) {
+  const longueur_pied = pointe.x - talon.x;
+  const tibia = calculer_distance(genou, cheville);
+  if (Math.abs(longueur_pied) < 0.01 || tibia <= 0) return null;
+  const sens = longueur_pied > 0 ? 1 : -1;
+  return ((genou.x - pointe.x) * sens) / tibia;
+}
+
+// Faute affichee seulement : elle ne retire rien au comptage de la fente.
+function faute_genou_avant(genou, cheville, talon, pointe) {
+  const depassement = genou_depasse_pied(genou, cheville, talon, pointe);
+  if (depassement !== null && depassement > 0.05) return "forme_genou_avant_trop_avance";
+  return null;
+}
+
+export function fente_droite_erreur_genou(corps) {
+  return faute_genou_avant(
+    corps.genou_droit, corps.cheville_droite, corps.talon_droit, corps.pointe_pied_droite
+  );
+}
+
+export function fente_gauche_erreur_genou(corps) {
+  return faute_genou_avant(
+    corps.genou_gauche, corps.cheville_gauche, corps.talon_gauche, corps.pointe_pied_gauche
+  );
 }
 
 export function souleve_de_terre_roumain_detection(corps) {
@@ -565,7 +613,7 @@ export function oiseau_detection(corps) {
   );
   const angle_bras_moyen = (angle_bras_gauche + angle_bras_droit) / 2;
 
-  if (angle_bras_moyen > 80) return "fin";
+  if (angle_bras_moyen > 65) return "fin";
   else if (angle_bras_moyen < 30) return "debut";
   return "milieu";
 }
@@ -635,6 +683,8 @@ export {
   ecart_lateral as _ecart_lateral,
   angle_coude_proche as _angle_coude_proche,
   bras_proche as _bras_proche,
+  visibilite_bras as _visibilite_bras,
+  genou_depasse_pied as _genou_depasse_pied,
   buste_vertical as _buste_vertical,
   ecart_rapporte_aux_epaules as _ecart_rapporte_aux_epaules,
   hanche_decollee as _hanche_decollee,
@@ -657,6 +707,8 @@ export const DETECTIONS = {
   squat_detection,
   fente_droite_detection,
   fente_gauche_detection,
+  fente_droite_erreur_genou,
+  fente_gauche_erreur_genou,
   souleve_de_terre_roumain_detection,
   detection_gainage_laterale_gauche,
   detection_gainage_laterale_droite,

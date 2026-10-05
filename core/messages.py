@@ -33,6 +33,9 @@ MESSAGES = {
         "Garde le coude collé au buste, ne le laisse pas partir en avant"
     ),
     "forme_coudes_trop_ecartes": "Garde les coudes serrés, près de la tête",
+    "forme_genou_avant_trop_avance": (
+        "Attention à ne pas trop avancer ton genou avant"
+    ),
     # --- Répétition incomplète : une tentative a vraiment progressé, sans
     # atteindre la position visée. L'aller vise la position qui compte la
     # répétition, le retour celle qui réarme le compteur.

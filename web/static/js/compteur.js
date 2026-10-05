@@ -5,20 +5,35 @@
 // position qui *valide* une repetition, c'est-a-dire la fin de la phase
 // concentrique — le haut d'un curl, mais aussi le retour debout d'un squat.
 
+// Delai minimal, en secondes, entre deux repetitions comptees : un saut d'une
+// ou deux images juste apres une vraie repetition la faisait compter deux
+// fois. Aucune repetition reelle ne tient en 0,3 s.
+export const DELAI_MIN_ENTRE_REPS = 0.3;
+
 export class CompteurMouvement {
   constructor() {
     this.stage = null;
     this.repetitions = 0;
+    this.derniere_rep_a = null;
   }
 
-  mettre_a_jour(nouveau_stage) {
+  // `instant` est l'horloge de la seance, en secondes ; null le desactive.
+  mettre_a_jour(nouveau_stage, instant = null) {
     if (nouveau_stage !== "debut" && nouveau_stage !== "fin") {
       return [this.stage, this.repetitions];
     }
 
     if (this.stage === "debut" && nouveau_stage === "fin") {
       this.stage = "fin";
-      this.repetitions += 1;
+      // Trop tot apres la precedente : la meme repetition, vue deux fois.
+      if (
+        instant === null ||
+        this.derniere_rep_a === null ||
+        instant - this.derniere_rep_a >= DELAI_MIN_ENTRE_REPS
+      ) {
+        this.repetitions += 1;
+        this.derniere_rep_a = instant;
+      }
     } else if (this.stage === "fin" && nouveau_stage === "debut") {
       this.stage = "debut";
     } else if (this.stage === null) {
@@ -31,5 +46,6 @@ export class CompteurMouvement {
   reset() {
     this.stage = null;
     this.repetitions = 0;
+    this.derniere_rep_a = null;
   }
 }

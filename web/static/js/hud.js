@@ -594,7 +594,11 @@ export function peindre_hud(donnees) {
     donnees.poids ? `${donnees.poids} kg` : "—"
   );
 
-  afficher_bandeau("errorAlert", "errorMessage", donnees.erreur);
+  // Une faute de forme n'existe que pendant l'effort. `erreur` n'est recalculee
+  // qu'en phase exercice, donc la derniere de la serie restait affichee toute
+  // la pause — a reprocher des coudes ecartes a quelqu'un qui se repose.
+  const en_effort = donnees.phase === "exercice" && donnees.statut_session === "running";
+  afficher_bandeau("errorAlert", "errorMessage", en_effort ? donnees.erreur : null);
   afficher_bandeau("consigneAlert", "consigneMessage", donnees.consigne);
   afficher_fiche(donnees);
 

@@ -28,7 +28,7 @@ import { calculer_angle, calculer_distance } from "./outils.js";
 import {
   _appui_sur_le_bras, _descente_hanche, _hauteur_sous_epaule, _ecart_lateral,
   _angle_coude_proche, _bras_proche, _buste_vertical, _ecart_rapporte_aux_epaules,
-  _hanche_decollee,
+  _hanche_decollee, _visibilite_bras, _genou_depasse_pied,
 } from "./detections.js";
 
 const ECHELLE_ANGLE = [0, 180];
@@ -127,6 +127,38 @@ function profondeur_epaules() {
     libelle: "Profondeur épaule G − D (< 0 : gauche plus près)", unite: "", echelle: [-0.6, 0.6],
     sommet: null, zones: {},
     valeur: (corps) => corps.epaule_gauche.z - corps.epaule_droite.z,
+  };
+}
+
+// Sans zone, comme la profondeur : c'est la visibilite qui choisit le bras,
+// et ce cadran dit au banc d'essai sur quoi le choix s'est fait (positif =
+// gauche mieux vu). Sous 0,1 en valeur absolue, c'est la profondeur qui
+// tranche.
+function visibilite_bras() {
+  return {
+    libelle: "Visibilité bras G − D (> 0 : gauche mieux vu)", unite: "", echelle: [-1, 1],
+    sommet: null, zones: {},
+    valeur: (corps) =>
+      _visibilite_bras(corps.coude_gauche, corps.poignet_gauche) -
+      _visibilite_bras(corps.coude_droit, corps.poignet_droit),
+  };
+}
+
+// Faute du genou avant : dit de combien le genou passe devant la pointe du
+// pied, en tibias. null (pied vu de bout) n'entre dans aucune zone.
+function genou_avant(cote) {
+  const [g, c, t, p] = cote === "droite"
+    ? ["genou_droit", "cheville_droite", "talon_droit", "pointe_pied_droite"]
+    : ["genou_gauche", "cheville_gauche", "talon_gauche", "pointe_pied_gauche"];
+  return {
+    ordre: ["forme_genou_avant_trop_avance"],
+    defaut: null,
+    mesures: [{
+      libelle: `Genou ${cote === "droite" ? "droit" : "gauche"} devant la pointe (÷ tibia)`,
+      unite: "", echelle: [-0.6, 0.6], sommet: g,
+      zones: { forme_genou_avant_trop_avance: [">", 0.05] },
+      valeur: (corps) => _genou_depasse_pied(corps[g], corps[c], corps[t], corps[p]),
+    }],
   };
 }
 
@@ -235,7 +267,7 @@ export const INSTRUMENTS = {
   pompe_detection: {
     ordre: ["debut", "fin"],
     defaut: "milieu",
-    mesures: [coude_proche({ debut: ["<", 100], fin: [">", 160] }), profondeur_epaules()],
+    mesures: [coude_proche({ debut: ["<", 100], fin: [">", 160] }), visibilite_bras(), profondeur_epaules()],
   },
   developpe_couche_sol_detection: {
     ordre: ["debut", "fin"],
@@ -247,10 +279,11 @@ export const INSTRUMENTS = {
         sommet: null, zones: { debut: ["<", 0], fin: ["<", 0] },
         valeur: (corps) => _buste_vertical(corps),
       },
+      visibilite_bras(),
       profondeur_epaules(),
     ],
   },
-  extension_triceps_au_dessus_de_la_tete_detection: deux_coudes(["<", 90], [">", 150], {
+  extension_triceps_au_dessus_de_la_tete_detection: deux_coudes(["<", 90], [">", 140], {
     extra: [
       ecart_vertical("Coude gauche au-dessus de l'épaule", "coude_gauche", "epaule_gauche",
         { debut: ["<", 0], fin: ["<", 0] }),
@@ -270,7 +303,7 @@ export const INSTRUMENTS = {
     defaut: null,
     mesures: [{
       libelle: "Écart des coudes (÷ largeur d'épaules)", unite: "", echelle: [0, 2],
-      sommet: "coude_gauche", zones: { forme_coudes_trop_ecartes: [">", 1.1] },
+      sommet: "coude_gauche", zones: { forme_coudes_trop_ecartes: [">", 1.35] },
       valeur: (corps) =>
         corps.coude_gauche.y < corps.epaule_gauche.y && corps.coude_droit.y < corps.epaule_droite.y
           ? _ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps)
@@ -331,6 +364,8 @@ export const INSTRUMENTS = {
 
   fente_droite_detection: fente("droite"),
   fente_gauche_detection: fente("gauche"),
+  fente_droite_erreur_genou: genou_avant("droite"),
+  fente_gauche_erreur_genou: genou_avant("gauche"),
 
   souleve_de_terre_roumain_detection: {
     ordre: ["debut", "fin"],
@@ -362,7 +397,7 @@ export const INSTRUMENTS = {
     mesures: [angle_moyen("Bras écartés (moyenne hanche-épaule-coude)",
       ["hanche_gauche", "epaule_gauche", "coude_gauche"],
       ["hanche_droite", "epaule_droite", "coude_droit"],
-      { fin: [">", 80], debut: ["<", 30] })],
+      { fin: [">", 65], debut: ["<", 30] })],
   },
   oiseau_erreur_coudes: {
     ordre: ["forme_coudes_trop_tendus", "forme_coudes_trop_plies"],

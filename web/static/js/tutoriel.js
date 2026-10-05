@@ -7,32 +7,23 @@
 // consignes-la existaient — sur la fiche, lues avant de commencer, puis jamais
 // rappelees — et une testeuse a pose la camera a 40 cm du sol malgre elles.
 //
-// **Il se joue camera ouverte, et c'est tout son interet.** « Recule d'un
-// pas » n'a de sens que si l'on se voit reculer, et l'etape de cadrage ne
-// passe qu'une fois le corps reellement entier dans l'image — la consigne est
-// donc *verifiee*, pas seulement prononcee.
+// **Il se joue camera ouverte, mais il ne verifie plus rien.** Le cadrage
+// est controle juste avant par l'installation de la page, qui ne le laisse
+// demarrer qu'une fois le corps entier dans l'image : c'est elle qui dit
+// « recule ». Le tutoriel ne dit que ce qu'elle ne dit pas.
 //
-// Trois decisions de forme.
+// Deux decisions de forme.
 //
 // (1) **Le module est pur** : ni horloge, ni DOM, ni acces camera. L'instant
-//     et l'etat du cadrage lui sont passes a chaque image, comme `Circuit`
-//     recoit son horloge. C'est ce qui le rend verifiable sans navigateur, et
-//     c'est la lecon d'`app/index.html` — une page qui garde sa logique pour
-//     elle n'est pas seulement mal rangee, elle est inverifiable.
+//     lui est passe a chaque image, comme `Circuit` recoit son horloge. C'est
+//     ce qui le rend verifiable sans navigateur, et c'est la lecon
+//     d'`app/index.html` — une page qui garde sa logique pour elle n'est pas
+//     seulement mal rangee, elle est inverifiable.
 //
 // (2) **Il rend des cles, jamais des phrases.** Les textes vivent dans
 //     `audio/annonces.py` et arrivent par `donnees/sons.json`, qui porte a la
 //     fois le `.wav` et le libelle. Le bandeau affiche donc **exactement** ce
 //     que la voix prononce, sans qu'aucune phrase soit ecrite deux fois.
-//
-// (3) **Il ne connait pas `cadrage.js`.** L'appelant lui passe un booleen
-//     `cadre`. Les deux modules restent ainsi independants, et le tutoriel se
-//     joue dans un test sans qu'il faille fabriquer une pose valide.
-
-//: Duree pendant laquelle le cadrage doit rester bon avant de passer a la
-//: suite. Deux secondes, pas plus : les landmarks tremblent, et exiger une
-//: perfection prolongee bloquerait quelqu'un de correctement place.
-const CADRAGE_STABLE = 2;
 
 /**
  * Les etapes d'un tutoriel de seance.
@@ -40,57 +31,27 @@ const CADRAGE_STABLE = 2;
  * Le contenu vit ici et non dans la page, pour la meme raison que la
  * mecanique : ce qui est dans un `<script>` de gabarit n'est verifie par rien.
  *
- * @param {object} options
- * @param {string|null} options.orientation  celle du premier exercice
- * @param {boolean} options.avec_tapis       la seance en demande-t-elle un
+ * **Une seule phrase, et c'est le retour d'une seance reelle.** Il y en avait
+ * six — hauteur de l'appareil, distance, cadrage, espace, tapis, orientation,
+ * « tu es bien cadre, croise les bras » — soit une trentaine de secondes avant
+ * le premier exercice, dont la moitie redisait autre chose : le cadrage est
+ * deja verifie par l'installation, qui ne laisse passer qu'un corps entier dans
+ * l'image (c'est elle qui dit « recule ») ; l'orientation et le geste sont
+ * annonces par la presentation du premier exercice, qui suit. Ne reste que ce
+ * que personne d'autre ne dit : garder de la place autour de soi.
  */
-export function etapes_de_seance({ orientation = null, avec_tapis = false } = {}) {
-  const etapes = [
+export function etapes_de_seance() {
+  return [
     {
-      cle: "placement",
-      annonces: ["installation_hauteur", "installation_distance"],
-      duree: 7,
-    },
-    {
-      // La seule etape que le temps ne suffit pas a franchir : on attend que
-      // le corps soit reellement entier dans l'image. Sans borne de duree,
-      // donc — le bouton « passer » est la sortie, pas un minuteur.
-      cle: "cadrage",
-      annonces: [],
-      cadrage_stable: CADRAGE_STABLE,
-    },
-    {
-      // **Une information, pas un exercice.** Deux etapes occupaient ici seize
-      // secondes a faire executer des pas — a droite, a gauche, en arriere —
-      // en annoncant « on doit te voir en entier a chaque fois », sans rien
-      // verifier pendant ces pas. C'etait donc une consigne deguisee en
-      // controle : le cout d'une verification pour la valeur d'une phrase. La
-      // phrase seule suffit, et elle se dit en cinq secondes.
+      // **Une information, pas un exercice.** On a fait executer ici des pas
+      // — a droite, a gauche, en arriere — sans rien verifier pendant ces
+      // pas : une consigne deguisee en controle. Il ne reste que la phrase
+      // qui dit la place a garder ; rien n'attend qu'on l'execute.
       cle: "espace",
-      annonces: ["installation_espace_libre"],
+      annonces: ["installation_pas_de_cote"],
       duree: 5,
     },
   ];
-
-  if (avec_tapis) {
-    etapes.push({ cle: "tapis", annonces: ["installation_tapis"], duree: 5 });
-  }
-
-  if (orientation) {
-    etapes.push({
-      cle: "orientation",
-      annonces: [`orientation_${orientation}`],
-      duree: 5,
-    });
-  }
-
-  etapes.push({
-    cle: "pret",
-    annonces: ["installation_bien_cadre", "geste_bras_en_x"],
-    duree: 4,
-  });
-
-  return etapes;
 }
 
 export class Tutoriel {
@@ -102,7 +63,6 @@ export class Tutoriel {
     this.etapes = etapes ?? [];
     this.index = 0;
     this.debut_etape = instant;
-    this.cadre_depuis = null;
     this.termine = this.etapes.length === 0;
     //: L'etape dont les annonces ont deja ete jouees. Un tutoriel tourne a
     //: trente images par seconde : sans ce repere, chaque etape se
@@ -124,28 +84,13 @@ export class Tutoriel {
    *
    * @param {object} vue
    * @param {number} vue.instant  secondes, la meme horloge que la boucle
-   * @param {boolean} vue.cadre   le corps tient-il entierement dans l'image
    */
-  update({ instant, cadre = false }) {
+  update({ instant }) {
     if (this.termine) return { etape: null, annonces: [], termine: true };
 
     const etape = this.etape;
     const annonces = this._annoncee === this.index ? [] : etape.annonces;
     this._annoncee = this.index;
-
-    if (etape.cadrage_stable !== undefined) {
-      // Le compteur ne se remet a zero que lorsque le cadrage se perd : un
-      // clignotement d'une image ne doit pas tout recommencer, mais une sortie
-      // franche du champ, si.
-      if (!cadre) {
-        this.cadre_depuis = null;
-      } else if (this.cadre_depuis === null) {
-        this.cadre_depuis = instant;
-      } else if (instant - this.cadre_depuis >= etape.cadrage_stable) {
-        this._avancer(instant);
-      }
-      return { etape, annonces, termine: false };
-    }
 
     if (instant - this.debut_etape >= etape.duree) {
       this._avancer(instant);
@@ -157,7 +102,6 @@ export class Tutoriel {
   _avancer(instant) {
     this.index += 1;
     this.debut_etape = instant;
-    this.cadre_depuis = null;
     if (this.index >= this.etapes.length) {
       this.termine = true;
     }

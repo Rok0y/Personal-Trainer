@@ -212,7 +212,7 @@ export function gerer_mode_repetitions({
   mettre_a_jour_erreur(exercice, corps, etat, messages.texte);
   const stage_detecte = exercice.detection(corps);
 
-  const [stage, repetitions] = compteur.mettre_a_jour(stage_detecte);
+  const [stage, repetitions] = compteur.mettre_a_jour(stage_detecte, seance.maintenant());
 
   if (repetitions > derniere_rep) {
     coach("compteur", repetitions);
@@ -317,7 +317,7 @@ export function gerer_mode_amrap({
   annoncer_temps_restant(coach, bloc, bloc.duree - bloc.temps_amrap);
 
   const stage_detecte = bloc.exercice.detection(corps);
-  const [stage, repetitions] = compteur.mettre_a_jour(stage_detecte);
+  const [stage, repetitions] = compteur.mettre_a_jour(stage_detecte, maintenant);
 
   if (repetitions > derniere_rep) {
     coach("compteur", repetitions);

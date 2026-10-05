@@ -204,7 +204,9 @@
     "orientation": "profil_camera_gauche",
     "analyse_la_pose": true,
     "detection": "fente_droite_detection",
-    "erreurs": []
+    "erreurs": [
+      "fente_droite_erreur_genou"
+    ]
   },
   {
     "nom": "Fente gauche",
@@ -231,7 +233,9 @@
     "orientation": "profil_camera_droite",
     "analyse_la_pose": true,
     "detection": "fente_gauche_detection",
-    "erreurs": []
+    "erreurs": [
+      "fente_gauche_erreur_genou"
+    ]
   },
   {
     "nom": "Gainage planche",
