@@ -196,6 +196,9 @@ export class Baremes {
    */
   *_iterer_tranches(spec, echelle) {
     let volume_atteint = 0;
+    // La derniere tranche bornee, [series, poids] : la tranche ouverte la
+    // prolonge souvent, et doit alors repartir *au-dessus* de sa fin.
+    let derniere = null;
 
     // Le poids monte, les series ne bougent pas.
     for (const poids of echelle) {
@@ -203,6 +206,7 @@ export class Baremes {
       if (depart === null) continue;
       const longueur = Math.floor((spec.cible_max - depart) / spec.pas) + 1;
       yield [spec.series, poids, depart, longueur];
+      derniere = [spec.series, poids];
       volume_atteint = this._volume(spec, spec.series, spec.cible_max, poids);
     }
 
@@ -217,17 +221,19 @@ export class Baremes {
       if (depart === null) break;
       const longueur = Math.floor((spec.cible_max - depart) / spec.pas) + 1;
       yield [series, poids, depart, longueur];
+      derniere = [series, poids];
       volume_atteint = this._volume(spec, series, spec.cible_max, poids);
     }
 
     // Tout est epuise : le plafond de repetitions saute. C'est ce qui garantit
-    // qu'aucun objectif n'est jamais hors d'atteinte.
-    yield [
-      series,
-      poids,
-      this._premiere_cible(spec, volume_atteint, series, poids, false),
-      null,
-    ];
+    // qu'aucun objectif n'est jamais hors d'atteinte. Quand elle prolonge la
+    // derniere tranche bornee (memes series, meme poids), elle repart un pas
+    // au-dessus de sa fin : sinon le meme palier sortait deux fois.
+    let depart_ouvert = this._premiere_cible(spec, volume_atteint, series, poids, false);
+    if (derniere && derniere[0] === series && derniere[1] === poids) {
+      depart_ouvert = Math.max(depart_ouvert, spec.cible_max + spec.pas);
+    }
+    yield [series, poids, depart_ouvert, null];
   }
 
   /**

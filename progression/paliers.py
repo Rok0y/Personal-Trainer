@@ -471,6 +471,9 @@ def _iterer_tranches(spec, echelle):
     laquelle tout appelant doit s'arrêter par lui-même.
     """
     volume_atteint = 0
+    # La dernière tranche bornée, (séries, poids) : la tranche ouverte la
+    # prolonge souvent, et doit alors repartir *au-dessus* de sa fin.
+    derniere = None
 
     # Le poids monte, les séries ne bougent pas.
     for poids in echelle:
@@ -479,6 +482,7 @@ def _iterer_tranches(spec, echelle):
             continue
         longueur = (spec.cible_max - depart) // spec.pas + 1
         yield spec.series, poids, depart, longueur
+        derniere = (spec.series, poids)
         volume_atteint = volume(spec.series, spec.cible_max, poids, spec.charge_corps)
 
     # Le poids est épuisé : on reste sur l'haltère le plus lourd et c'est le
@@ -493,12 +497,20 @@ def _iterer_tranches(spec, echelle):
             break
         longueur = (spec.cible_max - depart) // spec.pas + 1
         yield series, poids, depart, longueur
+        derniere = (series, poids)
         volume_atteint = volume(series, spec.cible_max, poids, spec.charge_corps)
 
     # Tout est épuisé : le plafond de répétitions saute, et elles montent
     # indéfiniment. C'est ce qui garantit qu'aucun objectif n'est jamais hors
     # d'atteinte — il demandera beaucoup de répétitions, mais il existe.
     depart = _premiere_cible(spec, volume_atteint, series, poids, plafonnee=False)
+    # Quand elle prolonge la dernière tranche bornée — mêmes séries, même
+    # poids —, la plus petite cible qui tient le volume atteint *est* la fin
+    # de cette tranche : le même palier sortait deux fois (6x15 à 10 kg aux
+    # niveaux 34 et 35 du squat), et l'on montait d'un niveau sans rien faire
+    # de plus. On repart donc un pas au-dessus.
+    if (series, poids) == derniere:
+        depart = max(depart, spec.cible_max + spec.pas)
     yield series, poids, depart, None
 
 
