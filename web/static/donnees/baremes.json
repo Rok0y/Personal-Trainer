@@ -175,44 +175,44 @@
     3240
    ],
    "Fente droite": [
-    12,
-    48,
-    72,
-    96,
-    128,
-    160,
-    216,
-    288,
-    360,
-    450,
-    600,
+    120,
+    200,
+    320,
+    400,
+    480,
+    560,
+    576,
+    648,
     720,
     900,
-    1080,
-    1260,
+    1200,
     1440,
-    1620,
-    1800
+    1800,
+    2160,
+    2520,
+    2880,
+    3240,
+    3600
    ],
    "Fente gauche": [
-    12,
-    48,
-    72,
-    96,
-    128,
-    160,
-    216,
-    288,
-    360,
-    450,
-    600,
+    120,
+    200,
+    320,
+    400,
+    480,
+    560,
+    576,
+    648,
     720,
     900,
-    1080,
-    1260,
+    1200,
     1440,
-    1620,
-    1800
+    1800,
+    2160,
+    2520,
+    2880,
+    3240,
+    3600
    ],
    "Gainage planche": [
     18,
@@ -455,24 +455,24 @@
     2400
    ],
    "Squat": [
-    12,
-    56,
-    88,
     120,
-    156,
-    224,
-    280,
-    360,
-    480,
+    240,
+    400,
     600,
-    750,
-    900,
-    1140,
-    1440,
-    1680,
-    1920,
-    2160,
-    2400
+    720,
+    784,
+    840,
+    960,
+    1080,
+    1200,
+    1500,
+    1800,
+    2280,
+    2880,
+    3360,
+    3840,
+    4320,
+    4800
    ],
    "Squat sur chaise": [
     9,
@@ -558,7 +558,8 @@
    "series_max": 6,
    "poids_min": 2,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Pompes": {
    "series": 4,
@@ -569,7 +570,8 @@
    "series_max": 6,
    "poids_min": null,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Pompes inclinées": {
    "series": 3,
@@ -580,7 +582,8 @@
    "series_max": 6,
    "poids_min": null,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Pompes sur les genoux": {
    "series": 3,
@@ -591,7 +594,8 @@
    "series_max": 6,
    "poids_min": null,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Développé épaule": {
    "series": 3,
@@ -602,7 +606,8 @@
    "series_max": 6,
    "poids_min": 2,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Elevations latérales": {
    "series": 3,
@@ -613,7 +618,8 @@
    "series_max": 6,
    "poids_min": 2,
    "poids_max": 8,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Extension Triceps": {
    "series": 3,
@@ -624,7 +630,8 @@
    "series_max": 6,
    "poids_min": 2,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Rowing unilateral droit": {
    "series": 4,
@@ -635,7 +642,8 @@
    "series_max": 6,
    "poids_min": 2,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Rowing unilateral gauche": {
    "series": 4,
@@ -646,7 +654,8 @@
    "series_max": 6,
    "poids_min": 2,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Rowing penche": {
    "series": 3,
@@ -657,7 +666,8 @@
    "series_max": 6,
    "poids_min": 2,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Oiseau": {
    "series": 3,
@@ -668,7 +678,8 @@
    "series_max": 6,
    "poids_min": 2,
    "poids_max": 8,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Curl biceps droit": {
    "series": 4,
@@ -679,7 +690,8 @@
    "series_max": 6,
    "poids_min": 2,
    "poids_max": 12,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Curl biceps gauche": {
    "series": 4,
@@ -690,7 +702,8 @@
    "series_max": 6,
    "poids_min": 2,
    "poids_max": 12,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Squat": {
    "series": 4,
@@ -701,7 +714,8 @@
    "series_max": 6,
    "poids_min": 0,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 10
   },
   "Squat sur chaise": {
    "series": 3,
@@ -712,7 +726,8 @@
    "series_max": 6,
    "poids_min": null,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Fente droite": {
    "series": 4,
@@ -723,7 +738,8 @@
    "series_max": 6,
    "poids_min": 0,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 10
   },
   "Fente gauche": {
    "series": 4,
@@ -734,7 +750,8 @@
    "series_max": 6,
    "poids_min": 0,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 10
   },
   "Souleve de terre roumain": {
    "series": 4,
@@ -745,7 +762,8 @@
    "series_max": 6,
    "poids_min": 2,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Crunches": {
    "series": 3,
@@ -756,7 +774,8 @@
    "series_max": 6,
    "poids_min": null,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Gainage planche": {
    "series": 3,
@@ -767,7 +786,8 @@
    "series_max": 6,
    "poids_min": null,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Gainage sur les genoux": {
    "series": 2,
@@ -778,7 +798,8 @@
    "series_max": 6,
    "poids_min": null,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Gainage planche laterale droite": {
    "series": 1,
@@ -789,7 +810,8 @@
    "series_max": 6,
    "poids_min": null,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   },
   "Gainage planche laterale gauche": {
    "series": 1,
@@ -800,7 +822,8 @@
    "series_max": 6,
    "poids_min": null,
    "poids_max": null,
-   "surcharges": {}
+   "surcharges": {},
+   "charge_corps": 0
   }
  },
  "echelles": {

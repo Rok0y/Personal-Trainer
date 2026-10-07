@@ -37,7 +37,12 @@ import { arrondi_python } from "./calibration.js";
 
 /** Volume que la prescription represente, dans l'unite du bareme. */
 export function volume_exige(baremes, exigence) {
-  return baremes.volume(exigence.series, exigence.cible, exigence.poids);
+  return baremes.volume_exercice(
+    exigence.exercice,
+    exigence.series,
+    exigence.cible,
+    exigence.poids,
+  );
 }
 
 /** La ligne telle qu'elle est ecrite dans le programme, pour l'affichage. */

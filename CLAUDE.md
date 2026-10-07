@@ -137,6 +137,38 @@ Progression (`progression/`) : le moteur de niveaux, qui pilote les cibles des s
   volume de l'ancien palier 1 : laissée en place, elle prive de ligue les quatre
   premiers niveaux, c'est-à-dire précisément le débutant à qui on vient d'ouvrir
   le barème (descendue de 24 à 12 sur les trois).
+  **Sur ces mouvements, le corps compte dans le volume** (`charge_corps`,
+  10 kg « par haltère » sur Squat et les deux fentes). Sans lui, le poids du
+  corps valait 1 kg (`poids or 1`) : deux haltères de 2 kg *doublaient* le
+  volume d'un squat, et le barème passait de 4x15 au poids du corps à **4x8 à
+  2 kg** en appelant ça une progression. La note d'athlète en héritait —
+  note 2 à 4x14 au corps, note 3 à 4x11 à 2 kg, soit *plus facile* —, remonté
+  tel quel d'un test réel. Le volume y vaut `séries x cible x (poids +
+  charge_corps)` : un cran d'haltère coûte une ou deux répétitions au lieu de
+  la moitié. **10 est un compromis, pas une mesure** — à 30-35, plus proche de
+  la physique, chaque cran se jouerait à la cible maximale et les répétitions
+  ne bougeraient plus. Trois choses à savoir. (1) Le réglage vit dans la spec
+  et **voyage avec le palier** (`Palier.charge_corps`) pour que `palier.volume`
+  reste juste chez tous ses lecteurs ; quiconque calcule un volume **sans
+  palier en main** passe par `volume_exercice(nom, …)` (Python) /
+  `baremes.volume_exercice` (JS), jamais par `volume` seul, qui ignore la
+  charge du corps. Côté JavaScript un palier est un objet simple qui ne la
+  porte pas : c'est le nom de l'exercice qui la retrouve. (2) Il **change
+  l'échelle des volumes** de l'exercice, donc ses bornes de ligue, en volume
+  absolu, ont été recalées avec. Une conversion mécanique (même performance,
+  nouveau volume) **reproduisait l'inversion** — 4x14 au corps vaut 560,
+  4x11 à 2 kg en vaut 528 —, si bien que les rangs du bas ont été reposés à
+  la main sur la zone au poids du corps (squat 4x3, 4x6, 4x10, 4x15 ; fentes
+  4x3, 4x5, 4x8, 4x10) et les autres convertis. La note 5 et au-dessus donne
+  le même départ qu'avant. (3) Les numéros de niveau et les exigences de
+  programme en volume se relisent sur la nouvelle échelle : une exigence qui
+  n'est plus un palier s'affiche « prescrit · soit … sur ton barème » jusqu'à
+  son prochain enregistrement. Elle n'a pas été recalée d'office, parce que le
+  calage dépend du matériel du profil connecté, et que le programme de Mimi
+  n'est pas celui d'Arthur. Le harnais des paliers porte un exercice fictif
+  `ChargeCorps` (valeur fractionnaire plus surcharge) : ignorer le réglage
+  côté JS sort 5 889 divergences aux paliers, 4 821 aux ligues et 499 aux
+  objectifs.
   Les **variantes assistées** (pompes inclinées, pompes et gainage sur les
   genoux, squat sur chaise) sont des exercices comptabilisés à part entière, pas
   des échauffements : elles ont un barème, des records, une progression. Chacune
@@ -262,7 +294,7 @@ Progression (`progression/`) : le moteur de niveaux, qui pilote les cibles des s
   rend la table éditable.
 - `ligues.py` — **ligues, divisions et XP : la couche qui rend la progression lisible.** « Niveau 14 au curl » ne se compare à rien et ne se fête pas ; une ligue, si. Comme tout `progression/`, le module ne stocke **rien** : la ligue d'un exercice se recalcule depuis son niveau, qui se recalcule depuis l'historique.
   **La ligue vient du volume, pas du numéro de niveau**, et c'est la décision structurante. Le rang se lit sur le volume du palier atteint, **rapporté au volume du palier 1 du même exercice**. Le volume ne croissant pas au même rythme d'un mouvement à l'autre — une hausse d'haltère fait un bond, une répétition de plus fait un pas —, deux exercices au même niveau ne sont pas à la même ligue : le niveau dit la position sur le barème, la ligue dit l'effort produit. Rapporter au palier 1 plutôt que de prendre le volume brut est ce qui permet **une table de seuils unique** malgré le `(poids or 1)` de `paliers.volume`, qui fait compter un mouvement au poids du corps pour 1 kg — sans quoi quatre séries de vingt pompes (80) seraient à jamais derrière quatre séries de douze curls à 12 kg (576). Une table par exercice, elle, se serait désynchronisée du barème au premier réglage de spec.
-  **Distorsion connue et assumée** : à volume relatif égal, un exercice chargé couvre une bien plus grande amplitude qu'un mouvement au poids du corps — mesuré au bout des paliers bornés, les Pompes n'atteignent que le rang 10 là où le curl monte au rang 16, sur dix-huit. Elle ne **plafonne** plus personne depuis que le barème se termine par une tranche ouverte : les Pompes atteignent Maître I au niveau 38, simplement plus tôt dans leur échelle que le curl au niveau 54. C'est donc une inégalité de *cadence* et non de point d'arrivée, et ce sont les bornes par exercice qui l'ont ramenée à ça. Le correctif éventuel (lire `utilisateurs.poids_corps_kg` au lieu du `or 1`) se ferait **dans ce module**, jamais dans `paliers.volume`, qui porte l'invariant du barème et dont dépend tout l'historique déjà interprété.
+  **Distorsion connue et assumée** : à volume relatif égal, un exercice chargé couvre une bien plus grande amplitude qu'un mouvement au poids du corps — mesuré au bout des paliers bornés, les Pompes n'atteignent que le rang 10 là où le curl monte au rang 16, sur dix-huit. Elle ne **plafonne** plus personne depuis que le barème se termine par une tranche ouverte : les Pompes atteignent Maître I au niveau 38, simplement plus tôt dans leur échelle que le curl au niveau 54. C'est donc une inégalité de *cadence* et non de point d'arrivée, et ce sont les bornes par exercice qui l'ont ramenée à ça. Le correctif éventuel (lire `utilisateurs.poids_corps_kg` au lieu du `or 1`) se ferait **dans ce module** pour les mouvements sans charge. Les mouvements à charge facultative, eux, ont été corrigés **dans le barème** (`charge_corps`, voir `paliers.py`) : là, le `or 1` ne faussait pas seulement la ligue, il faisait du passage à 2 kg une chute de la cible, c'est-à-dire un défaut de la *forme* du barème et non de sa lecture.
   Trois règles de forme héritées d'`etat_niveau`. `niveau` à None veut dire **hors barème**, donc `ligue_exercice` rend None : il n'y a pas de « rang 0 » et surtout pas de Bronze III offert. `rang_pour_volume` **sature** au dernier rang sans lever, la dernière tranche du barème étant ouverte. Et le pourcentage d'avancement est une donnée de `ligue_exercice`, jamais d'`etat_niveau`, qui reste sans notion d'avancement.
   `ligue_pour_rang` rend deux champs que les écrans consomment tels quels : `cle` (le nom sans accent, pour nommer une variable CSS) et `division_index`. Les calculer ici plutôt que dans chaque interface évite d'écrire deux fois la translittération de « Maître » — une fois en Jinja, une fois en JavaScript — et de la voir diverger au premier nom de ligue ajouté.
   **Le niveau général du profil suit une autre règle que les exercices, et il a fallu le mesurer pour le savoir.** Chaque niveau d'exercice rapporte de l'XP (`PALIERS_XP`, table ronde et réglable, croissante), et l'XP totale fait monter un niveau général au coût croissant. Faire gouverner la ligue générale par les mêmes seuils de volume aurait été plus élégant et c'est **faux** : l'XP cumulée croît bien plus vite que le volume relatif, si bien qu'un profil tout à fait ordinaire — le catalogue entier au niveau 20 — sortait déjà Maître III. La ligue générale avance donc d'**un cran par niveau général**, ce qui place Maître I au niveau général 18 ; ce que ce niveau *coûte* est une autre question, et elle se lit plus bas, au seul endroit qui la règle. Tant qu'aucune XP n'est gagnée, il n'y a pas de ligue.

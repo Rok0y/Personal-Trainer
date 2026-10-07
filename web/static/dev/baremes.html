@@ -241,7 +241,9 @@ const INVENTAIRES = (tables) => {
 };
 
 //: Les champs d'un bareme, dans l'ordre ou on les regle.
-const CHAMPS = ["series", "cible_min", "cible_max", "pas", "series_max", "poids_min", "poids_max"];
+//: `charge_corps` ferme la marche : il ne sert qu'aux mouvements dont
+//: `poids_min` vaut 0, et vide veut dire « le corps compte pour 1 kg ».
+const CHAMPS = ["series", "cible_min", "cible_max", "pas", "series_max", "poids_min", "poids_max", "charge_corps"];
 
 const socle = await (await fetch("../donnees/baremes.json")).json();
 const deployes = await (await fetch("../donnees/reglages.json")).json();
@@ -322,7 +324,10 @@ function construire() {
 const resume = (p) => p
   ? `${p.series}x${p.cible}${p.unite === "secondes" ? " s" : ""}${p.poids ? ` à ${p.poids} kg` : ""}`
   : "—";
-const volume = (p) => (p ? baremes.volume(p.series, p.cible, p.poids) : 0);
+// Le nom de l'exercice est requis : un palier JavaScript ne porte pas la
+// charge du corps, c'est sa spec qui la donne.
+const volume = (p, nom) =>
+  (p ? baremes.volume_exercice(nom, p.series, p.cible, p.poids) : 0);
 
 /* ------------------------------------------------------------------ saisie */
 
@@ -448,7 +453,7 @@ function dessiner_bornes() {
     for (let niveau = 1; niveau <= 600; niveau += 1) {
       const p = baremes.palier(nom, niveau);
       if (!p) break;
-      if (volume(p) >= seuils[index]) { atteint = { niveau, p }; break; }
+      if (volume(p, nom) >= seuils[index]) { atteint = { niveau, p }; break; }
     }
     return { l, index, atteint };
   });
@@ -479,7 +484,7 @@ function bornes_de(nom) {
   const explicites = reglages.ligues.seuils_par_exercice?.[nom];
   if (explicites?.length) return explicites;
   const depart = baremes.palier(nom, 1);
-  const v = depart ? volume(depart) : 0;
+  const v = depart ? volume(depart, nom) : 0;
   return reglages.ligues.seuils_volume.map((seuil) => seuil * v);
 }
 
@@ -509,7 +514,7 @@ function dessiner_detail() {
     lignes.push(
       `<tr class="${bascule ? "bascule" : ""}${borne && niveau > borne ? " ouverte" : ""}">` +
         `<td class="num">${niveau}</td><td>${resume(p)}</td>` +
-        `<td class="num">${volume(p)}</td>` +
+        `<td class="num">${volume(p, nom)}</td>` +
         `<td class="num">${(ligues.volume_relatif(nom, niveau) ?? 0).toFixed(2)}×</td>` +
         `<td>${badge_ligue(l)}</td>` +
         `<td class="num">${Math.round((l?.avancement ?? 0) * 100)} %</td>` +
@@ -673,7 +678,7 @@ $("repartir").addEventListener("click", () => {
   for (let i = 0; i < 18; i += 1) {
     const niveau = Math.round(1 + ((maitre - 1) * i) / 17);
     const p = baremes.palier(nom, niveau);
-    table[i] = p ? volume(p) : table[i];
+    table[i] = p ? volume(p, nom) : table[i];
     // Deux bornes egales rendraient un rang inatteignable : sur un bareme
     // court, deux crans peuvent tomber sur le meme palier.
     if (i && table[i] <= table[i - 1]) table[i] = table[i - 1] + 1;

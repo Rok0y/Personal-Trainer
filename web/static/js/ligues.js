@@ -65,13 +65,15 @@ export class Ligues {
     const atteint = this.baremes.palier(nom_exercice, niveau);
     const depart = this.baremes.palier(nom_exercice, 1);
     if (!atteint || !depart) return null;
-    const volume_depart = this.baremes.volume(
+    const volume_depart = this.baremes.volume_exercice(
+      nom_exercice,
       depart.series,
       depart.cible,
       depart.poids,
     );
     if (!volume_depart) return null;
-    const volume_atteint = this.baremes.volume(
+    const volume_atteint = this.baremes.volume_exercice(
+      nom_exercice,
       atteint.series,
       atteint.cible,
       atteint.poids,
@@ -111,7 +113,7 @@ export class Ligues {
     if (explicites && explicites.length) return explicites;
     const depart = this.baremes.palier(nom, 1);
     if (!depart) return null;
-    const v = this.baremes.volume(depart.series, depart.cible, depart.poids);
+    const v = this.baremes.volume_exercice(nom, depart.series, depart.cible, depart.poids);
     if (!v) return null;
     return this.SEUILS_VOLUME.map((seuil) => seuil * v);
   }
@@ -168,7 +170,12 @@ export class Ligues {
     const atteint = niveau && niveau >= 1 ? this.baremes.palier(nom_exercice, niveau) : null;
     const seuils = this.seuils_exercice(nom_exercice);
     if (!atteint || !seuils) return null;
-    const volume = this.baremes.volume(atteint.series, atteint.cible, atteint.poids);
+    const volume = this.baremes.volume_exercice(
+      nom_exercice,
+      atteint.series,
+      atteint.cible,
+      atteint.poids,
+    );
     const rang = this.rang_pour_volume(volume, seuils);
     if (rang === null) return null;
 

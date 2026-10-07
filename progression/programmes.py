@@ -37,7 +37,7 @@ from progression.paliers import (
     niveau_pour_volume,
     palier,
     unite,
-    volume,
+    volume_exercice,
 )
 
 #: Intitulé du champ de charge, défini une fois : écrit en dur dans le
@@ -383,7 +383,9 @@ def supprimer_programme(cle):
 
 def volume_exige(exigence):
     """Volume que la prescription représente, dans l'unité du barème."""
-    return volume(exigence["series"], exigence["cible"], exigence["poids"])
+    return volume_exercice(
+        exigence["exercice"], exigence["series"], exigence["cible"], exigence["poids"]
+    )
 
 
 def prescription(exigence):
