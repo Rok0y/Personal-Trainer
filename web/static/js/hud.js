@@ -155,12 +155,7 @@ function afficher_mode_repetitions(donnees) {
   const actuel = Number(donnees.repetitions) || 0;
   const cible = Number(donnees.repetitions_cibles) || 0;
 
-  // Test de calibration : la cible est un plafond volontairement
-  // inatteignable, l'afficher tel quel demanderait 999 repetitions. La barre
-  // reste vide, parce qu'il n'y a rien a remplir — on s'arrete quand la forme
-  // se degrade, pas a un chiffre.
-  const test = Boolean(donnees.test_max);
-  const libelle = test ? "max" : String(cible);
+  const libelle = String(cible);
   if ($("repsCible").textContent.trim() !== libelle) {
     $("repsCible").textContent = libelle;
   }
@@ -171,7 +166,7 @@ function afficher_mode_repetitions(donnees) {
   $("reps").textContent = actuel;
   dernier_reps = actuel;
 
-  const part = !test && cible > 0 ? Math.max(0, Math.min(100, (actuel / cible) * 100)) : 0;
+  const part = cible > 0 ? Math.max(0, Math.min(100, (actuel / cible) * 100)) : 0;
   $("repsProgressFill").style.width = `${part}%`;
 }
 
@@ -190,12 +185,10 @@ function afficher_mode_maintien(donnees) {
   }
   $("maintienTemps").textContent = arrondi;
   $("maintienTempsTexte").textContent = arrondi;
-  // Meme regle qu'en repetitions : un test se tient au maximum.
-  const test = Boolean(donnees.test_max);
-  $("maintienDureeTexte").textContent = test ? "max" : cible;
+  $("maintienDureeTexte").textContent = cible;
   dernier_maintien_entier = arrondi;
 
-  const part = !test && cible > 0 ? Math.max(0, Math.min(100, (actuel / cible) * 100)) : 0;
+  const part = cible > 0 ? Math.max(0, Math.min(100, (actuel / cible) * 100)) : 0;
   $("maintienProgressFill").style.width = `${part}%`;
 
   const statut = $("maintienStatus");

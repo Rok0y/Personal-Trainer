@@ -12,8 +12,7 @@
 // pas ; `node scripts/comparer_seances.mjs` rejoue les memes pas ici et diffe.
 //
 // Ce qui n'est PAS porte, volontairement : `exporter_configuration`,
-// `exporter_resultats`, `objectifs_reussis`, `appliquer_progression` et la
-// cloture des tests de calibration. Toutes appellent `progression/`, qui
+// `exporter_resultats`, `objectifs_reussis` et `appliquer_progression`. Toutes appellent `progression/`, qui
 // reste en Python jusqu'a l'etape 4 du portage. Les methodes correspondantes
 // sont absentes plutot que vides — une methode qui ment est pire qu'une
 // methode qui manque.
@@ -178,10 +177,6 @@ export class BlocExercice {
     this.repos_apres = repos_apres;
     this.commentaire = commentaire || "";
     this.entrelace_avec = entrelace_avec;
-
-    // Serie de calibration : cet exercice n'a encore aucune donnee, donc la
-    // seance demande un maximum au lieu d'une cible.
-    this.test_max = false;
 
     this.temps_maintien = 0;
     this.temps_restant_precedent = null;

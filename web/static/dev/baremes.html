@@ -181,6 +181,30 @@
     <h2>Le niveau général</h2>
     <div class="tableau"><table id="general"></table></div>
 
+    <h2>La note d'athlète</h2>
+    <p class="hint">
+        La note (1 à 10) que chacun se donne à l'accueil fixe le palier de
+        départ de tout exercice jamais fait. Chaque note désigne un
+        <strong>rang de ligue</strong> (0 = le palier 1) ; le départ est le
+        premier palier qui atteint la borne de ce rang, donc il suit les bornes
+        réglées plus haut. La table doit croître. Juge-la sur le tableau, pas
+        sur les nombres : un départ trop haut fait échouer toutes les séries.
+    </p>
+    <div class="bloc">
+        <h3>Rang de ligue par note</h3>
+        <div class="champs" id="rangsNote"></div>
+        <h3 style="margin-top:16px">Note qui monte toute seule</h3>
+        <p class="hint">
+            La note mesurée est la plus haute que <em>part</em> des exercices
+            récents atteignent (au moins <em>minimum</em> exercices) ; elle
+            remplace la note déclarée à partir de <em>marge</em> crans
+            au-dessus. Garder <em>part</em> un peu sous 2/3 : à 0,667, quatre
+            exercices sur six ne comptaient pas.
+        </p>
+        <div class="champs" id="regleNote"></div>
+    </div>
+    <div class="tableau"><table id="departsNote"></table></div>
+
     <h2>Le fichier à coller</h2>
     <p class="hint">
         Contenu exact de <code>progression/reglages.json</code>. Sur l'iPad :
@@ -197,6 +221,7 @@
 import { Baremes } from "../js/paliers.js";
 import { Ligues } from "../js/ligues.js";
 import { badge_ligue, classe_ligue, style_ligue } from "../js/ligues_ui.js";
+import { Calibration } from "../js/calibration.js";
 
 const $ = (id) => document.getElementById(id);
 const CLE_BROUILLON = "dev.reglages";
@@ -224,6 +249,7 @@ const deployes = await (await fetch("../donnees/reglages.json")).json();
 let reglages = lire_brouillon() ?? structuredClone(deployes);
 let baremes = null;
 let ligues = null;
+let calibration = null;
 
 let brouillon_perime = false;
 
@@ -288,6 +314,9 @@ function construire() {
   const tables = { ...socle, specs: reglages.specs };
   baremes = new Baremes(tables, INVENTAIRES(socle)[$("inventaire").value ?? "non_declare"]);
   ligues = new Ligues(baremes, tables_ligues());
+  // `niveau_de_depart` ne lit que le bareme et les bornes : ni niveaux ni
+  // ressenti, qui ne servent qu'a la note mesuree, sans objet sur cette page.
+  calibration = new Calibration(baremes, ligues, null, null, reglages.note_athlete);
 }
 
 const resume = (p) => p
@@ -521,6 +550,47 @@ function dessiner_general() {
     `<th>Ligue</th><th>Repère</th></tr></thead><tbody>${lignes.join("")}</tbody>`;
 }
 
+function dessiner_regles_note() {
+  const rangs = $("rangsNote");
+  rangs.replaceChildren();
+  reglages.note_athlete.rangs.forEach((rang, index) => {
+    const bloc = document.createElement("div");
+    const etiquette = document.createElement("label");
+    etiquette.textContent = `note ${index + 1}`;
+    bloc.append(etiquette, champ_nombre(rang, (v) => { reglages.note_athlete.rangs[index] = v; }, { pas: 1 }));
+    rangs.append(bloc);
+  });
+
+  const regle = $("regleNote");
+  regle.replaceChildren();
+  for (const [cle, titre] of [["part_exercices", "part"], ["marge", "marge"], ["exercices_min", "minimum"]]) {
+    const bloc = document.createElement("div");
+    const etiquette = document.createElement("label");
+    etiquette.textContent = titre;
+    bloc.append(etiquette, champ_nombre(reglages.note_athlete[cle], (v) => { reglages.note_athlete[cle] = v; }));
+    regle.append(bloc);
+  }
+}
+
+/** Le palier de depart de chaque exercice, note par note, sur le materiel choisi. */
+function dessiner_departs_note() {
+  const notes = Array.from({ length: 10 }, (_, i) => i + 1);
+  const lignes = Object.keys(reglages.specs).sort().map((nom) => {
+    const cases = notes.map((note) => {
+      const palier = baremes.palier(nom, calibration.niveau_de_depart(nom, note));
+      return `<td>${resume(palier)}</td>`;
+    });
+    return `<tr><td>${nom}</td>${cases.join("")}</tr>`;
+  });
+  const entete = notes.map((note) => {
+    const rang = reglages.note_athlete.rangs[note - 1];
+    const l = rang > 0 ? ligues.ligue_pour_rang(rang) : null;
+    return `<th>${note}${l ? `<br>${badge_ligue(l)}` : "<br>palier 1"}</th>`;
+  });
+  $("departsNote").innerHTML =
+    `<thead><tr><th>Exercice</th>${entete.join("")}</tr></thead><tbody>${lignes.join("")}</tbody>`;
+}
+
 function dessiner_json() {
   $("json").value = JSON.stringify(reglages, null, 1) + "\n";
   const change = JSON.stringify(reglages) !== JSON.stringify(deployes);
@@ -539,6 +609,7 @@ function tout_recalculer() {
   dessiner_bornes();
   dessiner_detail();
   dessiner_general();
+  dessiner_departs_note();
   dessiner_json();
   ecrire_brouillon();
 }
@@ -555,6 +626,7 @@ $("niveauMaitre").value = 36;
 cadrer_sur_l_echelle();
 dessiner_seuils();
 dessiner_xp();
+dessiner_regles_note();
 tout_recalculer();
 
 $("inventaire").addEventListener("change", tout_recalculer);
@@ -590,6 +662,7 @@ $("reinitialiser").addEventListener("click", () => {
   try { localStorage.removeItem(CLE_BROUILLON); } catch { /* rien a faire */ }
   dessiner_seuils();
   dessiner_xp();
+  dessiner_regles_note();
   tout_recalculer();
 });
 

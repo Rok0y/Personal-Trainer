@@ -87,8 +87,8 @@ class Exercice:
       se lit, l'autre s'exécute trente fois par seconde.
 
     `variante_facile` / `variante_difficile` nomment un autre exercice du
-    catalogue. C'est ce qui permet au test de calibration de rediriger quelqu'un
-    qui ne tient pas le premier palier, au lieu de le laisser « hors barème ».
+    catalogue, que la fiche propose à qui ne tient pas le premier palier
+    plutôt que de le laisser « hors barème ».
 
     `orientation` est la **seule ligne de `mise_en_place` que le coach
     prononce**, et c'est pour cela qu'elle est sortie du texte. Les vingt-trois
@@ -195,12 +195,6 @@ class BlocExercice:
         self.repos_apres = repos_apres
         self.commentaire = commentaire or ""
         self.entrelace_avec = entrelace_avec
-
-        #: Série de calibration : cet exercice n'a encore aucune donnée, donc
-        #: la séance demande un maximum au lieu d'une cible. Posé par
-        #: `progression.objectifs.appliquer_a_circuit`, qui est déjà le seul
-        #: endroit à savoir si le moteur a un objectif à proposer.
-        self.test_max = False
 
         self.temps_maintien = 0
         self.temps_restant_precedent = None
@@ -668,34 +662,8 @@ class Circuit:
                 and precedent["serie"] == self.serie_actuelle
             ):
                 self.resultats_series[index] = resultat
-                self._cloturer_test(resultat)
                 return
         self.resultats_series.append(resultat)
-        self._cloturer_test(resultat)
-
-    def _cloturer_test(self, resultat):
-        """Pose l'ancrage de niveau quand la série qui s'achève était un test.
-
-        Ici et pas à la fin de la séance : la performance vient d'être mesurée,
-        et l'ancrage doit exister avant que le moteur ne recalcule quoi que ce
-        soit. Refaire la série repose un ancrage — sans dommage, le journal des
-        ancrages ne retient que le dernier de chaque exercice.
-        """
-        bloc = self.bloc_actuel
-        if bloc is None or not getattr(bloc, "test_max", False):
-            return
-
-        from progression.calibration import cloturer_test
-        from progression.paliers import UNITE_SECONDES, unite
-
-        nom = bloc.exercice.nom
-        if unite(nom) == UNITE_SECONDES:
-            maximum = resultat["duree"]
-        else:
-            maximum = resultat["repetitions"]
-        if not maximum:
-            return
-        cloturer_test(nom, bloc.poids, maximum)
 
     def reinitialiser_etat_serie(self, bloc=None):
         """Remet à zéro les champs temporels d'un bloc (par défaut le bloc courant).

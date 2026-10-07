@@ -56,20 +56,34 @@
     .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; align-items:center; }
     .actions .principal { border-color:var(--teal); color:var(--teal); }
     .erreur { color:var(--orange); font-size:13px; min-height:18px; margin:10px 0 0; }
+    /* Dix pastilles plutôt qu'un curseur : une note se choisit, elle ne se
+       règle pas au pixel près, et la valeur reste lisible d'un coup d'œil. */
+    .notes { display:grid; grid-template-columns:repeat(10,minmax(0,1fr)); gap:6px; margin-top:12px; }
+    .notes button { padding:12px 0; font-size:18px; text-transform:none; letter-spacing:0; }
+    .notes button.choisie { border-color:var(--teal); color:var(--teal); background:rgba(0,0,0,.3); }
+    .reperes-note { list-style:none; padding:0; margin:12px 0 0; display:grid; gap:4px; color:var(--muted); font-size:14px; }
+    .reperes-note li.actif { color:var(--text); }
+    .reperes-note strong { display:inline-block; min-width:2ch; color:var(--teal); }
 </style>
 </head>
 <body>
 <main>
-    <p class="kicker">{% if premiere_fois %}Premiers pas{% else %}Réglages{% endif %}</p>
+    <p class="kicker">{% if premiere_fois or note_seule %}Premiers pas{% else %}Réglages{% endif %}</p>
 
-    {%- if premiere_fois %}
+    {%- if note_seule %}
+    <h1>Une question, {{ profil.nom }}</h1>
+    <p class="hint" style="max-width:64ch; line-height:1.7;">
+        Les exercices que tu n'as jamais faits démarrent désormais selon ta note
+        d'athlète, au lieu d'un test au maximum. Tes niveaux déjà acquis ne
+        bougent pas.
+    </p>
+    {%- elif premiere_fois %}
     <h1>Bienvenue {{ profil.nom }}</h1>
     <p class="hint" style="max-width:64ch; line-height:1.7;">
-        Une seule chose à régler avant de commencer : ton matériel. Il décide des
-        charges que les séances peuvent te proposer et des exercices qui te sont
-        accessibles. Pas de test à passer ici — la première fois qu'une séance
-        rencontre un exercice qu'elle ne connaît pas de toi, elle te demandera
-        simplement d'en faire le maximum, et en déduira ton point de départ.
+        Deux choses à régler avant de commencer. Ton matériel décide des charges
+        que les séances peuvent te proposer. Ta note d'athlète décide d'où partent
+        les exercices que tu n'as jamais faits — les séances suivantes ajustent
+        ensuite d'elles-mêmes, selon ce que tu réussis et ce que tu ressens.
     </p>
     {%- else %}
     <h1>Mon matériel</h1>
@@ -80,6 +94,7 @@
     </p>
     {%- endif %}
 
+    {%- if not note_seule %}
     <div class="bloc">
         <h2>Haltères</h2>
         <p class="sous-titre">Pour chaque poids, ce que tu possèdes</p>
@@ -97,6 +112,25 @@
         <h2>Accessoires</h2>
         <div class="accessoires" id="accessoires"></div>
     </div>
+    {%- endif %}
+
+    {%- if demander_note %}
+    <div class="bloc">
+        <h2>À quel point es-tu athlète ?</h2>
+        <p class="sous-titre">De {{ note_min }} à {{ note_max }}, sans te juger</p>
+        <div class="notes" id="notes">
+            {%- for n in range(note_min, note_max + 1) %}
+            <button type="button" data-note="{{ n }}">{{ n }}</button>
+            {%- endfor %}
+        </div>
+        <ul class="reperes-note" id="reperesNote">
+            {%- for n, texte in reperes_note.items() %}
+            <li data-note="{{ n }}"><strong>{{ n }}</strong> {{ texte }}</li>
+            {%- endfor %}
+        </ul>
+        <p class="hint">Dans le doute, prends plus bas : un départ trop facile se rattrape en une séance, un départ trop dur fait échouer toutes les séries.</p>
+    </div>
+    {%- endif %}
 
     {%- if premiere_fois %}
     <div class="bloc">
@@ -115,7 +149,7 @@
 
     <div class="actions">
         <button type="button" class="principal" id="valider">
-            {% if premiere_fois %}C'est parti{% else %}Enregistrer{% endif %}
+            {% if premiere_fois or note_seule %}C'est parti{% else %}Enregistrer{% endif %}
         </button>
         {%- if not premiere_fois %}<a class="btn" href="/">Retour</a>{%- endif %}
     </div>
@@ -127,6 +161,27 @@ const POIDS = {{ poids_reference|tojson }};
 const ACCESSOIRES = {{ accessoires|tojson }};
 const MATERIEL = {{ materiel|tojson }};
 const PREMIERE_FOIS = {{ premiere_fois|tojson }};
+const NOTE_SEULE = {{ note_seule|tojson }};
+const DEMANDER_NOTE = {{ demander_note|tojson }};
+
+// Aucune note n'est choisie d'avance : choisir à la place de la personne
+// serait répondre pour elle, et c'est précisément ce que la question évite.
+let noteChoisie = null;
+const conteneurNotes = document.getElementById("notes");
+if (conteneurNotes) {
+    const reperes = document.querySelectorAll("#reperesNote li");
+    conteneurNotes.addEventListener("click", (evenement) => {
+        const bouton = evenement.target.closest("button[data-note]");
+        if (!bouton) return;
+        noteChoisie = Number(bouton.dataset.note);
+        conteneurNotes.querySelectorAll("button").forEach((b) =>
+            b.classList.toggle("choisie", b === bouton));
+        // Le repère le plus proche par en dessous : c'est lui qui décrit la note.
+        let actif = null;
+        reperes.forEach((li) => { if (Number(li.dataset.note) <= noteChoisie) actif = li; });
+        reperes.forEach((li) => li.classList.toggle("actif", li === actif));
+    });
+}
 
 // Une seule question par poids (« combien j'en ai ? ») plutôt que deux échelles
 // séparées : déclarer une paire de 12 kg sans posséder l'haltère de 12 kg
@@ -162,7 +217,7 @@ function dessinerHalteres() {
     });
 }
 
-dessinerHalteres();
+if (!NOTE_SEULE) dessinerHalteres();
 
 // Jumeau de `poids_declarable` : arrondi au demi-kilo, qui est le pas réel du
 // matériel, et bornes larges — il ne s'agit pas de juger ce que quelqu'un
@@ -202,6 +257,8 @@ function lireQuantites() {
     return lues;
 }
 
+const conteneurAccessoires = document.getElementById("accessoires");
+if (!NOTE_SEULE) {
 document.getElementById("ajouterPoids").addEventListener("click", ajouterPoids);
 champPoids.addEventListener("keydown", (evenement) => {
     if (evenement.key !== "Enter") return;
@@ -209,7 +266,6 @@ champPoids.addEventListener("keydown", (evenement) => {
     ajouterPoids();
 });
 
-const conteneurAccessoires = document.getElementById("accessoires");
 Object.entries(ACCESSOIRES).forEach(([cle, libelle]) => {
     const label = document.createElement("label");
     const coche = MATERIEL.accessoires.includes(cle) ? " checked" : "";
@@ -217,6 +273,7 @@ Object.entries(ACCESSOIRES).forEach(([cle, libelle]) => {
         '<input type="checkbox" data-accessoire="' + cle + '"' + coche + "> " + libelle;
     conteneurAccessoires.appendChild(label);
 });
+}
 
 let seanceChoisie = null;
 const conteneurSeances = document.getElementById("seances");
@@ -242,10 +299,15 @@ function collecter() {
 const erreur = document.getElementById("erreur");
 document.getElementById("valider").addEventListener("click", async () => {
     erreur.textContent = "";
-    const corps = { materiel: collecter() };
+    if (DEMANDER_NOTE && noteChoisie === null) {
+        erreur.textContent = "Choisis ta note d'athlète avant de continuer.";
+        return;
+    }
+    const corps = NOTE_SEULE ? { note: noteChoisie } : { materiel: collecter() };
     if (PREMIERE_FOIS) corps.seance = seanceChoisie;
+    if (DEMANDER_NOTE) corps.note = noteChoisie;
     try {
-        const reponse = await fetch("/api/materiel", {
+        const reponse = await fetch(NOTE_SEULE ? "/api/profil/note" : "/api/materiel", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(corps),

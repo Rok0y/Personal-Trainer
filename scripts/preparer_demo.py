@@ -147,7 +147,7 @@ def exporter_baremes():
         POIDS_REFERENCE,
         POIDS_SUPPOSES,
     )
-    from progression import ligues, paliers
+    from progression import calibration, ligues, paliers
     from progression.reglages import CHEMIN as CHEMIN_REGLAGES
 
     # Le fichier de reglages voyage **tel quel** jusqu'au site : c'est lui que
@@ -174,6 +174,16 @@ def exporter_baremes():
             "paliers_xp": [list(tranche) for tranche in ligues.PALIERS_XP],
             "xp_base_niveau_general": ligues.XP_BASE_NIVEAU_GENERAL,
             "xp_increment_niveau_general": ligues.XP_INCREMENT_NIVEAU_GENERAL,
+        },
+        # La note d'athlete : la table des rangs et ses seuils, plus les
+        # reperes ecrits de l'echelle, pour que les deux accueils posent la
+        # meme question avec les memes mots.
+        "note_athlete": {
+            "rangs": list(calibration.RANGS_PAR_NOTE),
+            "part_exercices": calibration.PART_EXERCICES,
+            "marge": calibration.MARGE,
+            "exercices_min": calibration.EXERCICES_MIN,
+            "reperes": {str(n): texte for n, texte in calibration.REPERES_NOTE.items()},
         },
         "specs": {nom: asdict(spec) for nom, spec in paliers.SPECS.items()},
         "echelles": {

@@ -132,7 +132,7 @@
         /* Premier passage : la seance mesurera au lieu de programmer. Distinct
            du badge orange « cible manuelle », qui signale l'inverse — une
            valeur figee a la main. */
-        .badge-test { display: inline-flex; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--blue); color: var(--blue); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
+        .badge-premiere { display: inline-flex; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--blue); color: var(--blue); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
         .badge-manuelle-retirer { border: none; background: none; padding: 0; color: inherit; font-size: 13px; line-height: 1; cursor: pointer; font-family: inherit; }
         .badge-manuelle-retirer:hover { color: var(--text); }
         .last-series { margin-top: 4px; padding: 8px 10px; border-left: 2px solid var(--teal); background: rgba(27, 232, 196, .07); color: var(--muted); font-size: 12px; }
@@ -266,7 +266,7 @@
                 {% endif %}
                 <ul>
                 {% for exercice in seance.exercices if exercice.mode != 'echauffement' %}
-                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}{% if exercice.cible_manuelle %} <span class="badge-manuelle" title="Cible saisie à la main : le moteur de progression ne la fait plus évoluer.">cible manuelle</span>{% endif %}{% if exercice.test_max %} <span class="badge-test" title="Aucune donnée sur cet exercice : la séance demandera un maximum en une série pour situer ton niveau.">à tester</span>{% endif %}</li>
+                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}{% if exercice.cible_manuelle %} <span class="badge-manuelle" title="Cible saisie à la main : le moteur de progression ne la fait plus évoluer.">cible manuelle</span>{% endif %}{% if exercice.premiere_fois %} <span class="badge-premiere" title="Jamais fait : la cible vient de ta note d'athlète, et s'ajustera dès cette séance.">1re fois</span>{% endif %}</li>
                 {% endfor %}
                 </ul>
             </details>

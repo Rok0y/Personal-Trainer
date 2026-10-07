@@ -37,8 +37,6 @@ export const MESSAGES = {
   preparation_bras_en_x: "Croise les bras devant toi pour lancer la séance.",
   preparation_decompte: "C'est parti ! Redescends les bras et mets-toi en place.",
   pause: "Séance en pause. Reprends quand tu veux depuis le site.",
-  test_calibration:
-    "Premier passage : fais ton maximum, puis croise les bras pour valider.",
 };
 
 // Traduction des jetons rendus par les fonctions de detection. Le front

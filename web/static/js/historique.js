@@ -18,6 +18,9 @@
 // La persistance vit a cote, dans `stockage.js`, et ne fait que charger et
 // sauver cet objet.
 
+// `calibration.js` n'importe rien : aucun cycle possible.
+import { note_valide } from "./calibration.js";
+
 /** La version du format, ecrite dans chaque export. */
 export const VERSION_BASE = 1;
 
@@ -115,6 +118,12 @@ export function creer_utilisateur(base, nom, maintenant) {
     date_naissance: null,
     taille_cm: null,
     poids_corps_kg: null,
+    // La note d'athlete et le repere de sa derniere hausse. `null` veut dire
+    // « pas encore demandee », que l'accueil rattrape une fois. Les profils
+    // anterieurs n'ont pas ces champs : `calibration.note_du_profil` lit
+    // l'absence comme null.
+    note_athlete: null,
+    note_relevee_apres: null,
     // Ce que ce profil a deja vu expliquer. **Sur le profil et non en
     // `localStorage`** : deux personnes partagent la meme tablette, et un
     // tutoriel s'adresse a quelqu'un, pas a un appareil. Le profil courant,
@@ -280,6 +289,33 @@ export function definir_mesures(base, utilisateur_id, mesures) {
     const valeur = mesures[champ];
     utilisateur[champ] = valeur === "" || valeur === undefined ? null : valeur;
   }
+  return true;
+}
+
+/**
+ * Enregistre la note d'athlete d'un profil, et ce qu'elle declenche.
+ *
+ * Jumelle de `historique.database.definir_note_athlete`. Une **hausse** pose
+ * le repere `note_relevee_apres` sur la derniere seance du profil (plancher de
+ * la prochaine seance des exercices deja faits) ; une **baisse** l'efface ; un
+ * premier reglage ne pose rien. Leve sur une note hors echelle, comme le
+ * Python.
+ */
+export function definir_note_athlete(base, utilisateur_id, note) {
+  if (!note_valide(note)) throw new Error("La note d'athlète est un entier de 1 à 10.");
+  const utilisateur = base.utilisateurs.find((u) => u.id === utilisateur_id);
+  if (!utilisateur) throw new Error(`Profil ${utilisateur_id} introuvable`);
+  const ancienne = utilisateur.note_athlete ?? null;
+  let repere = utilisateur.note_relevee_apres ?? null;
+  if (ancienne !== null && note > ancienne) {
+    repere = base.seances
+      .filter((s) => s.utilisateur_id === utilisateur_id)
+      .reduce((max, s) => Math.max(max, s.id), 0);
+  } else if (ancienne !== null && note < ancienne) {
+    repere = null;
+  }
+  utilisateur.note_athlete = note;
+  utilisateur.note_relevee_apres = repere;
   return true;
 }
 

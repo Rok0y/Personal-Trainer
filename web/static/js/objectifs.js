@@ -11,7 +11,6 @@
 
 import { UNITE_SECONDES } from "./paliers.js";
 import { UNITE_PAR_MODE } from "./niveaux.js";
-import { CIBLE_TEST } from "./calibration.js";
 import { definir_cible_manuelle, est_cible_manuelle } from "./cible_manuelle.js";
 
 export {
@@ -38,26 +37,47 @@ export class Objectifs {
   /**
    * Palier a viser pour chaque exercice suivi.
    *
-   * Deux regles, dans cet ordre.
+   * Trois regles, dans cet ordre.
    *
    * 1. **Le repere de la derniere seance** : le palier alors demande, plus ou
-   *    moins ce que la reussite et le ressenti lui valent. C'est ce qui permet
-   *    de sauter plusieurs crans quand c'etait trop facile, et de reculer
-   *    quand c'etait trop dur.
-   * 2. A defaut de repere — premier passage, cible d'epoque indechiffrable, ou
-   *    ancrage plus recent que la derniere seance —, `suivant` : le premier
-   *    palier non valide. Et si le bareme est epuise, le dernier palier
-   *    atteint plutot que rien.
+   *    moins ce que la reussite et le ressenti lui valent.
+   * 2. **Un exercice jamais fait** — aucun repere, aucun niveau prouve — part
+   *    du palier de la note d'athlete effective. Il n'y a plus de test au
+   *    maximum.
+   * 3. A defaut, `suivant` : le premier palier non valide, et si le bareme est
+   *    epuise, le dernier palier atteint plutot que rien.
+   *
+   * Par-dessus 1 et 3, une **note relevee a la main** pose un plancher sur la
+   * prochaine seance, une fois, sans rien valider.
+   *
+   * `note` vaut `{declaree, relevee_apres}` (`calibration.note_du_profil`) :
+   * passee en argument, comme les ancrages — le Python, lui, la lit sur le
+   * profil connecte.
    */
-  objectifs_par_exercice(seances, ancrages = {}) {
+  objectifs_par_exercice(seances, ancrages = {}, note = { declaree: null, relevee_apres: null }) {
     const reperes = this.ressenti.evaluation(seances, ancrages);
     const etats = this.niveaux.etats_niveaux(seances, ancrages);
+    const depart = this.calibration.note_effective(
+      note.declaree ?? null,
+      this.calibration.note_mesuree(seances, ancrages),
+    );
 
     const objectifs = {};
     for (const [nom, etat] of Object.entries(etats)) {
       const repere = reperes[nom];
       const vise = repere ? this.baremes.palier(nom, repere.vise) : null;
-      objectifs[nom] = vise ?? etat.suivant ?? etat.actuel;
+      if (vise === null && etat.niveau === null) {
+        objectifs[nom] = this.baremes.palier(
+          nom, this.calibration.niveau_de_depart(nom, depart),
+        );
+        continue;
+      }
+      let objectif = vise ?? etat.suivant ?? etat.actuel;
+      const plancher = this.calibration.niveau_plancher(nom, note, repere);
+      if (objectif && plancher && objectif.niveau < plancher) {
+        objectif = this.baremes.palier(nom, plancher);
+      }
+      objectifs[nom] = objectif;
     }
     return objectifs;
   }
@@ -65,13 +85,8 @@ export class Objectifs {
   /**
    * Exercices dont rien ne prouve le niveau : ni historique, ni ancrage.
    *
-   * **Ne pas confondre avec « absent d'`objectifs_par_exercice` »**, qui ne se
-   * produit jamais : `etat_niveau` propose toujours `suivant`, c'est-a-dire le
-   * palier 1, pour quelqu'un qui n'a rien fait. C'est un objectif par defaut,
-   * pas un objectif mesure — et le prendre pour tel a exactement l'effet qu'on
-   * veut eviter, programmer un debutant au hasard. Le signal fiable est
-   * `niveau === null`, que `niveaux.js` documente comme « hors bareme » et non
-   * « niveau 0 ».
+   * Ne sert plus qu'a l'affichage : le badge « 1re fois » des exercices dont
+   * la cible vient de la note d'athlete et non de l'historique.
    */
   exercices_sans_donnees(seances, ancrages = {}) {
     const sans = new Set();
@@ -84,12 +99,8 @@ export class Objectifs {
   }
 
   /**
-   * Ce couple exercice/mode releve-t-il du moteur, objectif ou pas ?
-   *
-   * Separe d'`objectif_pour` parce que « le moteur ne pilote pas ce bloc » et
-   * « le moteur le pilote mais n'a encore rien a proposer » demandent deux
-   * reponses **opposees** : la premiere laisse la cible du fichier, la seconde
-   * declenche un test de calibration.
+   * Ce couple exercice/mode releve-t-il du moteur ? Un bloc qui n'en releve
+   * pas garde la cible de son fichier.
    */
   _pilote_par_le_moteur(nom, mode) {
     if (!this.baremes.est_suivi_par_le_moteur(nom)) return false;
@@ -103,18 +114,6 @@ export class Objectifs {
   }
 
   /**
-   * Cet exercice doit-il etre teste au maximum avant d'etre programme ?
-   *
-   * Rien n'est stocke : le test pose un ancrage, cet ancrage donne un niveau,
-   * et la question ne se repose plus — meme principe que le reste du moteur,
-   * ou tout se derive au lieu de se marquer.
-   */
-  a_calibrer(nom, mode, sans_donnees) {
-    if (!this._pilote_par_le_moteur(nom, mode)) return false;
-    return sans_donnees.has(nom);
-  }
-
-  /**
    * Reecrit les cibles des blocs (dictionnaires) pilotes par le moteur.
    *
    * Modifie les objets sur place et les rend, pour servir aussi bien a la
@@ -122,25 +121,10 @@ export class Objectifs {
    * la meme chose, sinon l'accueil annonce une cible que la seance ne joue
    * pas.
    */
-  appliquer_a_blocs(blocs, objectifs, sans_donnees, utilisateur_id) {
+  appliquer_a_blocs(blocs, objectifs, utilisateur_id) {
     for (const bloc of blocs) {
       if (est_cible_manuelle(bloc, utilisateur_id)) continue;
-      const nom = _nom_exercice(bloc);
-
-      // **Marque, jamais reecrit** : ces dictionnaires servent a l'affichage,
-      // mais repartent en ecriture depuis le formulaire d'objectifs. Y poser
-      // la cible du test graverait `1 x 999` dans le fichier de seances. La
-      // cible reelle du test est posee sur le `Circuit`, qui lui ne repart
-      // jamais sur le disque tel quel.
-      if (this.a_calibrer(nom, bloc.mode, sans_donnees)) {
-        bloc.test_max = true;
-        bloc.poids_test = this.calibration.charge_de_test(nom);
-        continue;
-      }
-      delete bloc.test_max;
-      delete bloc.poids_test;
-
-      const palier_vise = this.objectif_pour(nom, bloc.mode, objectifs);
+      const palier_vise = this.objectif_pour(_nom_exercice(bloc), bloc.mode, objectifs);
       if (palier_vise === null) continue;
       bloc.poids = palier_vise.poids;
       bloc.series = palier_vise.series;
@@ -161,20 +145,13 @@ export class Objectifs {
    * A n'appeler que depuis une edition d'utilisateur. L'appeler a la fin d'une
    * seance comparerait des valeurs posees par le moteur a un objectif qui a pu
    * changer entre-temps, et marquerait manuel tout ce qui a progresse.
+   *
+   * Un exercice jamais fait n'a plus de cas a part : il recoit le palier de la
+   * note d'athlete, qui est un vrai palier, donc la comparaison est juste.
    */
-  marquer_cibles_manuelles(blocs, objectifs, sans_donnees, utilisateur_id) {
+  marquer_cibles_manuelles(blocs, objectifs, utilisateur_id) {
     for (const bloc of blocs) {
-      const nom = _nom_exercice(bloc);
-
-      // **Un exercice a calibrer n'est jamais une cible manuelle.**
-      // `appliquer_a_blocs` laisse ses valeurs telles quelles — celles du
-      // fichier — parce qu'il n'a rien a proposer tant que rien n'est mesure ;
-      // les comparer au palier calcule les declarerait *toujours*
-      // differentes, et le bloc serait fige pour toujours. Comme
-      // `appliquer_a_circuit` ecarte les cibles manuelles avant tout le reste,
-      // son test de calibration ne se declencherait alors plus jamais.
-      const a_tester = this.a_calibrer(nom, bloc.mode, sans_donnees);
-      const palier_vise = a_tester ? null : this.objectif_pour(nom, bloc.mode, objectifs);
+      const palier_vise = this.objectif_pour(_nom_exercice(bloc), bloc.mode, objectifs);
 
       let manuelle = false;
       if (palier_vise !== null) {
@@ -197,35 +174,10 @@ export class Objectifs {
   }
 
   /** Meme chose sur un `Circuit` deja construit. */
-  appliquer_a_circuit(circuit, objectifs, sans_donnees, utilisateur_id) {
+  appliquer_a_circuit(circuit, objectifs, utilisateur_id) {
     for (const bloc of circuit.exercices) {
       if (est_cible_manuelle(bloc, utilisateur_id)) continue;
-
-      const nom = bloc.exercice.nom;
-      // Un exercice sans le moindre repere n'est pas programme, il est
-      // **mesure** : une serie unique au maximum, a charge moyenne, terminee a
-      // la main. L'ancrage se pose des la serie finie, et la seance d'apres le
-      // trouvera dans `objectifs`.
-      bloc.test_max = this.a_calibrer(nom, bloc.mode, sans_donnees);
-      if (bloc.test_max) {
-        // La definition d'origine est mise de cote : la seance finie est
-        // reecrite depuis ce meme bloc, et y graver `1 x 999` remplacerait
-        // definitivement l'exercice par son test.
-        bloc.avant_test = {
-          nombre_series: bloc.nombre_series,
-          poids: bloc.poids,
-          repetitions_par_serie: bloc.repetitions_par_serie,
-          duree: bloc.duree,
-        };
-        bloc.nombre_series = 1;
-        bloc.poids = this.calibration.charge_de_test(nom);
-        if (this.baremes.unite(nom) === UNITE_SECONDES) bloc.duree = CIBLE_TEST;
-        else bloc.repetitions_par_serie = CIBLE_TEST;
-        continue;
-      }
-      bloc.avant_test = null;
-
-      const palier_vise = this.objectif_pour(nom, bloc.mode, objectifs);
+      const palier_vise = this.objectif_pour(bloc.exercice.nom, bloc.mode, objectifs);
       if (palier_vise === null) continue;
       bloc.poids = palier_vise.poids;
       bloc.nombre_series = palier_vise.series;

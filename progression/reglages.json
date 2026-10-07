@@ -759,5 +759,22 @@
   "base_niveau_general": 500,
   "increment_niveau_general": 600
  },
- "series_max_par_defaut": 6
+ "series_max_par_defaut": 6,
+ "note_athlete": {
+  "rangs": [
+   1,
+   2,
+   3,
+   4,
+   6,
+   7,
+   9,
+   10,
+   12,
+   13
+  ],
+  "part_exercices": 0.66,
+  "marge": 2,
+  "exercices_min": 5
+ }
 }

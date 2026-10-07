@@ -67,8 +67,8 @@ ECHAUFFEMENT = [
 #:
 #: Ce sont les mouvements complets, pas les variantes assistees. Le filet n'a
 #: pas a etre ecrit ici : `Pompes` declare `variante_facile="Pompes sur les
-#: genoux"`, `Squat` declare `Squat sur chaise`, et le test de calibration
-#: redirige de lui-meme qui ne tient pas le premier palier.
+#: genoux"`, `Squat` declare `Squat sur chaise`, et la fiche de chaque
+#: mouvement les propose a qui ne tient pas le premier palier.
 #:
 #: (exercice, mode, series, cible, repos_apres, entrelace_avec)
 TRAVAIL = [
@@ -174,13 +174,6 @@ def _caler_sur_le_moteur(blocs):
     chargement par `appliquer_a_circuit`.
     """
     appliquer_a_blocs(blocs)
-    for bloc in blocs:
-        # `test_max` est un drapeau d'**affichage** pose par le moteur sur les
-        # exercices a calibrer (badge bleu « a tester »). Il n'existe dans aucun
-        # bloc du fichier et n'a rien a y faire : la cible reelle d'un test est
-        # posee sur le `Circuit`, jamais sur le dictionnaire, qui repart en
-        # ecriture depuis le formulaire de l'accueil.
-        bloc.pop("test_max", None)
     return blocs
 
 

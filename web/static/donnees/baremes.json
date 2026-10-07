@@ -524,6 +524,30 @@
   "xp_base_niveau_general": 500,
   "xp_increment_niveau_general": 600
  },
+ "note_athlete": {
+  "rangs": [
+   1,
+   2,
+   3,
+   4,
+   6,
+   7,
+   9,
+   10,
+   12,
+   13
+  ],
+  "part_exercices": 0.66,
+  "marge": 2,
+  "exercices_min": 5,
+  "reperes": {
+   "1": "Je ne fais pas de sport",
+   "3": "Je bouge un peu, sans entraînement régulier",
+   "5": "Je fais du sport une à deux fois par semaine",
+   "7": "Je m'entraîne régulièrement, renforcement compris",
+   "10": "Je m'entraîne dur depuis des années"
+  }
+ },
  "specs": {
   "Developpé couché altères": {
    "series": 4,

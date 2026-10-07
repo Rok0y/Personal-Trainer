@@ -72,7 +72,16 @@ def onboarding_a_faire():
     """
     if _connecte is None:
         return False
-    return not _connecte.get("onboarding_termine", True)
+    return not _connecte.get("onboarding_termine", True) or note_a_demander()
+
+
+def note_a_demander():
+    """Le profil connecté n'a-t-il pas encore donné sa note d'athlète ?
+
+    Vrai aussi pour un profil d'avant la note, qui a fini son accueil depuis
+    longtemps : c'est la seule question qu'on lui repose, une fois.
+    """
+    return _connecte is not None and _connecte.get("note_athlete") is None
 
 
 def rafraichir():

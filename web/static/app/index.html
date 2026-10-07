@@ -641,28 +641,6 @@
     margin: 0 0 18px;
     color: var(--muet, #8b97a8);
   }
-  /* Un encart et non un paragraphe de plus : sur un premier passage c'est la
-     seule chose a lire avant de commencer, et elle doit se distinguer des
-     consignes du mouvement, qui, elles, se relisent a chaque serie. */
-  .guide-test {
-    margin: 0 0 18px;
-    padding: 14px 16px;
-    border: 1px solid var(--accent);
-    border-radius: 12px;
-    background: rgba(255, 138, 61, 0.08);
-  }
-  .guide-test strong {
-    display: block;
-    margin-bottom: 6px;
-    color: var(--accent);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-  }
-  .guide-test p {
-    margin: 0;
-    line-height: 1.55;
-  }
   .guide-carte h3 {
     margin: 16px 0 6px;
     font-size: 0.95rem;
@@ -806,6 +784,27 @@
   .choix-programme span { color: var(--texte-doux); font-size: 0.85rem; }
   .choix-programme.choisi { border-color: var(--accent); background: rgba(255, 138, 61, 0.09); }
   .choix-programme.choisi strong { color: var(--accent); }
+
+  /* La note d'athlete : dix pastilles plutot qu'un curseur. Une note se
+     choisit, elle ne se regle pas au pixel pres — et au doigt, un curseur de
+     dix crans se lache toujours un cran a cote. */
+  .selecteur-note { margin: 1rem 0 0.4rem; }
+  .choix-notes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.45rem; }
+  .choix-note {
+    padding: 0.7rem 0;
+    border: 1px solid var(--trait);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--texte);
+    font: inherit;
+    font-size: 1.15rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .choix-note.choisi { border-color: var(--accent); color: var(--accent); background: rgba(255, 138, 61, 0.09); }
+  .note-repere { min-height: 1.4em; margin: 0.7rem 0 0.2rem; color: var(--texte); }
+  .note-apercu { display: flex; flex-direction: column; gap: 0.2rem; margin-top: 0.5rem; color: var(--texte-doux); font-size: 0.9rem; }
+  .note-apercu b { color: var(--texte); font-weight: 600; }
 
   /* La saisie libre occupe toute la largeur de la grille : c'est une action et
      non un cran de plus, et la noyer dans la liste la rendrait invisible.
@@ -961,6 +960,26 @@
     <span class="retour-ancrage" id="retourMesures"></span>
   </form>
 
+  <h2 class="titre-section">Ma note d'athlète</h2>
+  <p class="sous-titre">
+    Elle fixe le départ des exercices que tu n'as jamais faits. La relever fait
+    aussi monter, une fois, la prochaine séance des exercices déjà faits qui
+    sont en dessous ; la baisser ne touche que les exercices jamais faits. Elle
+    ne valide jamais un niveau.
+  </p>
+  <div class="chiffres" id="resumeNote"></div>
+  <div class="actions" style="justify-content:flex-start" id="actionsNote">
+    <button class="bouton secondaire" id="boutonModifierNote">Modifier ma note</button>
+  </div>
+  <div id="editeurNote" hidden>
+    <div id="selecteurNoteProfil"></div>
+    <div class="actions" style="justify-content:flex-start">
+      <button class="bouton" id="boutonEnregistrerNote">Enregistrer la note</button>
+      <button class="bouton secondaire" id="boutonAnnulerNote">Annuler</button>
+    </div>
+  </div>
+  <p class="muet" id="etatNote" style="margin-top:0.6rem"></p>
+
   <h2 class="titre-section">Mon matériel</h2>
   <p class="sous-titre">
     Ce que tu possèdes décide des charges que le barème peut te proposer. Une
@@ -1091,6 +1110,12 @@
        donc a `null`, que `programme_suivi()` lit deja comme « aucun choix »
        sans jamais retomber sur le premier. -->
   <div id="bienvenueProgrammes" hidden></div>
+
+  <!-- La note d'athlete. Bloquante, comme le materiel : sans elle, tout
+       exercice jamais fait partirait du bas du bareme, quel que soit le
+       sportif. C'est le meme selecteur que l'ecran de profil
+       (`dessiner_selecteur_note`), donc une seule question dans l'application. -->
+  <div id="bienvenueNote" hidden></div>
 
   <!-- Le questionnaire de materiel, montre a la derniere etape. Ce sont les
        **memes** identifiants que l'ecran de profil : `dessiner_materiel` et
@@ -1364,13 +1389,6 @@
     <div class="guide-carte">
       <h2 id="guideNom"></h2>
       <p class="guide-description" id="guideDescription"></p>
-      <!-- Hors du contrat du HUD (pas de `data-commande`, pas d'id reclame par
-           `hud.js`) : ce guidage n'existe que dans l'application, le poste fixe
-           ayant un clavier et un ecran a portee de main. -->
-      <div class="guide-test" id="guideTest" hidden>
-        <strong>Premier passage : c'est un test</strong>
-        <p id="guideTestTexte"></p>
-      </div>
       <div id="guideBlocs"></div>
       <button class="bouton" id="guideCompris" data-tuto="compris">J'ai compris</button>
       <p class="guide-astuce">Ou croise les bras devant toi — tu n'as pas à revenir à l'écran.</p>
@@ -1592,7 +1610,7 @@ import { Ligues } from "../js/ligues.js";
 import { badge_ligue, classe_ligue, jalon_ligue, jauge_ligue, style_ligue } from "../js/ligues_ui.js";
 import { ECHELLE, Ressenti } from "../js/ressenti.js";
 import { construire_ligne } from "../js/ressentis_ui.js";
-import { Calibration } from "../js/calibration.js";
+import { Calibration, note_du_profil } from "../js/calibration.js";
 import { Objectifs } from "../js/objectifs.js";
 import { normaliser, poids_declarable } from "../js/materiel.js";
 import { VerrouEcran } from "../js/veille.js";
@@ -1777,19 +1795,23 @@ function construire_moteur() {
   const profil = base.utilisateurs.find((u) => u.id === PROFIL);
   const baremes = new Baremes(tables_baremes, profil?.materiel ?? null);
   const niveaux = new Niveaux(baremes);
-  const calibration = new Calibration(baremes);
   // `Ressenti` est nomme plutot qu'anonyme : les ecrans s'en servent aussi
   // pour *juger* une seance passee (« reussi » ou « non atteint », et quelles
   // reponses proposer), pas seulement le moteur pour calculer un objectif.
   const ressenti = new Ressenti(baremes, niveaux);
+  // Les ligues suivent le meme sort que le reste : elles derivent du bareme,
+  // donc elles se refont avec lui quand le materiel change. La calibration
+  // en depend — la note se traduit par leurs bornes.
+  const ligues = new Ligues(baremes, tables_baremes.ligues);
+  const calibration = new Calibration(
+    baremes, ligues, niveaux, ressenti, tables_baremes.note_athlete,
+  );
   moteur = {
     baremes,
     niveaux,
     calibration,
     ressenti,
-    // Les ligues suivent le meme sort que le reste : elles derivent du
-    // bareme, donc elles se refont avec lui quand le materiel change.
-    ligues: new Ligues(baremes, tables_baremes.ligues),
+    ligues,
     objectifs: new Objectifs(baremes, niveaux, ressenti, calibration),
   };
 }
@@ -1799,6 +1821,9 @@ function lecture_du_profil() {
   return {
     seances: historique.recuperer_historique(base, PROFIL),
     ancrages: historique.recuperer_ancrages(base, PROFIL),
+    // La note d'athlete voyage avec l'historique : c'est elle qui fixe le
+    // depart des exercices jamais faits, et le plancher d'une hausse.
+    note: note_du_profil(profil_courant()),
   };
 }
 
@@ -1983,11 +2008,10 @@ async function demarrer(nom) {
   // **Les cibles viennent de l'historique, plus du fichier.** Le JSON ne fait
   // plus autorite que sur la structure : quel exercice, quel mode, quels
   // repos, quel entrelacement.
-  const { seances: histoire, ancrages } = lecture_du_profil();
+  const { seances: histoire, ancrages, note } = lecture_du_profil();
   moteur.objectifs.appliquer_a_circuit(
     seance,
-    moteur.objectifs.objectifs_par_exercice(histoire, ancrages),
-    moteur.objectifs.exercices_sans_donnees(histoire, ancrages),
+    moteur.objectifs.objectifs_par_exercice(histoire, ancrages, note),
     PROFIL
   );
   etat = creer_etat();
@@ -2212,11 +2236,6 @@ function ouvrir_guide_exercice(bloc) {
     liste_guide("À éviter", fiche.erreurs_frequentes),
   ].join("");
 
-  // Un test ne se devine pas depuis le compteur : « max » dit qu'il n'y a pas
-  // de cible, pas qu'on attend un maximum ni pourquoi la charge est celle-la.
-  // C'est ici, avant de commencer, que ca se dit — et en une fois.
-  remplir_encart_test(bloc, fiche);
-
   $("guideExercice").hidden = false;
 
   // **Le guide ne parle pas.** Il l'a fait, et ca doublait systematiquement :
@@ -2232,35 +2251,6 @@ function liste_guide(titre, lignes) {
   if (!lignes?.length) return "";
   const items = lignes.map((l) => `<li>${echapper(l)}</li>`).join("");
   return `<h3>${titre}</h3><ul>${items}</ul>`;
-}
-
-/**
- * L'encart « c'est un test », quand l'exercice n'a encore rien prouve.
- *
- * Il dit les trois choses qu'un compteur a « max » ne dit pas : qu'on attend
- * un **maximum** et non une serie ordinaire, a quelle **charge** (le milieu de
- * l'echelle reellement disponible, pose par `charge_de_test`), et comment on
- * **s'arrete** — puisque la cible, elle, ne sera jamais atteinte.
- */
-function remplir_encart_test(bloc, fiche) {
-  const encart = $("guideTest");
-  encart.hidden = !bloc.test_max;
-  if (!bloc.test_max) return;
-
-  // L'unite se lit sur le mode et non sur la fiche : un meme mouvement se
-  // compte en repetitions ou se tient en secondes selon le bloc joue.
-  const en_duree = MODES_DUREE.includes(bloc.mode);
-  const effort = en_duree
-    ? "tiens la position aussi longtemps que tu peux"
-    : "fais autant de répétitions propres que tu peux";
-  const charge = bloc.poids
-    ? ` avec ${bloc.poids} kg — une charge moyenne, choisie dans ce que tu as déclaré`
-    : " au poids du corps";
-
-  $("guideTestTexte").textContent =
-    `Je ne sais pas encore où tu en es sur « ${fiche.nom} ». Une seule série : ` +
-    `${effort}${charge}. Arrête-toi quand la forme se dégrade, puis croise les ` +
-    `bras : c'est ton résultat qui fixera tes objectifs, il n'y a rien à rater.`;
 }
 
 /**
@@ -2516,15 +2506,6 @@ function jouer_exercice(corps, instant) {
   const bloc = seance.bloc_actuel;
   if (!bloc) return;
 
-  // Jumeau de `main.py` : sur un test de calibration la cible du bloc est un
-  // plafond hors d'atteinte, et sans ce drapeau le HUD demande « 999
-  // repetitions » sans dire pourquoi. `hud.js` sait deja afficher « max » et
-  // laisser la barre vide — c'est le branchement qui manquait, pas
-  // l'affichage. Pose ici et non dans `changer_exercice` pour la meme raison
-  // que cote poste fixe : ca ne vaut que pendant la phase exercice.
-  etat.test_max = Boolean(bloc.test_max);
-  if (etat.test_max) etat.consigne = texte("test_calibration");
-
   // Le geste bras en X termine la serie a la main, et c'est le seul chemin
   // qui peut produire une serie **non reussie** : `objectif_serie_atteint` en
   // decide, on ne force jamais `completee` a vrai.
@@ -2552,44 +2533,7 @@ function jouer_exercice(corps, instant) {
   if (terminee) apres_serie();
 }
 
-/**
- * Pose l'ancrage d'un test de calibration, si la serie qui vient de finir en
- * etait un.
- *
- * **Ici et pas a la fin de la seance** : la performance vient d'etre mesuree,
- * et l'ancrage doit exister avant que le moteur ne recalcule quoi que ce soit.
- * Refaire la serie repose un ancrage, sans dommage — seul le dernier de chaque
- * exercice compte.
- */
-async function cloturer_test_eventuel() {
-  const repere = seance._derniere_serie_terminee;
-  if (!repere) return;
-  const bloc = seance.exercices[repere.index_exercice];
-  if (!bloc?.test_max) return;
-
-  const resultat = seance.resultats_series.find(
-    (r) => r.index_exercice === repere.index_exercice && r.serie === repere.serie
-  );
-  if (!resultat) return;
-
-  const nom = bloc.exercice.nom;
-  const maximum =
-    moteur.baremes.unite(nom) === UNITE_SECONDES
-      ? resultat.duree
-      : resultat.repetitions;
-  if (!maximum) return;
-
-  const niveau = moteur.calibration.niveau_a_ancrer(nom, bloc.poids, maximum);
-  historique.enregistrer_ancrage(base, nom, niveau, {
-    raison: "Test en séance",
-    utilisateur_id: PROFIL,
-  });
-  await stockage.sauver(base);
-  etat.consigne = `Niveau de départ enregistré pour ${nom}.`;
-}
-
 function apres_serie() {
-  cloturer_test_eventuel();
   compteur.reset();
   derniere_rep = 0;
   // Un geste neuf : sans ca, `HoldPosition` reste « termine » et la serie
@@ -2898,10 +2842,11 @@ function dessiner_resume_de_fin(seance_id) {
     {
       ouvert: true,
       supprimable: false,
-      // Les objectifs sont relus **apres** l'ecriture de la seance, donc apres
-      // l'ancrage qu'un test vient de poser : c'est ce qui permet d'annoncer
-      // « prochaine cible » sur un exercice qu'on decouvre.
-      objectifs: moteur.objectifs.objectifs_par_exercice(histoire, ancrages),
+      // Relus **apres** l'ecriture de la seance : la « prochaine cible »
+      // annoncee doit tenir compte de ce qu'on vient de faire.
+      objectifs: moteur.objectifs.objectifs_par_exercice(
+        histoire, ancrages, lecture_du_profil().note,
+      ),
     }
   );
 
@@ -3171,7 +3116,9 @@ function dessiner_seance(seance, montees, montees_ligue = {}, options = {}) {
           (saut ? jalon_ligue(exercice.nom, saut) : "")
         : "";
 
-      // **Un test n'est ni reussi ni echoue.** Sa cible est un plafond qu'on
+      // **Un test n'est ni reussi ni echoue.** Plus aucune seance n'en joue —
+      // la note d'athlete l'a remplace —, mais l'historique en garde : ces
+      // lignes-la se relisent toujours ainsi. Sa cible est un plafond qu'on
       // n'atteint jamais, donc le juger reviendrait a declarer echoue ce qui
       // vient precisement de mesurer le niveau — c'est ce qui affichait
       // « Non atteint » en rouge sur la toute premiere serie de quelqu'un. On
@@ -3349,11 +3296,10 @@ function ouvrir_editeur(nom) {
  */
 function blocs_a_editer(nom) {
   const blocs = structuredClone(seances[nom] ?? []);
-  const { seances: histoire, ancrages } = lecture_du_profil();
+  const { seances: histoire, ancrages, note } = lecture_du_profil();
   return moteur.objectifs.appliquer_a_blocs(
     blocs,
-    moteur.objectifs.objectifs_par_exercice(histoire, ancrages),
-    moteur.objectifs.exercices_sans_donnees(histoire, ancrages),
+    moteur.objectifs.objectifs_par_exercice(histoire, ancrages, note),
     PROFIL
   );
 }
@@ -3564,11 +3510,10 @@ async function enregistrer_seance_editee() {
     return;
   }
 
-  const { seances: histoire, ancrages } = lecture_du_profil();
+  const { seances: histoire, ancrages, note } = lecture_du_profil();
   moteur.objectifs.marquer_cibles_manuelles(
     blocs_edites,
-    moteur.objectifs.objectifs_par_exercice(histoire, ancrages),
-    moteur.objectifs.exercices_sans_donnees(histoire, ancrages),
+    moteur.objectifs.objectifs_par_exercice(histoire, ancrages, note),
     PROFIL
   );
 
@@ -3745,6 +3690,15 @@ const ETAPES_BIENVENUE = [
     ],
   },
   {
+    // Apres le materiel et pas avant : l'apercu des paliers de depart se
+    // calcule avec les charges qu'on vient de declarer.
+    titre: "Ton niveau",
+    note: true,
+    ecrans: [
+      { texte: "À quel point es-tu athlète ? Ta note fixe le départ des exercices que tu n'as jamais faits — les séances ajustent ensuite d'elles-mêmes." },
+    ],
+  },
+  {
     titre: "Ton programme",
     programmes: true,
     ecrans: [
@@ -3767,6 +3721,15 @@ const ETAPES_BIENVENUE = [
     ],
   },
 ];
+
+//: Les etapes reellement parcourues. Le tunnel entier pour un profil neuf,
+//: la seule etape de la note pour un profil d'avant elle, dont l'accueil est
+//: fini depuis longtemps : c'est la seule question qu'on lui repose.
+let etapes_bienvenue = ETAPES_BIENVENUE;
+
+//: La note choisie dans le tunnel, ou `null` tant que rien n'est choisi —
+//: rien n'est pre-selectionne, choisir a sa place serait repondre pour elle.
+let note_accueil = null;
 
 let etape_bienvenue = 0;
 
@@ -4160,7 +4123,7 @@ function ecrire_pratique(message, part) {
 
 /** Quitte la pratique et referme le tunnel. */
 async function quitter_pratique() {
-  const etape = ETAPES_BIENVENUE[etape_bienvenue];
+  const etape = etapes_bienvenue[etape_bienvenue];
   arreter_pratique();
   montrer("ecranBienvenue");
   await recolter_etape(etape);
@@ -4168,14 +4131,14 @@ async function quitter_pratique() {
 }
 
 function dessiner_bienvenue() {
-  const etape = ETAPES_BIENVENUE[etape_bienvenue];
+  const etape = etapes_bienvenue[etape_bienvenue];
   const page = etape.ecrans[ecran_bienvenue];
   const dernier = ecran_bienvenue === etape.ecrans.length - 1;
   const profil = profil_courant();
 
   $("bienvenueTitre").textContent = `Bienvenue ${profil?.nom ?? ""}`.trim();
   $("bienvenueEtapeNum").textContent =
-    `Étape ${etape_bienvenue + 1} sur ${ETAPES_BIENVENUE.length}` +
+    `Étape ${etape_bienvenue + 1} sur ${etapes_bienvenue.length}` +
     ` · ${ecran_bienvenue + 1}/${etape.ecrans.length}`;
   $("bienvenueSousTitre").textContent = etape.titre;
   $("bienvenueCorps").innerHTML = `<p>${echapper(page.texte)}</p>`;
@@ -4189,6 +4152,14 @@ function dessiner_bienvenue() {
   $("bienvenueCameraNote").hidden = !pratique_impossible;
   $("bienvenueProgrammes").hidden = !(etape.programmes && dernier);
   if (etape.programmes && dernier) dessiner_programmes_accueil();
+
+  $("bienvenueNote").hidden = !(etape.note && dernier);
+  if (etape.note && dernier) {
+    dessiner_selecteur_note($("bienvenueNote"), note_accueil, (note) => {
+      note_accueil = note;
+      $("bienvenueSuivant").disabled = false;
+    });
+  }
 
   $("bienvenueMateriel").hidden = !(etape.materiel && dernier);
   if (etape.materiel && dernier) {
@@ -4211,7 +4182,8 @@ function dessiner_bienvenue() {
   // Le retour recule d'un **ecran**, pas d'une etape : sinon relire la phrase
   // precedente obligerait a retraverser toute l'etape.
   $("bienvenuePrecedent").hidden = etape_bienvenue === 0 && ecran_bienvenue === 0;
-  $("bienvenueSuivant").disabled = false;
+  // La note est la seule etape qu'on ne traverse pas sans repondre.
+  $("bienvenueSuivant").disabled = Boolean(etape.note && dernier && note_accueil === null);
   $("bienvenueSuivant").textContent = libelle_bouton_bienvenue(etape, dernier);
 
   // **Le tunnel lu est muet, et c'est une decision.** Chaque ecran prononcait
@@ -4237,11 +4209,11 @@ function dessiner_bienvenue() {
 function libelle_bouton_bienvenue(etape, dernier) {
   if (!dernier) return "Suivant";
   if (etape.pratique && !pratique_impossible) return "J'ai posé l'appareil";
-  return etape_bienvenue === ETAPES_BIENVENUE.length - 1 ? "C'est parti" : "Continuer";
+  return etape_bienvenue === etapes_bienvenue.length - 1 ? "C'est parti" : "Continuer";
 }
 
 async function avancer_bienvenue() {
-  const etape = ETAPES_BIENVENUE[etape_bienvenue];
+  const etape = etapes_bienvenue[etape_bienvenue];
   const dernier = ecran_bienvenue === etape.ecrans.length - 1;
 
   if (!dernier) {
@@ -4270,7 +4242,15 @@ async function avancer_bienvenue() {
  */
 async function recolter_etape(etape) {
   const profil = profil_courant();
-  if (!etape.materiel || !profil) return;
+  if (!profil) return;
+  if (etape.note) {
+    if (note_accueil !== null) {
+      historique.definir_note_athlete(base, PROFIL, note_accueil);
+      await stockage.sauver(base);
+    }
+    return;
+  }
+  if (!etape.materiel) return;
   profil.materiel = lire_materiel(
     $("listeHalteresAccueil"),
     $("listeAccessoiresAccueil")
@@ -4283,7 +4263,7 @@ async function recolter_etape(etape) {
 
 /** L'etape suivante, ou la fin du tunnel. */
 async function etape_suivante() {
-  if (etape_bienvenue < ETAPES_BIENVENUE.length - 1) {
+  if (etape_bienvenue < etapes_bienvenue.length - 1) {
     etape_bienvenue += 1;
     ecran_bienvenue = 0;
     dessiner_bienvenue();
@@ -4307,7 +4287,7 @@ function reculer_bienvenue() {
     ecran_bienvenue -= 1;
   } else if (etape_bienvenue > 0) {
     etape_bienvenue -= 1;
-    ecran_bienvenue = ETAPES_BIENVENUE[etape_bienvenue].ecrans.length - 1;
+    ecran_bienvenue = etapes_bienvenue[etape_bienvenue].ecrans.length - 1;
   } else {
     return;
   }
@@ -4354,7 +4334,7 @@ function dessiner_programmes_accueil() {
 
 /** L'accueil est-il encore a faire pour ce profil ? */
 function accueil_a_faire(profil) {
-  return !profil?.onboarding_termine;
+  return !profil?.onboarding_termine || note_du_profil(profil).declaree === null;
 }
 
 function choisir_profil(id) {
@@ -4392,6 +4372,14 @@ function ouvrir_pour_le_profil() {
     // Les **deux** compteurs, comme `etape_suivante` : n'en remettre qu'un
     // ouvrirait l'accueil d'un profil neuf au milieu d'une etape, si le tunnel
     // avait deja ete parcouru dans cette session.
+    const profil = profil_courant();
+    // Un profil d'avant la note n'a qu'elle a donner : lui refaire tout le
+    // tunnel, materiel et camera compris, serait lui reposer des questions
+    // auxquelles il a deja repondu.
+    etapes_bienvenue = profil.onboarding_termine
+      ? ETAPES_BIENVENUE.filter((etape) => etape.note)
+      : ETAPES_BIENVENUE;
+    note_accueil = note_du_profil(profil).declaree;
     etape_bienvenue = 0;
     ecran_bienvenue = 0;
     dessiner_bienvenue();
@@ -4399,6 +4387,62 @@ function ouvrir_pour_le_profil() {
     return;
   }
   montrer("ecranSeances");
+}
+
+//: Les exercices de l'apercu : un au poids du corps, un charge, un maintien —
+//: les trois facons dont un palier se lit. Absents du bareme, ils sont sautes.
+const EXERCICES_APERCU_NOTE = ["Pompes", "Squat", "Curl biceps droit", "Gainage planche"];
+
+/**
+ * Le selecteur de note d'athlete : dix pastilles, le repere le plus proche,
+ * et ce que la note donne sur quelques exercices.
+ *
+ * **Un seul selecteur dans l'application**, monte dans deux racines — le
+ * tunnel et le profil —, pour la meme raison que `remplir_materiel(racine…)` :
+ * deux questionnaires pour la meme question finiraient par ne plus la poser
+ * pareil. L'apercu se calcule avec le moteur du moment, donc avec le materiel
+ * deja declare : c'est ce qui rend une note concrete (« 4×11 pompes ») au lieu
+ * d'un chiffre a deviner.
+ */
+function dessiner_selecteur_note(zone, note, quand_change) {
+  const reperes = moteur.calibration.REPERES_NOTE;
+  const boutons = [];
+  for (let n = 1; n <= 10; n += 1) {
+    boutons.push(
+      `<button type="button" class="choix-note${n === note ? " choisi" : ""}" data-note="${n}">${n}</button>`
+    );
+  }
+  zone.innerHTML =
+    `<div class="selecteur-note"><div class="choix-notes">${boutons.join("")}</div>` +
+    `<p class="note-repere"></p><div class="note-apercu"></div>` +
+    `<p class="muet">Dans le doute, prends plus bas : un départ trop facile se rattrape en une séance, un départ trop dur fait échouer toutes les séries.</p></div>`;
+
+  const montrer_note = (valeur) => {
+    // Le repere le plus proche par en dessous : c'est lui qui decrit la note.
+    const cle = Object.keys(reperes).map(Number).filter((n) => n <= (valeur ?? 0)).pop();
+    zone.querySelector(".note-repere").textContent =
+      valeur === null ? "Choisis une note." : `${valeur} — ${reperes[cle] ?? ""}`;
+    const lignes = valeur === null ? [] : EXERCICES_APERCU_NOTE
+      .filter((nom) => moteur.baremes.est_suivi_par_le_moteur(nom))
+      .map((nom) => {
+        const palier = moteur.baremes.palier(nom, moteur.calibration.niveau_de_depart(nom, valeur));
+        return palier ? `<span>${echapper(nom)} : <b>${echapper(resume_palier(palier))}</b></span>` : "";
+      });
+    zone.querySelector(".note-apercu").innerHTML =
+      lignes.length ? `<span>Tu démarrerais à :</span>${lignes.join("")}` : "";
+  };
+  montrer_note(note);
+
+  for (const bouton of zone.querySelectorAll("[data-note]")) {
+    bouton.addEventListener("click", () => {
+      const valeur = Number(bouton.dataset.note);
+      for (const autre of zone.querySelectorAll("[data-note]")) {
+        autre.classList.toggle("choisi", autre === bouton);
+      }
+      montrer_note(valeur);
+      quand_change(valeur);
+    });
+  }
 }
 
 /** Le bouton d'acces porte le prenom : on voit pour qui on enregistre.
@@ -4466,6 +4510,19 @@ function dessiner_profil() {
     case_resume("Poids du corps", profil.poids_corps_kg ? `${profil.poids_corps_kg} kg` : "—");
   editer_mesures(false);
 
+  // La note retenue peut depasser la note declaree : elle monte toute seule
+  // quand l'historique recent la depasse nettement, et redescend sur la
+  // declaree quand il flechit. Les deux sont montrees pour que ca se voie.
+  const etat_note = moteur.calibration.etat_note(note_du_profil(profil), seances, ancrages);
+  $("resumeNote").innerHTML =
+    case_resume("Note retenue", etat_note.effective ?? "—") +
+    case_resume("Déclarée", etat_note.declaree ?? "—") +
+    (etat_note.effective !== null && etat_note.declaree !== null &&
+     etat_note.effective > etat_note.declaree
+      ? case_resume("Montée avec tes séances", etat_note.mesuree)
+      : "");
+  editer_note(false);
+
   dessiner_materiel();
   editer_materiel(false);
 
@@ -4485,6 +4542,38 @@ function editer_mesures(ouvert) {
   $("actionsMesures").hidden = ouvert;
   $("formMesures").hidden = !ouvert;
   if (!ouvert) $("retourMesures").textContent = "";
+}
+
+//: La note en cours de saisie sur l'ecran de profil.
+let note_profil = null;
+
+/** Meme bascule pour la note d'athlete. */
+function editer_note(ouvert) {
+  $("resumeNote").hidden = ouvert;
+  $("actionsNote").hidden = ouvert;
+  $("editeurNote").hidden = !ouvert;
+  if (ouvert) {
+    note_profil = note_du_profil(profil_courant()).declaree;
+    dessiner_selecteur_note($("selecteurNoteProfil"), note_profil, (note) => {
+      note_profil = note;
+    });
+  } else {
+    $("etatNote").textContent = "";
+  }
+}
+
+/** Enregistre la note. Rien a reconstruire : le moteur la relit a chaque calcul. */
+async function enregistrer_note() {
+  if (note_profil === null) {
+    $("etatNote").textContent = "Choisis une note.";
+    return;
+  }
+  historique.definir_note_athlete(base, PROFIL, note_profil);
+  const sauve = await stockage.sauver(base);
+  dessiner_profil();
+  $("etatNote").textContent = sauve
+    ? "Note enregistrée."
+    : "Impossible d'écrire sur cet appareil — exporte ta sauvegarde.";
 }
 
 /** Meme bascule pour le materiel. Le resume est celui du poste fixe. */
@@ -4749,8 +4838,8 @@ function bloc_niveau(etat, nom) {
   const note = etat.niveau
     ? ""
     : `<p class="sous-titre" style="margin-top:14px">Rien dans l'historique n'atteint ` +
-      `encore le premier palier. Le test de calibration, ou simplement une première ` +
-      `séance, posera le niveau.</p>`;
+      `encore le premier palier. La première séance part de ta note d'athlète, et ` +
+      `c'est elle qui posera le niveau.</p>`;
   const cran = ligue?.seuil_suivant
     ? `<p class="niveau-note">Le cran suivant demande ` +
       `${Math.round((ligue.seuil_suivant * 100) / ligue.seuil_actuel - 100)} % de volume ` +
@@ -4979,8 +5068,7 @@ function bloc_graphique(nom, statistique) {
  *
  * **On ne demande jamais un numero de niveau** — personne ne sait ce que vaut
  * « niveau 27 ». On demande une performance, et le bareme en deduit le
- * niveau : c'est la meme forme que prend le test de calibration, et c'est ce
- * qui rend la saisie honnete.
+ * niveau : c'est ce qui rend la saisie honnete.
  *
  * Un ancrage agit **de deux facons a la fois** — il fait table rase de
  * l'historique anterieur *et* sert de plancher. C'est la table rase qui lui
@@ -5387,13 +5475,13 @@ function cible_affichee(bloc, objectifs, sans_donnees) {
     return `${bloc.series}×${cible_du_bloc(bloc)}${unite_bloc}` +
       (bloc.poids ? ` · ${bloc.poids} kg` : "") + " · figée";
   }
-  if (moteur.objectifs.a_calibrer(bloc.exercice, bloc.mode, sans_donnees)) {
-    return "à tester";
-  }
   const palier = moteur.objectifs.objectif_pour(bloc.exercice, bloc.mode, objectifs);
   if (palier) {
     return `${palier.series}×${palier.cible}${palier.unite === "secondes" ? " s" : ""}` +
-      (palier.poids ? ` · ${palier.poids} kg` : "");
+      (palier.poids ? ` · ${palier.poids} kg` : "") +
+      // Jamais fait : la cible vient de la note d'athlete et non de
+      // l'historique, et s'ajustera des cette seance.
+      (sans_donnees.has(bloc.exercice) ? " · 1re fois" : "");
   }
   return `${bloc.series}×${cible_du_bloc(bloc)}${unite_bloc}`;
 }
@@ -5460,8 +5548,10 @@ function dessiner_liste() {
 
   // Les objectifs sont calcules une fois pour toute la liste : chaque calcul
   // relit l'historique entier, et il y a six seances a afficher.
-  const { seances: histoire, ancrages } = lecture_du_profil();
-  const objectifs = moteur.objectifs.objectifs_par_exercice(histoire, ancrages);
+  const { seances: histoire, ancrages, note } = lecture_du_profil();
+  const objectifs = moteur.objectifs.objectifs_par_exercice(histoire, ancrages, note);
+  // Ne sert plus qu'a l'affichage : le « 1re fois » des cibles venues de la
+  // note d'athlete.
   const sans_donnees = moteur.objectifs.exercices_sans_donnees(histoire, ancrages);
   const dernieres = dernieres_series(histoire);
 
@@ -5583,6 +5673,9 @@ $("versProfils").addEventListener("click", () => {
 $("formMesures").addEventListener("submit", enregistrer_mesures);
 $("boutonModifierMesures").addEventListener("click", () => editer_mesures(true));
 $("boutonModifierMateriel").addEventListener("click", () => editer_materiel(true));
+$("boutonModifierNote").addEventListener("click", () => editer_note(true));
+$("boutonAnnulerNote").addEventListener("click", () => editer_note(false));
+$("boutonEnregistrerNote").addEventListener("click", enregistrer_note);
 $("boutonAnnulerMateriel").addEventListener("click", () => {
   // Redessiner avant de refermer : les <select> ont pu bouger sans etre
   // enregistres, et les rouvrir sur d'anciennes valeurs ferait croire qu'ils

@@ -70,11 +70,6 @@ class EtatSeance:
     redevenir la fiche courante à la reprise.
     """
 
-    test_max: bool = False
-    """La série en cours est-elle un test de calibration (maximum au premier
-    passage) ? Le front s'en sert pour remplacer la cible par « max » : la
-    valeur réelle est un plafond volontairement inatteignable."""
-
     repetitions: int = 0
     repetitions_cibles: int = 10
     temps_maintien: float = 0

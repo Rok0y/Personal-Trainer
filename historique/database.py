@@ -231,6 +231,18 @@ def initialiser():
                 f"ALTER TABLE utilisateurs ADD COLUMN {colonne} {type_sql}"
             )
 
+    # La note d'athlète (1 à 10) et le repère de sa dernière hausse. Pas de
+    # DEFAULT : NULL veut dire « pas encore demandée », et c'est ce NULL que
+    # les deux accueils lisent pour la demander une fois — y mettre une valeur
+    # d'office répondrait à la place de la personne. Le repère est un
+    # identifiant de séance, comme `apres_seance_id` des ancrages, et non une
+    # date (voir `progression.calibration.niveau_plancher`).
+    for colonne in ("note_athlete", "note_relevee_apres"):
+        if colonne not in colonnes_utilisateurs:
+            curseur.execute(
+                f"ALTER TABLE utilisateurs ADD COLUMN {colonne} INTEGER"
+            )
+
     # À l'échelle visée, toute requête filtre par profil : ces index ne sont
     # pas optionnels.
     curseur.execute("""
@@ -286,6 +298,8 @@ def _profil_depuis_ligne(ligne):
         "date_naissance": ligne[8],
         "taille_cm": ligne[9],
         "poids_corps_kg": ligne[10],
+        "note_athlete": ligne[11],
+        "note_relevee_apres": ligne[12],
     }
 
 
@@ -297,7 +311,7 @@ def lister_utilisateurs():
     curseur.execute(
         "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
         "programme_choisi, materiel, sexe, date_naissance, taille_cm, "
-        "poids_corps_kg "
+        "poids_corps_kg, note_athlete, note_relevee_apres "
         "FROM utilisateurs ORDER BY id"
     )
     profils = [_profil_depuis_ligne(ligne) for ligne in curseur.fetchall()]
@@ -313,7 +327,7 @@ def recuperer_utilisateur(utilisateur_id):
     curseur.execute(
         "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
         "programme_choisi, materiel, sexe, date_naissance, taille_cm, "
-        "poids_corps_kg "
+        "poids_corps_kg, note_athlete, note_relevee_apres "
         "FROM utilisateurs WHERE id = ?",
         (utilisateur_id,),
     )
@@ -355,7 +369,61 @@ def creer_utilisateur(nom):
     utilisateur_id = curseur.lastrowid
     conn.commit()
     conn.close()
-    return {"id": utilisateur_id, "nom": nom, "onboarding_termine": False}
+    return {
+        "id": utilisateur_id,
+        "nom": nom,
+        "onboarding_termine": False,
+        "note_athlete": None,
+        "note_relevee_apres": None,
+    }
+
+
+def definir_note_athlete(note, utilisateur_id=None):
+    """Enregistre la note d'athlète d'un profil, et ce qu'elle déclenche.
+
+    Une **hausse** pose le repère `note_relevee_apres` sur la dernière séance
+    du profil : la prochaine séance de chaque exercice déjà fait ne descendra
+    pas sous le départ de la nouvelle note (`calibration.niveau_plancher`).
+    Une **baisse** efface ce repère — elle ne touche que les exercices jamais
+    faits, et annule une hausse qui n'a pas encore été jouée. Un premier
+    réglage (note jusque-là absente) ne pose rien : il n'y a pas de hausse
+    sans note de départ.
+
+    L'appelant doit enchaîner sur `core.utilisateur.rafraichir()`.
+    """
+    from progression.calibration import note_valide
+
+    if not note_valide(note):
+        raise ValueError("La note d'athlète est un entier de 1 à 10.")
+    utilisateur_id = _profil_courant(utilisateur_id)
+
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "SELECT note_athlete, note_relevee_apres FROM utilisateurs WHERE id = ?",
+        (utilisateur_id,),
+    )
+    ligne = curseur.fetchone()
+    if ligne is None:
+        conn.close()
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
+    ancienne, repere = ligne
+    if ancienne is not None and note > ancienne:
+        curseur.execute(
+            "SELECT COALESCE(MAX(id), 0) FROM seances WHERE utilisateur_id = ?",
+            (utilisateur_id,),
+        )
+        repere = curseur.fetchone()[0]
+    elif ancienne is not None and note < ancienne:
+        repere = None
+    curseur.execute(
+        "UPDATE utilisateurs SET note_athlete = ?, note_relevee_apres = ? "
+        "WHERE id = ?",
+        (note, repere, utilisateur_id),
+    )
+    conn.commit()
+    conn.close()
 
 
 def definir_programme_choisi(utilisateur_id, cle):

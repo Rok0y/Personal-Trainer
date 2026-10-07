@@ -24,14 +24,14 @@
 {{ 'ligue-teinte' if ligue else 'ligue-teinte sans-ligue' }}
 {%- endmacro -%}
 
-{# Sans ligue, le badge dit « a tester » plutot que de disparaitre : une
+{# Sans ligue, le badge dit « pas encore classe » plutot que de disparaitre : une
    absence se confondrait avec un oubli d'affichage, alors que « pas encore
    classe » est une information. #}
 {%- macro badge_ligue(ligue, grand=False) -%}
 {%- if ligue -%}
 <span class="badge-ligue{{ ' grand' if grand }}" style="{{ style_ligue(ligue) }}">{{ ligue.libelle }}</span>
 {%- else -%}
-<span class="badge-ligue sans-ligue{{ ' grand' if grand }}">À tester</span>
+<span class="badge-ligue sans-ligue{{ ' grand' if grand }}">Pas encore classé</span>
 {%- endif -%}
 {%- endmacro -%}
 

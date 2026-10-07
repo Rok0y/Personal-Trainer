@@ -4,18 +4,19 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 
 ## Fonctionnalités principales
 
-- **Prise en main d'un nouveau profil** : une seule question à sa création — son
-  **matériel**. Quels haltères il possède (aucun, un, une paire, poids par
-  poids) et quels accessoires. Le matériel appartient au profil : il fixe
-  l'échelle de charge de ses barèmes et dit quels exercices lui sont
-  accessibles. Modifiable à tout moment depuis la page *Mon matériel*.
-- **Calibration en séance, pas en tunnel** : il n'y a pas d'examen d'entrée. On
-  lance une séance normale, et le premier exercice sur lequel l'application ne
-  sait rien devient une **série unique au maximum** à charge moyenne (« fais
-  autant de répétitions propres que tu peux, puis croise les bras »). Le niveau
-  de départ s'en déduit sur-le-champ, et la séance suivante propose un vrai
-  objectif. Rien n'est à reprendre si on s'arrête en cours de route : un
-  exercice est calibré dès qu'il a été testé une fois.
+- **Prise en main d'un nouveau profil** : deux questions à sa création — son
+  **matériel** (quels haltères il possède, aucun, un ou une paire, poids par
+  poids, et quels accessoires) et sa **note d'athlète**, de 1 à 10. Le matériel
+  fixe l'échelle de charge des barèmes ; la note fixe le point de départ de
+  tout exercice jamais fait, traduit par les bornes de ligue pour qu'un même
+  chiffre demande le même effort sur chaque mouvement. Les deux se modifient
+  depuis la page Profil.
+- **Pas de test d'entrée** : un exercice jamais fait démarre directement au
+  palier de la note, et les séances ajustent ensuite d'elles-mêmes, selon la
+  réussite et le ressenti. La note **monte toute seule** quand la plupart des
+  exercices la dépassent nettement, et la relever à la main fait monter une
+  fois la prochaine séance des exercices déjà faits qui sont en dessous. Elle
+  ne valide jamais un niveau.
 - **Fiches d'exercice** : chaque mouvement explique comment se placer (cadrage
   caméra compris), comment l'exécuter et ce qu'il faut éviter. Consultables à
   tout moment depuis l'onglet **Exercices**, et rappelées pendant la séance.
@@ -44,7 +45,7 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 - **Coach vocal** : annonces pré-enregistrées en français (début/fin de série, temps de repos, changement d'exercice, encouragements, etc.).
 - **Gestes de contrôle** sans clavier ni souris (ex. bras en X pour valider une série, deux bras levés pour réinitialiser) afin de piloter la séance depuis devant la caméra.
 - **Guidage d'installation au début de chaque séance** : la caméra s'ouvre avant l'effort et vérifie que vous tenez entièrement dans l'image avant de laisser commencer. Il n'y a qu'une consigne possible, « recule » : elle arrive quand vous êtes déjà debout à trois mètres, où c'est la seule chose que vous puissiez faire. Le reste — hauteur de l'appareil, place à garder autour de vous — est *dit* et non mis en exercice : l'application annonce qu'il faut pouvoir faire un pas dans chaque direction, elle ne vous les fait plus faire.
-- **Accueil d'un nouveau profil** (version navigateur) : prénom et mesures d'abord, puis cinq étapes d'une ou deux phrases — comment ça marche, votre matériel, votre programme, les deux gestes, où poser l'appareil — et une mise en pratique caméra ouverte où l'on se cadre et où l'on essaie les deux gestes pour de vrai. Les écrans de texte sont **muets** : la voix ne reprend qu'une fois que vous vous êtes éloigné de l'appareil, là où vous ne pouvez plus lire.
+- **Accueil d'un nouveau profil** (version navigateur) : prénom et mesures d'abord, puis six étapes d'une ou deux phrases — comment ça marche, votre matériel, votre note d'athlète (avec un aperçu de vos paliers de départ), votre programme, les deux gestes, où poser l'appareil — et une mise en pratique caméra ouverte où l'on se cadre et où l'on essaie les deux gestes pour de vrai. Les écrans de texte sont **muets** : la voix ne reprend qu'une fois que vous vous êtes éloigné de l'appareil, là où vous ne pouvez plus lire.
 - **Historique des séances et records** stockés en base SQLite, avec suivi de la progression (meilleur volume, dernières performances). Sur la page Historique, un seul marqueur signale un progrès : la montée de niveau. Le badge de record qui la doublait a été retiré — il ne savait mesurer que les exercices avec charge, et restait donc muet sur les pompes, les gainages et les squats.
 - **Niveaux par exercice** : chaque exercice possède un barème de paliers (poids, séries, répétitions) dont le volume ne redescend jamais, et votre niveau est déduit de votre historique — le plus haut palier jamais validé. La progression monte d'abord les répétitions, puis la charge, puis le nombre de séries (jusqu'à six) ; au-delà, ce sont les répétitions qui montent sans limite, si bien qu'aucun objectif n'est jamais inaccessible faute de matériel. La fiche de chaque exercice affiche le niveau atteint, le palier correspondant et le palier suivant, avec la courbe de progression — les records ont fusionné avec les fiches, il n'y a plus qu'un endroit où lire un mouvement.
 - **Progression automatique des séances** : chaque séance repart de l'objectif de la précédente. Réussi, il monte d'un palier ; manqué, il revient à l'identique. Vous pouvez toujours saisir une cible à la main : elle est alors figée (badge « cible manuelle » sur l'accueil) jusqu'à ce que vous la remettiez sur la valeur proposée.
@@ -113,7 +114,7 @@ réel : il est écrit hors du dépôt, et le script refuse d'écrire dedans.
 - `audio/` — Coach vocal : sélection et déclenchement des annonces (`coach.py`), lecture des fichiers son (`lecteur.py`), briques d'annonces composées (`annonces.py`), banque de fichiers audio (`Fichiers/`), nettoyage des prises (`nettoyer_sons.py`) et la feuille de ce qu'il reste à enregistrer (`A_ENREGISTRER.md`, générée).
 - `historique/` — Persistance SQLite des séances, statistiques et records (`database.py`, base `personaltrainer.db`).
 - `web/` — Deux choses distinctes. Le **serveur Flask** (`app.py`) exposant l'API et les pages (démarrage/pause de séance, historique, programmes, fiches d'exercice, profil, création/édition de séances), avec ses templates (`templates/`). Et le **portage navigateur** dans `static/` : `static/js/` porte les jumeaux JavaScript des modules de calcul plus le code d'affichage partagé avec les templates, `static/app/` l'application complète, `static/demo/` le banc d'essai, `static/donnees/` les fichiers dérivés du Python. Les feuilles de style de la racine (`palette.css`, `hud.css`, `programmes.css`, `exercices.css`, `ressentis.css`, `ancrages.css`) sont chargées par les deux applications : c'est ce qui les empêche de diverger à chaque correction.
-- `progression/` — Moteur de progression : le barème de paliers de chaque exercice (`paliers.py`), la déduction du niveau atteint à partir de l'historique (`niveaux.py`), l'application des objectifs aux séances (`objectifs.py`), l'ajustement par le ressenti déclaré en fin de séance (`ressenti.py`), les programmes sportifs (`programmes.py`), la traduction d'un maximum en niveau de départ (`calibration.py`) et les ligues, divisions et XP qui rendent tout cela lisible (`ligues.py`). **Tous les nombres réglables — barèmes, seuils de ligue, table d'XP — vivent dans `reglages.json`**, lu par le Python comme par le JavaScript, et éditable depuis la page `web/static/dev/baremes.html` qui le rend prêt à coller.
+- `progression/` — Moteur de progression : le barème de paliers de chaque exercice (`paliers.py`), la déduction du niveau atteint à partir de l'historique (`niveaux.py`), l'application des objectifs aux séances (`objectifs.py`), l'ajustement par le ressenti déclaré en fin de séance (`ressenti.py`), les programmes sportifs (`programmes.py`), la traduction de la note d'athlète en palier de départ (`calibration.py`) et les ligues, divisions et XP qui rendent tout cela lisible (`ligues.py`). **Tous les nombres réglables — barèmes, seuils de ligue, table d'XP — vivent dans `reglages.json`**, lu par le Python comme par le JavaScript, et éditable depuis la page `web/static/dev/baremes.html` qui le rend prêt à coller.
 - `core/` — État partagé entre la boucle caméra et le site web (`state.py`), identité du profil connecté (`utilisateur.py`), matériel déclaré par le profil (`materiel.py`) et catalogue des messages affichés à l'utilisateur (`messages.py`).
 - `scripts/` — Trois genres d'outils, tous hors du chemin critique. Les **vérifications manuelles** (`script_verification_positions.py`, `script_niveaux.py`, `verifier_hud.py`, `verifier_annonces.py`), les **harnais de portage** par paires `generer_*.py` / `comparer_*.mjs`, et les **exports** : `preparer_demo.py` (tout ce que le navigateur relit), `exporter_profil.py` (un historique SQLite vers l'application) et `lister_annonces.py` (la feuille de prise de son du coach, `audio/A_ENREGISTRER.md`, **dérivée** des tables et donc toujours d'accord avec ce que le code réclame).
 

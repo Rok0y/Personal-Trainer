@@ -674,17 +674,14 @@ def _fusionner_cibles_manuelles(blocs, blocs_stockes):
 
 
 def exporter_blocs(circuit):
-    """Produit une définition JSON indépendante des objets Python du catalogue.
-
-    Un bloc joué en test de calibration ressort avec sa définition **d'avant le
-    test** : la fin de séance réécrit le fichier depuis ces blocs, et y graver
-    la série unique au maximum remplacerait l'exercice par son test pour de
-    bon.
-    """
+    """Produit une définition JSON indépendante des objets Python du catalogue."""
     return [
         {
             "exercice": bloc.exercice.nom,
-            **_cible_persistee(bloc),
+            "poids": bloc.poids,
+            "series": bloc.nombre_series,
+            "repetitions": bloc.repetitions_par_serie,
+            "duree": bloc.duree,
             "mode": bloc.mode,
             "repos_entre_series": bloc.repos_entre_series,
             "repos_apres": bloc.repos_apres,
@@ -694,22 +691,6 @@ def exporter_blocs(circuit):
         }
         for bloc in circuit.exercices
     ]
-
-
-def _cible_persistee(bloc):
-    """Poids, séries et cible tels qu'ils doivent retourner sur le disque."""
-    avant = getattr(bloc, "avant_test", None) or {
-        "nombre_series": bloc.nombre_series,
-        "poids": bloc.poids,
-        "repetitions_par_serie": bloc.repetitions_par_serie,
-        "duree": bloc.duree,
-    }
-    return {
-        "poids": avant["poids"],
-        "series": avant["nombre_series"],
-        "repetitions": avant["repetitions_par_serie"],
-        "duree": avant["duree"],
-    }
 
 
 def enregistrer_configuration_seance(nom, circuit):
@@ -839,9 +820,9 @@ def creer_seance(nom):
     return appliquer_a_circuit(circuit)
 
 
-#: Cible qu'aucun effort n'atteindra. Sert au test de calibration : la série
-#: ne se termine alors que par le geste bras en X ou le bouton, ce qui est
-#: exactement ce qu'on veut mesurer — un maximum, pas l'atteinte d'un objectif.
+#: Cible qu'aucun effort n'atteindra. Sert au mode test d'un exercice isolé : la
+#: série ne se termine alors que par le geste bras en X ou le bouton — un
+#: maximum, pas l'atteinte d'un objectif.
 #: Un mode « série illimitée » dans le moteur ferait la même chose au prix d'un
 #: cinquième mode à maintenir partout.
 CIBLE_SANS_LIMITE = 9999
@@ -850,8 +831,7 @@ CIBLE_SANS_LIMITE = 9999
 def creer_seance_test(nom_exercice, mode, cible=None):
     """Circuit d'un seul exercice, d'une seule série.
 
-    `cible` à None demande une série **sans limite** : c'est la forme du test de
-    calibration. Sinon la valeur est la cible de la série, en répétitions ou en
+    `cible` à None demande une série **sans limite**, terminée à la main. Sinon la valeur est la cible de la série, en répétitions ou en
     secondes selon le mode.
     """
     mouvements = catalogue_mouvements()
@@ -882,7 +862,7 @@ def creer_seance_test(nom_exercice, mode, cible=None):
 def catalogue():
     objectifs = objectifs_par_exercice()
     # Les deux calculs relisent l'historique : une fois pour tout le catalogue,
-    # pas une fois par séance.
+    # pas une fois par séance. Le second ne sert qu'au badge « 1re fois ».
     sans_donnees = exercices_sans_donnees()
     resultats = {
         nom: {
@@ -918,7 +898,7 @@ def catalogue():
         # Les cibles affichées doivent être celles que la séance jouera :
         # sans ce passage, l'accueil annoncerait les valeurs du disque pendant
         # que `creer_seance` en applique d'autres.
-        appliquer_a_blocs(seance["exercices"], objectifs, sans_donnees)
+        appliquer_a_blocs(seance["exercices"], objectifs)
         # Recalculé ici plutôt que gardé depuis les deux constructions
         # ci-dessus : un seul endroit qui distingue échauffement et exercice,
         # sur la liste finale (celle affichée), pas sur le nombre de blocs bruts.
@@ -931,6 +911,13 @@ def catalogue():
             exercice["materiel"] = materiel_exercice(
                 exercice["nom"],
                 exercice.get("poids", 0),
+            )
+            # Posé ici et pas dans `appliquer_a_blocs` : ce drapeau n'a de sens
+            # qu'à l'écran, et une fonction partagée avec l'écriture finirait
+            # par le graver dans le fichier — leçon du `test_max` d'antan.
+            exercice["premiere_fois"] = (
+                exercice.get("mode") != MODE_ECHAUFFEMENT
+                and exercice["nom"] in sans_donnees
             )
         seance["materiel"] = formater_materiel(
             seance["exercices"]
