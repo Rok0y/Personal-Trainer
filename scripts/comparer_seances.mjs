@@ -21,7 +21,7 @@ import { amplitude_pour } from "../web/static/js/seance.js";
 import { construire_corps } from "../web/static/js/landmarks.js";
 import { CompteurMouvement } from "../web/static/js/compteur.js";
 import { creer_etat } from "../web/static/js/etat.js";
-import { executer_mode } from "../web/static/js/moteur.js";
+import { ajuster_repetitions, executer_mode } from "../web/static/js/moteur.js";
 import { texte, libelle_etape } from "../web/static/js/messages.js";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
@@ -181,6 +181,19 @@ function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
       boucle.derniere_rep = 0;
     }
     return [triplet, null];
+  }
+
+  if (nom === "ajuster") {
+    // Jumelle de la commande Python : le garde est dans la fonction.
+    boucle.derniere_rep = ajuster_repetitions({
+      seance: circuit,
+      compteur: boucle.compteur,
+      etat: boucle.etat,
+      coach: boucle.coach,
+      delta: arguments_.delta,
+      derniere_rep: boucle.derniere_rep,
+    });
+    return [boucle.derniere_rep, null];
   }
 
   if (nom === "aller_a_l_amplitude") {

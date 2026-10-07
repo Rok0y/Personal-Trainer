@@ -19,6 +19,8 @@ import {
   bras_gauche_leve,
   bras_en_x,
   deux_bras_leves,
+  seul_bras_droit_leve,
+  seul_bras_gauche_leve,
 } from "../web/static/js/positions.js";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
@@ -30,6 +32,8 @@ const FONCTIONS = {
   bras_gauche_leve,
   bras_en_x,
   deux_bras_leves,
+  seul_bras_droit_leve,
+  seul_bras_gauche_leve,
 };
 
 let lignes;

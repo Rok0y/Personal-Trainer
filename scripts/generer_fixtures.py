@@ -97,6 +97,49 @@ def pose_bras_leves(rng):
     return Body(points)
 
 
+NOMBRE_POSES_UN_BRAS = 500
+"""Poses construites un seul bras leve, pour les gestes +1 / -1.
+
+Meme raison que les poses bras leves : `seul_bras_droit_leve` exige un bras
+tendu en haut, l'autre poignet **sous** son epaule et le buste debout — une
+conjonction que le hasard ne visite pas. Le poignet de l'autre bras est tire
+de part et d'autre de la hauteur de son epaule, pour que la frontiere qui
+coupe le geste quand le second bras monte soit visitee des deux cotes."""
+
+
+def pose_un_bras_leve(rng):
+    """Un bras tendu au-dessus de l'epaule, l'autre autour de l'epaule.
+
+    Le cote leve est tire au hasard, le buste oriente de -90 a +90 degres
+    comme pour `pose_bras_leves`.
+    """
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    milieu_x, milieu_y = 0.3 + rng.random() * 0.4, 0.3 + rng.random() * 0.4
+    demi_largeur = 0.03 + rng.random() * 0.08
+    leve = rng.choice(("gauche", "droite"))
+    for cote, signe in (("gauche", -1), ("droite", 1)):
+        suffixe_bras = "gauche" if cote == "gauche" else "droit"
+        ex, ey = milieu_x + signe * demi_largeur, milieu_y
+        points[f"epaule_{cote}"] = LandmarkPoint(ex, ey, 0, 1)
+        if cote == leve:
+            derive = (rng.random() - 0.5) * 0.04
+            points[f"coude_{suffixe_bras}"] = LandmarkPoint(ex + derive, ey - 0.12, 0, 1)
+            points[f"poignet_{suffixe_bras}"] = LandmarkPoint(ex + 2 * derive, ey - 0.24, 0, 1)
+        else:
+            # Autour de l'epaule, un peu au-dessus comme bien en dessous.
+            hauteur = rng.uniform(-0.1, 0.25)
+            points[f"coude_{suffixe_bras}"] = LandmarkPoint(ex + signe * 0.05, ey + hauteur / 2, 0, 1)
+            points[f"poignet_{suffixe_bras}"] = LandmarkPoint(ex + signe * 0.06, ey + hauteur, 0, 1)
+    angle = math.radians(rng.uniform(-90, 90))
+    distance = 0.15 + rng.random() * 0.2
+    hx = milieu_x + distance * math.sin(angle)
+    hy = milieu_y + distance * math.cos(angle)
+    points["hanche_gauche"] = LandmarkPoint(hx - demi_largeur, hy, 0, 1)
+    points["hanche_droite"] = LandmarkPoint(hx + demi_largeur, hy, 0, 1)
+    return Body(points)
+
+
 NOMBRE_POSES_PAR_FAMILLE = 300
 """Poses construites pour les detections que le hasard n'atteint pas.
 
@@ -251,6 +294,7 @@ def main():
             [pose_au_hasard] * nombre
             + [pose_bras_leves] * NOMBRE_POSES_DE_GESTE
             + [f for f in FAMILLES for _ in range(NOMBRE_POSES_PAR_FAMILLE)]
+            + [pose_un_bras_leve] * NOMBRE_POSES_UN_BRAS
         )
         for generateur in generateurs:
             corps = generateur(rng)
@@ -262,8 +306,8 @@ def main():
 
     print(
         f"{nombre} poses au hasard, {NOMBRE_POSES_DE_GESTE} poses bras leves et "
-        f"{NOMBRE_POSES_PAR_FAMILLE * len(FAMILLES)} poses construites "
-        f"ecrites dans {DESTINATION}"
+        f"{NOMBRE_POSES_PAR_FAMILLE * len(FAMILLES)} poses construites et "
+        f"{NOMBRE_POSES_UN_BRAS} poses un bras leve ecrites dans {DESTINATION}"
     )
     print(f"{len(fonctions)} fonctions couvertes :")
     for nom in sorted(fonctions):

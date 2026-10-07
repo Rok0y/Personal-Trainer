@@ -195,7 +195,7 @@ BRIQUES = {
     "installation_ne_le_bouge_plus": "Une fois posé, ne le bouge plus",
     "installation_respecte_l_angle": "Chaque exercice te dira comment te placer",
     "installation_verifions": "Vérifions que tu tiens dans l'image",
-    # --- Les deux gestes ---------------------------------------------------
+    # --- Les gestes ----------------------------------------------------------
     "geste_bras_en_x": "Croise les bras devant toi pour démarrer",
     "geste_deux_bras_leves": "Lève les deux bras pour remettre à zéro",
     # Les quatre suivantes accompagnent l'exercice de l'accueil, ou les deux
@@ -209,6 +209,11 @@ BRIQUES = {
     "geste_remis_a_zero": "C'est bien, te voilà reparti de zéro",
     "geste_croise_les_bras": "Croise les bras et tiens la position",
     "geste_bravo": "Bravo, tu sais tout piloter de loin",
+    # Les deux gestes de correction du compte, demandes dans la pratique de
+    # l'accueil. La phrase dit **a quoi sert** le geste en meme temps qu'elle
+    # le demande : c'est l'usage qu'on doit retrouver en seance.
+    "geste_bras_droit_ajoute": "Lève le bras droit pour ajouter une répétition",
+    "geste_bras_gauche_retire": "Lève le bras gauche pour en retirer une",
     # --- Accueil d'un nouveau profil --------------------------------------
     # **Dormantes elles aussi, et pour la meme raison que le cadrage.** Le
     # tunnel d'accueil prononcait sa phrase pendant qu'on la lisait ; il est

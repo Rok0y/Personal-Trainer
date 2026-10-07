@@ -170,6 +170,31 @@ function _finaliser_serie(seance, etat, bloc) {
   oublier_durees(etat);
 }
 
+// Les modes qui comptent des repetitions : les seuls ou les gestes ±1 ont un
+// compte a corriger. Voir `MODES_A_COMPTE` cote Python.
+export const MODES_A_COMPTE = [MODE_REPETITIONS, MODE_AMRAP];
+
+/**
+ * Ajoute ou retire une repetition a la main ; rend le nouveau `derniere_rep`.
+ *
+ * Jumelle d'`ajuster_repetitions` (session/moteur.py), dont la docstring dit
+ * le pourquoi : un +1 laisse `executer_mode` annoncer et clore la serie a
+ * l'image suivante, un -1 fait reculer `derniere_rep` et annonce le compte.
+ */
+export function ajuster_repetitions({ seance, compteur, etat, coach, delta, derniere_rep }) {
+  const bloc = seance.bloc_actuel;
+  if (seance.phase !== "exercice" || !bloc || !MODES_A_COMPTE.includes(bloc.mode)) {
+    return derniere_rep;
+  }
+  const repetitions = compteur.ajuster(delta);
+  etat.repetitions = repetitions;
+  if (delta < 0) {
+    derniere_rep = Math.min(derniere_rep, repetitions);
+    if (repetitions > 0) coach("compteur", repetitions);
+  }
+  return derniere_rep;
+}
+
 /**
  * Publie la premiere faute de forme detectee, ou efface le bandeau.
  *

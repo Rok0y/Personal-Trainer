@@ -195,8 +195,11 @@ class SpecProgression:
 #     charge, la fourchette de répétitions est allongée, sinon le barème est
 #     épuisé en une poignée de paliers ;
 #   - **variantes assistées** (pompes inclinées, sur les genoux) : mêmes
-#     fourchettes, départ encore plus bas — elles existent pour que quelqu'un
-#     qui ne fait pas une pompe complète ait quand même une progression ;
+#     fourchettes, départ plus bas *en effort* — elles existent pour que
+#     quelqu'un qui ne fait pas une pompe complète ait quand même une
+#     progression. Les pompes complètes partent pourtant d'une seule
+#     répétition (4x1) et les variantes de trois : une répétition à genoux
+#     coûte bien moins qu'une pompe, et c'est l'effort qu'on compare ;
 #   - **isolation légère** (élévations latérales, oiseau) : beaucoup de
 #     répétitions, jamais très lourd ;
 #   - **lourd et court** (extension triceps) : fourchette basse des deux côtés,

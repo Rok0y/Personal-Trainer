@@ -39,6 +39,16 @@ class CompteurMouvement:
 
         return self.stage, self.repetitions
 
+    def ajuster(self, delta):
+        """Corrige le compte à la main (geste bras levé), jamais sous zéro.
+
+        Le `stage` ne bouge pas : la répétition en cours reste armée ou non
+        selon ce que la détection a vu, la correction ne porte que sur le
+        nombre.
+        """
+        self.repetitions = max(0, self.repetitions + delta)
+        return self.repetitions
+
     def reset(self):
 
         self.stage = None

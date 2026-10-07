@@ -1128,9 +1128,12 @@
     <div class="accessoires" id="listeAccessoiresAccueil"></div>
   </div>
 
+  <!-- `margin-left:auto` et non le seul `space-between` : quand « Retour » est
+       cache, il ne reste qu'un enfant, que `space-between` pose a gauche — le
+       bouton sautait de cote d'un ecran a l'autre. -->
   <div class="actions" style="justify-content:space-between">
     <button class="bouton secondaire" id="bienvenuePrecedent" hidden>Retour</button>
-    <button class="bouton" id="bienvenueSuivant">Continuer</button>
+    <button class="bouton" id="bienvenueSuivant" style="margin-left:auto">Continuer</button>
   </div>
 </section>
 
@@ -1577,7 +1580,7 @@ import {
   resultats_par_exercice,
 } from "../js/seance.js";
 import { brancher_commandes, peindre_hud } from "../js/hud.js";
-import { INTERVALLE_MAX, executer_mode, duree_realisee, oublier_durees, mettre_a_jour_prochain_exercice, poser_etape, annoncer_temps_repos } from "../js/moteur.js";
+import { INTERVALLE_MAX, ajuster_repetitions, executer_mode, duree_realisee, oublier_durees, mettre_a_jour_prochain_exercice, poser_etape, annoncer_temps_repos } from "../js/moteur.js";
 import { CompteurMouvement } from "../js/compteur.js";
 import { HoldPosition } from "../js/outils.js";
 import {
@@ -1585,6 +1588,8 @@ import {
   bras_en_x,
   bras_gauche_leve,
   deux_bras_leves,
+  seul_bras_droit_leve,
+  seul_bras_gauche_leve,
 } from "../js/positions.js";
 import { creer_etat } from "../js/etat.js";
 import { texte, libelle_etape } from "../js/messages.js";
@@ -1914,6 +1919,11 @@ let geste_fin = null;
 //: comme sur le poste fixe : un geste destructeur ne doit pas partir au
 //: premier etirement.
 const geste_reset = new HoldPosition(deux_bras_leves, TENUE_VALIDATION);
+//: Un bras seul corrige le compte : +1 a droite, -1 a gauche. Meme tenue que
+//: les autres gestes, pour qu'un bras monte un peu haut pendant un exercice ne
+//: compte rien. La regle du compte vit dans `ajuster_repetitions` (moteur.js).
+const geste_plus = new HoldPosition(seul_bras_droit_leve, TENUE_VALIDATION);
+const geste_moins = new HoldPosition(seul_bras_gauche_leve, TENUE_VALIDATION);
 let fin_decompte = null;
 let dernier_decompte = null;
 let en_cours = false;
@@ -2412,11 +2422,30 @@ function observer_gestes(corps) {
       : Math.min(100, ((geste.horloge() - geste.debut) / geste.duree) * 100);
   etat.maintien_termine = Boolean(geste && geste.termine);
 
-  const [, reset] = geste_reset.update(corps);
+  const [progression_reset, reset] = geste_reset.update(corps);
   if (reset && seance.phase === "exercice") {
     compteur.reset();
     etat.repetitions = 0;
     derniere_rep = 0;
+  }
+
+  const [progression_plus, plus] = geste_plus.update(corps);
+  const [progression_moins, moins] = geste_moins.update(corps);
+  for (const [fait, delta] of [[plus, 1], [moins, -1]]) {
+    if (fait) {
+      derniere_rep = ajuster_repetitions({ seance, compteur, etat, coach, delta, derniere_rep });
+    }
+  }
+
+  // Pendant l'effort, l'anneau montre la tenue la plus avancee **quel que soit
+  // le geste** : la remise a zero se tenait trois secondes a l'aveugle, et un
+  // geste sans retour est indistinguable d'un geste qui ne marche pas. Les
+  // trois gestes de compte n'agissent qu'en exercice, donc n'apparaissent que la.
+  if (seance.phase === "exercice" && !guide_exercice) {
+    etat.progression_maintien = Math.max(
+      etat.progression_maintien, progression_reset, progression_plus, progression_moins,
+    );
+    etat.maintien_termine = etat.maintien_termine || reset || plus || moins;
   }
 }
 
@@ -3706,10 +3735,13 @@ const ETAPES_BIENVENUE = [
     ],
   },
   {
-    titre: "Les deux gestes",
+    titre: "Les gestes",
+    // Quatre gestes, mais deux ecrans au plus : la regle du tunnel. Le premier
+    // dit le geste qui sert a chaque serie ; le second, les trois qui corrigent
+    // le compteur, et ils se lisent mieux ensemble — droite, gauche, les deux.
     ecrans: [
-      { texte: "Croise les bras devant toi pour valider une série. Peu importe la hauteur : seul le croisement compte." },
-      { texte: "Lève les deux bras tendus pour remettre le compteur à zéro, sans rien valider." },
+      { texte: "Croise les bras devant toi pour valider ta série. Peu importe la hauteur : seul le croisement compte." },
+      { texte: "Bras droit levé : une répétition de plus. Bras gauche : une de moins. Les deux bras : le compteur repart de zéro." },
     ],
   },
   {
@@ -3787,6 +3819,17 @@ const CADENCE_COMPTEUR_DEMO = 1;
  * sont les deux gestes destructeurs, et enseigner un geste plus court qu'il ne
  * l'est apprendrait un faux geste.
  *
+ * **Chaque consigne de geste dit a quoi il sert, au moment ou elle le
+ * demande.** « Croise les bras » sans « pour valider ta serie » fait executer
+ * un geste dont on ne saura l'usage qu'apres coup ; or c'est l'usage qu'on
+ * doit retrouver en seance, pas la posture.
+ *
+ * Le resultat d'un geste se lit sur le compteur, et c'est `effet` qui le
+ * produit : une fonction du compteur courant appliquee **a l'entree** de la
+ * phase, pour que le chiffre et la phrase changent au meme instant. C'etait un
+ * test sur le nom de la phase (`reset_fait`) ; avec quatre gestes, la table
+ * porte sa propre mecanique plutot que d'en disperser des morceaux.
+ *
  * **Une confirmation confirme, elle ne commente pas.** Les phases qui suivent
  * un geste portaient chacune un `fait` de deux lignes expliquant ce qu'on
  * venait de faire — trois fois de suite, treize secondes en tout, a lire a
@@ -3820,9 +3863,9 @@ const PHASES_PRATIQUE = {
   },
   valider: {
     titre: "Valider une série",
-    consigne: "Croise les bras devant toi et tiens la position.",
+    consigne: "Croise les bras pour valider ta série, et tiens la position.",
     aide: "En bas, devant la poitrine ou mains en l'air : seul le croisement compte.",
-    annonce: "geste_croise_les_bras",
+    annonce: "geste_valide_la_serie",
     compteur: true,
     monte: true,
     geste: () => new HoldPosition(bras_en_x, TENUE_VALIDATION),
@@ -3833,13 +3876,51 @@ const PHASES_PRATIQUE = {
     consigne: "Série validée.",
     compteur: true,
     attente: 2,
+    suite: "plus",
+  },
+  // Le compteur est fige sur ces quatre phases (pas de `monte`) : un chiffre
+  // qui avance tout seul noierait le +1 ou le -1 qu'on vient de faire. On le
+  // pose sur une valeur ronde, comme une nouvelle serie deja entamee.
+  plus: {
+    titre: "Ajouter une répétition",
+    consigne: "Lève le bras droit tendu pour ajouter une répétition, et tiens la position.",
+    aide: "Pour une répétition que je n'ai pas vue. Le bras gauche reste en bas.",
+    annonce: "geste_bras_droit_ajoute",
+    compteur: true,
+    effet: () => 5,
+    geste: () => new HoldPosition(seul_bras_droit_leve, TENUE_VALIDATION),
+    suite: "plus_fait",
+  },
+  plus_fait: {
+    titre: "Ajouter une répétition",
+    consigne: "Une répétition de plus.",
+    compteur: true,
+    effet: (n) => n + 1,
+    attente: 2,
+    suite: "moins",
+  },
+  moins: {
+    titre: "Retirer une répétition",
+    consigne: "Lève le bras gauche tendu pour retirer une répétition, et tiens la position.",
+    aide: "Pour une répétition comptée en trop. Le bras droit reste en bas.",
+    annonce: "geste_bras_gauche_retire",
+    compteur: true,
+    geste: () => new HoldPosition(seul_bras_gauche_leve, TENUE_VALIDATION),
+    suite: "moins_fait",
+  },
+  moins_fait: {
+    titre: "Retirer une répétition",
+    consigne: "Une répétition de moins.",
+    compteur: true,
+    effet: (n) => Math.max(0, n - 1),
+    attente: 2,
     suite: "reset",
   },
   reset: {
     titre: "Repartir de zéro",
-    consigne: "Maintenant lève les deux bras tendus, et tiens la position.",
-    aide: "Le compteur repart de zéro, sans rien valider.",
-    annonce: "geste_leve_les_bras_maintenant",
+    consigne: "Lève les deux bras tendus pour remettre le compteur à zéro, et tiens la position.",
+    aide: "Le compteur repart de zéro, sans valider la série.",
+    annonce: "geste_deux_bras_leves",
     compteur: true,
     monte: true,
     geste: () => new HoldPosition(deux_bras_leves, TENUE_VALIDATION),
@@ -3850,6 +3931,7 @@ const PHASES_PRATIQUE = {
     consigne: "Compteur reparti de zéro.",
     annonce: "geste_remis_a_zero",
     compteur: true,
+    effet: () => 0,
     attente: 2,
     suite: "bravo",
   },
@@ -4091,7 +4173,7 @@ function entrer_phase(nom) {
   pratique.cadre_depuis = null;
   // Le resultat du geste se voit **a l'entree de la phase qui l'annonce** : le
   // compteur et la phrase changent au meme instant.
-  if (nom === "reset_fait") pratique.compteur = 0;
+  if (phase.effet) pratique.compteur = phase.effet(Math.floor(pratique.compteur));
 
   $("pratiqueTitre").textContent = phase.titre;
   ecrire_pratique(phase.consigne ?? "", 0);
@@ -4616,8 +4698,13 @@ async function enregistrer_mesures(evenement) {
  * qu'une rotation d'epaules compte quelque part.
  */
 function dessiner_exercices() {
-  const { seances: histoire, ancrages } = lecture_du_profil();
+  const { seances: histoire, ancrages, note } = lecture_du_profil();
   const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
+  // La cible d'un exercice jamais fait vient d'ici, et pas d'`etat.premier` :
+  // le palier 1 n'est pas ce que la seance proposera, la note d'athlete l'est.
+  // Meme fonction que la liste des seances, sinon les deux ecrans annoncent
+  // deux objectifs differents pour le meme mouvement.
+  const objectifs = moteur.objectifs.objectifs_par_exercice(histoire, ancrages, note);
 
   const noms = Object.keys(mouvements).sort((a, b) => a.localeCompare(b, "fr"));
   const exercices = noms.filter((n) => !mouvements[n].est_echauffement);
@@ -4625,7 +4712,7 @@ function dessiner_exercices() {
 
   $("listeExercices").innerHTML =
     `<h2>Exercices</h2><div class="grid">` +
-    exercices.map((nom) => carte_exercice(nom, niveaux[nom])).join("") +
+    exercices.map((nom) => carte_exercice(nom, niveaux[nom], objectifs[nom])).join("") +
     `</div>` +
     `<h2>Échauffements</h2>` +
     `<p class="sous-titre">Ils préparent la séance sans compter nulle part : ` +
@@ -4640,7 +4727,7 @@ function dessiner_exercices() {
   }
 }
 
-function carte_exercice(nom, etat) {
+function carte_exercice(nom, etat, objectif = null) {
   const fiche = mouvements[nom];
   const etiquettes = [];
   // La carte porte la couleur de la ligue de **cet** exercice : le catalogue
@@ -4653,7 +4740,7 @@ function carte_exercice(nom, etat) {
     etiquettes.push(
       etat.niveau
         ? `<span class="etiquette niveau">Niveau ${etat.niveau} · ${echapper(resume_palier(etat.actuel))}</span>`
-        : `<span class="etiquette debut">À découvrir · ${echapper(resume_palier(etat.premier) ?? "")}</span>`
+        : `<span class="etiquette debut">À découvrir · ${echapper(resume_palier(objectif ?? etat.premier) ?? "")}</span>`
     );
   }
   if (fiche.materiel) etiquettes.push(`<span class="etiquette">${echapper(fiche.materiel)}</span>`);
@@ -4699,7 +4786,7 @@ function dessiner_fiche(nom) {
   const fiche = mouvements[nom];
   if (!fiche) return;
 
-  const { seances: histoire, ancrages } = lecture_du_profil();
+  const { seances: histoire, ancrages, note } = lecture_du_profil();
   // Un echauffement n'a pas de bareme : `etat_niveau` n'a rien a en dire, et
   // le bloc « ou j'en suis » n'a pas lieu d'etre.
   const etat = moteur.baremes.est_suivi_par_le_moteur(nom)
@@ -4710,6 +4797,9 @@ function dessiner_fiche(nom) {
   // l'historique ne peut pas le prouver. Les trois parlaient du meme exercice
   // depuis deux ecrans differents.
   const statistique = historique.statistiques_exercices(histoire)[nom];
+  const objectif = etat
+    ? moteur.objectifs.objectifs_par_exercice(histoire, ancrages, note)[nom] ?? null
+    : null;
 
   const liste = (titre, lignes, balise = "ol", classe = "") =>
     lignes?.length
@@ -4738,7 +4828,7 @@ function dessiner_fiche(nom) {
     `<h1>${echapper(nom)}</h1>` +
     `<p class="resume">${echapper(fiche.description ?? "")}</p>` +
     (meta.length ? `<div class="meta">${meta.join("")}</div>` : "") +
-    (etat ? bloc_niveau(etat, nom) : "") +
+    (etat ? bloc_niveau(etat, nom, objectif) : "") +
     (etat ? bloc_graphique(nom, statistique) : "") +
     (etat ? bloc_recalage(nom, etat) : "") +
     liste("Se mettre en place", fiche.mise_en_place) +
@@ -4820,17 +4910,24 @@ function brancher_points_du_graphique(nom, histoire) {
   }
 }
 
-function bloc_niveau(etat, nom) {
+function bloc_niveau(etat, nom, objectif = null) {
   // Ouvrir une carte doree ne doit pas atterrir sur une page grise : le bloc
   // « Ou j'en suis » porte la teinte du meme exercice que la carte.
   const ligue = moteur.ligues.ligue_exercice(nom, etat.niveau);
   const cases = [
     `<div><span>Ligue</span><strong style="line-height:1.4">${badge_ligue(ligue, { grand: true })}</strong></div>`,
     `<div><span>Niveau</span><strong>${etat.niveau ?? "—"}</strong></div>`,
-    `<div><span>${etat.niveau ? "Palier acquis" : "Premier palier"}</span>` +
-      `<strong>${echapper(resume_palier(etat.actuel ?? etat.premier) ?? "—")}</strong></div>`,
+    // Sans niveau, la case dit ce que la **prochaine seance** demandera — le
+    // depart de la note d'athlete —, pas le palier 1 : afficher celui-ci
+    // contredisait la seance, qui propose autre chose.
+    etat.niveau
+      ? `<div><span>Palier acquis</span><strong>${echapper(resume_palier(etat.actuel) ?? "—")}</strong></div>`
+      : `<div><span>Première séance</span>` +
+        `<strong>${echapper(resume_palier(objectif ?? etat.premier) ?? "—")}</strong></div>`,
   ];
-  if (etat.suivant) {
+  // Sans niveau, le « palier suivant » vaut le palier 1 : il contredirait la
+  // case precedente au lieu de la prolonger.
+  if (etat.niveau && etat.suivant) {
     cases.push(
       `<div><span>Palier suivant</span><strong>${echapper(resume_palier(etat.suivant))}</strong></div>`
     );
@@ -4838,7 +4935,8 @@ function bloc_niveau(etat, nom) {
   const note = etat.niveau
     ? ""
     : `<p class="sous-titre" style="margin-top:14px">Rien dans l'historique n'atteint ` +
-      `encore le premier palier. La première séance part de ta note d'athlète, et ` +
+      `encore le premier palier (${echapper(resume_palier(etat.premier) ?? "—")}). ` +
+      `La première séance part de ta note d'athlète, et ` +
       `c'est elle qui posera le niveau.</p>`;
   const cran = ligue?.seuil_suivant
     ? `<p class="niveau-note">Le cran suivant demande ` +
@@ -5777,7 +5875,16 @@ $("boutonPasserTuto").addEventListener("click", () => {
  * calcule comme le fait `SessionManager`.
  */
 const COMMANDES = {
-  reset: () => seance.remettre_serie_a_zero(),
+  // Le compteur se remet a zero **avec** la serie, comme sur le poste fixe
+  // (`definir_reset_progression`) : sans lui, `executer_mode` recopiait
+  // l'ancien compte dans `etat` a l'image suivante, et le bouton semblait ne
+  // rien faire.
+  reset: () => {
+    seance.remettre_serie_a_zero();
+    compteur.reset();
+    etat.repetitions = 0;
+    derniere_rep = 0;
+  },
   recommencer: () => seance.recommencer_serie(),
   precedente: () => seance.serie_precedente(),
   suivante: () => seance.serie_suivante(),

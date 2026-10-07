@@ -115,6 +115,40 @@ def _finaliser_serie(seance, etat, bloc):
     oublier_durees(etat)
 
 
+#: Les modes qui comptent des répétitions, donc les seuls où les gestes « bras
+#: droit levé » / « bras gauche levé » ont un compte à corriger. Ailleurs —
+#: maintien, chrono, échauffement — le compteur n'est pas lu : un ±1 n'y
+#: changerait rien à l'écran et laisserait croire que le geste a échoué.
+MODES_A_COMPTE = (MODE_REPETITIONS, MODE_AMRAP)
+
+
+def ajuster_repetitions(seance, compteur, etat, coach, delta, derniere_rep):
+    """Ajoute ou retire une répétition à la main ; rend le nouveau `derniere_rep`.
+
+    Point d'entrée unique des gestes ±1, appelé par la boucle caméra comme par
+    le navigateur. N'agit qu'en phase `exercice`, sur un mode à compte.
+
+    **Un +1 ne se termine pas ici** : il ne touche que le compteur, et c'est
+    `executer_mode`, à l'image suivante, qui voit le compte dépasser
+    `derniere_rep`, l'annonce et clôt la série si la cible est atteinte —
+    exactement comme une répétition détectée, donc sans seconde règle de fin.
+    **Un −1 doit faire reculer `derniere_rep`**, sans quoi la répétition réelle
+    suivante ne serait pas annoncée (`repetitions > derniere_rep` resterait
+    faux) ; et il annonce le nouveau compte, seul retour audible à trois mètres.
+    """
+    bloc = seance.bloc_actuel
+    if seance.phase != "exercice" or bloc is None or bloc.mode not in MODES_A_COMPTE:
+        return derniere_rep
+
+    repetitions = compteur.ajuster(delta)
+    etat.repetitions = repetitions
+    if delta < 0:
+        derniere_rep = min(derniere_rep, repetitions)
+        if repetitions > 0:
+            coach("compteur", repetitions)
+    return derniere_rep
+
+
 def mettre_a_jour_erreur(exercice, corps, etat):
     """Publie la première faute de forme détectée, ou efface le bandeau.
 

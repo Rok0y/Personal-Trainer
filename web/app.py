@@ -54,6 +54,7 @@ from core.materiel import ACCESSOIRES, POIDS_REFERENCE, materiel_du_profil, norm
 # l'ecrit en ligne de commande. La route d'export ne fait que la servir.
 from scripts.exporter_profil import exporter as exporter_profil
 from progression.niveaux import etat_niveau, etats_niveaux, montees_de_niveau
+from progression.objectifs import objectifs_par_exercice
 from progression import ligues as moteur_ligues
 from progression.calibration import NOTE_MAX, NOTE_MIN, REPERES_NOTE, etat_note, note_du_profil, note_valide
 from progression.paliers import (
@@ -988,13 +989,18 @@ def page_exercices():
     partout ailleurs : ils ne se lisent pas de la même façon (les premiers ont
     un niveau, les seconds non).
     """
-    etats = etats_niveaux(recuperer_historique())
+    historique = recuperer_historique()
+    etats = etats_niveaux(historique)
     return render_template(
         "exercices.html",
         onglet="exercices",
         exercices=catalogue_exercices(),
         echauffements=catalogue_echauffements(),
         niveaux=etats,
+        # La cible d'un exercice jamais fait est celle que la séance proposera
+        # (le départ de la note d'athlète), pas le palier 1 : même fonction que
+        # l'accueil, sinon deux écrans annoncent deux objectifs.
+        objectifs=objectifs_par_exercice(historique),
         ligues=moteur_ligues.ligues_par_exercice(etats),
     )
 
@@ -1012,13 +1018,15 @@ def page_exercice(nom):
     if fiche is None:
         abort(404)
     etat = etat_niveau(nom)
+    historique = recuperer_historique()
     return render_template(
         "exercice.html",
         onglet="exercices",
         fiche=fiche,
         etat=etat,
+        objectif=objectifs_par_exercice(historique).get(nom) if etat else None,
         ligue=moteur_ligues.ligue_exercice(nom, (etat or {}).get("niveau")),
-        statistique=statistiques_exercices(recuperer_historique()).get(nom),
+        statistique=statistiques_exercices(historique).get(nom),
     )
 
 

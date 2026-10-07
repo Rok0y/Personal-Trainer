@@ -77,4 +77,35 @@ def deux_bras_leves(corps):
     )
 
 
+def seul_bras_droit_leve(corps):
+    """Le bras droit seul levé, debout : le geste qui ajoute une répétition.
+
+    **L'autre poignet doit être sous son épaule**, et pas seulement « pas
+    levé » au sens de `bras_gauche_leve`. Pour lever les deux bras — le geste
+    de remise à zéro —, on en lève forcément un d'abord : exiger l'autre
+    poignet *en bas* coupe la tenue dès que le second bras commence à monter,
+    au lieu d'attendre qu'il soit tendu. C'est aussi ce qui écarte le
+    développé épaule et l'extension triceps, où les deux poignets sont en
+    haut. Le buste debout écarte, comme pour `deux_bras_leves`, ce qui se fait
+    allongé — la planche latérale bras levé, le développé couché.
+    """
+    return (
+        bras_droit_leve(corps)
+        and corps.poignet_gauche.y > corps.epaule_gauche.y
+        and _torse_vertical(corps)
+    )
+
+
+def seul_bras_gauche_leve(corps):
+    """Le bras gauche seul levé, debout : le geste qui retire une répétition.
+
+    Symétrique de `seul_bras_droit_leve`, voir sa docstring.
+    """
+    return (
+        bras_gauche_leve(corps)
+        and corps.poignet_droit.y > corps.epaule_droite.y
+        and _torse_vertical(corps)
+    )
+
+
 print("positions chargé")

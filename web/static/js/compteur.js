@@ -43,6 +43,13 @@ export class CompteurMouvement {
     return [this.stage, this.repetitions];
   }
 
+  // Corrige le compte a la main (geste bras leve), jamais sous zero. Le stage
+  // ne bouge pas : seule la valeur est corrigee.
+  ajuster(delta) {
+    this.repetitions = Math.max(0, this.repetitions + delta);
+    return this.repetitions;
+  }
+
   reset() {
     this.stage = null;
     this.repetitions = 0;

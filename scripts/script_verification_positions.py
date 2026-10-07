@@ -20,7 +20,14 @@ Voir `CLAUDE.md` — le miroir de ce poste ne vient pas du code, il n'y a aucun
 
 import cv2
 
-from mouvements.positions import bras_droit_leve, bras_en_x, bras_gauche_leve
+from mouvements.positions import (
+    bras_droit_leve,
+    bras_en_x,
+    bras_gauche_leve,
+    deux_bras_leves,
+    seul_bras_droit_leve,
+    seul_bras_gauche_leve,
+)
 from vision.dessin import dessiner_squelette
 from vision.detector import PoseDetector
 
@@ -62,7 +69,12 @@ def verdict_miroir(corps):
 
 # Liste (nom affiché, fonction) -> pour tester plusieurs positions
 # d'un coup sans dupliquer le code d'affichage.
+# La premiere qui repond l'emporte : les gestes de controle, plus etroits,
+# passent donc avant les positions de bras qu'ils contiennent.
 POSITIONS_A_TESTER = [
+    ("Deux bras leves (remise a zero)", deux_bras_leves),
+    ("Bras droit seul (+1)", seul_bras_droit_leve),
+    ("Bras gauche seul (-1)", seul_bras_gauche_leve),
     ("Bras droit leve", bras_droit_leve),
     ("Bras gauche leve", bras_gauche_leve),
     ("Bras en X", bras_en_x),

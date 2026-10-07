@@ -43,7 +43,7 @@ import audio.coach
 from mouvements.compteur import CompteurMouvement
 from scripts.generer_fixtures import pose_au_hasard, serialiser
 from vision.body import Body, LandmarkPoint
-from session.moteur import executer_mode
+from session.moteur import ajuster_repetitions, executer_mode
 from session.seances import catalogue_mouvements, construire_circuit
 from core.state import EtatSeance
 
@@ -227,6 +227,10 @@ def _commandes(circuit, tirage):
     return [
         ("update", {}),
         ("image", {"secondes": 0}),
+        # Les gestes bras droit / bras gauche : un compte corrige a la main
+        # doit etre annonce, borne a zero et clore la serie a l'image
+        # suivante exactement de la meme facon des deux cotes.
+        ("ajuster", {"delta": tirage.choice([1, -1])}),
         # Faire avancer l'horloge est une commande comme une autre : c'est elle
         # qui fait expirer un repos, et donc qui déclenche les transitions que
         # `update` se contente de constater.
@@ -249,6 +253,7 @@ def _commandes(circuit, tirage):
 #: navigation restent rares, comme dans l'usage, mais jamais absentes.
 POIDS = {
     "image": 30,
+    "ajuster": 3,
     "update": 5,
     "avancer": 6,
     "commencer_exercice": 2,
@@ -299,6 +304,14 @@ def jouer(circuit, horloge, nom, arguments, contexte=None,
             compteur.reset()
             contexte["derniere_rep"] = 0
         return list(triplet), None
+
+    if nom == "ajuster":
+        # Comme `main.py` : la fonction porte elle-meme son garde de phase et
+        # de mode, donc aucun ici — c'est justement lui qu'on compare.
+        contexte["derniere_rep"] = ajuster_repetitions(
+            circuit, compteur, etat, coach, arguments["delta"], contexte["derniere_rep"]
+        )
+        return contexte["derniere_rep"], None
 
     if nom == "aller_a_l_amplitude":
         # Commande du harnais : amene au premier bloc dont l'exercice verifie
@@ -512,6 +525,8 @@ def _arguments(commande, circuit, tirage):
         return {"secondes": 40}
     if commande == "image":
         return {"pose": tirage.randrange(NOMBRE_DE_POSES)}
+    if commande == "ajuster":
+        return {"delta": tirage.choice([1, -1])}
     if commande == "terminer_serie_manuellement":
         return _performance(circuit, tirage)
     return {}

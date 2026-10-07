@@ -68,11 +68,14 @@
                 <span>Niveau</span>
                 <strong>{% if etat.niveau %}{{ etat.niveau }}{% else %}—{% endif %}</strong>
             </div>
+            {#- Sans niveau, la case dit ce que la prochaine séance demandera (le
+                départ de la note d'athlète), pas le palier 1 — et le « palier
+                suivant », qui vaut alors le palier 1, se tait. #}
             <div>
-                <span>{% if etat.niveau %}Palier acquis{% else %}Premier palier{% endif %}</span>
-                <strong>{{ (etat.actuel or etat.premier).resume() }}</strong>
+                <span>{% if etat.niveau %}Palier acquis{% else %}Première séance{% endif %}</span>
+                <strong>{{ (etat.actuel or objectif or etat.premier).resume() }}</strong>
             </div>
-            {%- if etat.suivant %}
+            {%- if etat.niveau and etat.suivant %}
             <div>
                 <span>Palier suivant</span>
                 <strong>{{ etat.suivant.resume() }}</strong>
@@ -88,8 +91,9 @@
         {%- endif %}
         {%- if not etat.niveau %}
         <p class="hint" style="margin-top:14px;">
-            Rien dans l'historique n'atteint encore le premier palier. La première
-            séance part de ta note d'athlète, et c'est elle qui posera le niveau.
+            Rien dans l'historique n'atteint encore le premier palier
+            ({{ etat.premier.resume() }}). La première séance part de ta note
+            d'athlète, et c'est elle qui posera le niveau.
         </p>
         {%- endif %}
 
