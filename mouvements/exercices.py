@@ -273,6 +273,14 @@ SEUIL_PROFONDEUR_POMPE = 100
 
 
 def pompe_detection(corps):
+    # Corps a l'horizontale, ou rien ne compte. Seul l'angle du coude etait
+    # lu, si bien que plier le bras debout comptait une pompe — remonte du
+    # banc d'essai, des repetitions en trop pendant l'installation. Meme
+    # condition que le developpe couche, et meme defaut : un angle de membre
+    # ne dit pas ou se trouve le corps. Moins de 45 degres d'inclinaison,
+    # donc les pompes inclinees sur une chaise ou un plan de travail passent.
+    if _buste_vertical(corps) >= 0:
+        return "milieu"
     angle_coude = _angle_coude_proche(corps)
     if angle_coude < SEUIL_COMPTAGE_POMPE:
         return "debut"

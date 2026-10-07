@@ -267,7 +267,16 @@ export const INSTRUMENTS = {
   pompe_detection: {
     ordre: ["debut", "fin"],
     defaut: "milieu",
-    mesures: [coude_proche({ debut: ["<", 120], fin: [">", 160] }), visibilite_bras(), profondeur_epaules()],
+    mesures: [
+      coude_proche({ debut: ["<", 120], fin: [">", 160] }),
+      {
+        libelle: "Buste debout (< 0 = allongé)", unite: "", echelle: [-0.4, 0.4],
+        sommet: null, zones: { debut: ["<", 0], fin: ["<", 0] },
+        valeur: (corps) => _buste_vertical(corps),
+      },
+      visibilite_bras(),
+      profondeur_epaules(),
+    ],
   },
   pompe_profondeur: {
     ordre: ["profond"],

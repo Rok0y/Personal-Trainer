@@ -316,7 +316,9 @@ Détection (`mouvements/`, `vision/`) :
   **et** *où il est*, et l'oubli se manifeste toujours du même côté, en
   comptant ce qu'il ne fallait pas. Le premier test instrumenté en a sorti
   trois autres cas, corrigés de la même façon : le **développé couché** comptait
-  debout (il exige désormais un buste couché, `_buste_vertical < 0`),
+  debout (il exige désormais un buste couché, `_buste_vertical < 0` — condition
+  reprise par les **pompes**, qui comptaient un bras plié debout dès que leur
+  seuil de comptage a été relâché),
   l'**extension triceps** comptait n'importe quelle flexion des bras (coudes
   au-dessus des épaules et poignets joints sur l'haltère), et l'**élévation
   latérale** comptait des bras levés devant soi (bras presque tendus, chaque

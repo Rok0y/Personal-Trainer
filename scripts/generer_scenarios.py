@@ -113,6 +113,10 @@ def pose_pompe(rng, angle):
     for nom in ("coude_droit", "poignet_droit"):
         ancien = points[nom]
         points[nom] = LandmarkPoint(ancien.x, ancien.y, ancien.z, 0)
+    # Corps a l'horizontale : `pompe_detection` ne compte rien debout.
+    points["epaule_droite"] = LandmarkPoint(0.41, 0.6, 0, 1)
+    points["hanche_gauche"] = LandmarkPoint(0.7, 0.62, 0, 1)
+    points["hanche_droite"] = LandmarkPoint(0.71, 0.62, 0, 1)
     return Body(points)
 
 

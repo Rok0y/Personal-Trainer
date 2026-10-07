@@ -158,6 +158,9 @@ export const SEUIL_COMPTAGE_POMPE = 120;
 export const SEUIL_PROFONDEUR_POMPE = 100;
 
 export function pompe_detection(corps) {
+  // Corps a l'horizontale, ou rien ne compte : debout, plier le bras
+  // comptait une pompe. Meme condition que le developpe couche.
+  if (buste_vertical(corps) >= 0) return "milieu";
   const angle_coude = angle_coude_proche(corps);
   if (angle_coude < SEUIL_COMPTAGE_POMPE) return "debut";
   else if (angle_coude > 160) return "fin";
