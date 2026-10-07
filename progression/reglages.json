@@ -782,5 +782,13 @@
   "part_exercices": 0.66,
   "marge": 2,
   "exercices_min": 5
+ },
+ "variantes": {
+  "retour": {
+   "Pompes sur les genoux": [3, 12],
+   "Pompes inclinées": [3, 12],
+   "Gainage sur les genoux": [2, 30],
+   "Squat sur chaise": [3, 12]
+  }
  }
 }

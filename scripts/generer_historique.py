@@ -108,11 +108,17 @@ def _exercice_au_hasard(tirage):
 
 
 def _note_relue(profil):
-    """La note d'un profil et son repere, ou None pour un profil supprime."""
+    """La note d'un profil, son repere et ses variantes, ou None s'il est supprime.
+
+    Les variantes voyagent avec la note : ce sont les deux preferences de
+    progression que porte le profil, et la table relue est **normalisee** des
+    deux cotes — une entree qui se designe elle-meme ne doit survivre nulle
+    part.
+    """
     ligne = base_de_donnees.recuperer_utilisateur(profil)
     if ligne is None:
         return None
-    return [ligne["note_athlete"], ligne["note_relevee_apres"]]
+    return [ligne["note_athlete"], ligne["note_relevee_apres"], ligne["variantes"]]
 
 
 def main():
@@ -235,6 +241,21 @@ def main():
                         refus = "refus"
                     relever(pas, "definir_note_athlete",
                             {"note": note, "utilisateur_id": profil}, refus)
+                    pas += 1
+
+                # Les variantes du profil, de temps en temps : une table propre,
+                # une table vide (qui s'ecrit NULL), et des entrees que la
+                # normalisation doit retirer.
+                if tirage.random() < 0.15:
+                    table = tirage.choice([
+                        {},
+                        {"Pompes": "Pompes sur les genoux"},
+                        {"Pompes": "Pompes inclinées", "Squat": "Squat sur chaise"},
+                        {"Gainage planche": "Gainage planche", "": "Squat"},
+                    ])
+                    base_de_donnees.definir_variantes(table, utilisateur_id=profil)
+                    relever(pas, "definir_variantes",
+                            {"variantes": table, "utilisateur_id": profil}, None)
                     pas += 1
 
                 # Un ancrage de temps en temps, posé après la séance courante.

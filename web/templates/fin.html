@@ -106,6 +106,26 @@
     import { badge_ligue, jalon_ligue, jauge_ligue, style_ligue, classe_ligue }
         from "{{ url_for('static', filename='js/ligues_ui.js') }}";
 
+
+    // « La prochaine fois : … » : la table des variantes appartient au profil
+    // et vaut pour toutes ses seances. `progression.variantes.definir` juge
+    // cote serveur de ce qui est acceptable ; on ne fait que transmettre.
+    async function retenirVariante(original, joue) {
+        try {
+            const reponse = await fetch("/api/variantes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ original, joue }),
+            });
+            const donnees = await reponse.json();
+            if (!donnees.ok) window.alert(donnees.erreur || "Enregistrement impossible.");
+            return Boolean(donnees.ok);
+        } catch (erreur) {
+            window.alert("Erreur réseau : variante non enregistrée.");
+            return false;
+        }
+    }
+
     const echo = document.getElementById("echo");
     const choix = {};
     let seanceId = {{ etat.seance_id|tojson }};
@@ -138,7 +158,8 @@
                 (nom, valeur) => {
                     choix[nom] = valeur;
                     envoyer();
-                }
+                },
+                retenirVariante
             );
         });
     }

@@ -21,6 +21,7 @@
 
 import { UNITE_SECONDES } from "./paliers.js";
 import { arrondi_python } from "./calibration.js";
+import { via_variante } from "./variantes.js";
 
 // Deux `round()` de Python vivent dans ce module — l'avancement d'une exigence
 // et la moyenne du programme — et tous deux passent par `arrondi_python` :
@@ -79,7 +80,7 @@ export function resume_palier(palier) {
  * incomprehensible — on saisissait « 6x15 » dans l'editeur et on relisait
  * « 4x23 » sur la fiche, sans que rien ne relie les deux.
  */
-export function etat_exigence(baremes, exigence, niveaux) {
+export function etat_exigence(baremes, exigence, niveaux, variantes = {}) {
   const nom = exigence.exercice;
   const etat = niveaux[nom];
   const acquis = etat ? etat.niveau : null;
@@ -108,6 +109,8 @@ export function etat_exigence(baremes, exigence, niveaux) {
     // sur un demi des que le rapport est simple.
     avancement: requis ? Math.min(100, arrondi_python((100 * (acquis || 0)) / requis)) : 0,
     restant: requis ? Math.max(0, requis - (acquis || 0)) : null,
+    // Joue sous une variante : dit, sans toucher a l'avancement.
+    via_variante: via_variante(nom, variantes ?? {}, niveaux),
   };
 }
 
@@ -128,7 +131,7 @@ export function libelles_seances(programme) {
  * seance ; le regroupement se fait ici, a l'affichage, dans l'ordre
  * d'apparition — donc celui de l'editeur.
  */
-export function etat_programme(baremes, cle, programme, niveaux) {
+export function etat_programme(baremes, cle, programme, niveaux, variantes = {}) {
   if (!programme) return null;
 
   const par_seance = {};
@@ -136,7 +139,7 @@ export function etat_programme(baremes, cle, programme, niveaux) {
 
   for (const ligne of programme.exigences ?? []) {
     if (!baremes.est_suivi_par_le_moteur(ligne.exercice)) continue;
-    const etat = etat_exigence(baremes, ligne, niveaux);
+    const etat = etat_exigence(baremes, ligne, niveaux, variantes);
     (par_seance[etat.seance] ??= []).push(etat);
     exigences.push(etat);
   }
@@ -352,10 +355,10 @@ export function semaine_du_programme(programme, historique, catalogue_seances, t
 }
 
 /** Tous les programmes, a partir d'une seule lecture des niveaux. */
-export function etats_programmes(baremes, programmes, niveaux) {
+export function etats_programmes(baremes, programmes, niveaux, variantes = {}) {
   const etats = {};
   for (const [cle, programme] of Object.entries(programmes ?? {})) {
-    etats[cle] = etat_programme(baremes, cle, programme, niveaux);
+    etats[cle] = etat_programme(baremes, cle, programme, niveaux, variantes);
   }
   return etats;
 }

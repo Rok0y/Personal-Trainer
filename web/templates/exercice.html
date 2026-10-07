@@ -202,11 +202,59 @@
             <a class="btn" href="/exercice/{{ fiche.variante_difficile|urlencode }}">Plus dur : {{ fiche.variante_difficile }}</a>
             {%- endif %}
         </div>
+        {#- Le filet manuel des variantes : ce qui se propose en fin de séance
+            doit rester faisable, et défaisable, ici. La table appartient au
+            profil et vaut pour toutes ses séances. #}
+        {%- if joue_a_la_place %}
+        <p class="aide">Dans tes séances, tu joues <a href="/exercice/{{ joue_a_la_place|urlencode }}">{{ joue_a_la_place }}</a> à la place de ce mouvement.</p>
+        <div class="variantes">
+            <button type="button" class="btn" data-variante-original="{{ fiche.nom }}" data-variante-joue="">Revenir à {{ fiche.nom }}</button>
+        </div>
+        {%- elif remplace %}
+        <p class="aide">Dans tes séances, ce mouvement remplace <a href="/exercice/{{ remplace|urlencode }}">{{ remplace }}</a>.</p>
+        <div class="variantes">
+            {%- if fiche.variante_difficile %}
+            <button type="button" class="btn" data-variante-original="{{ remplace }}" data-variante-joue="{{ '' if fiche.variante_difficile == remplace else fiche.variante_difficile }}">Passer à {{ fiche.variante_difficile }}</button>
+            {%- endif %}
+            {%- if fiche.variante_facile %}
+            <button type="button" class="btn" data-variante-original="{{ remplace }}" data-variante-joue="{{ fiche.variante_facile }}">Passer à {{ fiche.variante_facile }}</button>
+            {%- endif %}
+        </div>
+        {%- elif fiche.variante_facile %}
+        <div class="variantes">
+            <button type="button" class="btn" data-variante-original="{{ fiche.nom }}" data-variante-joue="{{ fiche.variante_facile }}">Jouer {{ fiche.variante_facile }} à la place dans mes séances</button>
+        </div>
+        {%- endif %}
     </div>
     {%- endif %}
 </main>
 <script type="module">
     import { graphique_progression } from "{{ url_for('static', filename='js/graphique.js') }}";
+
+    document.querySelectorAll("[data-variante-original]").forEach((bouton) => {
+        bouton.addEventListener("click", async () => {
+            bouton.disabled = true;
+            try {
+                const reponse = await fetch("/api/variantes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        original: bouton.dataset.varianteOriginal,
+                        joue: bouton.dataset.varianteJoue || null,
+                    }),
+                });
+                const donnees = await reponse.json();
+                if (donnees.ok) {
+                    window.location.reload();
+                    return;
+                }
+                window.alert(donnees.erreur || "Enregistrement impossible.");
+            } catch (erreur) {
+                window.alert("Erreur réseau : variante non enregistrée.");
+            }
+            bouton.disabled = false;
+        });
+    });
 
     // Le trace vit dans `static/js/graphique.js`, partage avec l'application du
     // navigateur : meme donnee, meme dessin, seul le lien d'un point differe —

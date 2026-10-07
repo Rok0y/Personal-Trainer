@@ -37,3 +37,12 @@
 .feedback button.actif { border-color: var(--teal); color: var(--teal); background: var(--glass); }
 .feedback button.actif[data-valeur="trop_dur"] { border-color: var(--orange); color: var(--orange); }
 .feedback button:disabled { opacity: .4; cursor: default; }
+
+/* La proposition de variante : un mouvement plus facile après un échec au
+   palier 1, ou le retour au mouvement complet. Elle se distingue des
+   ressentis — ce n'est pas une réponse à la séance mais un changement des
+   séances à venir. */
+.feedback button.variante { border-style: dashed; }
+.feedback button.variante.facile { color: var(--orange); border-color: var(--orange); }
+.feedback button.variante.difficile { color: var(--teal); border-color: var(--teal); }
+.feedback .variante-retenue { font: 600 12px 'Space Grotesk', sans-serif; color: var(--muted); }

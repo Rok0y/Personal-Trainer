@@ -196,6 +196,26 @@
         });
     });
 
+
+    // « La prochaine fois : … » : la table des variantes appartient au profil
+    // et vaut pour toutes ses seances. `progression.variantes.definir` juge
+    // cote serveur de ce qui est acceptable ; on ne fait que transmettre.
+    async function retenirVariante(original, joue) {
+        try {
+            const reponse = await fetch("/api/variantes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ original, joue }),
+            });
+            const donnees = await reponse.json();
+            if (!donnees.ok) window.alert(donnees.erreur || "Enregistrement impossible.");
+            return Boolean(donnees.ok);
+        } catch (erreur) {
+            window.alert("Erreur réseau : variante non enregistrée.");
+            return false;
+        }
+    }
+
     // Les jugements sont calcules par le serveur (`jugements_par_seance`) et
     // deposes tels quels : le module partage ne fait que les habiller.
     const JUGEMENTS = {{ jugements|tojson }};
@@ -218,7 +238,7 @@
             } catch (erreur) {
                 window.alert("Erreur reseau : ressenti non enregistre.");
             }
-        });
+        }, retenirVariante);
     });
 
     document.querySelectorAll(".exercise-delete").forEach((bouton) => {

@@ -82,10 +82,23 @@ export function brancher_commandes(executer) {
  * pendant une pause, ceux de l'exercice le reste du temps. Pause et reprise
  * font exception — elles dependent du statut de la session et non de la phase.
  */
-export function actualiser_commandes(autorisees, statut, phase) {
+export function actualiser_commandes(autorisees, statut, phase, variante_facile = null) {
   const en_pause = PHASES_DE_PAUSE.includes(statut === "paused" ? statut : phase);
   document.querySelectorAll("[data-commande]").forEach((bouton) => {
     const nom = bouton.dataset.commande;
+    // `partout` : une commande qui vaut pendant l'effort comme pendant la
+    // recuperation, et qui n'a rien a dire quand elle n'est pas autorisee —
+    // la cacher vaut mieux qu'un bouton grise qui n'existe que pour certains
+    // mouvements.
+    if (bouton.dataset.contexte === "partout") {
+      bouton.hidden = !(autorisees && autorisees[nom]);
+      bouton.disabled = bouton.hidden;
+      if (nom === "variante_facile" && variante_facile) {
+        const texte = `Plus facile : ${variante_facile}`;
+        if (bouton.textContent !== texte) bouton.textContent = texte;
+      }
+      return;
+    }
     bouton.hidden = bouton.dataset.contexte === "pause" ? !en_pause : en_pause;
     bouton.disabled =
       nom === "pause"
@@ -563,7 +576,12 @@ function afficher_maintien(progression, termine) {
  * savoir laquelle des deux l'appelle.
  */
 export function peindre_hud(donnees) {
-  actualiser_commandes(donnees.commandes_autorisees, donnees.statut_session, donnees.phase);
+  actualiser_commandes(
+    donnees.commandes_autorisees,
+    donnees.statut_session,
+    donnees.phase,
+    donnees.variante_facile,
+  );
 
   // `dans_echauffement` et non « reste-t-il des echauffements ? » : une seance
   // qui n'en a aucun doit montrer la barre des exercices des la premiere image.

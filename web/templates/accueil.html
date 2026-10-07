@@ -132,6 +132,17 @@
         /* Premier passage : la seance mesurera au lieu de programmer. Distinct
            du badge orange « cible manuelle », qui signale l'inverse — une
            valeur figee a la main. */
+        /* Le mouvement que ce profil joue à la place de celui de la séance
+           (`progression.variantes`) : orange comme une cible figée, parce que
+           c'est aussi un écart à ce que la séance écrit. */
+        .badge-variante { display: inline-flex; padding: 1px 7px; border-radius: 999px; border: 1px dashed var(--orange); color: var(--orange); font-size: 11px; letter-spacing: .02em; vertical-align: middle; }
+        /* Le choix de version, sur la séance sélectionnée seulement. */
+        .session-versions { display: grid; gap: 6px; margin: 10px 0 4px; padding: 10px 12px; border: 1px dashed var(--orange); border-radius: 12px; }
+        .session:not(.selected) .session-versions { display: none; }
+        .versions-titre { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--orange); }
+        .versions-titre span { text-transform: none; letter-spacing: 0; color: var(--muted); }
+        .version-ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
+        .version-ligne select { max-width: 60%; }
         .badge-premiere { display: inline-flex; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--blue); color: var(--blue); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
         .badge-manuelle-retirer { border: none; background: none; padding: 0; color: inherit; font-size: 13px; line-height: 1; cursor: pointer; font-family: inherit; }
         .badge-manuelle-retirer:hover { color: var(--text); }
@@ -263,6 +274,33 @@
             </div>
             <p>{{ seance.nombre_exercices }} exercices{% if seance.nombre_echauffements %} · {{ seance.nombre_echauffements }} échauffements{% endif %}</p>
 
+            {#- Choisir sa version **avant** de commencer : savoir qu'on ne fera
+                pas une pompe n'oblige plus à échouer d'abord. Le choix est
+                celui de la table du profil (`progression.variantes`), donc il
+                vaut pour toutes ses séances — d'où la mention. Visible sur la
+                séance sélectionnée seulement. #}
+            {%- set a_choisir = seance.exercices|selectattr('versions')|list %}
+            {%- if a_choisir %}
+            <div class="session-versions">
+                <p class="versions-titre">Ta version <span>· vaut pour toutes tes séances</span></p>
+                {%- set vus = [] %}
+                {%- for exercice in a_choisir %}
+                {%- if exercice.nom not in vus %}
+                {%- set _ = vus.append(exercice.nom) %}
+                {%- set jouee = exercice.variante.nom if exercice.variante else exercice.nom %}
+                <label class="version-ligne">
+                    <span>{{ exercice.nom }}</span>
+                    <select data-version-original="{{ exercice.nom }}" data-version-seance="{{ identifiant }}">
+                        {%- for nom in exercice.versions %}
+                        <option value="{{ nom }}"{% if nom == jouee %} selected{% endif %}>{{ nom }}{% if loop.first %} · version complète{% endif %}</option>
+                        {%- endfor %}
+                    </select>
+                </label>
+                {%- endif %}
+                {%- endfor %}
+            </div>
+            {%- endif %}
+
             {% if identifiant == 'test' %}
             <div class="test-config">
                 <label for="test-exercice">Exercice</label>
@@ -296,7 +334,12 @@
                 {% endif %}
                 <ul>
                 {% for exercice in seance.exercices if exercice.mode != 'echauffement' %}
+                    {%- if exercice.variante %}
+                    {#- Ce qui sera joué, pas ce que le fichier écrit : la variante et son objectif, l'original en rappel. #}
+                    <li>{{ exercice.variante.nom }}{% if exercice.variante.resume %} · {{ exercice.variante.resume }}{% endif %} <span class="badge-variante" title="Tu joues cette variante plus facile à la place, dans toutes tes séances. Sa fiche permet d'y renoncer.">à la place de {{ exercice.nom or exercice.exercice }}</span>{% if exercice.variante.premiere_fois %} <span class="badge-premiere" title="Jamais fait : la cible vient de ta note d'athlète, et s'ajustera dès cette séance.">1re fois</span>{% endif %}</li>
+                    {%- else %}
                     <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}{% if exercice.cible_manuelle %} <span class="badge-manuelle" title="Cible saisie à la main : le moteur de progression ne la fait plus évoluer.">cible manuelle</span>{% endif %}{% if exercice.premiere_fois %} <span class="badge-premiere" title="Jamais fait : la cible vient de ta note d'athlète, et s'ajustera dès cette séance.">1re fois</span>{% endif %}</li>
+                    {%- endif %}
                 {% endfor %}
                 </ul>
             </details>
@@ -309,6 +352,7 @@
                     <div class="edit-exercise" data-exercice="{{ exercice.nom or exercice.exercice }}" data-mode="{{ exercice.mode }}" data-poids="{{ exercice.poids|default(0) }}" data-repos-series="{{ exercice.repos_entre_series|default(0) }}" data-repos-apres="{{ exercice.repos_apres|default(0) }}" data-entrelace="{{ exercice.entrelace_avec or '' }}" data-commentaire="{{ exercice.commentaire|default('') }}">
                         <label>{{ exercice.nom or exercice.exercice }}{% if exercice.cible_manuelle %} <span class="badge-manuelle">cible manuelle<button type="button" class="badge-manuelle-retirer" data-retirer-cible-manuelle="{{ exercice.nom or exercice.exercice }}" title="Revenir à la cible proposée par le moteur de progression" aria-label="Retirer la cible manuelle">×</button></span>{% endif %}</label>
                         <p class="editor-equipment">Matériel : {{ exercice.materiel or 'Aucun matériel' }}</p>
+                        {% if exercice.variante %}<p class="editor-equipment">Tu joues {{ exercice.variante.nom }} à la place : la cible ci-dessous est celle de {{ exercice.nom or exercice.exercice }}, pour qui ne le remplace pas.</p>{% endif %}
                         {% if exercice.cible_manuelle %}<p class="editor-equipment">Cible figée à la main : le moteur de progression ne la fait plus évoluer. Remets les valeurs qu'il propose pour la rebrancher.</p>{% endif %}
                         <span class="number-control" data-unit="Charge (kg)"><button type="button" data-delta="-1" aria-label="Diminuer la charge">−</button><input class="edit-weight" aria-label="Charge en kilogrammes" type="number" min="0" step="0.5" value="{{ exercice.poids|default(0) }}" title="Charge en kilogrammes"><button type="button" data-delta="1" aria-label="Augmenter la charge">+</button></span>
                         <span class="number-control" data-unit="Séries"><button type="button" data-delta="-1" aria-label="Retirer une série">−</button><input class="edit-series" aria-label="Séries" type="number" min="1" value="{{ exercice.series }}" title="Séries"><button type="button" data-delta="1" aria-label="Ajouter une série">+</button></span>
@@ -397,6 +441,43 @@
             if (evenement.key === "Enter" || evenement.key === " ") {
                 evenement.preventDefault();
                 selectionnerSeance(bouton.dataset.seance);
+            }
+        });
+    });
+    // Le choix de version vit dans la carte : sans ca, ouvrir la liste
+    // reselectionnerait la seance a chaque clic.
+    document.querySelectorAll(".session-versions").forEach((zone) => {
+        ["click", "keydown"].forEach((type) =>
+            zone.addEventListener(type, (evenement) => evenement.stopPropagation()));
+    });
+    document.querySelectorAll("select[data-version-original]").forEach((liste) => {
+        liste.addEventListener("change", async () => {
+            const original = liste.dataset.versionOriginal;
+            liste.disabled = true;
+            try {
+                const reponse = await fetch("/api/variantes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        original,
+                        joue: liste.value === original ? null : liste.value,
+                    }),
+                });
+                const donnees = await reponse.json();
+                if (!donnees.ok) {
+                    window.alert(donnees.erreur || "Enregistrement impossible.");
+                    liste.disabled = false;
+                    return;
+                }
+                // **Resélectionner, pas seulement recharger** : le circuit est
+                // construit à la sélection (`SessionManager.selectionner`),
+                // donc celui qui attend le démarrage jouerait encore
+                // l'ancienne version.
+                await selectionnerSeance(liste.dataset.versionSeance);
+                window.location.reload();
+            } catch (erreur) {
+                window.alert("Erreur réseau : version non enregistrée.");
+                liste.disabled = false;
             }
         });
     });

@@ -548,6 +548,26 @@
    "10": "Je m'entraîne dur depuis des années"
   }
  },
+ "variantes": {
+  "retour": {
+   "Pompes sur les genoux": [
+    3,
+    12
+   ],
+   "Pompes inclinées": [
+    3,
+    12
+   ],
+   "Gainage sur les genoux": [
+    2,
+    30
+   ],
+   "Squat sur chaise": [
+    3,
+    12
+   ]
+  }
+ },
  "specs": {
   "Developpé couché altères": {
    "series": 4,

@@ -218,6 +218,15 @@
   /* Le decrochage d'une cible figee doit se voir, sinon il est silencieux.
      Meme couleur que le badge de l'accueil du poste fixe. */
   .puce-manuelle { color: var(--orange); border-color: var(--orange); }
+  /* Le choix de version, dans la zone de demarrage de la seance choisie. */
+  .carte-versions { display: grid; gap: .4rem; margin-bottom: .7rem; padding: .6rem .75rem; border: 1px dashed var(--orange); border-radius: 12px; }
+  .carte-versions .versions-titre { margin: 0; font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--orange); }
+  .carte-versions .versions-titre span { text-transform: none; letter-spacing: 0; color: var(--muted); }
+  .carte-versions .version-ligne { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .9rem; text-transform: none; letter-spacing: 0; }
+  .carte-versions select { max-width: 62%; }
+  /* Une variante plus facile jouee a la place : un ecart au fichier, comme
+     une cible figee, mais choisi pour soi — d'ou le pointille. */
+  .puce-variante { color: var(--orange); border: 1px dashed var(--orange); }
 
   /* Le profil actif est un onglet a part, pousse a droite : c'est une
      identite, pas une section de l'application. */
@@ -1530,6 +1539,9 @@
       <details class="series-menu" id="seriesMenu">
           <summary aria-label="Autres commandes">⋯</summary>
           <div class="series-menu-contenu">
+              <!-- Cachée tant que le mouvement courant n'a pas de variante plus
+                   facile : `hud.js` y écrit son nom. -->
+              <button type="button" data-contexte="partout" data-commande="variante_facile" hidden>Plus facile</button>
               <button type="button" data-contexte="exercice" data-commande="reset">Reset série</button>
               <button type="button" data-contexte="exercice" data-commande="recommencer">Recommencer</button>
               <button type="button" data-contexte="exercice" data-commande="precedente">Série précédente</button>
@@ -1575,6 +1587,7 @@ import { DETECTIONS } from "../js/detections.js";
 import {
   catalogue_effectif,
   circuit_pour,
+  exercice_pour,
   payload_etat,
   problemes_des_blocs,
   resultats_par_exercice,
@@ -1627,6 +1640,12 @@ import {
   semaine_du_programme,
 } from "../js/programmes.js";
 import { enteriner_cibles_manuelles, est_cible_manuelle } from "../js/cible_manuelle.js";
+import {
+  Variantes,
+  catalogue_depuis,
+  normaliser as normaliser_variantes,
+  original_de,
+} from "../js/variantes.js";
 import { UNITE_SECONDES } from "../js/paliers.js";
 
 //: Ou le dernier profil choisi est retenu. `localStorage` et non la base :
@@ -1827,7 +1846,44 @@ function construire_moteur() {
     ressenti,
     ligues,
     objectifs: new Objectifs(baremes, niveaux, ressenti, calibration),
+    // Les variantes plus faciles jouees a la place d'un mouvement. Le bareme
+    // y entre pour l'unite et pour traduire la performance de retour.
+    variantes: new Variantes(baremes, tables_baremes.variantes?.retour ?? {}),
   };
+}
+
+/**
+ * La table des variantes du profil courant, et le catalogue qu'elle consulte.
+ *
+ * **Sur le profil et jamais dans la seance** : les seances sont communes aux
+ * profils, alors que « je ne sais pas encore faire une pompe » ne vaut que
+ * pour une personne.
+ */
+function variantes_du_profil() {
+  return normaliser_variantes(profil_courant()?.variantes);
+}
+
+function catalogue_des_variantes() {
+  return catalogue_depuis(mouvements);
+}
+
+/**
+ * Ecrit « pour `original`, je joue `joue` » sur le profil, et rend vrai si
+ * c'est fait. `Variantes.definir` juge de ce qui est acceptable — une variante
+ * de la chaine de l'original, dans la meme unite — et leve sinon.
+ */
+async function retenir_variante(original, joue) {
+  try {
+    const table = moteur.variantes.definir(
+      variantes_du_profil(), original, joue, catalogue_des_variantes(),
+    );
+    historique.definir_variantes(base, PROFIL, table);
+  } catch (erreur) {
+    alert(erreur.message);
+    return false;
+  }
+  await stockage.sauver(base);
+  return true;
 }
 
 /** L'historique et les ancrages du profil, tels que le moteur les attend. */
@@ -2024,6 +2080,15 @@ async function demarrer(nom) {
 
   nom_seance = nom;
   seance = circuit_pour(mouvements, seances[nom]);
+  // **Le seul endroit ou les variantes du profil remplacent leurs originaux**,
+  // et avant le moteur pour que l'objectif soit celui de la variante. Le
+  // circuit construit ici ne repart jamais dans `seances_locales`.
+  moteur.variantes.appliquer_au_circuit(
+    seance,
+    variantes_du_profil(),
+    catalogue_des_variantes(),
+    (mouvement) => exercice_pour(mouvements, mouvement),
+  );
   // **Les cibles viennent de l'historique, plus du fichier.** Le JSON ne fait
   // plus autorite que sur la structure : quel exercice, quel mode, quels
   // repos, quel entrelacement.
@@ -3231,6 +3296,22 @@ function brancher_fiches_de_seance(racine, histoire, options = {}) {
   // qu'il faut viser ensuite. Il ecarte en revanche les **tests**, qui n'ont
   // pas d'objectif a ajuster.
   const jugements = moteur.ressenti.jugements_par_seance(histoire);
+  // La proposition de variante voyage **dans** le jugement, comme sur le
+  // poste fixe : `construire_ligne` l'affiche sous le verdict.
+  const propositions = moteur.variantes.propositions(
+    histoire,
+    jugements,
+    variantes_du_profil(),
+    catalogue_des_variantes(),
+    moteur.niveaux.niveaux_par_exercice(histoire, historique.recuperer_ancrages(base, PROFIL)),
+  );
+  for (const [seance_id, par_nom] of Object.entries(propositions)) {
+    for (const [nom, proposition] of Object.entries(par_nom)) {
+      if (jugements[seance_id]?.[nom]) {
+        jugements[seance_id][nom] = { ...jugements[seance_id][nom], variante: proposition };
+      }
+    }
+  }
   let proposees = 0;
 
   racine.querySelectorAll(".feedback[data-exercice]").forEach((zone) => {
@@ -3244,7 +3325,7 @@ function brancher_fiches_de_seance(racine, histoire, options = {}) {
     construire_ligne(zone, exercice, jugement, async (nom, valeur) => {
       historique.enregistrer_ressentis(base, Number(seance), { [nom]: valeur }, ECHELLE);
       await stockage.sauver(base);
-    });
+    }, retenir_variante);
   });
 
   racine.querySelectorAll(".vers-fiche[data-mouvement]").forEach((bouton) => {
@@ -4835,6 +4916,34 @@ function dessiner_fiche(nom) {
     )
     .join("");
 
+  // Le filet manuel des variantes, jumeau de `exercice.html` : ce qui se
+  // propose en fin de seance doit rester faisable, et defaisable, ici.
+  const table = variantes_du_profil();
+  const joue_a_la_place = table[nom] ?? null;
+  const remplace = original_de(nom, table);
+  const choix_variante = (original, joue, libelle) =>
+    `<button type="button" class="btn" data-variante-original="${echapper(original)}" ` +
+    `data-variante-joue="${echapper(joue ?? "")}">${echapper(libelle)}</button>`;
+  let filet = "";
+  if (joue_a_la_place) {
+    filet =
+      `<p class="aide">Dans tes séances, tu joues <b>${echapper(joue_a_la_place)}</b> à la place de ce mouvement.</p>` +
+      `<div class="variantes">${choix_variante(nom, null, `Revenir à ${nom}`)}</div>`;
+  } else if (remplace) {
+    const dur = fiche.variante_difficile;
+    filet =
+      `<p class="aide">Dans tes séances, ce mouvement remplace <b>${echapper(remplace)}</b>.</p>` +
+      `<div class="variantes">` +
+      (dur ? choix_variante(remplace, dur === remplace ? null : dur, `Passer à ${dur}`) : "") +
+      (fiche.variante_facile ? choix_variante(remplace, fiche.variante_facile, `Passer à ${fiche.variante_facile}`) : "") +
+      `</div>`;
+  } else if (fiche.variante_facile && !fiche.est_echauffement) {
+    filet =
+      `<div class="variantes">` +
+      choix_variante(nom, fiche.variante_facile, `Jouer ${fiche.variante_facile} à la place dans mes séances`) +
+      `</div>`;
+  }
+
   $("contenuFiche").innerHTML =
     `<p class="kicker">${fiche.est_echauffement ? "Échauffement" : "Exercice"}</p>` +
     `<h1>${echapper(nom)}</h1>` +
@@ -4847,11 +4956,21 @@ function dessiner_fiche(nom) {
     liste("Exécution", fiche.instructions) +
     liste("À éviter", fiche.erreurs_frequentes, "ul", " attention") +
     (variantes
-      ? `<div class="bloc"><h2>Adapter la difficulté</h2><div class="variantes">${variantes}</div></div>`
+      ? `<div class="bloc"><h2>Adapter la difficulté</h2><div class="variantes">${variantes}</div>${filet}</div>`
       : "");
 
   for (const bouton of $("contenuFiche").querySelectorAll("[data-variante]")) {
     bouton.addEventListener("click", () => dessiner_fiche(bouton.dataset.variante));
+  }
+  for (const bouton of $("contenuFiche").querySelectorAll("[data-variante-original]")) {
+    bouton.addEventListener("click", async () => {
+      bouton.disabled = true;
+      if (await retenir_variante(bouton.dataset.varianteOriginal, bouton.dataset.varianteJoue || null)) {
+        dessiner_fiche(nom);
+      } else {
+        bouton.disabled = false;
+      }
+    });
   }
   brancher_points_du_graphique(nom, histoire);
   brancher_recalages($("contenuFiche"));
@@ -4974,7 +5093,9 @@ function bloc_niveau(etat, nom, objectif = null) {
 function dessiner_programmes() {
   const { seances: histoire, ancrages } = lecture_du_profil();
   const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
-  const etats = etats_programmes(moteur.baremes, programmes_declares, niveaux);
+  const etats = etats_programmes(
+    moteur.baremes, programmes_declares, niveaux, variantes_du_profil(),
+  );
 
   const cles = Object.keys(etats);
   if (!cles.length) {
@@ -5125,7 +5246,14 @@ function dessiner_exigence(ligne) {
     `<li class="exigence${ligne.atteint ? " faite" : ""}">` +
     `<div class="exigence-titre"><span class="exigence-nom">${echapper(ligne.exercice)}</span>${etiquette}</div>` +
     `<div class="exigence-barre"><span style="width:${ligne.avancement}%"></span></div>` +
-    `<p class="exigence-detail">${detail}</p></li>`
+    `<p class="exigence-detail">${detail}</p>` +
+    // L'avancement reste celui du mouvement complet : le volume d'une variante
+    // ne se compare pas au sien.
+    (ligne.via_variante
+      ? `<p class="exigence-variante">En cours via <strong>${echapper(ligne.via_variante.nom)}</strong>` +
+        (ligne.via_variante.niveau ? `, niveau ${ligne.via_variante.niveau}` : "") + `</p>`
+      : "") +
+    `</li>`
   );
 }
 
@@ -5512,7 +5640,7 @@ function dessiner_resume_programme() {
 
   const { seances: histoire, ancrages } = lecture_du_profil();
   const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
-  const etat = etat_programme(moteur.baremes, cle, declare, niveaux);
+  const etat = etat_programme(moteur.baremes, cle, declare, niveaux, variantes_du_profil());
   const semaine = semaine_du_profil(declare, histoire);
 
   // **Meme balisage que la carte du poste fixe** (`accueil.html`), aux memes
@@ -5702,10 +5830,18 @@ function contenu_seance(blocs, objectifs, sans_donnees) {
   const exercices = blocs.filter((b) => b.mode !== "echauffement");
   const echauffements = blocs.filter((b) => b.mode === "echauffement");
 
-  const ligne = (b) => {
+  const variantes = variantes_du_profil();
+  const catalogue = catalogue_des_variantes();
+  const ligne = (bloc) => {
+    // Ce qui sera joue, pas ce que le fichier ecrit : la variante du profil
+    // et **son** objectif, l'original en rappel. Une copie, jamais le bloc
+    // lui-meme, qui est celui que l'editeur reecrit.
+    const joue = moteur.variantes.substitution(bloc.exercice, bloc.mode, variantes, catalogue);
+    const b = joue ? { ...bloc, exercice: joue, cible_manuelle: null } : bloc;
     const figee = est_cible_manuelle(b, PROFIL);
     return (
       `<div class="contenu-ligne"><span>${echapper(b.exercice)}</span>` +
+      (joue ? `<span class="puce puce-variante">à la place de ${echapper(bloc.exercice)}</span>` : "") +
       `<b${figee ? ' class="contenu-cible-figee"' : ""}>` +
       `${echapper(cible_affichee(b, objectifs, sans_donnees))}</b>` +
       (b.entrelace_avec ? ` <em>⟷ alterné</em>` : "") +
@@ -5744,6 +5880,59 @@ function selectionner_seance(nom) {
   $("sousTitre").textContent = nom
     ? `${nom} — appuie sur « Démarrer la séance » quand tu es prêt.`
     : "Choisis ce que tu fais aujourd'hui.";
+}
+
+/**
+ * Le choix de version des mouvements d'une seance, avant de la demarrer.
+ *
+ * Savoir qu'on ne fera pas une pompe n'oblige plus a echouer d'abord : on
+ * choisit ici la version jouee. C'est la table du profil qui s'ecrit
+ * (`retenir_variante`), donc le choix vaut pour toutes ses seances, et la
+ * liste se redessine pour annoncer ce qui sera joue. Le circuit, lui, est
+ * construit au demarrage : il suit sans rien d'autre. Rend null quand aucun
+ * mouvement n'a plusieurs versions.
+ */
+function choix_des_versions(nom_seance, exercices) {
+  const table = variantes_du_profil();
+  const catalogue = catalogue_des_variantes();
+  const vus = new Set();
+  const lignes = [];
+  for (const bloc of exercices) {
+    if (vus.has(bloc.exercice)) continue;
+    const noms = moteur.variantes.versions(bloc.exercice, bloc.mode, catalogue);
+    if (!noms.length) continue;
+    vus.add(bloc.exercice);
+    lignes.push({ original: bloc.exercice, noms, jouee: table[bloc.exercice] ?? bloc.exercice });
+  }
+  if (!lignes.length) return null;
+
+  const zone = document.createElement("div");
+  zone.className = "carte-versions";
+  zone.innerHTML =
+    `<p class="versions-titre">Ta version <span>· vaut pour toutes tes séances</span></p>` +
+    lignes.map(({ original, noms, jouee }) =>
+      `<label class="version-ligne"><span>${echapper(original)}</span>` +
+      `<select data-version-original="${echapper(original)}">` +
+      noms.map((n, i) =>
+        `<option value="${echapper(n)}"${n === jouee ? " selected" : ""}>` +
+        `${echapper(n)}${i === 0 ? " · version complète" : ""}</option>`
+      ).join("") +
+      `</select></label>`
+    ).join("");
+
+  for (const liste of zone.querySelectorAll("select")) {
+    liste.addEventListener("change", async () => {
+      const original = liste.dataset.versionOriginal;
+      liste.disabled = true;
+      if (await retenir_variante(original, liste.value === original ? null : liste.value)) {
+        dessiner_liste();
+        selectionner_seance(nom_seance);
+      } else {
+        liste.disabled = false;
+      }
+    });
+  }
+  return zone;
 }
 
 function dessiner_liste() {
@@ -5793,6 +5982,8 @@ function dessiner_liste() {
     const demarrage = document.createElement("div");
     demarrage.className = "carte-demarrage";
     demarrage.hidden = true;
+    const versions = choix_des_versions(nom, exercices);
+    if (versions) demarrage.appendChild(versions);
     const bouton = document.createElement("button");
     bouton.type = "button";
     bouton.className = "bouton carte-demarrer";
@@ -5831,6 +6022,17 @@ function dessiner_liste() {
       const marque = document.createElement("span");
       marque.className = "puce puce-manuelle";
       marque.textContent = "modifiée sur cet appareil";
+      barre.appendChild(marque);
+    }
+    // Une variante jouee a la place est un ecart au fichier, comme une cible
+    // figee : il se voit sans deplier.
+    const remplaces = exercices.filter((b) =>
+      moteur.variantes.substitution(b.exercice, b.mode, variantes_du_profil(), catalogue_des_variantes())
+    ).length;
+    if (remplaces) {
+      const marque = document.createElement("span");
+      marque.className = "puce puce-variante";
+      marque.textContent = `${remplaces} variante${remplaces > 1 ? "s" : ""} plus facile${remplaces > 1 ? "s" : ""}`;
       barre.appendChild(marque);
     }
     const figees = exercices.filter((b) => est_cible_manuelle(b, PROFIL)).length;
@@ -6024,6 +6226,29 @@ const COMMANDES = {
   },
   terminer_seance: () => terminer(),
   abandonner: () => terminer(true),
+  // Pour cette seance seulement : la garder pour les prochaines se propose en
+  // fin de seance. Le `Circuit` ne connait pas le catalogue — c'est ici que le
+  // nom devient un `Exercice`, et que le moteur lui donne **son** objectif.
+  variante_facile: () => {
+    const nom = seance.variante_possible();
+    if (!nom) return;
+    const bloc = seance.bloc_actuel;
+    const { seances: histoire, ancrages, note } = lecture_du_profil();
+    const palier = moteur.objectifs.objectif_pour(
+      nom, bloc.mode, moteur.objectifs.objectifs_par_exercice(histoire, ancrages, note),
+    );
+    const en_secondes = palier?.unite === UNITE_SECONDES;
+    seance.passer_a_la_variante(exercice_pour(mouvements, nom), {
+      poids: palier ? palier.poids : bloc.poids,
+      series: palier ? palier.series : bloc.nombre_series,
+      repetitions: palier && !en_secondes ? palier.cible : bloc.repetitions_par_serie,
+      duree: palier && en_secondes ? palier.cible : bloc.duree,
+    });
+    oublier_durees(etat);
+    // Compteur, points suivis, fiche — et le guide du mouvement s'il n'a
+    // jamais ete vu : la mise en place change (genoux au sol, chaise).
+    changer_exercice();
+  },
 };
 
 brancher_commandes((nom) => {

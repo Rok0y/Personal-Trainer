@@ -118,7 +118,20 @@ def publier_fin_de_seance(seance):
     seance.historique_enregistre = True
 
 
-controleur.definir_reset_progression(lambda: compteur.reset())
+def reinitialiser_progression():
+    """Remet le compte de la série à zéro, depuis une commande web.
+
+    Le compteur **et** `derniere_rep`, le repère des annonces : sans le
+    second, les premières répétitions après un « reset », un « recommencer »
+    ou un passage à la variante étaient comptées en silence, `executer_mode`
+    n'annonçant que ce qui dépasse le dernier nombre déjà dit.
+    """
+    global derniere_rep
+    compteur.reset()
+    derniere_rep = 0
+
+
+controleur.definir_reset_progression(reinitialiser_progression)
 
 seance = None
 """La séance active est partagée avec l'API web.

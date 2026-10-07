@@ -35,6 +35,7 @@ from historique.database import (
     definir_onboarding,
     definir_programme_choisi,
     definir_programme_tours,
+    definir_variantes,
     derniere_performance,
     enregistrer_ancrage,
     enregistrer_ressentis,
@@ -55,7 +56,12 @@ from core.materiel import ACCESSOIRES, POIDS_REFERENCE, materiel_du_profil, norm
 # Le format d'une sauvegarde n'a qu'une definition : celle du script qui
 # l'ecrit en ligne de commande. La route d'export ne fait que la servir.
 from scripts.exporter_profil import exporter as exporter_profil
-from progression.niveaux import etat_niveau, etats_niveaux, montees_de_niveau
+from progression.niveaux import (
+    etat_niveau,
+    etats_niveaux,
+    montees_de_niveau,
+    niveaux_par_exercice,
+)
 from progression.objectifs import objectifs_par_exercice
 from progression import ligues as moteur_ligues
 from progression.calibration import NOTE_MAX, NOTE_MIN, REPERES_NOTE, etat_note, note_du_profil, note_valide
@@ -78,7 +84,8 @@ from progression.programmes import (
     TOURS_MAX,
     tous_les_programmes,
 )
-from progression.ressenti import ECHELLE, evaluation_seance, jugements_par_seance
+from progression.ressenti import ECHELLE, jugements_par_seance
+from progression import variantes as moteur_variantes
 from session.controleur import SessionManager
 from session.moteur import duree_realisee
 from session.seances import (
@@ -196,6 +203,29 @@ def _profil_dans_les_templates():
     return {"profil": utilisateur_connecte(), "LIBELLES_SEXE": LIBELLES_SEXE}
 
 
+def jugements_avec_variantes(donnees):
+    """Les jugements des séances, chacun avec sa proposition de variante.
+
+    La proposition voyage **dans** le jugement (`variante`) : c'est déjà lui
+    que `ressentis_ui.js` reçoit, et elle s'affiche au même endroit, sous le
+    verdict. Une ligne sans jugement — un test — n'a rien à proposer.
+    """
+    jugements = jugements_par_seance(donnees)
+    propositions = moteur_variantes.propositions(
+        donnees,
+        jugements,
+        moteur_variantes.variantes_du_profil(),
+        moteur_variantes.catalogue_des_variantes(),
+        niveaux_par_exercice(donnees),
+    )
+    for seance_id, par_nom in propositions.items():
+        lignes = jugements.get(seance_id, {})
+        for nom, proposition in par_nom.items():
+            if nom in lignes:
+                lignes[nom] = {**lignes[nom], "variante": proposition}
+    return jugements
+
+
 def programme_de_l_accueil():
     """Le programme suivi par le profil connecté, et la liste où le choisir.
 
@@ -215,7 +245,10 @@ def programme_de_l_accueil():
     cle = profil.get("programme_choisi")
     if cle not in disponibles:
         return None, disponibles
-    return etat_programme(cle), disponibles
+    return (
+        etat_programme(cle, variantes=moteur_variantes.variantes_du_profil()),
+        disponibles,
+    )
 
 
 def noms_exercices_individuels():
@@ -580,6 +613,7 @@ def etat():
             "dans_echauffement": etat_session["dans_echauffement"],
             "nombre_series_total": etat_session["nombre_series_total"],
             "commandes_autorisees": etat_session["commandes_autorisees"],
+            "variante_facile": etat_session["variante_facile"],
         }
     )
 
@@ -717,6 +751,9 @@ def commander_serie(commande):
         "suivante": controleur.serie_suivante,
         "refaire": controleur.refaire_derniere_serie,
         "terminer": controleur.terminer_serie,
+        # Pour cette séance seulement : la garder pour les prochaines se
+        # propose en fin de séance (`/api/variantes`).
+        "variante_facile": controleur.passer_a_la_variante,
     }
     if commande not in commandes:
         return jsonify({"ok": False, "erreur": "Commande inconnue"}), 404
@@ -828,7 +865,7 @@ def historique():
         seances=seances_entrainement(donnees),
         montees=montees,
         montees_ligue=moteur_ligues.montees_de_ligue(montees),
-        jugements=jugements_par_seance(donnees),
+        jugements=jugements_avec_variantes(donnees),
         detail=False,
     )
 
@@ -1024,10 +1061,16 @@ def page_exercice(nom):
         abort(404)
     etat = etat_niveau(nom)
     historique = recuperer_historique()
+    variantes = moteur_variantes.variantes_du_profil()
     return render_template(
         "exercice.html",
         onglet="exercices",
         fiche=fiche,
+        # Le filet manuel : ce que ce profil joue à la place de ce mouvement,
+        # et ce que ce mouvement remplace pour lui. Une proposition refusée en
+        # fin de séance doit rester rattrapable ici.
+        joue_a_la_place=variantes.get(nom),
+        remplace=moteur_variantes.original_de(nom, variantes),
         etat=etat,
         objectif=objectifs_par_exercice(historique).get(nom) if etat else None,
         ligue=moteur_ligues.ligue_exercice(nom, (etat or {}).get("niveau")),
@@ -1051,7 +1094,9 @@ def programmes():
     profil = utilisateur_connecte() or {}
     return render_template(
         "programmes.html",
-        programmes=etats_programmes(recuperer_historique()),
+        programmes=etats_programmes(
+            recuperer_historique(), variantes=moteur_variantes.variantes_du_profil()
+        ),
         # La page liste tout ; l'accueil n'en montre qu'un. Le marquer ici, c'est
         # rendre visible lequel des deux rôles chaque programme joue.
         programme_suivi=profil.get("programme_choisi"),
@@ -1254,11 +1299,15 @@ def detail_historique(seance_id):
     )
     if seance is None:
         return "Seance introuvable", 404
+    montees = montees_de_niveau(donnees)
     return render_template(
         "historique.html",
         seances=[seance],
-        montees=montees_de_niveau(donnees),
-        jugements=jugements_par_seance(donnees),
+        montees=montees,
+        # Sans elle, la page levait sur le premier exercice : le gabarit lit
+        # les médailles de ligue que la liste complète, elle, transmettait.
+        montees_ligue=moteur_ligues.montees_de_ligue(montees),
+        jugements=jugements_avec_variantes(donnees),
         detail=True,
     )
 
@@ -1292,7 +1341,36 @@ def lire_ressentis_api(seance_id):
     encore en cours d'écriture par le thread caméra.
     """
     return jsonify({"ok": True, "echelle": list(ECHELLE),
-                    "exercices": evaluation_seance(seance_id)})
+                    "exercices": jugements_avec_variantes(
+                        recuperer_historique()
+                    ).get(seance_id, {})})
+
+
+@app.route("/api/variantes", methods=["POST"])
+def enregistrer_variante():
+    """« Pour ce mouvement, je joue celui-là » — ou `joue` à null pour revenir.
+
+    `progression.variantes.definir` décide de ce qui est acceptable (une
+    variante de la chaîne de l'original, jouable, dans la même unité) ; cette
+    route ne fait que transmettre. La table appartient au profil : elle vaut
+    pour toutes les séances, et n'écrit rien dans le fichier des séances.
+    """
+    donnees = request.get_json(silent=True) or {}
+    original = donnees.get("original")
+    if not original:
+        return jsonify({"ok": False, "erreur": "Mouvement manquant"}), 400
+    try:
+        variantes = moteur_variantes.definir(
+            moteur_variantes.variantes_du_profil(),
+            original,
+            donnees.get("joue"),
+            moteur_variantes.catalogue_des_variantes(),
+        )
+    except ValueError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
+    definir_variantes(variantes, utilisateur_connecte()["id"])
+    rafraichir()
+    return jsonify({"ok": True, "variantes": variantes})
 
 
 @app.route("/api/historique/<int:seance_id>/jalons")

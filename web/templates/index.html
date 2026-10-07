@@ -221,6 +221,9 @@
         <details class="series-menu" id="seriesMenu">
             <summary aria-label="Autres commandes">⋯</summary>
             <div class="series-menu-contenu">
+                <!-- Cachée tant que le mouvement courant n'a pas de variante plus
+                     facile : `hud.js` y écrit son nom. -->
+                <button type="button" data-contexte="partout" data-commande="variante_facile" hidden>Plus facile</button>
                 <button type="button" data-contexte="exercice" data-commande="reset">Reset série</button>
                 <button type="button" data-contexte="exercice" data-commande="recommencer">Recommencer</button>
                 <button type="button" data-contexte="exercice" data-commande="precedente">Série précédente</button>
@@ -262,6 +265,7 @@
         refaire: "/api/serie/refaire",
         terminer_seance: "/api/seance/terminer",
         abandonner: "/api/seance/abandonner",
+        variante_facile: "/api/serie/variante_facile",
     };
 
     async function envoyerCommande(nom) {

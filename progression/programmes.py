@@ -32,6 +32,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from progression.niveaux import etats_niveaux
+from progression.variantes import via_variante
 from progression.paliers import (
     UNITE_SECONDES,
     est_suivi_par_le_moteur,
@@ -397,8 +398,16 @@ def prescription(exigence):
     return f"{exigence['series']}x{exigence['cible']:g}{suffixe}{charge}"
 
 
-def etat_exigence(exigence, niveaux):
-    """Confronte une exigence au niveau acquis."""
+def etat_exigence(exigence, niveaux, variantes=None):
+    """Confronte une exigence au niveau acquis.
+
+    `variantes` est la table du profil (`progression.variantes`) : une
+    exigence dont le mouvement est joué sous une variante le dit
+    (`via_variante`), sans que son avancement change — le volume d'une
+    variante ne se compare pas à celui du mouvement complet. Passée
+    explicitement, jamais lue sur le profil ici : le harnais rend ainsi deux
+    fois le même verdict.
+    """
     nom = exigence["exercice"]
     etat = niveaux.get(nom)
     acquis = etat["niveau"] if etat else None
@@ -429,10 +438,11 @@ def etat_exigence(exigence, niveaux):
             min(100, round(100 * (acquis or 0) / requis)) if requis else 0
         ),
         "restant": max(0, requis - (acquis or 0)) if requis else None,
+        "via_variante": via_variante(nom, variantes or {}, niveaux),
     }
 
 
-def etat_programme(cle, seances=None, niveaux=None):
+def etat_programme(cle, seances=None, niveaux=None, variantes=None):
     """Avancement d'un programme, entièrement recalculé à la lecture."""
     programme = tous_les_programmes().get(cle)
     if programme is None:
@@ -445,7 +455,7 @@ def etat_programme(cle, seances=None, niveaux=None):
     for ligne in programme.get("exigences", []):
         if not est_suivi_par_le_moteur(ligne.get("exercice")):
             continue
-        etat = etat_exigence(ligne, niveaux)
+        etat = etat_exigence(ligne, niveaux, variantes)
         # Regroupement à l'affichage seulement : l'ordre des séances suit
         # l'ordre d'apparition des exigences, donc celui de l'éditeur.
         par_seance.setdefault(etat["seance"], []).append(etat)
@@ -712,9 +722,10 @@ def semaine_du_programme(
     }
 
 
-def etats_programmes(seances=None):
+def etats_programmes(seances=None, variantes=None):
     """Tous les programmes, en une seule lecture de l'historique."""
     niveaux = etats_niveaux(seances)
     return {
-        cle: etat_programme(cle, niveaux=niveaux) for cle in tous_les_programmes()
+        cle: etat_programme(cle, niveaux=niveaux, variantes=variantes)
+        for cle in tous_les_programmes()
     }

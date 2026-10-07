@@ -177,6 +177,15 @@ export class BlocExercice {
     this.repos_apres = repos_apres;
     this.commentaire = commentaire || "";
     this.entrelace_avec = entrelace_avec;
+    // Le mouvement ecrit dans la seance, quand ce bloc en joue un autre — une
+    // variante plus facile retenue par le profil (`variantes.js`) ou choisie
+    // en pleine seance. null sinon. Affichage seulement : l'historique
+    // enregistre ce qui a ete **joue**.
+    this.remplace = null;
+    // Les mouvements quittes en cours de seance, du plus ancien au plus
+    // recent, avec ce qu'ils demandaient : `{nom, poids, series, repetitions,
+    // duree}`. Leurs series deja faites restent enregistrees sous leur nom.
+    this.abandons = [];
 
     this.temps_maintien = 0;
     this.temps_restant_precedent = null;
@@ -185,6 +194,12 @@ export class BlocExercice {
 
 //: Comment annoncer un bloc selon sa place dans la seance. Memes valeurs
 //: qu'en Python : ce sont des cles du vocabulaire ferme d'`annonces.js`.
+//: Phases ou l'on peut passer a la variante plus facile du bloc courant :
+//: avant la premiere serie, pendant l'effort, et pendant la recuperation qui
+//: suit une serie. Pas pendant le repos entre deux exercices : le bloc courant
+//: y est deja fini.
+export const PHASES_VARIANTE = ["preparation", "exercice", "recuperation_serie"];
+
 export const AMORCES_PAR_POSITION = {
   premier: "premier_exercice",
   dernier: "dernier_exercice",
@@ -459,6 +474,10 @@ export class Circuit {
     const resultat = {
       index_exercice: this.index_exercice,
       serie: this.serie_actuelle,
+      // Le mouvement fait, et pas seulement le bloc : apres un passage a la
+      // variante, la serie 1 de celle-ci ne doit ni ecraser la serie 1 du
+      // mouvement quitte, ni s'exporter sous son nom.
+      exercice: this.bloc_actuel.exercice.nom,
       repetitions,
       duree,
       completee,
@@ -469,7 +488,8 @@ export class Circuit {
       const precedent = this.resultats_series[index];
       if (
         precedent.index_exercice === this.index_exercice &&
-        precedent.serie === this.serie_actuelle
+        precedent.serie === this.serie_actuelle &&
+        precedent.exercice === resultat.exercice
       ) {
         this.resultats_series[index] = resultat;
         return;
@@ -533,10 +553,14 @@ export class Circuit {
    * ancien resultat, et une seance abandonnee entre-temps l'exporterait comme
    * si elle avait compte.
    */
-  oublier_resultat_serie(index_exercice, serie) {
+  oublier_resultat_serie(index_exercice, serie, exercice = null) {
     this.resultats_series = this.resultats_series.filter(
       (resultat) =>
-        !(resultat.index_exercice === index_exercice && resultat.serie === serie)
+        !(
+          resultat.index_exercice === index_exercice &&
+          resultat.serie === serie &&
+          (exercice === null || resultat.exercice === exercice)
+        )
     );
   }
 
@@ -609,7 +633,7 @@ export class Circuit {
     // refaite se termine : compter sur la deduplication laisserait une fenetre
     // pendant laquelle un abandon exporte la tentative qu'on vient de
     // desavouer — et c'est la le sens du bouton.
-    this.oublier_resultat_serie(repere.index_exercice, repere.serie);
+    this.oublier_resultat_serie(repere.index_exercice, repere.serie, repere.exercice);
 
     // Le repere est conserve : rappeler cette methode restaure le meme etat
     // plutot que de reculer encore d'un cran.
@@ -635,6 +659,69 @@ export class Circuit {
    * Point d'entree unique de « cette serie compte-t-elle ». Le seuil depend du
    * mode : une duree pour un maintien ou un chrono, des repetitions sinon.
    */
+  /**
+   * Le mouvement plus facile proposable maintenant, ou null.
+   *
+   * Le nom seulement : le `Circuit` ne connait pas le catalogue, c'est
+   * l'appelant qui resout l'`Exercice` et son objectif. Refuse sur un bloc
+   * entrelace — faire repartir un seul des deux partenaires a la serie 1
+   * casserait l'aller-retour.
+   */
+  variante_possible() {
+    const bloc = this.bloc_actuel;
+    if (bloc === null || !PHASES_VARIANTE.includes(this.phase)) return null;
+    if (est_echauffement(bloc)) return null;
+    if (
+      this._est_entrelace(this.index_exercice) ||
+      [...this.paires_entrelacees.values()].includes(this.index_exercice)
+    ) {
+      return null;
+    }
+    return bloc.exercice.variante_facile || null;
+  }
+
+  /**
+   * Joue le bloc courant sur un mouvement plus facile, des maintenant.
+   *
+   * **Le bloc repart a la serie 1**, avec la cible de la variante. Les series
+   * deja faites restent enregistrees sous le nom de l'original (`abandons`).
+   * Leve si `exercice` n'est pas celui que `variante_possible` nomme, comme
+   * le Python.
+   */
+  passer_a_la_variante(exercice, { poids, series, repetitions, duree }) {
+    const attendu = this.variante_possible();
+    if (attendu === null || !exercice || exercice.nom !== attendu) {
+      throw new Error("Pas de variante plus facile à jouer maintenant");
+    }
+
+    const bloc = this.bloc_actuel;
+    bloc.abandons.push({
+      nom: bloc.exercice.nom,
+      poids: bloc.poids,
+      series: bloc.nombre_series,
+      repetitions: bloc.repetitions_par_serie,
+      duree: bloc.duree,
+    });
+    if (bloc.remplace === null) bloc.remplace = bloc.exercice.nom;
+    bloc.exercice = exercice;
+    bloc.poids = poids;
+    bloc.nombre_series = series;
+    bloc.repetitions_par_serie = repetitions;
+    bloc.duree = duree;
+    // Une cible figee l'etait pour l'original, pas pour sa variante.
+    bloc.cible_manuelle = null;
+
+    this.serie_actuelle = 1;
+    // On ne « refait » pas une serie d'un autre mouvement.
+    this._derniere_serie_terminee = null;
+    this.reinitialiser_etat_serie();
+    if (this.phase !== "preparation") {
+      this.phase = "exercice";
+      this.debut_repos = null;
+    }
+    return true;
+  }
+
   objectif_serie_atteint({ repetitions = 0, duree = 0 } = {}) {
     const bloc = this.bloc_actuel;
     if (bloc === null) return false;
@@ -676,6 +763,7 @@ export class Circuit {
     this._derniere_serie_terminee = {
       index_exercice: this.index_exercice,
       serie: this.serie_actuelle,
+      exercice: this.bloc_actuel.exercice.nom,
       entrelace:
         this._exercice_precedent_entrelace !== null
           ? { ...this._exercice_precedent_entrelace }

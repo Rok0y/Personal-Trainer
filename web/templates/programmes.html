@@ -117,6 +117,11 @@
                     · hors de portée du matériel disponible.
                     {% endif %}
                 </p>
+                {% if ligne.via_variante %}
+                {#- L'avancement reste celui du mouvement complet : le volume d'une
+                    variante ne se compare pas au sien. #}
+                <p class="exigence-variante">En cours via <strong>{{ ligne.via_variante.nom }}</strong>{% if ligne.via_variante.niveau %}, niveau {{ ligne.via_variante.niveau }}{% endif %}</p>
+                {% endif %}
             </li>
             {% endfor %}
         </ul>

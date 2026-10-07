@@ -52,7 +52,15 @@ from progression.objectifs import (
     est_cible_manuelle,
     exercices_sans_donnees,
     fusionner_cible_manuelle,
+    objectif_pour,
     objectifs_par_exercice,
+)
+from progression.variantes import (
+    appliquer_au_circuit,
+    catalogue_depuis,
+    substitution,
+    variantes_du_profil,
+    versions,
 )
 from session.circuit import (
     MODE_AMRAP,
@@ -804,7 +812,7 @@ def creer_seance_personnalisee(nom):
     return construire_circuit(blocs)
 
 
-def creer_seance(nom):
+def creer_seance(nom, variantes=None):
     """Retourne un circuit neuf, indépendant des séances déjà utilisées.
 
     Les cibles des exercices dotés d'un barème sont posées ici par le moteur de
@@ -812,11 +820,23 @@ def creer_seance(nom):
     passage par `appliquer_a_circuit` couvre les deux origines possibles d'un
     circuit — le JSON des séances personnalisées et le catalogue Python, dont
     les `Circuit` écrits à la main ne passent jamais par `construire_circuit`.
+
+    C'est aussi **le** chemin de jeu où les variantes du profil remplacent
+    leurs originaux (`progression.variantes`), avant le moteur pour que
+    l'objectif soit celui de la variante. Nulle part ailleurs : un circuit
+    construit ici ne repart jamais sur le disque.
     """
     if nom not in CATALOGUE_SEANCES or nom in _lire_seances_personnalisees():
         circuit = creer_seance_personnalisee(nom)
     else:
         circuit = deepcopy(CATALOGUE_SEANCES[nom])
+    mouvements = catalogue_mouvements()
+    appliquer_au_circuit(
+        circuit,
+        variantes_du_profil() if variantes is None else variantes,
+        catalogue_depuis(mouvements),
+        mouvements.__getitem__,
+    )
     return appliquer_a_circuit(circuit)
 
 
@@ -861,6 +881,8 @@ def creer_seance_test(nom_exercice, mode, cible=None):
 
 def catalogue():
     objectifs = objectifs_par_exercice()
+    variantes = variantes_du_profil()
+    catalogue_variantes = catalogue_depuis(catalogue_mouvements())
     # Les deux calculs relisent l'historique : une fois pour tout le catalogue,
     # pas une fois par séance. Le second ne sert qu'au badge « 1re fois ».
     sans_donnees = exercices_sans_donnees()
@@ -918,6 +940,31 @@ def catalogue():
             exercice["premiere_fois"] = (
                 exercice.get("mode") != MODE_ECHAUFFEMENT
                 and exercice["nom"] in sans_donnees
+            )
+            # La variante que ce profil joue à la place, **à côté** du bloc et
+            # jamais dedans : le formulaire « Objectifs » réécrit ces blocs sur
+            # le disque, et y remplacer le nom ou les cibles graverait la
+            # variante d'un seul profil dans une séance partagée.
+            joue = substitution(
+                exercice["nom"], exercice.get("mode"), variantes, catalogue_variantes
+            )
+            palier_joue = (
+                objectif_pour(joue, exercice.get("mode"), objectifs) if joue else None
+            )
+            exercice["variante"] = (
+                {
+                    "nom": joue,
+                    "resume": palier_joue.resume() if palier_joue else None,
+                    "premiere_fois": joue in sans_donnees,
+                }
+                if joue
+                else None
+            )
+            # Les versions entre lesquelles choisir avant de démarrer : la
+            # même règle que `definir`, pour qu'aucun choix proposé ne soit
+            # refusé à l'écriture.
+            exercice["versions"] = versions(
+                exercice["nom"], exercice.get("mode"), catalogue_variantes
             )
         seance["materiel"] = formater_materiel(
             seance["exercices"]

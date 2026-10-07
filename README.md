@@ -54,6 +54,7 @@ Coach de fitness en temps réel : la webcam détecte votre pose grâce à MediaP
 - **Programmes sportifs** : un programme (« Road to TKT ») liste une performance à atteindre par exercice, et la page Programmes montre où vous en êtes sur chacune. Les prescriptions sont traduites **par le volume** — une répétition à 20 kg en vaut deux à 10 kg — pour rester réalisables avec le matériel dont vous disposez ; chaque ligne montre les deux, ce que le programme demande et l'équivalent sur votre barème (« 6x15 » peut s'y lire « 4x23 »). Un programme ne stocke aucune progression : tout est recalculé depuis votre historique. Les programmes se créent et se modifient depuis l'interface (bouton « Modifier » sur la page Programmes), y compris ceux livrés avec l'application. Chaque exigence est **calée sur un palier de votre barème** à l'enregistrement : une prescription qui n'y correspond pas (plus lourde que vos haltères, ou dans une forme que le barème ne propose pas) est remplacée par le premier palier de même volume. Les charges s'y saisissent **pour un seul haltère**, comme partout ailleurs dans l'application : un tableau qui annonce la charge totale des deux haltères se divise par deux avant d'être recopié. Enregistrer un programme **relie chacune de ses séances à une séance jouable** : si une séance existante correspond au libellé (même nom, ou majorité d'exercices en commun) elle est adoptée telle quelle — vos échauffements et vos repos sont conservés, rien n'est réécrit — et sinon elle est créée. Le lien est ensuite mémorisé dans le programme.
 - **Recalage du niveau** : si votre historique ne reflète pas votre niveau réel (séance faite sans l'application, reprise après une interruption, premier usage), la fiche de l'exercice permet de le recaler. Vous n'entrez pas un numéro de niveau mais une performance que vous savez tenir — séries, répétitions ou secondes, charge — et le barème en déduit le niveau. L'historique antérieur cesse alors de compter pour cet exercice, ce qui permet aussi bien de monter que de descendre.
 - **Barre de progression de l'échauffement** : pendant l'échauffement, la barre du bas suit les mouvements d'échauffement (en bleu) et non les exercices, qu'elle laisse place dès le premier exercice comptabilisé. Deux barres, jamais deux en même temps.
+- **Variantes plus faciles** : quand un mouvement est trop dur — pas une seule pompe —, il se remplace par sa variante (pompes sur les genoux, puis inclinées ; planche sur les genoux ; squat sur chaise) **sans changer de séance ni de programme**. Trois chemins. **Avant de démarrer**, la séance sélectionnée montre « Ta version » pour chaque mouvement qui en a plusieurs : si vous savez déjà que les pompes ne passeront pas, vous choisissez la version sur les genoux d'emblée, sans avoir à échouer d'abord. En pleine séance, le menu des commandes de série propose « Plus facile : … » : le bloc repart à la série 1 sur la variante, et les séries déjà faites restent enregistrées sous leur nom. Après la séance, un échec au premier palier — ou une bascule faite en séance — fait proposer « La prochaine fois : … » sous le verdict ; l'accepter fait jouer la variante à la place dans **toutes vos séances**. Quand la variante atteint sa performance de référence (`progression/reglages.json`, clé `variantes`), c'est le retour au mouvement complet qui est proposé. Le choix appartient au profil, jamais à la séance, qui reste partagée : l'accueil affiche « à la place de Pompes », le programme garde l'exigence du mouvement complet (« en cours via Pompes sur les genoux »), et la fiche d'exercice permet d'y revenir à tout moment.
 - **Interface web locale** (Flask) pour démarrer/mettre en pause une séance, suivre l'état en direct via le flux caméra, consulter l'historique, les programmes et les fiches d'exercice — accessibles par des onglets en haut de chaque page, avec le profil à droite. La page Profil regroupe vos informations, votre matériel et le changement de personne.
 - **Résumé de programme sur l'accueil** : un seul programme y figure — celui que vous suivez en ce moment — avec son avancement global (la moyenne de votre progression sur chaque exigence, pas seulement celles déjà bouclées) et, surtout, la prochaine séance à enchaîner, sélectionnable d'un clic. Les séances d'un programme se suivent en boucle ; une séance abandonnée est reproposée. « Commencer plutôt par » accompagne la carte : elle démarre une autre séance du programme pour aujourd'hui, sans rien changer à la suite.
 - **Un seul programme actif** : tant que vous n'en avez choisi aucun, la page Programmes les montre tous, repliés, et l'accueil vous invite à choisir plutôt que d'en proposer un à votre place. Dès qu'un programme est choisi, il est le seul affiché — un bouton « Changer de programme » rouvre la liste. Le choix se retient par profil.
@@ -92,7 +93,7 @@ exercice isolé, qui sert à faire tester la détection par quelqu'un d'autre et
 diagnostiquer un comptage qui ne démarre pas (`?banc=1`).
 
 **Comment les deux restent alignées.** Le code qui *calcule* existe en double,
-Python d'un côté et JavaScript de l'autre, et dix harnais de comparaison
+Python d'un côté et JavaScript de l'autre, et onze harnais de comparaison
 vérifient que les deux rendent exactement les mêmes réponses (voir *Tests*). Le
 code qui *affiche* l'écran de séance, lui, n'existe qu'une fois : `hud.css` et
 `hud.js` sont chargés par les deux pages, tout comme la palette, les feuilles
@@ -141,7 +142,7 @@ Au lancement, l'application initialise la base de données d'historique, ouvre l
 
 ## Tests
 
-Il n'y a pas de suite de tests unitaires, mais **dix harnais de comparaison**
+Il n'y a pas de suite de tests unitaires, mais **onze harnais de comparaison**
 qui répondent à la seule question qui compte pour le portage : les deux
 implémentations rendent-elles la même réponse ? Chacun se joue en deux temps —
 un script Python écrit l'oracle, un script Node le rejoue et diffe.
@@ -154,8 +155,8 @@ python -m scripts.generer_scenarios     # 6 228 pas de seance, images comprises
 node scripts/comparer_seances.mjs
 ```
 
-Les huit autres suivent la même forme : `historique`, `paliers`, `niveaux`,
-`ressenti`, `objectifs`, `programmes`, `ligues`, `annonces`. Attention, deux noms ne coïncident pas —
+Les neuf autres suivent la même forme : `historique`, `paliers`, `niveaux`,
+`ressenti`, `objectifs`, `programmes`, `ligues`, `annonces`, `variantes`. Attention, deux noms ne coïncident pas —
 `generer_fixtures` alimente `comparer_detections` et `generer_scenarios`
 alimente `comparer_seances` — et les fixtures **ne sont pas versionnées** : un
 comparateur lancé sans son générateur compare de vieilles réponses.

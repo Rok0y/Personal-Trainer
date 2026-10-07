@@ -18,8 +18,10 @@ import {
   base_vide, creer_utilisateur, enregistrer_seance, enregistrer_ressentis,
   enregistrer_ancrage, supprimer_seance, supprimer_utilisateur, recuperer_historique,
   definir_note_athlete,
+  definir_variantes,
   recuperer_ancrages, statistiques_exercices, exporter, importer,
 } from "../web/static/js/historique.js";
+import { normaliser as normaliser_variantes } from "../web/static/js/variantes.js";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = join(ICI, "fixtures_historique.jsonl");
@@ -66,6 +68,8 @@ function main() {
         supprimer_seance(base, a.seance_id, a.utilisateur_id);
       } else if (ligne.commande === "supprimer_utilisateur") {
         resultat = supprimer_utilisateur(base, a.utilisateur_id);
+      } else if (ligne.commande === "definir_variantes") {
+        definir_variantes(base, a.utilisateur_id, a.variantes);
       } else if (ligne.commande === "definir_note_athlete") {
         try {
           definir_note_athlete(base, a.utilisateur_id, a.note);
@@ -123,7 +127,9 @@ function main() {
 
     for (const [profil, attendu] of Object.entries(ligne.notes ?? {})) {
       const u = base.utilisateurs.find((x) => x.id === Number(profil));
-      const obtenu = u ? [u.note_athlete ?? null, u.note_relevee_apres ?? null] : null;
+      const obtenu = u
+        ? [u.note_athlete ?? null, u.note_relevee_apres ?? null, normaliser_variantes(u.variantes)]
+        : null;
       if (JSON.stringify(attendu) !== JSON.stringify(obtenu)) {
         ecarts.push({
           champ: `note du profil ${profil}`,

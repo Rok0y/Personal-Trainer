@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from datetime import datetime
 
@@ -251,6 +252,14 @@ def initialiser():
                 f"ALTER TABLE utilisateurs ADD COLUMN {colonne} INTEGER"
             )
 
+    # Les variantes jouées à la place d'un mouvement (JSON `{original: joué}`,
+    # voir `progression/variantes.py`). Une préférence du **profil** et non de
+    # la séance : les séances sont partagées, et « je ne sais pas encore faire
+    # une pompe » ne vaut que pour une personne. Pas de DEFAULT : NULL veut
+    # dire « aucune », exactement comme un dictionnaire vide.
+    if "variantes" not in colonnes_utilisateurs:
+        curseur.execute("ALTER TABLE utilisateurs ADD COLUMN variantes TEXT")
+
     # À l'échelle visée, toute requête filtre par profil : ces index ne sont
     # pas optionnels.
     curseur.execute("""
@@ -309,6 +318,26 @@ def _profil_depuis_ligne(ligne):
         "note_athlete": ligne[11],
         "note_relevee_apres": ligne[12],
         "programme_tours": ligne[13],
+        # Décodé ici, et pas par chaque lecteur : un JSON illisible vaut
+        # « aucune variante » plutôt qu'une exception dans la boucle caméra.
+        "variantes": _variantes_depuis_json(ligne[14]),
+    }
+
+
+def _variantes_depuis_json(brut):
+    """`{original: joué}` depuis la colonne, `{}` pour NULL ou illisible."""
+    if not brut:
+        return {}
+    try:
+        valeur = json.loads(brut)
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(valeur, dict):
+        return {}
+    return {
+        str(original): str(joue)
+        for original, joue in valeur.items()
+        if original and joue and original != joue
     }
 
 
@@ -320,7 +349,8 @@ def lister_utilisateurs():
     curseur.execute(
         "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
         "programme_choisi, materiel, sexe, date_naissance, taille_cm, "
-        "poids_corps_kg, note_athlete, note_relevee_apres, programme_tours "
+        "poids_corps_kg, note_athlete, note_relevee_apres, programme_tours, "
+        "variantes "
         "FROM utilisateurs ORDER BY id"
     )
     profils = [_profil_depuis_ligne(ligne) for ligne in curseur.fetchall()]
@@ -336,7 +366,8 @@ def recuperer_utilisateur(utilisateur_id):
     curseur.execute(
         "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
         "programme_choisi, materiel, sexe, date_naissance, taille_cm, "
-        "poids_corps_kg, note_athlete, note_relevee_apres, programme_tours "
+        "poids_corps_kg, note_athlete, note_relevee_apres, programme_tours, "
+        "variantes "
         "FROM utilisateurs WHERE id = ?",
         (utilisateur_id,),
     )
@@ -384,6 +415,7 @@ def creer_utilisateur(nom):
         "onboarding_termine": False,
         "note_athlete": None,
         "note_relevee_apres": None,
+        "variantes": {},
     }
 
 
@@ -431,6 +463,30 @@ def definir_note_athlete(note, utilisateur_id=None):
         "WHERE id = ?",
         (note, repere, utilisateur_id),
     )
+    conn.commit()
+    conn.close()
+
+
+def definir_variantes(variantes, utilisateur_id=None):
+    """Enregistre les variantes jouées par un profil (`{original: joué}`).
+
+    Le calcul de la nouvelle table — descendre d'un cran, remonter, refuser une
+    variante incompatible — appartient à `progression.variantes` ; ici on ne
+    fait qu'écrire. Une table vide s'écrit NULL. L'appelant doit enchaîner sur
+    `core.utilisateur.rafraichir()`.
+    """
+    utilisateur_id = _profil_courant(utilisateur_id)
+    propres = _variantes_depuis_json(json.dumps(variantes or {}))
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "UPDATE utilisateurs SET variantes = ? WHERE id = ?",
+        (json.dumps(propres, ensure_ascii=False) if propres else None, utilisateur_id),
+    )
+    if curseur.rowcount == 0:
+        conn.close()
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
     conn.commit()
     conn.close()
 
@@ -522,7 +578,6 @@ def definir_materiel(utilisateur_id, materiel):
     connecté transporte cette colonne, et le garde de `web/app.py` la relit à
     chaque requête sans repasser par la base.
     """
-    import json
 
     initialiser()
     conn = connexion()

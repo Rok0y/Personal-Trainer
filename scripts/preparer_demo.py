@@ -147,7 +147,7 @@ def exporter_baremes():
         POIDS_REFERENCE,
         POIDS_SUPPOSES,
     )
-    from progression import calibration, ligues, paliers
+    from progression import calibration, ligues, paliers, variantes
     from progression.reglages import CHEMIN as CHEMIN_REGLAGES
 
     # Le fichier de reglages voyage **tel quel** jusqu'au site : c'est lui que
@@ -184,6 +184,15 @@ def exporter_baremes():
             "marge": calibration.MARGE,
             "exercices_min": calibration.EXERCICES_MIN,
             "reperes": {str(n): texte for n, texte in calibration.REPERES_NOTE.items()},
+        },
+        # Ce qu'une variante plus facile doit prouver avant qu'on propose le
+        # retour au mouvement complet : une performance, que `variantes.js`
+        # traduit par le bareme comme le Python.
+        "variantes": {
+            "retour": {
+                nom: list(performance)
+                for nom, performance in variantes.SEUILS_RETOUR.items()
+            },
         },
         "specs": {nom: asdict(spec) for nom, spec in paliers.SPECS.items()},
         "echelles": {

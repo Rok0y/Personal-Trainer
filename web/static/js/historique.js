@@ -20,6 +20,7 @@
 
 // `calibration.js` n'importe rien : aucun cycle possible.
 import { note_valide } from "./calibration.js";
+import { normaliser as normaliser_variantes } from "./variantes.js";
 
 /** La version du format, ecrite dans chaque export. */
 export const VERSION_BASE = 1;
@@ -138,6 +139,10 @@ export function creer_utilisateur(base, nom, maintenant) {
     // ceux venus de SQLite ne l'ont pas : toute lecture passe par
     // `tutos_vus(profil)`, et « pas de champ » veut dire « rien vu ».
     tutos_vus: { general: 0, seances: [], exercices: [] },
+    // Les variantes jouees a la place d'un mouvement (`variantes.js`),
+    // `{original: joue}`. Absent des profils anterieurs : toute lecture passe
+    // par `variantes.normaliser`, pour qui « pas de champ » vaut « aucune ».
+    variantes: {},
   };
   base.utilisateurs.push(utilisateur);
   return { ...utilisateur };
@@ -304,6 +309,16 @@ export function definir_mesures(base, utilisateur_id, mesures) {
  * premier reglage ne pose rien. Leve sur une note hors echelle, comme le
  * Python.
  */
+export function definir_variantes(base, utilisateur_id, variantes) {
+  // Jumelle de `historique.database.definir_variantes` : on ecrit, on ne juge
+  // pas. Le calcul de la table — descendre, remonter, refuser — appartient a
+  // `variantes.js` (`Variantes.definir`).
+  const utilisateur = base.utilisateurs.find((u) => u.id === utilisateur_id);
+  if (!utilisateur) throw new Error(`Profil ${utilisateur_id} introuvable`);
+  utilisateur.variantes = normaliser_variantes(variantes);
+  return true;
+}
+
 export function definir_note_athlete(base, utilisateur_id, note) {
   if (!note_valide(note)) throw new Error("La note d'athlète est un entier de 1 à 10.");
   const utilisateur = base.utilisateurs.find((u) => u.id === utilisateur_id);

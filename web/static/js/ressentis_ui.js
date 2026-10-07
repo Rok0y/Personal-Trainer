@@ -37,8 +37,15 @@ export const OPTIONS_ECHEC = [{ valeur: "trop_dur", libelle: "C'était trop dur"
  *
  * Recliquer sur son propre choix l'annule : « je prefere ne rien dire » doit
  * rester atteignable sans recharger la page.
+ *
+ * `jugement.variante`, quand il existe, est une proposition de
+ * `variantes.propositions` — `{sens, original, vers}` : jouer une variante plus
+ * facile la prochaine fois, ou revenir au mouvement plus dur. Elle n'apparait
+ * que si l'appelant fournit `au_variante(original, vers)`, qui ecrit la table
+ * du profil et rend vrai si c'est fait. Comme pour le ressenti, ce module ne
+ * decide rien : la proposition arrive toute faite.
  */
-export function construire_ligne(zone, nom, jugement, au_choix) {
+export function construire_ligne(zone, nom, jugement, au_choix, au_variante = null) {
   zone.replaceChildren();
 
   const verdict = document.createElement("span");
@@ -60,6 +67,35 @@ export function construire_ligne(zone, nom, jugement, au_choix) {
       au_choix(nom, deja ? "" : option.valeur);
     });
 
+    zone.appendChild(bouton);
+  }
+
+  const proposition = jugement.variante;
+  if (proposition && au_variante) {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = `variante ${proposition.sens}`;
+    bouton.textContent =
+      proposition.sens === "facile"
+        ? `La prochaine fois : ${proposition.vers}`
+        : `Prochaine séance : essaie ${proposition.vers}`;
+    bouton.addEventListener("click", async () => {
+      bouton.disabled = true;
+      const fait = await au_variante(proposition.original, proposition.vers);
+      if (!fait) {
+        bouton.disabled = false;
+        return;
+      }
+      // Une confirmation qui dit la portee du geste : toutes les seances, et
+      // pas seulement celle-ci.
+      const note = document.createElement("span");
+      note.className = "variante-retenue";
+      note.textContent =
+        proposition.vers === proposition.original
+          ? `${proposition.original} revient dans tes séances.`
+          : `${proposition.vers} remplace ${proposition.original} dans tes séances.`;
+      bouton.replaceWith(note);
+    });
     zone.appendChild(bouton);
   }
   zone.classList.add("visible");
