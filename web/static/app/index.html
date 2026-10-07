@@ -1636,6 +1636,16 @@ import { UNITE_SECONDES } from "../js/paliers.js";
 //: elle designerait un identifiant qui n'existe peut-etre pas.
 const CLE_PROFIL = "coach.profil";
 
+//: Vrai tant que personne n'a dit qui s'entraine depuis le lancement. **On le
+//: demande a chaque ouverture**, meme avec un seul profil : la tablette se
+//: partage, et rouvrir d'office sur le dernier profil faisait s'entrainer
+//: quelqu'un dans l'historique d'un autre sans que rien ne le signale.
+//: `localStorage` ne fait plus que *pre-designer* le dernier profil a l'ecran,
+//: il ne choisit plus a sa place. Un etat de page et non un parametre de
+//: `dessiner_profils` : l'ecran se redessine aussi apres une suppression, et
+//: il doit alors rester en mode « choisis ».
+let profil_a_choisir = true;
+
 //: Le profil dont on lit et ecrit l'historique. Variable et non constante
 //: depuis l'ecran de profils — tout le cloisonnement etait deja en place
 //: (`historique.js` filtre comme le fait SQLite), seule cette valeur figee
@@ -3586,7 +3596,9 @@ function dessiner_profils() {
   $("listeProfils").hidden = premier;
   $("profilsNouveauTitre").hidden = premier;
   $("profilsNouveauIntro").hidden = premier;
-  $("profilsActions").hidden = premier;
+  // Au lancement il faut choisir : un « retour aux seances » ouvrirait la
+  // liste au nom d'un profil que personne n'a designe.
+  $("profilsActions").hidden = premier || profil_a_choisir;
   $("creerProfil").textContent = premier ? "Commencer" : "Créer";
 
   const liste = $("listeProfils");
@@ -3611,7 +3623,7 @@ function dessiner_profils() {
       `<div class="carte-detail">` +
       (seances ? `${seances} séance${seances > 1 ? "s" : ""}` : "aucune séance") +
       ` · depuis ${echapper(utilisateur.cree_le ?? "—")}` +
-      (actif ? " · profil actif" : "") +
+      (actif ? (profil_a_choisir ? " · dernière fois" : " · profil actif") : "") +
       `</div>`;
     choisir.addEventListener("click", () => choisir_profil(utilisateur.id));
     carte.appendChild(choisir);
@@ -4420,6 +4432,7 @@ function accueil_a_faire(profil) {
 }
 
 function choisir_profil(id) {
+  profil_a_choisir = false;
   retenir_profil(id);
   construire_moteur();
   majOngletProfil();
@@ -6050,8 +6063,16 @@ charger_donnees()
     // lancement il n'y en a pas, et c'est `ouvrir_pour_le_profil` qui montre
     // le formulaire d'identite. Le dessin se fera a la creation du profil.
     if (base.utilisateurs.length) dessiner_liste();
-    // Le second chemin d'entree. Voir `ouvrir_pour_le_profil`.
-    ouvrir_pour_le_profil();
+    // **On demande qui s'entraine avant tout le reste** (voir
+    // `profil_a_choisir`). Le tunnel d'accueil reste garanti : `choisir_profil`
+    // passe par `ouvrir_pour_le_profil`. Sans aucun profil, c'est lui qui
+    // montre directement le formulaire d'identite.
+    if (base.utilisateurs.length) {
+      dessiner_profils();
+      montrer("ecranProfils");
+    } else {
+      ouvrir_pour_le_profil();
+    }
   })
   .catch((erreur) => {
     $("sousTitre").textContent = `Chargement impossible : ${erreur.message}`;
