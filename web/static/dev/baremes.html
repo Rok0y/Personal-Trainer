@@ -241,9 +241,10 @@ const INVENTAIRES = (tables) => {
 };
 
 //: Les champs d'un bareme, dans l'ordre ou on les regle.
-//: `charge_corps` ferme la marche : il ne sert qu'aux mouvements dont
-//: `poids_min` vaut 0, et vide veut dire « le corps compte pour 1 kg ».
-const CHAMPS = ["series", "cible_min", "cible_max", "pas", "series_max", "poids_min", "poids_max", "charge_corps"];
+//: `charge_corps` et `premiere_charge` ferment la marche : ils ne servent
+//: qu'aux mouvements dont `poids_min` vaut 0. Vides, le corps compte pour
+//: 1 kg et tous les halteres sont des crans.
+const CHAMPS = ["series", "cible_min", "cible_max", "pas", "series_max", "poids_min", "poids_max", "charge_corps", "premiere_charge"];
 
 const socle = await (await fetch("../donnees/baremes.json")).json();
 const deployes = await (await fetch("../donnees/reglages.json")).json();

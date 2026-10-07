@@ -138,16 +138,25 @@ Progression (`progression/`) : le moteur de niveaux, qui pilote les cibles des s
   premiers niveaux, c'est-à-dire précisément le débutant à qui on vient d'ouvrir
   le barème (descendue de 24 à 12 sur les trois).
   **Sur ces mouvements, le corps compte dans le volume** (`charge_corps`,
-  10 kg « par haltère » sur Squat et les deux fentes). Sans lui, le poids du
+  15 kg « par haltère » sur Squat et les deux fentes), **et les haltères trop
+  légers ne sont pas des crans** (`premiere_charge`, 5 kg : l'échelle va du
+  poids du corps directement à 5 kg). Sans lui, le poids du
   corps valait 1 kg (`poids or 1`) : deux haltères de 2 kg *doublaient* le
   volume d'un squat, et le barème passait de 4x15 au poids du corps à **4x8 à
   2 kg** en appelant ça une progression. La note d'athlète en héritait —
   note 2 à 4x14 au corps, note 3 à 4x11 à 2 kg, soit *plus facile* —, remonté
   tel quel d'un test réel. Le volume y vaut `séries x cible x (poids +
   charge_corps)` : un cran d'haltère coûte une ou deux répétitions au lieu de
-  la moitié. **10 est un compromis, pas une mesure** — à 30-35, plus proche de
+  la moitié. **15 est un compromis, pas une mesure** — à 30-35, plus proche de
   la physique, chaque cran se jouerait à la cible maximale et les répétitions
-  ne bougeraient plus. Trois choses à savoir. (1) Le réglage vit dans la spec
+  ne bougeraient plus. La première version, à 10 et avec tous les haltères,
+  restait fausse à l'essai : 4x13 à 2 kg était encore *plus facile* que 4x15
+  au poids du corps — deux kilos par main ne pèsent rien sur un squat. D'où
+  `premiere_charge`, que `poids_min` ne pouvait pas porter puisque son 0 est
+  justement ce qui déclare la charge facultative ; et d'où 15 plutôt que 10,
+  sans quoi l'entrée à 5 kg retombait à 4x10. Le squat passe désormais de 4x15
+  au corps à 4x12 à 5 kg, les fentes de 4x10 à 4x8 à 5 kg. Les deux réglages
+  se jugent ensemble, sur `dev/baremes.html`. Trois choses à savoir. (1) Le réglage vit dans la spec
   et **voyage avec le palier** (`Palier.charge_corps`) pour que `palier.volume`
   reste juste chez tous ses lecteurs ; quiconque calcule un volume **sans
   palier en main** passe par `volume_exercice(nom, …)` (Python) /
@@ -159,16 +168,18 @@ Progression (`progression/`) : le moteur de niveaux, qui pilote les cibles des s
   nouveau volume) **reproduisait l'inversion** — 4x14 au corps vaut 560,
   4x11 à 2 kg en vaut 528 —, si bien que les rangs du bas ont été reposés à
   la main sur la zone au poids du corps (squat 4x3, 4x6, 4x10, 4x15 ; fentes
-  4x3, 4x5, 4x8, 4x10) et les autres convertis. La note 5 et au-dessus donne
-  le même départ qu'avant. (3) Les numéros de niveau et les exigences de
+  4x3, 4x5, 4x8, 4x10) et les autres convertis. Le passage à `premiere_charge`
+  les a reconvertis une seconde fois, par la même règle : chaque borne garde
+  la performance qu'elle exigeait, au palier le plus proche qui existe encore,
+  sans jamais deux bornes sur le même palier. (3) Les numéros de niveau et les exigences de
   programme en volume se relisent sur la nouvelle échelle : une exigence qui
   n'est plus un palier s'affiche « prescrit · soit … sur ton barème » jusqu'à
   son prochain enregistrement. Elle n'a pas été recalée d'office, parce que le
   calage dépend du matériel du profil connecté, et que le programme de Mimi
   n'est pas celui d'Arthur. Le harnais des paliers porte un exercice fictif
-  `ChargeCorps` (valeur fractionnaire plus surcharge) : ignorer le réglage
-  côté JS sort 5 889 divergences aux paliers, 4 821 aux ligues et 499 aux
-  objectifs.
+  `ChargeCorps` (valeur fractionnaire, surcharge et premier haltère) : ignorer
+  `charge_corps` côté JS sortait 5 889 divergences aux paliers, 4 821 aux
+  ligues et 499 aux objectifs ; ignorer `premiere_charge`, 2 822, 2 496 et 292.
   Les **variantes assistées** (pompes inclinées, pompes et gainage sur les
   genoux, squat sur chaise) sont des exercices comptabilisés à part entière, pas
   des échauffements : elles ont un barème, des records, une progression. Chacune

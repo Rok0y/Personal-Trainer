@@ -122,6 +122,9 @@ class SpecProgression:
     #: Part du corps comptée dans le volume, en kg « par haltère ». Voir la
     #: note de `charge_corps` plus bas : 0 garde l'ancienne règle.
     charge_corps: float = 0
+    #: Premier haltère qui compte, quand la charge est facultative : sous lui,
+    #: on reste au poids du corps. Voir la note de `premiere_charge`.
+    premiere_charge: float | None = None
 
 
 #: Un barème par exercice, calé sur ce qui s'y pratique réellement. Les trois
@@ -205,7 +208,21 @@ class SpecProgression:
 #   du corps (curl), et le réglage ne servirait à rien.
 #   Le toucher **rebat tout le barème de l'exercice**, comme `poids_min`, et
 #   change l'échelle de ses volumes : ses bornes de ligue, posées en volume
-#   absolu, sont à recaler avec (`scripts/recaler_ligues_poids_du_corps.py`).
+#   absolu, sont à recaler avec.
+#
+# `premiere_charge` — **le premier haltère qui vaut un cran**, sur un mouvement
+#   à charge facultative. Un squat ou une fente à 2 ou 3 kg par main ne se
+#   distingue pas du poids du corps : testé, 4x13 à 2 kg était *plus facile*
+#   que 4x15 sans rien, si bien que le barème faisait passer pour une
+#   progression un palier qui n'en était pas un. On saute donc ces haltères :
+#   l'échelle garde le cran au poids du corps (0) puis repart à
+#   `premiere_charge`. `poids_min` ne pouvait pas le dire — il vaut déjà 0, et
+#   c'est ce 0 qui déclare la charge facultative.
+#   Il va avec `charge_corps` : c'est la part du corps qui décide combien de
+#   répétitions coûte l'entrée au premier haltère (4x15 au corps puis 4x12 à
+#   5 kg à 15, mais 4x10 à 5 kg à 10, ce qui redevenait plus facile).
+#   Sans haltère au moins aussi lourd, l'échelle se réduit au poids du corps,
+#   qui est alors la vraie réponse et non un repli.
 #
 # `poids_max` — le plafond de charge n'est pas celui du matériel. Sans lui, le
 #   barème proposait des paliers jusqu'à l'haltère de 18 kg au curl unilatéral,
@@ -376,6 +393,9 @@ def _dans_la_fourchette(echelle, spec):
         for poids in echelle
         if (spec.poids_min is None or poids >= spec.poids_min)
         and (spec.poids_max is None or poids <= spec.poids_max)
+        # Le poids du corps reste un cran : seuls les haltères trop légers
+        # pour peser quelque chose sont écartés.
+        and (not spec.premiere_charge or poids == 0 or poids >= spec.premiere_charge)
     )
 
 
@@ -759,6 +779,7 @@ def signature(nom_exercice):
             "unite": spec.unite,
             "series_max": spec.series_max,
             "charge_corps": spec.charge_corps,
+            "premiere_charge": spec.premiere_charge,
             "surcharges": {
                 str(niveau): dict(sorted(valeurs.items()))
                 for niveau, valeurs in sorted(spec.surcharges.items())

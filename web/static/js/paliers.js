@@ -137,7 +137,10 @@ export class Baremes {
     return echelle.filter(
       (poids) =>
         (spec.poids_min === null || poids >= spec.poids_min) &&
-        (spec.poids_max === null || poids <= spec.poids_max)
+        (spec.poids_max === null || poids <= spec.poids_max) &&
+        // Le poids du corps reste un cran : seuls les halteres trop legers
+        // pour peser quelque chose sont ecartes (`premiere_charge`).
+        (!spec.premiere_charge || poids === 0 || poids >= spec.premiere_charge)
     );
   }
 

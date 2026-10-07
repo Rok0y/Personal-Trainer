@@ -86,6 +86,7 @@ def specs_du_harnais():
             cible_max=12,
             poids_min=0,
             charge_corps=7.5,
+            premiere_charge=4,
             surcharges={5: {"poids": 6}},
         ),
     }
