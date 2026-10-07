@@ -45,9 +45,36 @@ def bras_en_x(corps):
     )
 
 
+def _torse_vertical(corps):
+    """Le buste est-il debout ? Les épaules nettement au-dessus des hanches.
+
+    On compare l'écart vertical entre le milieu des épaules et le milieu des
+    hanches à leur écart horizontal : debout, le premier domine ; allongé, le
+    second. Aucun seuil à régler, et l'orientation de la caméra n'y change
+    rien — de face comme de profil, un buste debout est vertical dans l'image.
+    """
+    epaules_x = (corps.epaule_gauche.x + corps.epaule_droite.x) / 2
+    epaules_y = (corps.epaule_gauche.y + corps.epaule_droite.y) / 2
+    hanches_x = (corps.hanche_gauche.x + corps.hanche_droite.x) / 2
+    hanches_y = (corps.hanche_gauche.y + corps.hanche_droite.y) / 2
+
+    return hanches_y - epaules_y > abs(hanches_x - epaules_x)
+
+
 def deux_bras_leves(corps):
-    """Détecte les deux bras levés au-dessus des épaules."""
-    return bras_droit_leve(corps) and bras_gauche_leve(corps)
+    """Détecte les deux bras levés au-dessus des épaules, **debout**.
+
+    Le buste debout n'est pas un raffinement : allongé sur le dos et filmé de
+    côté, « poignets au-dessus des épaules, coudes tendus » est exactement la
+    position haute du développé couché. Trois secondes bras tendus, et le geste
+    de remise à zéro effaçait la série en cours. Un geste de contrôle ne doit
+    pas pouvoir se confondre avec un mouvement d'exercice ; debout, on ne
+    soulève rien bras tendus en marquant trois secondes d'arrêt — sauf au
+    verrouillage d'un développé épaule, limite connue.
+    """
+    return (
+        bras_droit_leve(corps) and bras_gauche_leve(corps) and _torse_vertical(corps)
+    )
 
 
 print("positions chargé")

@@ -135,10 +135,28 @@ def _cible_visee(exercice):
     # suivante, soit exactement le contraire de ce que la calibration vient
     # d'établir. Le test a déjà posé son ancrage ; c'est lui le repère, pas
     # cette ligne.
-    if cible == CIBLE_TEST:
+    if est_serie_de_test(exercice):
         return None
 
     return exercice.get("poids") or 0, series, cible
+
+
+def est_serie_de_test(exercice):
+    """Cette ligne d'historique est-elle un test de calibration ?
+
+    Point d'entrée unique de la question. Un test n'a pas d'objectif : sa cible
+    est un plafond qu'on n'atteint jamais, et le juger revient à déclarer
+    échoué ce qui vient précisément de *mesurer* le niveau. Il n'y a rien à
+    reconnaître de plus qu'une cible égale à `CIBLE_TEST` dans l'unité du
+    mode — rien n'est stocké, un exercice est calibré s'il porte un ancrage.
+    """
+    unite_attendue = unite(exercice.get("nom"))
+    cible = (
+        exercice.get("duree_cible")
+        if unite_attendue == UNITE_SECONDES
+        else exercice.get("repetitions_cibles")
+    )
+    return cible == CIBLE_TEST
 
 
 def juger(exercice):
@@ -271,6 +289,17 @@ def jugements_par_seance(seances=None):
                 }
             )
             for exercice in seance.get("exercices", [])
+            # **Un test n'est ni réussi ni échoué**, et il faut l'écarter ici
+            # et pas seulement dans `juger`. Celui-ci rend bien None sur un
+            # test — mais ce None était traité comme « exercice hors barème »
+            # et retombait sur `_reussite_brute`, qui compare les répétitions
+            # réalisées à 999 : verdict « Non atteint » en rouge et bouton
+            # « C'était trop dur » proposé sur la série qui vient justement
+            # d'établir le niveau. *Un repli protège d'un cas manquant et
+            # masque un branchement oublié* — c'est le même défaut que le
+            # repli de `seuils_exercice`, et il se reconnaît au fait que deux
+            # causes opposées y produisent la même valeur.
+            if not est_serie_de_test(exercice)
         }
         for seance in seances
     }

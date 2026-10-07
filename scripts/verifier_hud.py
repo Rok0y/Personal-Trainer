@@ -14,10 +14,26 @@ Ce script relit donc les trois fichiers et pose trois questions :
 2. les deux pages proposent-elles **les mêmes commandes** ?
 3. ces commandes sont-elles bien celles que le contrôleur autorise
    (`commandes_autorisees`) et que le navigateur sait exécuter ?
+4. les écarts volontaires entre les deux pages sont-ils **encore** des écarts ?
 
 La troisième compte autant que les autres : une commande absente du dictionnaire
 `commandes_autorisees` reste grisée pour toujours, et une commande que le
 navigateur ne connaît pas ne fait simplement rien quand on appuie dessus.
+
+La quatrième existe parce que les deux pages ont fini par **diverger à
+dessein** : les cartes « Position » et « Étape » ne servent qu'au réglage d'une
+détection, et ce réglage se fait sur la démo. Un tel écart doit être déclaré
+(`ECARTS_ASSUMES`) plutôt que toléré, et la déclaration est vérifiée dans les
+deux sens — un écart qui n'en est plus un est signalé lui aussi, faute de quoi
+la liste pourrit et finit par excuser un vrai oubli.
+
+**Angle mort corrigé au passage.** Les identifiants n'étaient cherchés que sous
+la forme `$("nom")`. Or `hud.js` passe par `changer_champ(id, …)` et
+`changer_badge(id_badge, id_valeur, …)`, qui appellent `$` avec une *variable* :
+`position`, `stage`, `exercice`, `series`, `weight` et leurs trois badges
+échappaient donc entièrement au contrôle — c'est-à-dire précisément les
+identifiants que ce script dit protéger. Ils sont désormais extraits de leurs
+sites d'appel.
 
 Usage : `python -m scripts.verifier_hud`
 """
@@ -37,10 +53,34 @@ PAGES = {
 CONTROLEUR = RACINE / "session/controleur.py"
 APPLICATION = RACINE / "web/static/app/index.html"
 
+#: Identifiants qu'une page n'a **pas**, et c'est voulu. `hud.js` continue de
+#: les alimenter : `changer_champ` sort en silence quand l'élément est absent,
+#: ce qui rend l'écart inoffensif — mais seulement tant qu'il est décidé.
+#: Chaque entrée est vérifiée dans les deux sens (cf. `_ecarts`).
+ECARTS_ASSUMES = {
+    # Le réglage d'une détection se fait sur la démo, qui a un banc d'essai
+    # bien plus complet ; en séance ces deux cartes ne font qu'occuper la
+    # colonne gauche d'une tablette posée par terre.
+    "application": {"position", "stage"},
+}
+
 
 def identifiants_reclames():
-    """Les `$("...")` de `hud.js` : tout ce que l'affichage va chercher."""
-    return set(re.findall(r'\$\("([A-Za-z]\w*)"\)', HUD_JS.read_text(encoding="utf-8")))
+    """Tout ce que l'affichage va chercher dans le document.
+
+    Trois formes, et les deux dernières ont longtemps manqué : `$("nom")` en
+    direct, mais aussi les identifiants passés en **argument** à
+    `changer_champ` et `changer_badge`, qui appellent `$` avec une variable.
+    Une regex sur `$("…")` ne peut pas les voir, et ce sont justement ceux du
+    bandeau et des badges.
+    """
+    source = HUD_JS.read_text(encoding="utf-8")
+    directs = re.findall(r'\$\("([A-Za-z]\w*)"\)', source)
+    champs = re.findall(r'changer_champ\(\s*"([A-Za-z]\w*)"', source)
+    badges = re.findall(
+        r'changer_badge\(\s*"([A-Za-z]\w*)"\s*,\s*"([A-Za-z]\w*)"', source
+    )
+    return set(directs) | set(champs) | {nom for paire in badges for nom in paire}
 
 
 def identifiants_de(page):
@@ -74,11 +114,32 @@ def main():
 
     reclames = identifiants_reclames()
     for nom, page in PAGES.items():
-        manquants = reclames - identifiants_de(page)
+        presents = identifiants_de(page)
+        assumes = ECARTS_ASSUMES.get(nom, set())
+
+        manquants = (reclames - presents) - assumes
         if manquants:
             problemes.append(
                 f"{nom} : {len(manquants)} identifiants que hud.js reclame sont "
                 f"absents du balisage — {', '.join(sorted(manquants))}"
+            )
+
+        # Le controle dans l'autre sens. Un ecart declare qui n'existe plus est
+        # une ligne qui n'excuse plus rien aujourd'hui, mais qui excusera un
+        # vrai oubli le jour ou l'identifiant redisparaitra — exactement le
+        # genre de repli qui masque un branchement.
+        perimes = assumes & presents
+        for identifiant in sorted(perimes):
+            problemes.append(
+                f"{nom} : « {identifiant} » est declare dans ECARTS_ASSUMES "
+                "mais existe bel et bien — retirer la ligne devenue fausse"
+            )
+
+        oublies = assumes - reclames
+        for identifiant in sorted(oublies):
+            problemes.append(
+                f"{nom} : « {identifiant} » est declare dans ECARTS_ASSUMES "
+                "mais hud.js ne le reclame plus — retirer la ligne devenue inutile"
             )
 
     commandes = {nom: commandes_de(page) for nom, page in PAGES.items()}
@@ -113,7 +174,14 @@ def main():
             print(f"  - {probleme}")
         return 1
 
-    print(f"{len(reclames)} identifiants presents dans les deux pages")
+    assumes = sum(len(v) for v in ECARTS_ASSUMES.values())
+    print(f"{len(reclames)} identifiants reclames par hud.js")
+    if assumes:
+        detail = "; ".join(
+            f"{page} sans {', '.join(sorted(noms))}"
+            for page, noms in sorted(ECARTS_ASSUMES.items())
+        )
+        print(f"  dont {assumes} ecarts assumes et verifies — {detail}")
     print(f"{len(fixe)} commandes, identiques des deux cotes et toutes executables")
     print("\nLes deux montages du HUD sont alignes.")
     return 0

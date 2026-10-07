@@ -137,6 +137,9 @@
         .badge-manuelle-retirer:hover { color: var(--text); }
         .last-series { margin-top: 4px; padding: 8px 10px; border-left: 2px solid var(--teal); background: rgba(27, 232, 196, .07); color: var(--muted); font-size: 12px; }
         .last-series strong { color: var(--text); }
+        /* Une serie manquee reste affichee — la retirer disait moins que ce qui
+           a ete fait — mais elle se distingue des autres. */
+        .last-series .ratee { color: var(--orange); }
         .flag-ressenti { display: inline-flex; padding: 1px 7px; margin-left: 4px; border-radius: 999px; border: 1px solid currentColor; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
         .flag-trop_dur { color: var(--orange); }
         .flag-facile, .flag-trop_facile { color: var(--teal); }
@@ -286,7 +289,7 @@
                         {% endif %}
                         {% set derniere = dernieres_series.get(identifiant, {}).get(exercice.nom or exercice.exercice) %}
                         {% if derniere and derniere.series %}
-                        <div class="last-series"><strong>Dernière série · </strong>Séance du {{ derniere.date }} : {% for serie in derniere.series %}{% if derniere.mode in MODES_DUREE %}{{ serie.duree|round(1) }} s{% else %}{{ serie.repetitions }}{% if serie.poids %} x {{ serie.poids }} kg{% endif %}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}{% if derniere.ressenti in LIBELLES_RESSENTI %} <span class="flag-ressenti flag-{{ derniere.ressenti }}">{{ LIBELLES_RESSENTI[derniere.ressenti] }}</span>{% endif %}</div>
+                        <div class="last-series"><strong>Dernière série · </strong>Séance du {{ derniere.date }} : {% for serie in derniere.series %}<span{% if serie.completee == false %} class="ratee" title="Objectif non atteint"{% endif %}>{% if derniere.mode in MODES_DUREE %}{{ serie.duree|round(1) }} s{% else %}{{ serie.repetitions }}{% if serie.poids %} x {{ serie.poids }} kg{% endif %}{% endif %}</span>{% if not loop.last %} · {% endif %}{% endfor %}{% if derniere.ressenti in LIBELLES_RESSENTI %} <span class="flag-ressenti flag-{{ derniere.ressenti }}">{{ LIBELLES_RESSENTI[derniere.ressenti] }}</span>{% endif %}</div>
                         {% endif %}
                     </div>
                     {% endmacro %}

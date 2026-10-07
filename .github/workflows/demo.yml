@@ -13,7 +13,7 @@ name: Demo
 
 on:
   push:
-    branches: [main, feat/portage-web, feat/ligues-et-xp]
+    branches: [main, feat/portage-web, feat/ligues-et-xp, feat/onboarding-et-coach]
   workflow_dispatch:
 
 permissions:

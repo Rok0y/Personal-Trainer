@@ -25,19 +25,11 @@ const SPECS_HARNAIS = join(ICI, "fixtures_paliers_specs.json");
 
 const ECARTS_DETAILLES = 6;
 
-// Les memes inventaires que cote Python, dans le meme ordre.
-function inventaires(tables) {
-  const reference = tables.echelles.reference;
-  const complet = {};
-  for (const poids of reference) complet[poids] = 2;
-  return {
-    non_declare: null,
-    vide: { halteres: {}, accessoires: [] },
-    debutant: { halteres: { 2: 2, 3: 2, 4: 2 }, accessoires: ["tapis"] },
-    une_paire_moyenne: { halteres: { 6: 2, 8: 2, 10: 1 }, accessoires: [] },
-    complet: { halteres: complet, accessoires: ["tapis", "chaise"] },
-  };
-}
+// Les inventaires ne sont **pas** redeclares ici : ils arrivent avec l'oracle
+// (`fixtures_paliers_specs.json`), comme les specs fictives. Ils l'ont ete, et
+// c'est un piege qui s'est referme — deux inventaires ajoutes cote Python ont
+// rendu ce fichier muet sur eux, `baremes[nom]` valant `undefined`. Un jeu
+// d'entrees duplique a le meme defaut que le code qu'il surveille.
 
 function repondre(bareme, ligne) {
   const nom = ligne.exercice;
@@ -83,7 +75,7 @@ function main() {
   const extra = JSON.parse(readFileSync(SPECS_HARNAIS, "utf-8"));
   tables.specs = { ...tables.specs, ...extra.specs };
   tables.materiel = { ...tables.materiel, ...extra.materiel };
-  const stocks = inventaires(tables);
+  const stocks = extra.inventaires;
   const lignes = readFileSync(FIXTURES, "utf-8")
     .split("\n")
     .filter((l) => l.trim())

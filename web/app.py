@@ -486,11 +486,10 @@ def index():
                         "date": seance["date"],
                         "mode": exercice.get("mode", "repetitions"),
                         "ressenti": exercice.get("ressenti") or "",
-                        "series": [
-                            serie
-                            for serie in exercice.get("series_detaillees", [])
-                            if serie.get("completee", True)
-                        ],
+                        # Toutes les séries, manquées comprises : « 9 · 9 »
+                        # pour une séance faite en 9 · 9 · 8 disait moins que
+                        # ce qui avait été fait. Le gabarit les distingue.
+                        "series": exercice.get("series_detaillees", []),
                     }
                     for exercice in seance.get("exercices", [])
                 }

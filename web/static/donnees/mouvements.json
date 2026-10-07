@@ -19,11 +19,13 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "face",
   "analyse_la_pose": true,
   "detection": "curl_biceps_droit_detection",
   "erreurs": [
    "coude_avance_curl_droit"
   ],
+  "amplitude": null,
   "materiel": "Un haltère",
   "est_echauffement": false
  },
@@ -47,11 +49,13 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "face",
   "analyse_la_pose": true,
   "detection": "curl_biceps_gauche_detection",
   "erreurs": [
    "coude_avance_curl_gauche"
   ],
+  "amplitude": null,
   "materiel": "Un haltère",
   "est_echauffement": false
  },
@@ -63,8 +67,9 @@
    "Place-toi face à la caméra, les deux bras entièrement visibles."
   ],
   "instructions": [
-   "Contrôle la descente.",
-   "Ne balance pas le mouvement."
+   "Monte les bras sur les côtés, pas devant toi, jusqu'à hauteur des épaules.",
+   "Garde les bras presque tendus.",
+   "Contrôle la descente jusqu'en bas, mains le long des cuisses."
   ],
   "erreurs_frequentes": [
    "Monter plus haut que les épaules : inutile, et ça sollicite le cou.",
@@ -73,9 +78,11 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "face",
   "analyse_la_pose": true,
   "detection": "elevation_laterale_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Deux haltères",
   "est_echauffement": false
  },
@@ -85,7 +92,7 @@
   "mise_en_place": [
    "Mains au sol un peu plus larges que les épaules, bras tendus.",
    "Corps aligné des talons aux épaules, regard vers le sol.",
-   "Place-toi face à la caméra, corps entier dans le champ."
+   "Place-toi de profil face à la caméra, corps entier dans le champ."
   ],
   "instructions": [
    "Garde la tête dans le prolongement du dos, regard vers le sol.",
@@ -99,9 +106,14 @@
   ],
   "variante_facile": "Pompes sur les genoux",
   "variante_difficile": null,
+  "orientation": "profil",
   "analyse_la_pose": true,
   "detection": "pompe_detection",
   "erreurs": [],
+  "amplitude": [
+   "pompe_profondeur",
+   "forme_pompe_pas_assez_profonde"
+  ],
   "materiel": "",
   "est_echauffement": false
  },
@@ -114,8 +126,9 @@
    "Place-toi face à la caméra, tête et bras entièrement visibles."
   ],
   "instructions": [
-   "Garde la tête droite, dans le prolongement du dos.",
-   "Garde les coudes serrés vers l'avant, ils ne s'écartent pas.",
+   "Garde les coudes en l'air, au-dessus des épaules, tout le mouvement.",
+   "Garde les mains jointes sur l'haltère.",
+   "Garde les coudes serrés près de la tête, ils ne s'écartent pas.",
    "Descends l'haltère derrière la nuque sans à-coup."
   ],
   "erreurs_frequentes": [
@@ -125,9 +138,13 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "face",
   "analyse_la_pose": true,
   "detection": "extension_triceps_au_dessus_de_la_tete_detection",
-  "erreurs": [],
+  "erreurs": [
+   "extension_triceps_erreur_coudes"
+  ],
+  "amplitude": null,
   "materiel": "Un haltère",
   "est_echauffement": false
  },
@@ -151,9 +168,11 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "allonge_camera_de_cote",
   "analyse_la_pose": true,
   "detection": "developpe_couche_sol_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Deux haltères et un tapis",
   "est_echauffement": false
  },
@@ -177,9 +196,11 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "face",
   "analyse_la_pose": true,
   "detection": "developpe_epaule_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Deux haltères",
   "est_echauffement": false
  },
@@ -202,9 +223,11 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "allonge_camera_de_cote",
   "analyse_la_pose": true,
   "detection": "crunches_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Un tapis",
   "est_echauffement": false
  },
@@ -228,24 +251,27 @@
   ],
   "variante_facile": "Gainage sur les genoux",
   "variante_difficile": null,
+  "orientation": "profil",
   "analyse_la_pose": true,
   "detection": "detection_gainage",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Un tapis",
   "est_echauffement": false
  },
  "Squat": {
   "nom": "Squat",
-  "description": "Squat avec descente jusqu'à ce que les coudes se rapprochent des genoux.",
+  "description": "Squat descendu jusqu'à ce que les coudes touchent les genoux : c'est ce contact qui valide la répétition, chargé ou à vide.",
   "mise_en_place": [
-   "Debout, un haltère dans chaque main, bras le long du corps.",
    "Pieds écartés de la largeur des hanches, pointes légèrement vers l'extérieur.",
+   "Un haltère dans chaque main si tu veux charger, bras le long du corps ; sinon à vide, bras libres.",
    "Place-toi face à la caméra, jambes entières visibles."
   ],
   "instructions": [
-   "Garde le dos droit.",
-   "Descends les hanches vers l'arrière comme pour t'asseoir.",
-   "Rapproche tes coudes de tes genoux en bas du mouvement.",
+   "Garde le dos droit, regard devant.",
+   "Descends les hanches vers l'arrière, comme pour t'asseoir.",
+   "En bas, va toucher tes genoux avec tes coudes : c'est ce contact qui compte la répétition.",
+   "À vide, laisse tes bras descendre devant toi pour aller les chercher.",
    "Remonte en poussant sur les talons."
   ],
   "erreurs_frequentes": [
@@ -255,17 +281,20 @@
   ],
   "variante_facile": "Squat sur chaise",
   "variante_difficile": null,
+  "orientation": "face",
   "analyse_la_pose": true,
   "detection": "squat_detection",
   "erreurs": [],
-  "materiel": "Deux haltères et un tapis",
+  "amplitude": null,
+  "materiel": "Deux haltères (facultatif) et un tapis",
   "est_echauffement": false
  },
  "Fente droite": {
   "nom": "Fente droite",
   "description": "Fente avec la jambe droite vers l'avant, jusqu'à ce que le genou droit soit fléchi à environ 90 degrés.",
   "mise_en_place": [
-   "Debout, un haltère dans chaque main, jambe droite avancée d'un grand pas.",
+   "Debout, jambe droite avancée d'un grand pas.",
+   "Un haltère dans chaque main si tu veux charger ; sinon mains sur les hanches.",
    "Buste droit, regard devant.",
    "Place-toi de profil, la caméra à ta gauche, jambes entières visibles."
   ],
@@ -282,17 +311,22 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "profil_camera_gauche",
   "analyse_la_pose": true,
   "detection": "fente_droite_detection",
-  "erreurs": [],
-  "materiel": "Deux haltères et un tapis",
+  "erreurs": [
+   "fente_droite_erreur_genou"
+  ],
+  "amplitude": null,
+  "materiel": "Deux haltères (facultatif) et un tapis",
   "est_echauffement": false
  },
  "Fente gauche": {
   "nom": "Fente gauche",
   "description": "Fente avec la jambe gauche vers l'avant, jusqu'à ce que le genou gauche soit fléchi à environ 90 degrés.",
   "mise_en_place": [
-   "Debout, un haltère dans chaque main, jambe gauche avancée d'un grand pas.",
+   "Debout, jambe gauche avancée d'un grand pas.",
+   "Un haltère dans chaque main si tu veux charger ; sinon mains sur les hanches.",
    "Buste droit, regard devant.",
    "Place-toi de profil, la caméra à ta droite, jambes entières visibles."
   ],
@@ -309,10 +343,14 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "profil_camera_droite",
   "analyse_la_pose": true,
   "detection": "fente_gauche_detection",
-  "erreurs": [],
-  "materiel": "Deux haltères et un tapis",
+  "erreurs": [
+   "fente_gauche_erreur_genou"
+  ],
+  "amplitude": null,
+  "materiel": "Deux haltères (facultatif) et un tapis",
   "est_echauffement": false
  },
  "Souleve de terre roumain": {
@@ -337,9 +375,11 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "face",
   "analyse_la_pose": true,
   "detection": "souleve_de_terre_roumain_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Deux haltères",
   "est_echauffement": false
  },
@@ -363,9 +403,11 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "face",
   "analyse_la_pose": true,
   "detection": "detection_gainage_laterale_droite",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Un tapis",
   "est_echauffement": false
  },
@@ -389,9 +431,11 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "face",
   "analyse_la_pose": true,
   "detection": "detection_gainage_laterale_gauche",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Un tapis",
   "est_echauffement": false
  },
@@ -417,11 +461,13 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "profil_camera_droite",
   "analyse_la_pose": true,
   "detection": "rowing_unilateral_droit_detection",
   "erreurs": [
    "rowing_unilateral_droit_erreur_buste"
   ],
+  "amplitude": null,
   "materiel": "Un haltère et une chaise",
   "est_echauffement": false
  },
@@ -447,11 +493,13 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "profil_camera_gauche",
   "analyse_la_pose": true,
   "detection": "rowing_unilateral_gauche_detection",
   "erreurs": [
    "rowing_unilateral_gauche_erreur_buste"
   ],
+  "amplitude": null,
   "materiel": "Un haltère et une chaise",
   "est_echauffement": false
  },
@@ -479,12 +527,14 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "profil_camera_gauche",
   "analyse_la_pose": true,
   "detection": "rowing_penche_detection",
   "erreurs": [
    "rowing_penche_erreur_buste",
    "rowing_penche_erreur_genoux"
   ],
+  "amplitude": null,
   "materiel": "Deux haltères",
   "est_echauffement": false
  },
@@ -510,11 +560,13 @@
   ],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": "face",
   "analyse_la_pose": true,
   "detection": "oiseau_detection",
   "erreurs": [
    "oiseau_erreur_coudes"
   ],
+  "amplitude": null,
   "materiel": "Deux haltères",
   "est_echauffement": false
  },
@@ -538,9 +590,14 @@
   ],
   "variante_facile": null,
   "variante_difficile": "Pompes sur les genoux",
+  "orientation": "profil",
   "analyse_la_pose": true,
   "detection": "pompe_detection",
   "erreurs": [],
+  "amplitude": [
+   "pompe_profondeur",
+   "forme_pompe_pas_assez_profonde"
+  ],
   "materiel": "Une chaise",
   "est_echauffement": false
  },
@@ -563,9 +620,14 @@
   ],
   "variante_facile": "Pompes inclinées",
   "variante_difficile": "Pompes",
+  "orientation": "profil",
   "analyse_la_pose": true,
   "detection": "pompe_detection",
   "erreurs": [],
+  "amplitude": [
+   "pompe_profondeur",
+   "forme_pompe_pas_assez_profonde"
+  ],
   "materiel": "Un tapis",
   "est_echauffement": false
  },
@@ -588,9 +650,11 @@
   ],
   "variante_facile": null,
   "variante_difficile": "Gainage planche",
+  "orientation": "profil",
   "analyse_la_pose": true,
   "detection": "detection_gainage",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Un tapis",
   "est_echauffement": false
  },
@@ -614,9 +678,11 @@
   ],
   "variante_facile": null,
   "variante_difficile": "Squat",
+  "orientation": "face",
   "analyse_la_pose": true,
   "detection": "squat_sur_chaise_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Une chaise",
   "est_echauffement": false
  },
@@ -631,9 +697,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -648,9 +716,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -665,9 +735,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -682,9 +754,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -699,9 +773,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": true,
   "detection": "elevation_laterale_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -716,9 +792,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": true,
   "detection": "pompe_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -734,9 +812,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
-  "analyse_la_pose": true,
-  "detection": "jumping_jacks_detection",
+  "orientation": null,
+  "analyse_la_pose": false,
+  "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -751,9 +831,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": true,
   "detection": "squat_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -768,9 +850,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": true,
   "detection": "squat_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -785,9 +869,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -802,9 +888,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -819,9 +907,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -836,9 +926,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -853,9 +945,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -870,9 +964,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -887,9 +983,11 @@
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
+  "orientation": null,
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  }

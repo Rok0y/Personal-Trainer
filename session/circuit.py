@@ -89,6 +89,19 @@ class Exercice:
     `variante_facile` / `variante_difficile` nomment un autre exercice du
     catalogue. C'est ce qui permet au test de calibration de rediriger quelqu'un
     qui ne tient pas le premier palier, au lieu de le laisser « hors barème ».
+
+    `orientation` est la **seule ligne de `mise_en_place` que le coach
+    prononce**, et c'est pour cela qu'elle est sortie du texte. Les vingt-trois
+    exercices décrivent chacun leur cadrage à leur façon — « jambes entières
+    visibles », « buste et bras visibles » —, mais ce qu'il faut *faire* ne
+    prend que cinq valeurs (`audio.annonces.ORIENTATIONS`). L'écran garde la
+    ligne complète, la voix dit la ligne partagée : l'écrit est gratuit, la voix
+    se paie en prises de son.
+    Elle est **déclarée et non déduite** du texte — analyser une phrase
+    française marcherait jusqu'au jour où quelqu'un la reformule, et se
+    tromperait alors en silence. `None` veut dire « rien de sûr à dire », pas
+    « face à la caméra » : c'est le cas des échauffements, et un défaut ferait
+    affirmer une consigne que personne n'a vérifiée.
     """
 
     def __init__(
@@ -102,10 +115,19 @@ class Exercice:
         erreurs_frequentes=None,
         variante_facile=None,
         variante_difficile=None,
+        orientation=None,
+        amplitude=None,
     ):
         """`detection` à None décrit un mouvement guidé sans analyse de pose
         (échauffement) : seuls les modes de `MODES_AVEC_DETECTION_OBLIGATOIRE`
-        l'exigent, et `construire_circuit` refuse les combinaisons invalides."""
+        l'exigent, et `construire_circuit` refuse les combinaisons invalides.
+
+        `amplitude` est un couple (fonction, clé de message) : la fonction rend
+        un jeton vrai quand le mouvement va assez loin, et le moteur vérifie
+        qu'elle l'a rendu **au moins une fois pendant la répétition** — chose
+        qu'une fonction d'`erreurs`, évaluée image par image, ne peut pas dire.
+        Une répétition qui ne l'atteint pas compte quand même ; la clé
+        s'affiche jusqu'à la suivante."""
         self.nom = nom
         self.detection = detection
         self.description = description
@@ -115,6 +137,8 @@ class Exercice:
         self.erreurs_frequentes = erreurs_frequentes or []
         self.variante_facile = variante_facile
         self.variante_difficile = variante_difficile
+        self.orientation = orientation
+        self.amplitude = amplitude
 
     def fiche(self):
         """Ce que l'exercice a à dire, sous une forme sérialisable.
@@ -132,6 +156,7 @@ class Exercice:
             "erreurs_frequentes": list(self.erreurs_frequentes),
             "variante_facile": self.variante_facile,
             "variante_difficile": self.variante_difficile,
+            "orientation": self.orientation,
             "analyse_la_pose": self.detection is not None,
         }
 
@@ -179,6 +204,18 @@ class BlocExercice:
 
         self.temps_maintien = 0
         self.temps_restant_precedent = None
+
+
+#: Comment annoncer un bloc selon sa place dans la seance. Les valeurs sont des
+#: cles d'`audio.annonces.AMORCES_EXERCICE`, et `scripts/verifier_annonces.py`
+#: verifie l'inclusion — plutot que d'importer le module ici. `circuit.py` n'a
+#: rien a faire du vocabulaire du coach : il sait seulement ou en est la
+#: seance, et c'est deja par des chaines qu'il dit ses phases.
+AMORCES_PAR_POSITION = {
+    "premier": "premier_exercice",
+    "dernier": "dernier_exercice",
+    "milieu": "prochain_exercice",
+}
 
 
 class Circuit:
@@ -276,6 +313,34 @@ class Circuit:
         if self.index_exercice >= len(self.exercices):
             return None
         return self.exercices[self.index_exercice]
+
+    def amorce_annonce(self, bloc):
+        """Comment annoncer ce bloc, selon sa place dans la seance.
+
+        Le coach dit « le premier exercice sera » a l'entree, « pour finir »
+        sur le dernier bloc, « prochain exercice » partout ailleurs. C'est
+        **ici** que la question se tranche, parce que c'est le seul objet qui
+        connaisse la liste entiere : un site d'appel qui la reconstruirait
+        depuis `index_exercice` se tromperait au premier entrelacement.
+
+        Un bloc inconnu — ou une seance vide — rend l'amorce neutre plutot que
+        de lever : cette fonction tourne dans la boucle camera.
+
+        La comparaison est **d'identite** et non d'index : deux blocs peuvent
+        porter le meme exercice (un superset, une serie refaite), et c'est bien
+        du bloc qu'on parle. Une seance d'un seul bloc est annoncee « premier »,
+        pas « dernier » : on la commence avant de la finir.
+        """
+        if bloc is None or not self.exercices:
+            return AMORCES_PAR_POSITION["milieu"]
+
+        if bloc is self.exercices[0]:
+            return AMORCES_PAR_POSITION["premier"]
+
+        if bloc is self.exercices[-1]:
+            return AMORCES_PAR_POSITION["dernier"]
+
+        return AMORCES_PAR_POSITION["milieu"]
 
     def prochain_bloc(self):
         prochain_index = self._obtenir_vrai_prochain_exercice_index()
@@ -654,6 +719,8 @@ class Circuit:
             "temps_amrap",
             "temps_echauffement",
             "dernier_tick_echauffement",
+            "amplitude_atteinte",
+            "avertissement_amplitude",
         ):
             if hasattr(bloc, nom):
                 delattr(bloc, nom)

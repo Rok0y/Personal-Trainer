@@ -1,10 +1,20 @@
+# Delai minimal, en secondes, entre deux repetitions comptees. Un curl a ete
+# compte deux fois d'un coup : un saut d'une ou deux images de la detection
+# suffit a refaire un aller-retour "debut" -> "fin" juste apres une vraie
+# repetition, et le compteur, sans notion du temps, le prenait pour une
+# seconde. Aucune repetition reelle ne tient en 0,3 s, meme enchainee vite.
+DELAI_MIN_ENTRE_REPS = 0.3
+
+
 class CompteurMouvement:
 
     def __init__(self):
         self.stage = None
         self.repetitions = 0
+        self.derniere_rep_a = None
 
-    def mettre_a_jour(self, nouveau_stage):
+    def mettre_a_jour(self, nouveau_stage, instant=None):
+        """`instant` est l'horloge de la seance ; None desactive le delai."""
 
         if nouveau_stage not in ("debut", "fin"):
             return self.stage, self.repetitions
@@ -12,7 +22,16 @@ class CompteurMouvement:
         # Une répétition exige d'abord une position de départ observée.
         if self.stage == "debut" and nouveau_stage == "fin":
             self.stage = "fin"
-            self.repetitions += 1
+            # Trop tot apres la precedente : c'est la meme repetition, vue deux
+            # fois. Le stage passe quand meme a "fin", sinon la vraie
+            # repetition suivante trouverait le compteur arme d'avance.
+            if (
+                instant is None
+                or self.derniere_rep_a is None
+                or instant - self.derniere_rep_a >= DELAI_MIN_ENTRE_REPS
+            ):
+                self.repetitions += 1
+                self.derniere_rep_a = instant
         elif self.stage == "fin" and nouveau_stage == "debut":
             self.stage = "debut"
         elif self.stage is None:
@@ -24,3 +43,4 @@ class CompteurMouvement:
 
         self.stage = None
         self.repetitions = 0
+        self.derniere_rep_a = None

@@ -165,8 +165,32 @@ def catalogue_mouvements():
 
 
 def materiel_exercice(nom, poids):
+    """La phrase de matériel d'un mouvement, à un poids donné.
+
+    Point d'entrée unique de cette phrase : la fiche (`fiche_mouvement`), la
+    liste des séances (`catalogue`) et l'export vers le navigateur
+    (`preparer_demo`) l'appellent tous, si bien que le JavaScript n'en a aucune
+    copie à tenir.
+
+    **Sans poids, la mention des haltères se rend facultative quand le barème
+    l'admet** (`paliers.charge_facultative`) : une fiche de squat qui annonce
+    « Deux haltères et un tapis » juste au-dessus d'une mise en place disant
+    « si tu veux charger » se contredit à l'écran. Le texte de
+    `MATERIEL_EXERCICES`, lui, ne bouge pas et ne doit pas bouger — il dit ce
+    qu'il faut pour *charger* le mouvement, et `nombre_halteres` en dérive
+    l'échelle de poids : en retirer « deux haltères » ferait perdre au barème
+    tous ses paliers chargés, ce qui est exactement l'inverse du but.
+    """
+    from progression.paliers import charge_facultative
+
     materiel = MATERIEL_EXERCICES.get(nom, "A préciser")
-    if not poids or "haltère" not in materiel:
+    if "haltère" not in materiel:
+        return materiel
+    if not poids:
+        if charge_facultative(nom):
+            return materiel.replace("haltères", "haltères (facultatif)", 1).replace(
+                "haltère ", "haltère (facultatif) ", 1
+            )
         return materiel
     if materiel.startswith("Deux haltères"):
         return materiel.replace("Deux haltères", f"Deux haltères de {poids} kg", 1)

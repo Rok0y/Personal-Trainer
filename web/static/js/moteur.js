@@ -49,10 +49,12 @@ export function annoncer_progression(coach, repetitions, cible) {
   if (restantes === 0) return coach("fin_serie");
   if (restantes === 1) return coach("avant_derniere");
   if (restantes === 3) return coach("encore_3");
-  if (restantes === 5) return coach("encore_5");
-  // `cible // 2` en Python est une division entiere vers le bas ; sur des
-  // cibles positives, `Math.floor` lui est identique.
-  if (cible >= 8 && repetitions === Math.floor(cible / 2)) coach("mi_parcours");
+  if (restantes === 5) coach("encore_5");
+  // **« A la moitie » a ete retire** des deux cotes, avec sa cle et sa
+  // priorite : une cle qui ne sert plus laisse croire qu'un palier existe.
+  // Elle tombait en plein milieu de la serie, entre deux chiffres, et
+  // n'apprenait rien qu'on ne sache deja — le coach comptait par-dessus
+  // lui-meme.
 }
 
 /**
@@ -67,10 +69,16 @@ export function annoncer_temps_restant(coach, bloc, secondes_restantes) {
     bloc.temps_restant_precedent = secondes_restantes;
     return;
   }
+  // Les six memes seuils qu'en Python, dans le meme ordre : le decompte des
+  // trois dernieres secondes en fait partie. `comparer_seances.mjs` compare
+  // les annonces pas a pas, donc un seuil ajoute d'un seul cote s'y voit.
   const seuils = [
     [20, "temps_20"],
     [10, "temps_10"],
     [5, "temps_5"],
+    [3, "temps_3"],
+    [2, "temps_2"],
+    [1, "temps_1"],
   ];
   for (const [seuil, message] of seuils) {
     if (bloc.temps_restant_precedent > seuil && secondes_restantes <= seuil) {
@@ -181,6 +189,26 @@ export function mettre_a_jour_erreur(exercice, corps, etat, texte) {
 }
 
 /**
+ * Jumelle de `suivre_amplitude` : avertit d'une repetition comptee qui n'est
+ * pas allee assez loin. Le jeton est retenu tant que le compteur est arme,
+ * oublie a chaque nouvel armement, et l'avertissement reste affiche jusqu'a
+ * la repetition suivante — une faute de forme du moment passe devant lui.
+ */
+export function suivre_amplitude(exercice, corps, bloc, etat, stage_avant, stage, rep_comptee, texte) {
+  if (!exercice.amplitude) return;
+  const [atteinte, cle] = exercice.amplitude;
+  if (stage === "debut") {
+    if (stage_avant !== "debut") bloc.amplitude_atteinte = false;
+    if (atteinte(corps)) bloc.amplitude_atteinte = true;
+  }
+  if (rep_comptee) {
+    bloc.avertissement_amplitude = bloc.amplitude_atteinte === true ? null : cle;
+  }
+  const avertissement = bloc.avertissement_amplitude ?? null;
+  if (etat.erreur === null && avertissement) etat.erreur = texte(avertissement);
+}
+
+/**
  * Publie l'etape du mouvement, sous sa forme brute et sous sa forme lisible.
  *
  * Les deux, parce qu'elles ne servent pas au meme public : le jeton reste la
@@ -204,7 +232,12 @@ export function gerer_mode_repetitions({
   mettre_a_jour_erreur(exercice, corps, etat, messages.texte);
   const stage_detecte = exercice.detection(corps);
 
-  const [stage, repetitions] = compteur.mettre_a_jour(stage_detecte);
+  const stage_avant = compteur.stage;
+  const repetitions_avant = compteur.repetitions;
+  const [stage, repetitions] = compteur.mettre_a_jour(stage_detecte, seance.maintenant());
+  suivre_amplitude(
+    exercice, corps, bloc, etat, stage_avant, stage, repetitions > repetitions_avant, messages.texte
+  );
 
   if (repetitions > derniere_rep) {
     coach("compteur", repetitions);
@@ -309,7 +342,7 @@ export function gerer_mode_amrap({
   annoncer_temps_restant(coach, bloc, bloc.duree - bloc.temps_amrap);
 
   const stage_detecte = bloc.exercice.detection(corps);
-  const [stage, repetitions] = compteur.mettre_a_jour(stage_detecte);
+  const [stage, repetitions] = compteur.mettre_a_jour(stage_detecte, maintenant);
 
   if (repetitions > derniere_rep) {
     coach("compteur", repetitions);

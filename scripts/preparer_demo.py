@@ -17,6 +17,8 @@ import json
 import shutil
 from pathlib import Path
 
+from audio import annonces, lecteur
+from core.materiel import POIDS_REFERENCE
 from session.seances import (
     CATALOGUE_EXERCICES,
     _lire_seances_personnalisees,
@@ -60,10 +62,25 @@ def exporter_catalogue():
         # qui s'exécutent, à ne pas confondre avec `erreurs_frequentes`, qui
         # est de la pédagogie écrite. Six exercices sur vingt-trois en ont.
         fiche["erreurs"] = [verifier.__name__ for verifier in exercice.erreurs]
+        fiche["amplitude"] = exporter_amplitude(exercice)
         exercices.append(fiche)
 
     exercices.sort(key=lambda f: f["nom"])
     return exercices, sans_detection
+
+
+def exporter_amplitude(mouvement):
+    """`[nom de fonction, clé de message]`, ou None.
+
+    Même règle que `detection` et `erreurs` : la fonction voyage par son nom,
+    que `detections.js` porte aussi. Un champ oublié ici ne lève rien — le
+    navigateur construirait simplement ses pompes sans avertissement, comme il
+    a construit des mois durant ses exercices sans `orientation`.
+    """
+    if mouvement.amplitude is None:
+        return None
+    fonction, cle = mouvement.amplitude
+    return [fonction.__name__, cle]
 
 
 def decrire(nom, mouvement):
@@ -81,6 +98,7 @@ def decrire(nom, mouvement):
         None if mouvement.detection is None else mouvement.detection.__name__
     )
     fiche["erreurs"] = [verifier.__name__ for verifier in mouvement.erreurs]
+    fiche["amplitude"] = exporter_amplitude(mouvement)
     # Les deux champs que `fiche_mouvement` ajoute cote Flask, et dont les
     # fiches de l'application ont besoin : quel materiel il faut, et si le
     # mouvement compte quelque part. Un echauffement n'a ni niveau, ni record,
@@ -123,7 +141,12 @@ def exporter_baremes():
     """
     from dataclasses import asdict
 
-    from core.materiel import ACCESSOIRES, MATERIEL_PAR_DEFAUT, POIDS_REFERENCE
+    from core.materiel import (
+        ACCESSOIRES,
+        MATERIEL_PAR_DEFAUT,
+        POIDS_REFERENCE,
+        POIDS_SUPPOSES,
+    )
     from progression import ligues, paliers
     from progression.reglages import CHEMIN as CHEMIN_REGLAGES
 
@@ -158,6 +181,11 @@ def exporter_baremes():
             "deux_halteres": list(paliers.ECHELLE_DEUX_HALTERES),
             "sans_charge": list(paliers.SANS_CHARGE),
             "reference": list(POIDS_REFERENCE),
+            # Et la gamme **supposee**, qui n'est pas la meme : `reference`
+            # dit ce que le questionnaire propose de cocher, `supposes` ce
+            # qu'on suppose a qui n'a rien declare. Les confondre donnerait
+            # d'un coup un bareme de culturiste a tout profil muet.
+            "supposes": list(POIDS_SUPPOSES),
         },
         # Le descriptif **brut** et non une liste d'accessoires deja
         # deduite : `core.materiel.accessoires_manquants` cherche une
@@ -198,16 +226,23 @@ def exporter_pour_application():
 
 
 def tables_du_coach():
-    """Les trois tables du coach vocal, **lues sans importer le module**.
+    """Les cinq tables du coach vocal, pour le navigateur.
 
-    `audio/coach.py` importe `audio.lecteur`, donc pygame, que le workflow de
-    deploiement n'installe pas — il n'installe que numpy, parce que ce script
-    ne touchait jusqu'ici qu'au catalogue. L'importer ici ferait echouer le
-    deploiement pour une raison sans rapport avec le son.
+    Les trois premieres (`fichiers`, `priorites`, `delais`) vivent dans
+    `audio/coach.py` et sont **lues sans importer le module** : celui-ci
+    importe `audio.lecteur`, donc pygame, que le workflow de deploiement
+    n'installe pas — il n'installe que numpy, parce que ce script ne touchait
+    jusqu'ici qu'au catalogue. L'importer ferait echouer le deploiement pour
+    une raison sans rapport avec le son. Elles sont donc analysees
+    syntaxiquement : la table reste **derivee** du Python et jamais recopiee a
+    la main, et le jour ou une cle y est ajoutee elle apparait ici toute seule.
 
-    Elle est donc analysee syntaxiquement : la table reste **derivee** du
-    Python et jamais recopiee a la main, ce qui est la regle du projet, et le
-    jour ou une cle y est ajoutee elle apparait ici toute seule.
+    La quatrieme (`briques`) vient d'`audio/annonces.py`, qui **s'importe
+    normalement** : ce module n'a que des imports de bibliotheque standard,
+    precisement pour ca. Un import vaut mieux qu'une analyse syntaxique — il
+    fait passer les fonctions en plus des tables, donc `fichier()` resout ici
+    les noms et le navigateur ne recoit que des `.wav`, jamais du texte a
+    normaliser lui-meme.
     """
     voulues = {"messages": "fichiers", "priorites": "priorites",
                "DELAIS_ENTRE_ANNONCES": "delais"}
@@ -221,7 +256,52 @@ def tables_du_coach():
     manquantes = set(voulues.values()) - set(tables)
     if manquantes:
         raise RuntimeError(f"Tables introuvables dans audio/coach.py : {manquantes}")
+
+    # `BRIQUES` **et** `FRAGMENTS` dans la meme table, a dessein : le
+    # navigateur n'en connait que des noms de fichiers, dont il assemble les
+    # morceaux (`fichier_assemble`), et la distinction — « est-ce une prise ou
+    # un morceau de nom ? » — ne lui sert a rien. Elle vit du cote du texte,
+    # ou elle decide de ce qu'on enregistre.
+    tables["briques"] = {
+        cle: annonces.fichier(texte)
+        for cle, texte in {**annonces.BRIQUES, **annonces.FRAGMENTS}.items()
+    }
+    # Le **texte** des memes briques, pour que le bandeau affiche exactement ce
+    # que la voix prononce. Sans lui, ces phrases devraient etre recopiees dans
+    # `messages.js` — deux sources pour le meme contenu, dont l'une derive.
+    # C'est la meme raison qui fait qu'une brique n'a pas de cle distincte de
+    # son texte : pour un son, le texte *est* l'identite de la prise.
+    # Les `FRAGMENTS` n'y sont pas : rien ne les affiche, puisqu'ils ne sont
+    # jamais une phrase a eux seuls.
+    tables["textes"] = dict(annonces.BRIQUES)
+    # Les silences vivent dans `audio/lecteur.py`, qu'on **importe** : ce
+    # module n'ouvre la carte son et ne lance son thread qu'au premier son
+    # joue, jamais a l'import, et pygame y est importe dans les fonctions.
+    # C'est la meme propriete qui permet a un serveur sans audio d'importer
+    # `session/`, et elle sert ici une seconde fois.
+    tables["silences"] = {
+        "entre_annonces": lecteur.SILENCE_ENTRE_ANNONCES,
+        "presentation": lecteur.SILENCE_PRESENTATION,
+        "repos_minimal": lecteur.REPOS_MINIMAL_PRESENTATION,
+        "priorite_rythme_max": lecteur.PRIORITE_RYTHME_MAX,
+    }
     return tables
+
+
+def sons_des_annonces():
+    """Un `.wav` par nom de mouvement, plus un par charge.
+
+    Le nom **est** le texte prononce, donc aucune table a tenir a jour a cote
+    du catalogue : un exercice ajoute reclame sa prise a la prochaine
+    execution, et `A_ENREGISTRER.md` la signale. Il reste un fichier a part
+    parce qu'il se dit derriere chacune des trois amorces.
+
+    Les charges, elles, sont des phrases entieres, enumerees sur
+    `POIDS_REFERENCE` — ce que le questionnaire propose de posseder. Au-dela,
+    la prise n'existe pas et l'annonce reste breve, jamais muette.
+    """
+    noms = {annonces.fichier(nom) for nom in catalogue_mouvements()}
+    return noms | annonces.fichiers_charges(POIDS_REFERENCE)
 
 
 def copier_sons():
@@ -243,6 +323,23 @@ def copier_sons():
     fichiers_application = {f"{n}.wav" for n in SONS_DEMO}
     for variantes in tables["fichiers"].values():
         fichiers_application.update(variantes)
+    # Les briques et les phrases assemblees : c'est avec elles que le coach
+    # nomme le prochain exercice et guide le cadrage, la ou il n'avait jusqu'ici
+    # qu'un « changement d'exercice » generique.
+    #
+    # `BRIQUES` et non `tables["briques"]`, qui porte en plus les `FRAGMENTS` :
+    # ceux-la n'auront **jamais** de fichier, et les faire figurer ici les
+    # compterait manquants a chaque execution — un manque qui ne se comblera
+    # pas est du bruit, et le bruit finit par masquer un vrai manque.
+    fichiers_application.update(
+        annonces.fichier(texte) for texte in annonces.BRIQUES.values()
+    )
+    fichiers_application.update(sons_des_annonces())
+    # Les nombres jusqu'au plafond dicible : le compteur de repetitions dit
+    # « 23 » sur une cible que le socle de la demo ne couvre pas.
+    fichiers_application.update(
+        f"{n}.wav" for n in range(1, annonces.NOMBRE_MAXIMAL_DIT + 1)
+    )
 
     copies, manquants = 0, []
     for fichier in sorted(fichiers_application):

@@ -34,6 +34,7 @@ Sortie : scripts/fixtures_seances.jsonl (un pas par ligne),
 
 import hashlib
 import json
+import math
 import random
 from pathlib import Path
 
@@ -41,6 +42,7 @@ import audio.coach
 
 from mouvements.compteur import CompteurMouvement
 from scripts.generer_fixtures import pose_au_hasard, serialiser
+from vision.body import Body, LandmarkPoint
 from session.moteur import executer_mode
 from session.seances import catalogue_mouvements, construire_circuit
 from core.state import EtatSeance
@@ -54,6 +56,13 @@ DESTINATION = Path(__file__).parent / "fixtures_seances.jsonl"
 #: images.
 POSES = Path(__file__).parent / "fixtures_poses.jsonl"
 NOMBRE_DE_POSES = 400
+#: Poses de pompe construites, ajoutees **apres** les poses au hasard pour que
+#: celles-ci gardent leurs index : un coude a 170, 110 et 80 degres. La marche
+#: aleatoire n'arme jamais une pompe peu profonde — mesure, l'avertissement
+#: d'amplitude retire du JavaScript laissait le harnais vert —, donc le
+#: scenario `pompes_peu_profondes` les vise par leur index.
+ANGLES_POMPE = {"tendu": 170, "peu_profond": 110, "profond": 80}
+POSE_POMPE = {nom: NOMBRE_DE_POSES + i for i, nom in enumerate(ANGLES_POMPE)}
 #: Catalogue propre au harnais : les séances contiennent aussi des
 #: échauffements, absents du `catalogue.json` de la démo — qui, lui, ne liste
 #: que les exercices testables et n'a pas à changer pour nous. Il porte le nom
@@ -86,6 +95,29 @@ CHAMPS_ETAT = (
     "temps_echauffement", "duree_echauffement", "temps_amrap_restant",
     "prochaine_etape", "fiche_suivante",
 )
+
+
+def pose_pompe(rng, angle):
+    """Une pose quelconque dont le bras gauche plie le coude a `angle` degres,
+    et qui est le seul bien vu : c'est donc lui que `_bras_proche` lit."""
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    epaule = LandmarkPoint(0.4, 0.6, 0, 1)
+    coude = LandmarkPoint(0.4, 0.7, 0, 1)
+    rad = math.radians(angle)
+    points["epaule_gauche"] = epaule
+    points["coude_gauche"] = coude
+    points["poignet_gauche"] = LandmarkPoint(
+        coude.x + 0.1 * math.sin(rad), coude.y - 0.1 * math.cos(rad), 0, 1
+    )
+    for nom in ("coude_droit", "poignet_droit"):
+        ancien = points[nom]
+        points[nom] = LandmarkPoint(ancien.x, ancien.y, ancien.z, 0)
+    # Corps a l'horizontale : `pompe_detection` ne compte rien debout.
+    points["epaule_droite"] = LandmarkPoint(0.41, 0.6, 0, 1)
+    points["hanche_gauche"] = LandmarkPoint(0.7, 0.62, 0, 1)
+    points["hanche_droite"] = LandmarkPoint(0.71, 0.62, 0, 1)
+    return Body(points)
 
 
 def observer_etat(etat):
@@ -268,6 +300,16 @@ def jouer(circuit, horloge, nom, arguments, contexte=None,
             contexte["derniere_rep"] = 0
         return list(triplet), None
 
+    if nom == "aller_a_l_amplitude":
+        # Commande du harnais : amene au premier bloc dont l'exercice verifie
+        # une amplitude (les pompes). Pilotee par les donnees, comme
+        # `aller_au_superset`, pour survivre a un reordonnancement.
+        for _ in range(len(circuit.exercices)):
+            bloc = circuit.bloc_actuel
+            if bloc is None or bloc.exercice.amplitude is not None:
+                break
+            circuit.passer_exercice_suivant()
+        return None, None
     if nom == "aller_au_superset":
         # Commande du harnais, pas du circuit : elle amène à la première paire
         # entrelacée de la séance. Pilotée par les données et non par un
@@ -311,6 +353,28 @@ SCENARIOS_NOMMES = {
         ("terminer_serie_manuellement", None),
         ("refaire_derniere_serie", None),
     ],
+    # Les six seuils d'`annoncer_temps_restant`, franchis un par un. La marche
+    # aleatoire ne les atteint pas : son `avancer` saute de 1 a 65 secondes et
+    # ses poses sont tirees au hasard, si bien qu'une duree ne s'ecoule jamais
+    # assez regulierement pour croiser 20, 10, 5, puis 3, 2 et 1. Mesure : les
+    # trois derniers seuils ont ete ajoutes des deux cotes, et **retirer les
+    # trois du JavaScript laissait le harnais vert** — d'ou ce scenario.
+    #
+    # C'est l'echauffement qu'on pilote, et non le chrono : aucune seance du
+    # catalogue n'a de bloc `chrono`, alors que toutes commencent par un
+    # echauffement, dont le temps s'accumule **par deltas** sans dependre de la
+    # pose detectee. Chaque paire (avancer 1 s, image) lui ajoute donc
+    # `INTERVALLE_MAX`, soit une demi-seconde : soixante-deux paires couvrent
+    # les trente secondes du bloc et franchissent les six seuils.
+    "decompte_final": [
+        ("commencer_exercice", None),
+        ("image", {"pose": 0}),
+        *[
+            pas
+            for _ in range(62)
+            for pas in (("avancer", {"secondes": 1}), ("image", {"pose": 0}))
+        ],
+    ],
     "navigation": [
         ("commencer_exercice", None),
         ("terminer_serie_manuellement", None),
@@ -344,6 +408,25 @@ SCENARIOS_NOMMES = {
         ("terminer_serie_manuellement", None),
         ("refaire_derniere_serie", None),
         ("terminer_serie_manuellement", None),
+    ],
+    # Une pompe peu profonde compte, et l'avertissement reste affiche jusqu'a
+    # la suivante, qu'une pompe profonde efface. Un `avancer` d'une seconde
+    # avant chaque image tient le delai minimal entre deux repetitions.
+    "pompes_peu_profondes": [
+        ("aller_a_l_amplitude", None),
+        ("commencer_exercice", None),
+        *[
+            pas
+            for pose in (
+                "tendu", "peu_profond", "tendu", "tendu",
+                "profond", "peu_profond", "tendu", "tendu",
+                "peu_profond", "tendu", "peu_profond", "profond", "tendu",
+            )
+            for pas in (
+                ("avancer", {"secondes": 1}),
+                ("image", {"pose": POSE_POMPE[pose]}),
+            )
+        ],
     ],
     "sauter_les_repos": [
         ("commencer_exercice", None),
@@ -456,6 +539,7 @@ def main():
     # graine : le JS lit ce fichier plutôt que de retirer les siennes.
     poses = random.Random(GRAINE + 1)
     banque = [pose_au_hasard(poses) for _ in range(NOMBRE_DE_POSES)]
+    banque += [pose_pompe(poses, angle) for angle in ANGLES_POMPE.values()]
     with POSES.open("w", encoding="utf-8") as fichier:
         for corps in banque:
             fichier.write(json.dumps(serialiser(corps)) + "\n")
@@ -474,6 +558,15 @@ def main():
             "erreurs_frequentes": list(exercice.erreurs_frequentes),
             "variante_facile": exercice.variante_facile,
             "variante_difficile": exercice.variante_difficile,
+            # Sans elle, le JavaScript construit ses exercices sans
+            # orientation et `fiche()` diverge — ce qui est precisement ce que
+            # le scenario `decompte_final` a fini par montrer, apres des mois
+            # ou aucun pas du harnais n'observait `fiche_suivante`.
+            "orientation": exercice.orientation,
+            "amplitude": (
+                None if exercice.amplitude is None
+                else [exercice.amplitude[0].__name__, exercice.amplitude[1]]
+            ),
         }
         for nom, exercice in mouvements.items()
     }, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -488,8 +581,18 @@ def main():
             # --- Scénarios écrits ---
             for nom_scenario, etapes in SCENARIOS_NOMMES.items():
                 circuit, horloge, boucle = _nouveau_circuit(blocs)
-                for pas, (commande, _) in enumerate(etapes):
-                    args = _arguments(commande, circuit, tirage)
+                for pas, (commande, ecrits) in enumerate(etapes):
+                    # Le second membre du couple etait **ignore** : tous les
+                    # scenarios ecrits recevaient les arguments par defaut,
+                    # donc un `avancer` de 40 secondes. Impossible d'y faire
+                    # descendre une horloge seconde par seconde, c'est-a-dire
+                    # d'atteindre un seuil d'annonce autrement qu'en le
+                    # survolant. Un scenario qui le precise l'emporte.
+                    args = (
+                        ecrits
+                        if ecrits is not None
+                        else _arguments(commande, circuit, tirage)
+                    )
                     resultat, erreur = _jouer(circuit, horloge, commande, args, boucle, banque)
                     _ecrire(fichier, nom_seance, nom_scenario, pas, commande,
                             args, circuit, horloge, resultat, erreur, boucle)

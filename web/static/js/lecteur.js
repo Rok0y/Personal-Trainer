@@ -15,9 +15,20 @@
 // (3) **Un evenement important (>= 5) vide les petits sons en attente**
 //     plutot que de faire la queue derriere eux : quand une serie se termine,
 //     les bips de comptage n'ont plus rien a dire.
+// (4) **Un blanc entre deux phrases.** Rien ne jouait jamais litteralement en
+//     meme temps, et pourtant le coach « se chevauchait » a l'oreille : la
+//     file enchainait l'entree suivante a la milliseconde ou la precedente se
+//     taisait. *Deux phrases collees s'entendent comme une phrase coupee.*
+// (5) **Un chiffre n'est pas une phrase.** Le blanc se prenait d'abord apres
+//     *chaque* entree, chiffres compris, et le comptage prenait du retard a
+//     chaque repetition sans jamais le rattraper. Un son de rythme (chiffre,
+//     bip) part donc tout de suite, ne repousse aucune phrase, et remplace
+//     celui de son espece qui attendait encore : un chiffre dit ou l'on en
+//     est, pas ou l'on en etait.
 //
-// Les trois tables viennent de `donnees/sons.json`, exporte du Python : ni les
-// fichiers, ni les priorites, ni les delais ne sont reecrits ici.
+// Les tables viennent de `donnees/sons.json`, exporte du Python : ni les
+// fichiers, ni les priorites, ni les delais, ni les silences ne sont reecrits
+// ici.
 
 //: Priorite a partir de laquelle un son vide les petits sons en attente, et
 //: en dessous de laquelle il peut lui-meme etre vide. La meme valeur des deux
@@ -41,6 +52,16 @@ export class Lecteur {
     this.fichiers = tables.fichiers ?? {};
     this.priorites = tables.priorites ?? {};
     this.delais = tables.delais ?? {};
+    // Les deux silences, exportes de `audio/lecteur.py`. Les valeurs de repli
+    // ne sont pas une seconde source : elles servent le seul cas ou
+    // `sons.json` est trop ancien pour les porter, et valent alors zero —
+    // c'est-a-dire le comportement d'avant, jamais un reglage invente ici.
+    this.silence_entre = tables.silences?.entre_annonces ?? 0;
+    this.silence_presentation = tables.silences?.presentation ?? 0;
+    // Meme regle de repli : zero rend le comportement d'avant (toujours
+    // « repose-toi » puis le blanc, et aucun son traite comme du rythme).
+    this.repos_minimal = tables.silences?.repos_minimal ?? 0;
+    this.priorite_rythme_max = tables.silences?.priorite_rythme_max ?? 0;
 
     this.contexte = null;
     this._tampons = new Map();
@@ -48,6 +69,15 @@ export class Lecteur {
     this._joue = false;
     this._rang = 0;
     this._dernieres = new Map();
+    // L'instant (en secondes) ou la derniere **phrase** s'est tue : le blanc
+    // se compte depuis lui, pour qu'un chiffre glisse entre deux phrases ne
+    // repousse pas la suivante.
+    this._fin_phrase = -Infinity;
+  }
+
+  /** Un chiffre ou un bip : un son qui suit le geste. */
+  est_rythme(priorite) {
+    return priorite <= this.priorite_rythme_max;
   }
 
   /**
@@ -124,13 +154,59 @@ export class Lecteur {
     this._empiler(fichier, this.priorites[cle] ?? PRIORITE_PAR_DEFAUT);
   }
 
-  _empiler(fichier, priorite) {
+  /**
+   * Joue une phrase composee de plusieurs fichiers, **comme un seul son**.
+   * Jumeau de `jouer_sequence` dans `audio/lecteur.py`.
+   *
+   * C'est l'indivisibilite qui compte. Empiler quatre `coach()` d'affilee
+   * ordonnerait bien les morceaux — le rang departage les priorites egales —
+   * mais rien n'empecherait un evenement urgent de se glisser au milieu : on
+   * entendrait « prochain exercice… 12 repetitions ». Une sequence est donc
+   * **une** entree de la file, que la purge garde ou jette en entier.
+   *
+   * Un fichier manquant est un silence et non une panne (`_tampon` rend null) :
+   * c'est ce qui permet d'enregistrer les prises par lots, une phrase
+   * s'abregeant au lieu de disparaitre.
+   */
+  sequence(fichiers, priorite = PRIORITE_PAR_DEFAUT, cle = null, silence_avant = 0) {
+    if (!this.contexte) return;
+    const propres = (fichiers ?? []).filter(Boolean);
+    if (!propres.length) return;
+
+    // Meme garde-fou que `coach()`, et sur la meme table exportee du Python :
+    // sans lui, une consigne evaluee a chaque image se repete des que la
+    // position vacille. C'est le defaut qu'avait la correction de gainage, et
+    // il se reproduirait a l'identique sur le guidage de cadrage.
+    if (cle) {
+      const delai = this.delais[cle] ?? 0;
+      const maintenant = performance.now() / 1000;
+      const derniere = this._dernieres.get(cle);
+      if (derniere !== undefined && maintenant - derniere < delai) return;
+      this._dernieres.set(cle, maintenant);
+    }
+
+    this._empiler(propres, priorite, silence_avant);
+  }
+
+  _empiler(fichiers, priorite, silence_avant = 0) {
     if (priorite >= PRIORITE_IMPORTANTE) {
       this._file = this._file.filter((e) => e.priorite >= PRIORITE_IMPORTANTE);
     }
+    // Un chiffre remplace le chiffre qui attendait encore : deux en file,
+    // c'est deja un de retard. Celui qui joue n'est pas dans la file, donc
+    // il n'est jamais coupe.
+    if (this.est_rythme(priorite)) {
+      this._file = this._file.filter((e) => !this.est_rythme(e.priorite));
+    }
     // Le rang departage deux sons de meme priorite : le premier demande passe
     // en premier, ce qu'un tri sur la seule priorite ne garantirait pas.
-    this._file.push({ fichier, priorite, rang: this._rang++ });
+    const propres = Array.isArray(fichiers) ? fichiers : [fichiers];
+    this._file.push({
+      fichiers: propres,
+      priorite,
+      rang: this._rang++,
+      silence_avant,
+    });
     this._file.sort((a, b) => b.priorite - a.priorite || a.rang - b.rang);
     this._servir();
   }
@@ -140,14 +216,36 @@ export class Lecteur {
     this._joue = true;
     try {
       while (this._file.length) {
-        const { fichier } = this._file.shift();
-        const tampon = await this._tampon(fichier);
-        if (!tampon) continue;
-        await this._jouer_tampon(tampon);
+        const { fichiers, priorite, silence_avant } = this._file.shift();
+        const rythme = this.est_rythme(priorite);
+        if (!rythme) {
+          // La respiration se prend **avant une phrase**, comptee depuis la
+          // fin de la precedente : une annonce demandee dans le silence part
+          // tout de suite, et un chiffre ne doit jamais attendre.
+          const attente = this._fin_phrase + this.silence_entre - this._maintenant();
+          if (attente > 0) await this._attendre(attente);
+        }
+        if (silence_avant) await this._attendre(silence_avant);
+        // Une entree est une sequence : ses morceaux s'enchainent sans que la
+        // file puisse etre reordonnee entre deux.
+        for (const fichier of fichiers) {
+          const tampon = await this._tampon(fichier);
+          if (!tampon) continue;
+          await this._jouer_tampon(tampon);
+        }
+        if (!rythme) this._fin_phrase = this._maintenant();
       }
     } finally {
       this._joue = false;
     }
+  }
+
+  _maintenant() {
+    return performance.now() / 1000;
+  }
+
+  _attendre(secondes) {
+    return new Promise((resoudre) => setTimeout(resoudre, secondes * 1000));
   }
 
   _jouer_tampon(tampon) {

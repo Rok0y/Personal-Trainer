@@ -32,9 +32,25 @@ MESSAGES = {
     "forme_coude_qui_part_en_avant": (
         "Garde le coude collé au buste, ne le laisse pas partir en avant"
     ),
+    "forme_coudes_trop_ecartes": "Garde les coudes serrés, près de la tête",
+    "forme_genou_avant_trop_avance": (
+        "Attention à ne pas trop avancer ton genou avant"
+    ),
+    # Comptée quand même : la pompe a été faite, elle n'est pas allée assez bas.
+    "forme_pompe_pas_assez_profonde": "Descends la poitrine plus près du sol",
+    # --- Répétition incomplète : une tentative a vraiment progressé, sans
+    # atteindre la position visée. L'aller vise la position qui compte la
+    # répétition, le retour celle qui réarme le compteur.
+    "amplitude_aller_incomplet": "Va jusqu'au bout du mouvement",
+    "amplitude_retour_incomplet": "Reviens complètement en position de départ",
     # --- Consignes d'état : ce qu'il faut faire, pas ce qui est mal fait -----
     "corps_absent": "Place-toi devant la caméra, bien en pied.",
-    "preparation_bras_en_x": "Croise les bras devant toi pour lancer la série.",
+    # « la séance » et non « la série » : la phase `preparation` n'existe
+    # qu'une fois, posée par le constructeur de `Circuit` et jamais réarmée.
+    # Ce geste-là ouvre l'entraînement ; celui qui clôt une série est le même
+    # signe mais un autre moment, et les confondre à l'écran laissait croire
+    # qu'on allait le refaire à chaque fois.
+    "preparation_bras_en_x": "Croise les bras devant toi pour lancer la séance.",
     "preparation_decompte": "C'est parti ! Redescends les bras et mets-toi en place.",
     "pause": "Séance en pause. Reprends quand tu veux depuis le site.",
     # Test de calibration joué en séance : premier passage sur un exercice dont

@@ -12,19 +12,24 @@
 
 import { calculer_angle, calculer_distance } from "./outils.js";
 
+// Seuil de fin resserre de 30 a 20 degres, comme cote Python : « la
+// validation arrive trop tot ».
+const CURL_FIN = 20;
+
 export function curl_biceps_droit_detection(corps) {
   const angle = calculer_angle(
     corps.epaule_droite,
     corps.coude_droit,
     corps.poignet_droit
   );
-  if (angle < 30) return "fin";
+  if (angle < CURL_FIN) return "fin";
   else if (angle > 160) return "debut";
   return "milieu";
 }
 
 function _coude_qui_part_en_avant(hanche, epaule, coude) {
-  if (calculer_angle(hanche, epaule, coude) > 45) {
+  // 45 -> 23 degres, valeur donnee par le testeur en lisant la jauge.
+  if (calculer_angle(hanche, epaule, coude) > 23) {
     return "forme_coude_qui_part_en_avant";
   }
   return null;
@@ -52,55 +57,157 @@ export function curl_biceps_gauche_detection(corps) {
     corps.coude_gauche,
     corps.poignet_gauche
   );
-  if (angle < 30) return "fin";
+  if (angle < CURL_FIN) return "fin";
   else if (angle > 160) return "debut";
   return "milieu";
 }
 
-export function elevation_laterale_detection(corps) {
-  // Le Python calcule ici deux angles de coude qu'il n'utilise jamais ; ils
-  // ne sont pas repris, la detection ne portant que sur la hauteur des
-  // poignets. Seule fonction du fichier sans jeton "milieu".
-  if (
-    corps.poignet_droit.y > corps.epaule_droite.y &&
-    corps.poignet_gauche.y > corps.epaule_gauche.y
-  ) {
-    return "debut";
-  } else {
-    return "fin";
-  }
+// Poignet sous l'epaule, rapporte au buste : ~1 bras le long du corps, 0 a
+// hauteur d'epaule. null si le buste n'a pas de longueur lisible.
+function hauteur_sous_epaule(poignet, epaule, hanche) {
+  const buste = calculer_distance(epaule, hanche);
+  if (buste <= 0) return null;
+  return (poignet.y - epaule.y) / buste;
 }
 
-export function pompe_detection(corps) {
+// De combien le poignet est sorti vers l'exterieur de son epaule (le cote
+// oppose a l'autre epaule), rapporte au buste. C'est ce qui distingue une
+// elevation laterale d'une elevation frontale.
+function ecart_lateral(poignet, epaule, autre_epaule, hanche) {
+  const buste = calculer_distance(epaule, hanche);
+  if (buste <= 0) return null;
+  const sortie = epaule.x >= autre_epaule.x ? poignet.x - epaule.x : epaule.x - poignet.x;
+  return sortie / buste;
+}
+
+export function elevation_laterale_detection(corps) {
+  // La fin exige la hauteur, des bras tendus et chaque poignet sorti de son
+  // cote ; le depart, des mains nettement basses. Lever les bras devant soi
+  // comptait avant, et sans zone intermediaire un tremblement faisait un
+  // aller-retour.
+  const hauteur_droite = hauteur_sous_epaule(
+    corps.poignet_droit, corps.epaule_droite, corps.hanche_droite
+  );
+  const hauteur_gauche = hauteur_sous_epaule(
+    corps.poignet_gauche, corps.epaule_gauche, corps.hanche_gauche
+  );
+  if (hauteur_droite === null || hauteur_gauche === null) return "milieu";
+  if (hauteur_droite > 0.6 && hauteur_gauche > 0.6) return "debut";
+
   const angle_coude_droit = calculer_angle(
-    corps.epaule_gauche,
-    corps.coude_gauche,
-    corps.poignet_gauche
+    corps.epaule_droite, corps.coude_droit, corps.poignet_droit
   );
   const angle_coude_gauche = calculer_angle(
-    corps.epaule_droite,
-    corps.coude_droit,
-    corps.poignet_droit
+    corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche
   );
-  if (angle_coude_droit < 100 && angle_coude_gauche < 100) return "debut";
-  else if (angle_coude_droit > 160 && angle_coude_gauche > 160) return "fin";
+  const ecart_droit = ecart_lateral(
+    corps.poignet_droit, corps.epaule_droite, corps.epaule_gauche, corps.hanche_droite
+  );
+  const ecart_gauche = ecart_lateral(
+    corps.poignet_gauche, corps.epaule_gauche, corps.epaule_droite, corps.hanche_gauche
+  );
+  if (
+    hauteur_droite < 0.15 &&
+    hauteur_gauche < 0.15 &&
+    angle_coude_droit > 140 &&
+    angle_coude_gauche > 140 &&
+    ecart_droit > 0.3 &&
+    ecart_gauche > 0.3
+  ) {
+    return "fin";
+  }
   return "milieu";
+}
+
+// En deca de cet ecart de visibilite, les deux bras sont aussi bien vus l'un
+// que l'autre (de face, typiquement) : c'est alors la profondeur qui tranche.
+const MARGE_VISIBILITE = 0.1;
+
+// `visibility` est le nom du point MediaPipe brut ; le Python l'appelle
+// `visibilite`, d'ou la seule ligne qui differe entre les deux jumeaux.
+function visibilite_bras(coude, poignet) {
+  return (coude.visibility + poignet.visibility) / 2;
+}
+
+// Epaule, coude et poignet du bras que la camera voit vraiment. De profil, le
+// coude eloigne est estime par le modele et restait tendu pendant que l'autre
+// pliait ; ni la conjonction ni la moyenne n'y resistent. Le choix se faisait
+// sur `z`, la coordonnee la moins fiable du modele, et un bras cache designe
+// a tort ne comptait plus aucune pompe : il se fait desormais sur la
+// visibilite, `z` ne departageant que deux bras aussi bien vus.
+function bras_proche(corps) {
+  const gauche = visibilite_bras(corps.coude_gauche, corps.poignet_gauche);
+  const droite = visibilite_bras(corps.coude_droit, corps.poignet_droit);
+  const bras_gauche = Math.abs(gauche - droite) >= MARGE_VISIBILITE
+    ? gauche > droite
+    : corps.epaule_gauche.z <= corps.epaule_droite.z;
+  if (bras_gauche) {
+    return [corps.epaule_gauche, corps.coude_gauche, corps.poignet_gauche];
+  }
+  return [corps.epaule_droite, corps.coude_droit, corps.poignet_droit];
+}
+
+function angle_coude_proche(corps) {
+  const [epaule, coude, poignet] = bras_proche(corps);
+  return calculer_angle(epaule, coude, poignet);
+}
+
+// Deux seuils en bas : le premier decide si la pompe compte, le second si
+// elle etait assez profonde. Jumeaux des constantes Python.
+export const SEUIL_COMPTAGE_POMPE = 120;
+export const SEUIL_PROFONDEUR_POMPE = 100;
+
+export function pompe_detection(corps) {
+  // Corps a l'horizontale, ou rien ne compte : debout, plier le bras
+  // comptait une pompe. Meme condition que le developpe couche.
+  if (buste_vertical(corps) >= 0) return "milieu";
+  const angle_coude = angle_coude_proche(corps);
+  if (angle_coude < SEUIL_COMPTAGE_POMPE) return "debut";
+  else if (angle_coude > 160) return "fin";
+  return "milieu";
+}
+
+// Jumelle de `pompe_profondeur` : un jeton, pas une faute — le moteur retient
+// s'il a ete vu pendant la descente.
+export function pompe_profondeur(corps) {
+  if (angle_coude_proche(corps) < SEUIL_PROFONDEUR_POMPE) return "profond";
+  return null;
+}
+
+// Ecart vertical moins ecart horizontal entre le milieu des epaules et celui
+// des hanches : negatif quand le buste est plus couche que debout. Jumelle de
+// `_buste_vertical`, meme comparaison que `_torse_vertical` des gestes.
+function buste_vertical(corps) {
+  const epaules_x = (corps.epaule_gauche.x + corps.epaule_droite.x) / 2;
+  const epaules_y = (corps.epaule_gauche.y + corps.epaule_droite.y) / 2;
+  const hanches_x = (corps.hanche_gauche.x + corps.hanche_droite.x) / 2;
+  const hanches_y = (corps.hanche_gauche.y + corps.hanche_droite.y) / 2;
+  return Math.abs(epaules_y - hanches_y) - Math.abs(epaules_x - hanches_x);
 }
 
 export function developpe_couche_sol_detection(corps) {
-  const angle_coude_droit = calculer_angle(
-    corps.epaule_gauche,
-    corps.coude_gauche,
-    corps.poignet_gauche
-  );
-  const angle_coude_gauche = calculer_angle(
-    corps.epaule_droite,
-    corps.coude_droit,
-    corps.poignet_droit
-  );
-  if (angle_coude_droit < 100 && angle_coude_gauche < 100) return "debut";
-  else if (angle_coude_droit > 160 && angle_coude_gauche > 160) return "fin";
+  // Debout, plier et tendre les coudes comptait : hors de la position
+  // allongee, rien n'est ni debut ni fin.
+  if (buste_vertical(corps) >= 0) return "milieu";
+  const angle_coude = angle_coude_proche(corps);
+  if (angle_coude < 100) return "debut";
+  else if (angle_coude > 160) return "fin";
   return "milieu";
+}
+
+function coudes_leves(corps) {
+  return (
+    corps.coude_gauche.y < corps.epaule_gauche.y &&
+    corps.coude_droit.y < corps.epaule_droite.y
+  );
+}
+
+// Distance entre deux points rapportee a la largeur des epaules (de face
+// seulement). null si elle est nulle.
+function ecart_rapporte_aux_epaules(point_gauche, point_droit, corps) {
+  const largeur = calculer_distance(corps.epaule_gauche, corps.epaule_droite);
+  if (largeur <= 0) return null;
+  return calculer_distance(point_gauche, point_droit) / largeur;
 }
 
 export function extension_triceps_au_dessus_de_la_tete_detection(corps) {
@@ -114,9 +221,26 @@ export function extension_triceps_au_dessus_de_la_tete_detection(corps) {
     corps.coude_droit,
     corps.poignet_droit
   );
+  // Coudes en l'air et poignets presque joints sur l'haltere, sinon ni debut
+  // ni fin : n'importe quelle flexion des bras comptait.
+  const ecart_poignets = ecart_rapporte_aux_epaules(
+    corps.poignet_gauche, corps.poignet_droit, corps
+  );
+  if (!coudes_leves(corps) || ecart_poignets === null || ecart_poignets >= 0.6) {
+    return "milieu";
+  }
   if (angle_coude_droit < 90 && angle_coude_gauche < 90) return "debut";
-  else if (angle_coude_droit > 150 && angle_coude_gauche > 150) return "fin";
+  else if (angle_coude_droit > 140 && angle_coude_gauche > 140) return "fin";
   return "milieu";
+}
+
+// Coudes ecartes au-dela de la largeur des epaules, coudes leves seulement
+// (bras le long du corps, ils y sont naturellement).
+export function extension_triceps_erreur_coudes(corps) {
+  if (!coudes_leves(corps)) return null;
+  const ecart = ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps);
+  if (ecart !== null && ecart > 1.5) return "forme_coudes_trop_ecartes";
+  return null;
 }
 
 export function developpe_epaule_detection(corps) {
@@ -136,7 +260,8 @@ export function developpe_epaule_detection(corps) {
   const mains_en_haut =
     corps.poignet_gauche.y < corps.epaule_gauche.y &&
     corps.poignet_droit.y < corps.epaule_droite.y;
-  if (angle_coude_droit < 40 && angle_coude_gauche < 40) return "debut";
+  // Seuil bas ouvert de 40 a 60 degres : il fallait descendre trop bas.
+  if (angle_coude_droit < 60 && angle_coude_gauche < 60) return "debut";
   else if (angle_coude_droit > 150 && angle_coude_gauche > 150 && mains_en_haut)
     return "fin";
   return "milieu";
@@ -186,7 +311,21 @@ export function detection_gainage(corps) {
   const hanches_droites = (angle_hanche_droite + angle_hanche_gauche) / 2 > 135;
 
   const hanche_au_dessus_coude = corps.hanche_gauche.y < corps.coude_gauche.y;
-  if (hanches_droites && hanche_au_dessus_coude) return "maintien";
+
+  // Tombe a plat ventre, le chrono continuait. Ce qui fait le gainage, c'est
+  // l'effort : epaules soulevees au-dessus des coudes (moyenne des deux
+  // cotes, le bras eloigne etant estime) et hanches decollees du sol.
+  const appui =
+    (appui_sur_le_bras(corps.epaule_gauche, corps.coude_gauche, corps.hanche_gauche) +
+      appui_sur_le_bras(corps.epaule_droite, corps.coude_droit, corps.hanche_droite)) / 2;
+  const decollee = hanche_decollee(
+    (corps.epaule_gauche.y + corps.epaule_droite.y) / 2,
+    (corps.hanche_gauche.y + corps.hanche_droite.y) / 2,
+    (corps.cheville_gauche.y + corps.cheville_droite.y) / 2
+  );
+  const en_appui = appui > 0.25 && decollee !== null && decollee > 0.3;
+
+  if (hanches_droites && hanche_au_dessus_coude && en_appui) return "maintien";
 
   return "repos";
 }
@@ -225,6 +364,37 @@ export function fente_gauche_detection(corps) {
   return "milieu";
 }
 
+// De combien le genou avant passe devant la pointe du pied, rapporte au
+// tibia. Le sens du regard se lit sur le pied (talon vers pointe), donc rien
+// n'est suppose du cote de la camera. null quand le pied est vu de bout ou le
+// tibia illisible.
+function genou_depasse_pied(genou, cheville, talon, pointe) {
+  const longueur_pied = pointe.x - talon.x;
+  const tibia = calculer_distance(genou, cheville);
+  if (Math.abs(longueur_pied) < 0.01 || tibia <= 0) return null;
+  const sens = longueur_pied > 0 ? 1 : -1;
+  return ((genou.x - pointe.x) * sens) / tibia;
+}
+
+// Faute affichee seulement : elle ne retire rien au comptage de la fente.
+function faute_genou_avant(genou, cheville, talon, pointe) {
+  const depassement = genou_depasse_pied(genou, cheville, talon, pointe);
+  if (depassement !== null && depassement > 0.05) return "forme_genou_avant_trop_avance";
+  return null;
+}
+
+export function fente_droite_erreur_genou(corps) {
+  return faute_genou_avant(
+    corps.genou_droit, corps.cheville_droite, corps.talon_droit, corps.pointe_pied_droite
+  );
+}
+
+export function fente_gauche_erreur_genou(corps) {
+  return faute_genou_avant(
+    corps.genou_gauche, corps.cheville_gauche, corps.talon_gauche, corps.pointe_pied_gauche
+  );
+}
+
 export function souleve_de_terre_roumain_detection(corps) {
   const distance_gauche = calculer_distance(
     corps.poignet_gauche,
@@ -251,6 +421,20 @@ function appui_sur_le_bras(epaule, coude, hanche) {
   return (coude.y - epaule.y) / buste;
 }
 
+// Hauteur de la hanche au-dessus des pieds, rapportee a celle de l'epaule :
+// vers 0,5 en planche (la hanche est sur la ligne pieds-epaule), vers 0
+// hanches posees au sol. null quand l'epaule n'est pas plus haut que les pieds.
+function hanche_decollee(y_epaule, y_hanche, y_cheville) {
+  const hauteur = y_cheville - y_epaule;
+  if (hauteur <= 0) return null;
+  return (y_cheville - y_hanche) / hauteur;
+}
+
+function gainage_lateral_decolle(epaule, hanche, cheville) {
+  const decollee = hanche_decollee(epaule.y, hanche.y, cheville.y);
+  return decollee !== null && decollee > 0.3;
+}
+
 export function detection_gainage_laterale_gauche(corps) {
   const angle_hanche_gauche = calculer_angle(
     corps.epaule_gauche,
@@ -275,7 +459,12 @@ export function detection_gainage_laterale_gauche(corps) {
   // buste est *souleve* par l'appui sur l'avant-bras.
   const souleve = appui_sur_le_bras(corps.epaule_gauche, corps.coude_gauche, corps.hanche_gauche) > 0.25;
 
-  if (corps_aligne && cote_gauche_au_sol && hanche_au_dessus_coude && souleve) {
+  // Buste souleve ne suffisait pas : il ne descendait jamais sous 0,43,
+  // allonge sur le cote on reste appuye sur le coude. Il manquait la hanche
+  // decollee du sol.
+  const decollee = gainage_lateral_decolle(corps.epaule_gauche, corps.hanche_gauche, corps.cheville_gauche);
+
+  if (corps_aligne && cote_gauche_au_sol && hanche_au_dessus_coude && souleve && decollee) {
     return "maintien";
   }
 
@@ -303,7 +492,12 @@ export function detection_gainage_laterale_droite(corps) {
   // buste est *souleve* par l'appui sur l'avant-bras.
   const souleve = appui_sur_le_bras(corps.epaule_droite, corps.coude_droit, corps.hanche_droite) > 0.25;
 
-  if (corps_aligne && cote_droit_au_sol && hanche_au_dessus_coude && souleve) {
+  // Buste souleve ne suffisait pas : il ne descendait jamais sous 0,43,
+  // allonge sur le cote on reste appuye sur le coude. Il manquait la hanche
+  // decollee du sol.
+  const decollee = gainage_lateral_decolle(corps.epaule_droite, corps.hanche_droite, corps.cheville_droite);
+
+  if (corps_aligne && cote_droit_au_sol && hanche_au_dessus_coude && souleve && decollee) {
     return "maintien";
   }
 
@@ -325,7 +519,8 @@ export function rowing_unilateral_gauche_detection(corps) {
   const poignet_au_dessus_hanche = corps.poignet_gauche.y < corps.hanche_gauche.y;
   const buste_penche = angle_buste_gauche < 160;
 
-  if (angle_coude_gauche < 70 && poignet_au_dessus_hanche && buste_penche) {
+  // Seuil du haut ouvert de 70 a 90 degres, trop severe.
+  if (angle_coude_gauche < 90 && poignet_au_dessus_hanche && buste_penche) {
     return "fin";
   } else if (angle_coude_gauche > 150) {
     return "debut";
@@ -358,7 +553,8 @@ export function rowing_unilateral_droit_detection(corps) {
   const poignet_au_dessus_hanche = corps.poignet_droit.y < corps.hanche_droite.y;
   const buste_penche = angle_buste_droit < 160;
 
-  if (angle_coude_droit < 70 && poignet_au_dessus_hanche && buste_penche) {
+  // Seuil du haut ouvert de 70 a 90 degres, trop severe.
+  if (angle_coude_droit < 90 && poignet_au_dessus_hanche && buste_penche) {
     return "fin";
   } else if (angle_coude_droit > 150) {
     return "debut";
@@ -432,7 +628,7 @@ export function oiseau_detection(corps) {
   );
   const angle_bras_moyen = (angle_bras_gauche + angle_bras_droit) / 2;
 
-  if (angle_bras_moyen > 80) return "fin";
+  if (angle_bras_moyen > 65) return "fin";
   else if (angle_bras_moyen < 30) return "debut";
   return "milieu";
 }
@@ -491,6 +687,24 @@ export function squat_sur_chaise_detection(corps) {
   return "milieu";
 }
 
+// Les deux mesures privees sont exportees sous un nom prefixe pour que
+// instruments.js les reprenne au lieu de les recopier. Elles restent hors de
+// DETECTIONS : le harnais n'apparie que cette table, et elles n'ont pas de
+// jumelle publique cote Python.
+export {
+  appui_sur_le_bras as _appui_sur_le_bras,
+  descente_hanche as _descente_hanche,
+  hauteur_sous_epaule as _hauteur_sous_epaule,
+  ecart_lateral as _ecart_lateral,
+  angle_coude_proche as _angle_coude_proche,
+  bras_proche as _bras_proche,
+  visibilite_bras as _visibilite_bras,
+  genou_depasse_pied as _genou_depasse_pied,
+  buste_vertical as _buste_vertical,
+  ecart_rapporte_aux_epaules as _ecart_rapporte_aux_epaules,
+  hanche_decollee as _hanche_decollee,
+};
+
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par
 // la couche de seance. Les cles reprennent exactement les noms Python.
 export const DETECTIONS = {
@@ -500,6 +714,7 @@ export const DETECTIONS = {
   curl_biceps_gauche_detection,
   elevation_laterale_detection,
   pompe_detection,
+  pompe_profondeur,
   developpe_couche_sol_detection,
   extension_triceps_au_dessus_de_la_tete_detection,
   developpe_epaule_detection,
@@ -508,6 +723,8 @@ export const DETECTIONS = {
   squat_detection,
   fente_droite_detection,
   fente_gauche_detection,
+  fente_droite_erreur_genou,
+  fente_gauche_erreur_genou,
   souleve_de_terre_roumain_detection,
   detection_gainage_laterale_gauche,
   detection_gainage_laterale_droite,
@@ -521,4 +738,5 @@ export const DETECTIONS = {
   oiseau_detection,
   oiseau_erreur_coudes,
   squat_sur_chaise_detection,
+  extension_triceps_erreur_coudes,
 };

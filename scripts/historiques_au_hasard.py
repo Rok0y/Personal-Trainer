@@ -19,6 +19,7 @@ lire, ce qui ne prouve rien de ce qui nous intéresse.
 
 import core.materiel as materiel
 from progression import paliers
+from progression.calibration import CIBLE_TEST
 
 MODES = ("repetitions", "maintien", "chrono", "amrap", "echauffement")
 
@@ -72,8 +73,23 @@ def exercice(tirage, noms):
         mode = tirage.choice(MODES)
     maintien = mode in ("maintien", "chrono")
 
-    sur_le_bareme = tirage.random() < 0.5 and _cible_sur_le_bareme(tirage, nom)
-    if sur_le_bareme:
+    # **Une ligne sur dix est un test de calibration.** Un historique ordinaire
+    # n'en contient aucun, et la règle qui les écarte — un test n'est ni réussi
+    # ni échoué — ne serait alors comparée par rien. C'est pourtant celle qui
+    # décide de ce que l'écran affiche après la toute première séance de
+    # quelqu'un, c'est-à-dire au moment où l'on a le moins envie de lire
+    # « Non atteint ». Une série unique, comme en séance.
+    est_un_test = tirage.random() < 0.1
+    sur_le_bareme = (
+        not est_un_test
+        and tirage.random() < 0.5
+        and _cible_sur_le_bareme(tirage, nom)
+    )
+    if est_un_test:
+        poids = tirage.choice([0, 2, 4, 6, 8, 10])
+        nb_series = 1
+        cible = CIBLE_TEST
+    elif sur_le_bareme:
         poids, nb_series, cible = sur_le_bareme
     else:
         poids = tirage.choice([0, 2, 4, 5, 6, 8, 10, 14, 18])
@@ -84,8 +100,14 @@ def exercice(tirage, noms):
     for numero in range(1, nb_series + 1):
         # Autour de la cible, et pas toujours au-dessus : c'est le
         # franchissement du seuil qui fait basculer « réussi », donc les deux
-        # côtés doivent être visités.
-        realise = max(0, cible + tirage.randint(-4, 2))
+        # côtés doivent être visités. Sauf sur un test, où l'on fait son
+        # maximum : un nombre ordinaire, très loin d'une cible qu'on n'atteint
+        # jamais — c'est justement pour ça qu'un test lu comme un objectif
+        # passe pour un échec.
+        if est_un_test:
+            realise = tirage.randint(1, 30)
+        else:
+            realise = max(0, cible + tirage.randint(-4, 2))
         series.append({
             "serie": numero,
             "repetitions": 0 if maintien else realise,

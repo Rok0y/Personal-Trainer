@@ -6,8 +6,13 @@ import time
 import cv2
 
 import session.seances
-from audio.coach import annoncer_prochaine_etape, annoncer_temps_repos, coach
-from audio.lecteur import jouer
+from audio.coach import (
+    SILENCE_PRESENTATION,
+    annoncer_prochaine_etape,
+    annoncer_temps_repos,
+    coach,
+)
+from audio.lecteur import REPOS_MINIMAL_PRESENTATION, jouer
 from core.messages import texte
 from historique.database import enregistrer_seance, initialiser
 from mouvements.compteur import CompteurMouvement
@@ -46,6 +51,9 @@ hold_deux_bras_leves = HoldPosition(deux_bras_leves, 3)
 preparation = HoldPosition(bras_en_x, 1.5)
 detection = PoseDetector()
 ancienne_phase = None
+# Le bloc courant a la derniere image : sans repos, l'exercice change sans que
+# la phase change, et seul ce repere le voit.
+ancien_index = None
 derniere_rep = 0
 fin_preparation = None
 DELAI_AVANT_EXERCICE = 3
@@ -224,6 +232,35 @@ try:
             if seance.phase != ancienne_phase:
 
                 if seance.phase == "preparation":
+
+                    # **On presente, puis on demande le geste.** L'annonce se
+                    # jouait a la validation du bras en X, c'est-a-dire au
+                    # moment precis ou l'effort allait commencer — « le
+                    # prochain exercice » annonce a l'instant ou on le
+                    # commence. Elle passe donc devant la consigne, et les
+                    # deux s'enchainent dans l'ordre parce que la file
+                    # departage les priorites egales par ordre d'arrivee.
+                    #
+                    # Cette phase n'est posee qu'une fois par seance (`Circuit`
+                    # la pose dans son constructeur et ne la rearme jamais),
+                    # donc ceci se joue une fois et une seule : les series
+                    # suivantes n'entendront que « c'est parti ».
+                    bloc = seance.bloc_actuel
+
+                    annoncer_prochaine_etape(
+                        etat.prochaine_etape,
+                        nombre_halteres=(
+                            session.seances.nombre_halteres(bloc.exercice.nom)
+                            if bloc
+                            else 0
+                        ),
+                        orientation=(bloc.exercice.orientation if bloc else None),
+                        # Premier bloc de la seance, donc « le premier
+                        # exercice sera » — c'est le seul endroit ou cette
+                        # amorce se joue.
+                        amorce=seance.amorce_annonce(bloc),
+                    )
+
                     coach("preparation")
 
                 elif seance.phase == "exercice":
@@ -241,10 +278,42 @@ try:
 
                 elif seance.phase == "repos_exercice":
 
-                    coach("repos")
+                    # **Sur un repos court, l'annonce part seule et tout de
+                    # suite** : « repose-toi », le blanc et l'annonce font une
+                    # dizaine de secondes de parole, et sur les cinq secondes
+                    # entre deux échauffements l'annonce tombait pendant
+                    # l'exercice qu'elle présentait. `temps_restant` vaut ici
+                    # le repos entier : on vient d'y entrer.
+                    repos_court = seance.temps_restant < REPOS_MINIMAL_PRESENTATION
+
+                    if not repos_court:
+                        coach("repos")
+
+                    # Le nombre d'haltères et l'orientation sont fournis ici
+                    # plutôt que lus par le coach : `audio.annonces` n'importe
+                    # que la bibliothèque standard, et c'est ce qui permet à
+                    # `preparer_demo` de l'exporter vers le navigateur sans
+                    # tirer tout le catalogue ni pygame.
+                    prochain = seance.prochain_bloc()
 
                     annoncer_prochaine_etape(
-                        etat.prochaine_etape, "changement_exercice"
+                        etat.prochaine_etape,
+                        nombre_halteres=(
+                            session.seances.nombre_halteres(prochain.exercice.nom)
+                            if prochain
+                            else 0
+                        ),
+                        orientation=(
+                            prochain.exercice.orientation if prochain else None
+                        ),
+                        # « Pour finir » quand c'est le dernier bloc. La
+                        # séance est seule à savoir où l'on en est.
+                        amorce=seance.amorce_annonce(prochain),
+                        # Le blanc entre les deux : sans lui, « repose-toi »
+                        # et « prochain exercice : curl biceps droit » n'en
+                        # font qu'une, et la pause commence par six secondes
+                        # de parole d'affilee.
+                        silence_avant=0 if repos_court else SILENCE_PRESENTATION,
                     )
 
                     seance.repos_restant_precedent = int(seance.temps_restant)
@@ -253,7 +322,26 @@ try:
 
                     coach("fin_seance")
 
+            elif seance.phase == "exercice" and seance.index_exercice != ancien_index:
+
+                # **Sans repos, l'exercice change sans changer de phase**
+                # (`repos_apres` à 0 : `terminer_serie` enchaîne directement).
+                # Rien ne l'annonçait. On le dit ici, à la fin du précédent.
+                bloc = seance.bloc_actuel
+
+                annoncer_prochaine_etape(
+                    etat.prochaine_etape,
+                    nombre_halteres=(
+                        session.seances.nombre_halteres(bloc.exercice.nom)
+                        if bloc
+                        else 0
+                    ),
+                    orientation=(bloc.exercice.orientation if bloc else None),
+                    amorce=seance.amorce_annonce(bloc),
+                )
+
             ancienne_phase = seance.phase
+            ancien_index = seance.index_exercice
 
             if seance.phase == "recuperation_serie":
                 annoncer_temps_repos(seance, etat, annoncer_exercice=False)
@@ -291,9 +379,10 @@ try:
                         etat.consigne = texte("preparation_bras_en_x")
 
                         if termine:
-                            annoncer_prochaine_etape(
-                                etat.prochaine_etape, "debut_serie"
-                            )
+                            # **Plus d'annonce ici** : elle a remonté à
+                            # l'entrée en phase `preparation`, devant la
+                            # consigne de geste. On présente, puis on demande
+                            # le geste, puis on dit « c'est parti ».
                             fin_preparation = time.time()
 
                     else:

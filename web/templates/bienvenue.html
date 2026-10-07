@@ -27,6 +27,18 @@
         background:rgba(0,0,0,.22);
     }
     .haltere strong { font-size:15px; }
+    /* La saisie libre est une action, pas un cran de plus : elle vit sous la
+       grille et non dedans, pour ne pas se noyer dans dix-neuf poids. */
+    .ajout-poids { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px; }
+    .ajout-poids input {
+        width:130px; padding:9px 10px; border:1px dashed var(--border-strong);
+        border-radius:8px; background:rgba(0,0,0,.35); color:var(--text); font:inherit;
+    }
+    .ajout-poids button {
+        padding:9px 14px; border:1px solid var(--teal); border-radius:8px;
+        background:transparent; color:var(--teal); font:inherit; font-weight:600; cursor:pointer;
+    }
+    .ajout-erreur { color:var(--alerte, #ff6b6b); font-size:13px; }
     .haltere select {
         background:rgba(0,0,0,.35); color:var(--text); border:1px solid var(--border-strong);
         border-radius:8px; padding:6px 8px; font-family:inherit; font-size:13px;
@@ -72,6 +84,13 @@
         <h2>Haltères</h2>
         <p class="sous-titre">Pour chaque poids, ce que tu possèdes</p>
         <div class="halteres" id="halteres"></div>
+        <div class="ajout-poids">
+            <input type="number" step="0.5" min="1" max="60" inputmode="decimal"
+                   id="autrePoids" placeholder="autre poids"
+                   aria-label="Ajouter un poids en kilos">
+            <button type="button" id="ajouterPoids">Ajouter</button>
+            <span class="ajout-erreur" id="erreurPoids" hidden></span>
+        </div>
     </div>
 
     <div class="bloc">
@@ -113,18 +132,81 @@ const PREMIERE_FOIS = {{ premiere_fois|tojson }};
 // séparées : déclarer une paire de 12 kg sans posséder l'haltère de 12 kg
 // n'aurait aucun sens, et le barème dérive les deux échelles de ce stock.
 const conteneurHalteres = document.getElementById("halteres");
-POIDS.forEach((poids) => {
-    const quantite = MATERIEL.halteres[poids] || 0;
-    const ligne = document.createElement("div");
-    ligne.className = "haltere";
-    ligne.innerHTML =
-        "<strong>" + poids + " kg</strong>" +
-        '<select data-poids="' + poids + '">' +
-        '<option value="0"' + (quantite === 0 ? " selected" : "") + ">Aucun</option>" +
-        '<option value="1"' + (quantite === 1 ? " selected" : "") + ">Un</option>" +
-        '<option value="2"' + (quantite >= 2 ? " selected" : "") + ">Une paire</option>" +
-        "</select>";
-    conteneurHalteres.appendChild(ligne);
+
+// `POIDS` est une liste de **raccourcis** — les haltères qu'on trouve
+// couramment —, jamais la liste de ce qu'on a le droit de déclarer. On y
+// ajoute donc les poids déjà possédés qui n'y figurent pas, sinon un haltère
+// saisi à la main disparaîtrait du questionnaire au rechargement et se ferait
+// effacer au premier enregistrement.
+let quantites = {};
+for (const [poids, nombre] of Object.entries(MATERIEL.halteres)) {
+    quantites[Number(poids)] = nombre;
+}
+
+function dessinerHalteres() {
+    const poids = [...new Set([...POIDS, ...Object.keys(quantites).map(Number)])]
+        .sort((a, b) => a - b);
+    conteneurHalteres.replaceChildren();
+    poids.forEach((valeur) => {
+        const quantite = quantites[valeur] || 0;
+        const ligne = document.createElement("div");
+        ligne.className = "haltere";
+        ligne.innerHTML =
+            "<strong>" + valeur + " kg</strong>" +
+            '<select data-poids="' + valeur + '">' +
+            '<option value="0"' + (quantite === 0 ? " selected" : "") + ">Aucun</option>" +
+            '<option value="1"' + (quantite === 1 ? " selected" : "") + ">Un</option>" +
+            '<option value="2"' + (quantite >= 2 ? " selected" : "") + ">Une paire</option>" +
+            "</select>";
+        conteneurHalteres.appendChild(ligne);
+    });
+}
+
+dessinerHalteres();
+
+// Jumeau de `poids_declarable` : arrondi au demi-kilo, qui est le pas réel du
+// matériel, et bornes larges — il ne s'agit pas de juger ce que quelqu'un
+// soulève, seulement d'écarter une faute de frappe.
+function poidsDeclarable(valeur) {
+    const brut = Number.parseFloat(valeur);
+    if (Number.isNaN(brut)) return null;
+    const poids = Math.round(brut * 2) / 2;
+    return poids < 1 || poids > 60 ? null : poids;
+}
+
+const champPoids = document.getElementById("autrePoids");
+const erreurPoids = document.getElementById("erreurPoids");
+
+function ajouterPoids() {
+    const poids = poidsDeclarable(champPoids.value);
+    if (poids === null) {
+        erreurPoids.textContent = "Entre un poids entre 1 et 60 kg.";
+        erreurPoids.hidden = false;
+        return;
+    }
+    // On repart de ce qui est **affiché** : entre-temps l'utilisateur a pu
+    // changer des quantités qu'un redessin effacerait sans rien dire.
+    quantites = lireQuantites();
+    if (!quantites[poids]) quantites[poids] = 1;
+    erreurPoids.hidden = true;
+    champPoids.value = "";
+    dessinerHalteres();
+}
+
+function lireQuantites() {
+    const lues = {};
+    conteneurHalteres.querySelectorAll("select[data-poids]").forEach((select) => {
+        const quantite = Number(select.value) || 0;
+        if (quantite > 0) lues[Number(select.dataset.poids)] = quantite;
+    });
+    return lues;
+}
+
+document.getElementById("ajouterPoids").addEventListener("click", ajouterPoids);
+champPoids.addEventListener("keydown", (evenement) => {
+    if (evenement.key !== "Enter") return;
+    evenement.preventDefault();
+    ajouterPoids();
 });
 
 const conteneurAccessoires = document.getElementById("accessoires");
@@ -151,11 +233,7 @@ if (conteneurSeances) {
 }
 
 function collecter() {
-    const halteres = {};
-    conteneurHalteres.querySelectorAll("select").forEach((select) => {
-        const quantite = Number(select.value) || 0;
-        if (quantite > 0) halteres[select.dataset.poids] = quantite;
-    });
+    const halteres = lireQuantites();
     const accessoires = [...conteneurAccessoires.querySelectorAll("input:checked")]
         .map((input) => input.dataset.accessoire);
     return { halteres, accessoires };

@@ -187,5 +187,70 @@
    "Bas du corps": "Bas du corps",
    "Haut du corps": "Haut du corps"
   }
+ },
+ "full-body-sans-materiel": {
+  "nom": "Full body sans matériel",
+  "description": "Un full body jouable sans matériel : un tapis, une chaise, et c'est tout. Il couvre la poussée, les jambes et le gainage. Pas de tirage — aucun mouvement de dos du catalogue ne se fait sans haltères.",
+  "exigences": [
+   {
+    "seance": "Full body sans matériel",
+    "exercice": "Pompes",
+    "series": 4,
+    "cible": 15,
+    "poids": 0
+   },
+   {
+    "seance": "Full body sans matériel",
+    "exercice": "Squat",
+    "series": 4,
+    "cible": 15,
+    "poids": 0
+   },
+   {
+    "seance": "Full body sans matériel",
+    "exercice": "Fente droite",
+    "series": 4,
+    "cible": 10,
+    "poids": 0
+   },
+   {
+    "seance": "Full body sans matériel",
+    "exercice": "Fente gauche",
+    "series": 4,
+    "cible": 10,
+    "poids": 0
+   },
+   {
+    "seance": "Full body sans matériel",
+    "exercice": "Crunches",
+    "series": 4,
+    "cible": 15,
+    "poids": 0
+   },
+   {
+    "seance": "Full body sans matériel",
+    "exercice": "Gainage planche",
+    "series": 3,
+    "cible": 46,
+    "poids": 0
+   },
+   {
+    "seance": "Full body sans matériel",
+    "exercice": "Gainage planche laterale droite",
+    "series": 1,
+    "cible": 60,
+    "poids": 0
+   },
+   {
+    "seance": "Full body sans matériel",
+    "exercice": "Gainage planche laterale gauche",
+    "series": 1,
+    "cible": 60,
+    "poids": 0
+   }
+  ],
+  "seances": {
+   "Full body sans matériel": "Full body sans matériel"
+  }
  }
 }

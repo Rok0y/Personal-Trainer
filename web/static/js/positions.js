@@ -35,6 +35,17 @@ export function bras_en_x(corps) {
   );
 }
 
+// Le buste debout : les epaules nettement au-dessus des hanches. Voir la
+// docstring Python pour le pourquoi — allonge, bras tendus est la position
+// haute du developpe couche, et le geste de remise a zero y effacait la serie.
+export function _torse_vertical(corps) {
+  const epaules_x = (corps.epaule_gauche.x + corps.epaule_droite.x) / 2;
+  const epaules_y = (corps.epaule_gauche.y + corps.epaule_droite.y) / 2;
+  const hanches_x = (corps.hanche_gauche.x + corps.hanche_droite.x) / 2;
+  const hanches_y = (corps.hanche_gauche.y + corps.hanche_droite.y) / 2;
+  return hanches_y - epaules_y > Math.abs(hanches_x - epaules_x);
+}
+
 export function deux_bras_leves(corps) {
-  return bras_droit_leve(corps) && bras_gauche_leve(corps);
+  return bras_droit_leve(corps) && bras_gauche_leve(corps) && _torse_vertical(corps);
 }

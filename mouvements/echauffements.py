@@ -16,22 +16,6 @@ from session.circuit import Exercice
 
 
 # ==================================
-# Jumping jacks
-# ==================================
-def jumping_jacks_detection(corps):
-    """Renvoie "fin" bras et jambes écartés, "debut" au repos, "milieu" entre.
-
-    Rappel du repère MediaPipe : `y` croît vers le BAS de l'image, et `x` vers
-    la droite. Les coordonnées sont normalisées (0-1) sur la taille de l'image,
-    donc comparer des écarts entre points reste valable quelle que soit ta
-    distance à la caméra — mais pas des valeurs absolues.
-    """
-    # TODO : détection jamais écrite. Sans conséquence pour l'instant — un
-    # échauffement avance au temps et n'utilise la détection que pour l'affichage.
-    return "milieu"
-
-
-# ==================================
 # Déclaration des mouvements
 # ==================================
 
@@ -91,9 +75,20 @@ pompes_lentes = Exercice(
     ],
 )
 
+# `detection=None`, comme les rotations articulaires : la fonction qui vivait
+# ici retournait `"milieu"` quoi qu'elle reçoive — un squelette immobile, une
+# pose absurde, n'importe quoi. Elle ne mesurait donc rien, et affichait
+# pourtant « En mouvement » dans la carte « Étape », ce qui est pire que muet :
+# un échauffement avance au temps, donc la seule chose que cette détection
+# produisait était une position inventée. Même règle que l'orientation caméra,
+# qui n'a volontairement pas de valeur par défaut.
+#
+# Le portage JavaScript ne l'avait jamais eue, et c'est ce côté-là qui était
+# juste : l'application affichait « Échauffement en cours », c'est-à-dire la
+# vérité. Écrire un jour une vraie détection de jumping jacks se fera des deux
+# côtés à la fois, comme toute détection.
 jumping_jacks = Exercice(
     nom="Jumping jacks",
-    detection=jumping_jacks_detection,
     description="Sauts avec écart des bras et des jambes.",
     instructions=[
         "Bras au-dessus de la tête en haut du mouvement.",

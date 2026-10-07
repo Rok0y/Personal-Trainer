@@ -76,10 +76,36 @@ export class Baremes {
   }
 
   /** Echelle du materiel : ce que les halteres du profil permettent. */
+  /**
+   * La charge est-elle facultative sur ce mouvement chargeable ?
+   *
+   * Jumelle de `charge_facultative` (progression/paliers.py). La regle se
+   * declare dans la spec : `poids_min` a 0 veut dire « ce bareme commence au
+   * poids du corps ». Une seconde liste tenue a cote du materiel finirait par
+   * en diverger sans que rien ne le signale.
+   *
+   * Le nom dit « facultative » et non « au poids du corps » : la fonction ne
+   * repond que des mouvements chargeables. Les pompes rendent false alors
+   * qu'elles se font evidemment sans charge — elles n'ont aucune echelle de
+   * poids, donc `echelle_poids` a deja repondu avant de l'interroger.
+   */
+  charge_facultative(nom) {
+    const spec = this.specs[nom];
+    return Boolean(spec) && spec.poids_min === 0;
+  }
+
   echelle_poids(nom) {
     const nb = this.nombre_halteres(nom);
     if (nb <= 0) return this.echelles.sans_charge;
-    return echelle_disponible(this.echelles, this.inventaire, nb);
+
+    const echelle = echelle_disponible(this.echelles, this.inventaire, nb);
+    // Le poids du corps est un cran du bareme et non une absence de materiel :
+    // un squat a vide est un vrai palier, celui par lequel on commence, et il
+    // se place avant le premier haltere au lieu de manquer.
+    if (this.charge_facultative(nom)) {
+      return [...this.echelles.sans_charge, ...echelle];
+    }
+    return echelle;
   }
 
   /**
@@ -88,16 +114,39 @@ export class Baremes {
    * Une fourchette qui ne retient rien (materiel absent, bornes trop
    * etroites) laisserait un bareme vide : on garde alors le cran le plus bas.
    */
-  echelle_exercice(nom) {
-    const echelle = this.echelle_poids(nom);
-    const spec = this.specs[nom];
-    if (!spec) return echelle;
-    const retenue = echelle.filter(
+  _dans_la_fourchette(echelle, spec) {
+    return echelle.filter(
       (poids) =>
         (spec.poids_min === null || poids >= spec.poids_min) &&
         (spec.poids_max === null || poids <= spec.poids_max)
     );
-    return retenue.length ? retenue : echelle.slice(0, 1);
+  }
+
+  /**
+   * Echelle du materiel restreinte a la fourchette utile de l'exercice.
+   *
+   * **C'est ici que vit le garde « le bareme reste calculable pour tout le
+   * monde »**, et il y vit parce que c'est le seul endroit qui sache si
+   * l'exercice a un cran au poids du corps. `echelle_disponible` rend
+   * honnetement un tableau vide quand le profil n'a pas de quoi charger ; un
+   * squat retombe alors sur `[0]`, qui est sa **vraie** echelle et non un
+   * repli, tandis qu'un curl retombe sur la gamme supposee, faute de mieux et
+   * parce qu'un bareme vide casserait jusqu'a l'ecran des records.
+   */
+  echelle_exercice(nom) {
+    const echelle = this.echelle_poids(nom);
+    const spec = this.specs[nom];
+    if (!spec) return echelle.length ? echelle : this.echelles.supposes;
+
+    const retenue = this._dans_la_fourchette(echelle, spec);
+    if (retenue.length) return retenue;
+    // Des bornes trop etroites sur une echelle non vide : on garde le cran le
+    // plus bas plutot que de laisser un bareme sans aucun palier.
+    if (echelle.length) return echelle.slice(0, 1);
+    // Rien a charger, et pas de cran au poids du corps (un curl, un developpe).
+    const supposee = this.echelles.supposes;
+    const dans = this._dans_la_fourchette(supposee, spec);
+    return dans.length ? dans : supposee.slice(0, 1);
   }
 
   /**

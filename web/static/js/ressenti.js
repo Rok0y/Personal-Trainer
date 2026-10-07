@@ -85,6 +85,23 @@ export class Ressenti {
    * fait exception : c'est la charge configuree du bloc, donc deja une
    * consigne — il n'existe pas de colonne `poids_cible`.
    */
+  /**
+   * Cette ligne d'historique est-elle un test de calibration ?
+   *
+   * Point d'entree unique de la question. Un test n'a pas d'objectif : sa
+   * cible est un plafond qu'on n'atteint jamais, et le juger revient a
+   * declarer echoue ce qui vient precisement de *mesurer* le niveau. Rien
+   * n'est stocke — un exercice est calibre s'il porte un ancrage.
+   */
+  est_serie_de_test(exercice) {
+    const unite_attendue = this.baremes.unite(exercice.nom);
+    const cible =
+      unite_attendue === UNITE_SECONDES
+        ? exercice.duree_cible
+        : exercice.repetitions_cibles;
+    return cible === CIBLE_TEST;
+  }
+
   _cible_visee(exercice) {
     const nom = exercice.nom;
     if (!this.baremes.est_suivi_par_le_moteur(nom)) return null;
@@ -104,7 +121,7 @@ export class Ressenti {
     // relit comme un objectif tres haut et manque : un test ancre au niveau 9
     // faisait proposer le niveau 24 a la seance suivante. Le test a deja pose
     // son ancrage ; c'est lui le repere, pas cette ligne.
-    if (cible === CIBLE_TEST) return null;
+    if (this.est_serie_de_test(exercice)) return null;
 
     return [exercice.poids || 0, series, cible];
   }
@@ -226,6 +243,15 @@ export class Ressenti {
     for (const seance of seances) {
       const jugements = {};
       for (const exercice of seance.exercices ?? []) {
+        // **Un test n'est ni reussi ni echoue**, et il faut l'ecarter ici et
+        // pas seulement dans `juger`. Celui-ci rend bien null sur un test —
+        // mais ce null etait traite comme « exercice hors bareme » et
+        // retombait sur `_reussite_brute`, qui compare les repetitions
+        // realisees a 999 : verdict « Non atteint » en rouge et bouton
+        // « C'etait trop dur » propose sur la serie qui vient justement
+        // d'etablir le niveau. *Un repli protege d'un cas manquant et masque
+        // un branchement oublie.*
+        if (this.est_serie_de_test(exercice)) continue;
         jugements[exercice.nom] =
           this.juger(exercice) ?? {
             // Hors bareme : pas d'objectif chiffre, mais un ressenti reste

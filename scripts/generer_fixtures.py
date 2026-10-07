@@ -15,11 +15,12 @@ jetons attendus. A rejouer avec `node scripts/comparer_detections.mjs`.
 
 import inspect
 import json
+import math
 import random
 import sys
 from pathlib import Path
 
-from mouvements import exercices, positions
+from mouvements import echauffements, exercices, positions
 from vision.body import Body, LandmarkPoint
 from vision.landmarks import LANDMARKS
 
@@ -56,6 +57,149 @@ def pose_au_hasard(rng):
     return Body(points)
 
 
+NOMBRE_POSES_DE_GESTE = 500
+"""Poses construites bras leves, en plus des poses au hasard.
+
+Le hasard n'atteint presque jamais « deux bras leves » : mesure, 4 poses sur
+5 000 levent les deux bras, et aucune n'a le buste debout. La condition de
+buste ajoutee a `deux_bras_leves` n'etait donc comparee par rien — la retirer
+d'un seul cote passait vert. Meme lecon que les scenarios ecrits du harnais de
+seances : un etat etroit se vise, il ne se tire pas."""
+
+
+def pose_bras_leves(rng):
+    """Deux bras tendus au-dessus des epaules, buste oriente au hasard.
+
+    Le buste tourne de -90 a +90 degres autour du milieu des epaules : debout a
+    zero, allonge aux extremes, et la frontiere a 45 degres visitee au passage.
+    Le reste du corps garde ses valeurs tirees au hasard, ce qui fait aussi
+    tourner les detections d'exercice sur ces poses.
+    """
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    milieu_x, milieu_y = 0.3 + rng.random() * 0.4, 0.3 + rng.random() * 0.4
+    demi_largeur = 0.03 + rng.random() * 0.08
+    for cote, signe in (("gauche", -1), ("droite", 1)):
+        suffixe_bras = "gauche" if cote == "gauche" else "droit"
+        ex, ey = milieu_x + signe * demi_largeur, milieu_y
+        points[f"epaule_{cote}"] = LandmarkPoint(ex, ey, 0, 1)
+        # Le bras est tendu vers le haut, a quelques degres pres : l'angle du
+        # coude reste au-dessus de 160 la plupart du temps, pas toujours.
+        derive = (rng.random() - 0.5) * 0.04
+        points[f"coude_{suffixe_bras}"] = LandmarkPoint(ex + derive, ey - 0.12, 0, 1)
+        points[f"poignet_{suffixe_bras}"] = LandmarkPoint(ex + 2 * derive, ey - 0.24, 0, 1)
+    angle = math.radians(rng.uniform(-90, 90))
+    distance = 0.15 + rng.random() * 0.2
+    hx = milieu_x + distance * math.sin(angle)
+    hy = milieu_y + distance * math.cos(angle)
+    points["hanche_gauche"] = LandmarkPoint(hx - demi_largeur, hy, 0, 1)
+    points["hanche_droite"] = LandmarkPoint(hx + demi_largeur, hy, 0, 1)
+    return Body(points)
+
+
+NOMBRE_POSES_PAR_FAMILLE = 300
+"""Poses construites pour les detections que le hasard n'atteint pas.
+
+Mesure par `verifier_instruments.mjs` : sur 5 000 poses tirees au hasard,
+aucune n'atteint la fin de l'elevation laterale (six conditions a la fois), ni
+le debut du squat (un coude a moins de 0,05 du genou), et les maintiens de
+gainage ne sont atteints que par 7 a 10 poses. Leurs seuils n'etaient donc
+compares par rien. Chaque famille construit la position visee **autour** de ses
+seuils, pour visiter les deux cotes de chacun."""
+
+
+def pose_elevation(rng):
+    """Debout de face, chaque bras leve d'un angle au hasard, plus ou moins
+    sur le cote (1) ou devant soi (0), plus ou moins plie."""
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    cx, ey = 0.35 + rng.random() * 0.3, 0.25 + rng.random() * 0.1
+    demi_largeur = 0.06 + rng.random() * 0.05
+    buste = 0.2 + rng.random() * 0.1
+    longueur = buste * (0.9 + rng.random() * 0.3)
+    # Une pose sur deux vise la position haute : sa fin demande six conditions
+    # sur les deux bras a la fois, qu'un tirage uniforme ne reunit presque jamais.
+    vise_le_haut = rng.random() < 0.5
+    for cote, signe in (("gauche", 1), ("droite", -1)):
+        bras = "gauche" if cote == "gauche" else "droit"
+        ex = cx + signe * demi_largeur
+        points[f"epaule_{cote}"] = LandmarkPoint(ex, ey, 0, 1)
+        points[f"hanche_{cote}"] = LandmarkPoint(ex, ey + buste, 0, 1)
+        if vise_le_haut:
+            leve = math.radians(rng.uniform(70, 105))
+            cote_lateral = rng.uniform(0.2, 1.0)
+            pli = rng.uniform(-0.08, 0.08) * longueur
+        else:
+            leve = math.radians(rng.uniform(0, 120))
+            cote_lateral = rng.uniform(-0.3, 1.0)
+            pli = rng.uniform(-0.12, 0.12) * longueur
+        dx, dy = signe * cote_lateral * math.sin(leve), math.cos(leve)
+        points[f"coude_{bras}"] = LandmarkPoint(
+            ex + dx * longueur / 2 - dy * pli, ey + dy * longueur / 2 + dx * pli, 0, 1
+        )
+        points[f"poignet_{bras}"] = LandmarkPoint(ex + dx * longueur, ey + dy * longueur, 0, 1)
+    return Body(points)
+
+
+def pose_planche(rng):
+    """De profil, allonge face au sol : epaules plus ou moins soulevees au-dessus
+    des coudes, hanches plus ou moins decollees, du corps a plat au gainage."""
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    sol = 0.75 + rng.random() * 0.15
+    x0 = 0.15 + rng.random() * 0.15
+    longueur = 0.5 + rng.random() * 0.2
+    epaule = rng.uniform(0, 0.2)
+    hanche = rng.uniform(-0.03, 1.3) * epaule
+    for cote, decalage in (("gauche", 0.0), ("droite", 0.01)):
+        bras = "gauche" if cote == "gauche" else "droit"
+        points[f"coude_{bras}"] = LandmarkPoint(x0 + decalage, sol, 0, 1)
+        points[f"epaule_{cote}"] = LandmarkPoint(x0 + decalage, sol - epaule, 0, 1)
+        points[f"hanche_{cote}"] = LandmarkPoint(x0 + longueur * 0.5 + decalage, sol - hanche, 0, 1)
+        genou = LandmarkPoint(x0 + longueur * 0.75, sol - hanche * rng.uniform(0.2, 0.7), 0, 1)
+        points[f"genou_{bras}"] = genou
+        points[f"cheville_{cote}"] = LandmarkPoint(x0 + longueur, sol, 0, 1)
+    return Body(points)
+
+
+def pose_planche_laterale(rng):
+    """De face, allonge sur un cote tire au hasard : buste plus ou moins
+    souleve sur l'avant-bras, hanche plus ou moins decollee du sol."""
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    bas, haut = (("gauche", "droite") if rng.random() < 0.5 else ("droite", "gauche"))
+    bras_bas = "gauche" if bas == "gauche" else "droit"
+    sol = 0.75 + rng.random() * 0.15
+    x0 = 0.15 + rng.random() * 0.15
+    longueur = 0.5 + rng.random() * 0.2
+    epaule = rng.uniform(0, 0.2)
+    hanche = rng.uniform(-0.03, 1.2) * epaule * 0.55
+    points[f"coude_{bras_bas}"] = LandmarkPoint(x0, sol, 0, 1)
+    points[f"epaule_{bas}"] = LandmarkPoint(x0, sol - epaule, 0, 1)
+    points[f"epaule_{haut}"] = LandmarkPoint(x0 + 0.01, sol - epaule - rng.uniform(-0.02, 0.1), 0, 1)
+    points[f"hanche_{bas}"] = LandmarkPoint(x0 + longueur * 0.5, sol - hanche, 0, 1)
+    points[f"cheville_{bas}"] = LandmarkPoint(x0 + longueur, sol - rng.uniform(0, 0.02), 0, 1)
+    return Body(points)
+
+
+def pose_contacts(rng):
+    """Coudes pres des genoux (squat) et poignets pres des chevilles (souleve
+    de terre), a une distance tiree autour des deux seuils de chacun."""
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    for proche, repere in (
+        ("coude_gauche", "genou_gauche"), ("coude_droit", "genou_droit"),
+        ("poignet_gauche", "cheville_gauche"), ("poignet_droit", "cheville_droite"),
+    ):
+        r, a = rng.uniform(0, 0.25), rng.uniform(0, 2 * math.pi)
+        base = points[repere]
+        points[proche] = LandmarkPoint(base.x + r * math.cos(a), base.y + r * math.sin(a), 0, 1)
+    return Body(points)
+
+
+FAMILLES = [pose_elevation, pose_planche, pose_planche_laterale, pose_contacts]
+
+
 def serialiser(corps):
     """La pose au format que lira le JS : un tableau indexe comme MediaPipe."""
     tableau = [None] * (max(LANDMARKS.values()) + 1)
@@ -87,18 +231,40 @@ def main():
     nombre = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
     rng = random.Random(GRAINE)
 
-    fonctions = {**fonctions_publiques(exercices), **fonctions_publiques(positions)}
+    # `echauffements` est dans la liste depuis qu'une detection definie la —
+    # et nulle part ailleurs — a traverse tout le harnais sans etre vue.
+    # `fonctions_publiques` filtre sur `objet.__module__`, donc les detections
+    # que ce module **importe** d'`exercices` ne sont pas comptees deux fois :
+    # seules celles qui lui sont propres s'ajoutent. C'est exactement la classe
+    # d'oubli que l'introspection devait empecher, et elle ne l'empechait que
+    # sur les modules qu'on avait pense a lui donner.
+    fonctions = {
+        **fonctions_publiques(exercices),
+        **fonctions_publiques(echauffements),
+        **fonctions_publiques(positions),
+    }
 
     with DESTINATION.open("w", encoding="utf-8") as fichier:
-        for _ in range(nombre):
-            corps = pose_au_hasard(rng)
+        # Les poses construites viennent **apres** : les premieres restent
+        # celles d'avant, tirees de la meme graine.
+        generateurs = (
+            [pose_au_hasard] * nombre
+            + [pose_bras_leves] * NOMBRE_POSES_DE_GESTE
+            + [f for f in FAMILLES for _ in range(NOMBRE_POSES_PAR_FAMILLE)]
+        )
+        for generateur in generateurs:
+            corps = generateur(rng)
             jetons = {
                 nom: natif(fonction(corps)) for nom, fonction in fonctions.items()
             }
             ligne = {"landmarks": serialiser(corps), "jetons": jetons}
             fichier.write(json.dumps(ligne, ensure_ascii=False) + "\n")
 
-    print(f"{nombre} poses ecrites dans {DESTINATION}")
+    print(
+        f"{nombre} poses au hasard, {NOMBRE_POSES_DE_GESTE} poses bras leves et "
+        f"{NOMBRE_POSES_PAR_FAMILLE * len(FAMILLES)} poses construites "
+        f"ecrites dans {DESTINATION}"
+    )
     print(f"{len(fonctions)} fonctions couvertes :")
     for nom in sorted(fonctions):
         print(f"  {nom}")

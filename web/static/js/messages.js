@@ -23,9 +23,18 @@ export const MESSAGES = {
   forme_coudes_trop_plies: "Ne plie pas trop les coudes",
   forme_coude_qui_part_en_avant:
     "Garde le coude collé au buste, ne le laisse pas partir en avant",
+  forme_coudes_trop_ecartes: "Garde les coudes serrés, près de la tête",
+  forme_genou_avant_trop_avance:
+    "Attention à ne pas trop avancer ton genou avant",
+  forme_pompe_pas_assez_profonde: "Descends la poitrine plus près du sol",
+  // --- Repetition incomplete : une tentative a vraiment progresse, sans
+  // atteindre la position visee (voir instruments.js, SuiviTentatives).
+  amplitude_aller_incomplet: "Va jusqu'au bout du mouvement",
+  amplitude_retour_incomplet: "Reviens complètement en position de départ",
   // --- Consignes d'etat : ce qu'il faut faire, pas ce qui est mal fait ---
   corps_absent: "Place-toi devant la caméra, bien en pied.",
-  preparation_bras_en_x: "Croise les bras devant toi pour lancer la série.",
+  // « la seance » et non « la serie » : cette phase n'existe qu'une fois.
+  preparation_bras_en_x: "Croise les bras devant toi pour lancer la séance.",
   preparation_decompte: "C'est parti ! Redescends les bras et mets-toi en place.",
   pause: "Séance en pause. Reprends quand tu veux depuis le site.",
   test_calibration:

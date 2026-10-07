@@ -17,6 +17,7 @@ import { dirname, join } from "node:path";
 
 import { Circuit, BlocExercice, Exercice, MODE_REPETITIONS } from "../web/static/js/circuit.js";
 import { DETECTIONS } from "../web/static/js/detections.js";
+import { amplitude_pour } from "../web/static/js/seance.js";
 import { construire_corps } from "../web/static/js/landmarks.js";
 import { CompteurMouvement } from "../web/static/js/compteur.js";
 import { creer_etat } from "../web/static/js/etat.js";
@@ -141,6 +142,7 @@ function catalogue_pour(fiches) {
       erreurs: (fiche.erreurs ?? []).map((nom) => DETECTIONS[nom]),
       variante_facile: fiche.variante_facile,
       variante_difficile: fiche.variante_difficile,
+      amplitude: amplitude_pour(fiche.amplitude),
     });
   }
   return table;
@@ -181,6 +183,15 @@ function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
     return [triplet, null];
   }
 
+  if (nom === "aller_a_l_amplitude") {
+    // Jumelle de la commande Python : premier bloc qui verifie une amplitude.
+    for (let i = 0; i < circuit.exercices.length; i++) {
+      const bloc = circuit.bloc_actuel;
+      if (bloc === null || bloc.exercice.amplitude !== null) break;
+      circuit.passer_exercice_suivant();
+    }
+    return [null, null];
+  }
   if (nom === "aller_au_superset") {
     // Commande du harnais, pas du circuit — jumelle de celle du Python.
     for (let i = 0; i < circuit.exercices.length; i++) {

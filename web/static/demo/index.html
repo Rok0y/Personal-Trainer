@@ -102,9 +102,76 @@
   .compteur { font-size: 60px; font-weight: 700; line-height: 1;
               font-variant-numeric: tabular-nums; }
   .compteur span { font-size: 20px; color: #c3d0e0; font-weight: 600; }
-  .banc { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
-    color: #9fb3c8; margin-top: 8px; line-height: 1.5; white-space: pre; }
-  .banc b { color: #e8eef6; }
+  /* Le banc se lit **a trois metres**, comme le compteur : c'est pendant
+     l'exercice qu'on cherche pourquoi rien ne compte, pas en relisant une
+     capture ensuite. D'ou deux pastilles lisibles de loin pour ce qui porte le
+     diagnostic — le jeton courant et l'armement du compteur — et les parts de
+     temps en petit dessous, qui se consultent a l'arret. */
+  .banc { margin-top: 10px; }
+  .banc-pastilles { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .banc-jeton, .banc-armement {
+    padding: 6px 14px; border-radius: 999px; font-weight: 700;
+    font-size: 22px; line-height: 1.2; letter-spacing: .02em;
+    border: 2px solid rgba(255,255,255,.22); background: rgba(0,0,0,.45);
+  }
+  .banc-jeton { color: #e8eef6; }
+  /* Trois etats, trois couleurs : « jamais arme » est la reponse a « j'ai fait
+     dix squats et il a compte zero », et il doit sauter aux yeux. */
+  .banc-armement { font-size: 17px; }
+  .banc-armement.arme { color: var(--ok, #4ade80); border-color: rgba(74,222,128,.5); }
+  .banc-armement.desarme { color: #c3d0e0; }
+  .banc-armement.jamais { color: var(--alerte); border-color: rgba(255,107,107,.55); }
+  .banc-parts { font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px; color: #9fb3c8; margin-top: 6px; line-height: 1.5; }
+  /* Le jeton prend la couleur de sa zone : debut, milieu et fin doivent se
+     distinguer d'un coup d'oeil a trois metres, pas en lisant un mot. */
+  .banc-jeton.z-debut { color: #8cc4ff; border-color: rgba(75,155,255,.8); background: rgba(75,155,255,.22); }
+  .banc-jeton.z-fin, .banc-jeton.z-maintien { color: #7ee2ad; border-color: rgba(63,191,127,.85); background: rgba(63,191,127,.22); }
+  .banc-jeton.z-milieu, .banc-jeton.z-repos { color: #c3d0e0; }
+  /* Pose perdue : le compteur ne voit rien, ca doit sauter aux yeux. */
+  .banc-jeton.z-perdu { color: #ff8f8f; border-color: rgba(255,107,107,.7); background: rgba(255,107,107,.18); }
+  .banc-erreur { color: #ff8f8f; font-weight: 700; font-size: 17px; min-height: 0; margin-top: 6px; }
+
+  /* Les mesures vivent dans une colonne a droite plutot que sous le compteur :
+     empilees en bas, cinq jauges et un journal couvraient les jambes, c'est-a-
+     dire precisement ce que la detection regarde sur un squat ou une fente. */
+  .panneauMesures {
+    position: absolute; right: 10px;
+    top: calc(62px + env(safe-area-inset-top, 0px));
+    width: min(310px, 44vw); max-height: calc(100% - 240px); overflow: auto;
+    background: rgba(8,11,16,.62); backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,.12); border-radius: 12px;
+    padding: 10px 12px;
+  }
+  .jm { margin-bottom: 10px; }
+  .jm:last-child { margin-bottom: 0; }
+  .jm-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .jm-libelle { font-size: 13px; color: #c3d0e0; line-height: 1.25; }
+  .jm-valeur { font-size: 24px; font-variant-numeric: tabular-nums; }
+  .jm.forme .jm-libelle { color: #ffb4b4; }
+  .jm-barre { position: relative; height: 12px; border-radius: 6px;
+    background: rgba(255,255,255,.12); margin-top: 3px; overflow: hidden; }
+  .jm-zone { position: absolute; top: 0; bottom: 0; opacity: .55; }
+  .jm-zone.debut { background: #4b9bff; }
+  .jm-zone.fin, .jm-zone.maintien { background: #3fbf7f; }
+  .jm-zone.erreur { background: #e05252; }
+  .jm-curseur { position: absolute; top: -2px; bottom: -2px; width: 4px; margin-left: -2px;
+    background: #fff; border-radius: 2px; box-shadow: 0 0 4px #000; }
+  .jm-seuils { font-size: 12px; color: #8fa0b6; margin-top: 2px; }
+  .jm.en-debut .jm-valeur { color: #8cc4ff; }
+  .jm.en-fin .jm-valeur, .jm.en-maintien .jm-valeur { color: #7ee2ad; }
+  .jm.en-erreur .jm-valeur { color: #ff8f8f; }
+  /* Orange : la mesure qui manque pour atteindre la zone visee. C'est la
+     reponse a « pourquoi ca ne compte pas », la ou elle se lit. */
+  .jm.bloque .jm-barre { outline: 2px solid var(--alerte); }
+  .jm.bloque .jm-libelle { color: var(--alerte); font-weight: 700; }
+  .desaccord { color: #ff8f8f; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+  .journal { list-style: none; margin: 10px 0 0; padding: 8px 0 0;
+    border-top: 1px solid rgba(255,255,255,.12); font-size: 15px; line-height: 1.35; }
+  .journal li { margin-bottom: 5px; }
+  .journal .ok { color: #7ee2ad; }
+  .journal .ko { color: var(--alerte); font-weight: 600; }
+  .journal-totaux { font-size: 12px; color: #8fa0b6; margin-top: 4px; }
   .nomExercice { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
   .consigne { color: var(--alerte); min-height: 22px; margin-bottom: 8px; font-weight: 600; }
   .jauge { height: 8px; background: rgba(255,255,255,.2); border-radius: 4px; overflow: hidden; }
@@ -205,6 +272,13 @@
     <button class="secondaire" id="boutonArreter">Terminer</button>
     <button class="secondaire" id="boutonCadrage">Cadrage</button>
     <button class="secondaire" id="boutonCommencer">Commencer</button>
+    <button class="secondaire" id="boutonMesures">Mesures</button>
+  </div>
+  <div class="panneauMesures" id="panneauMesures" hidden>
+    <div class="desaccord" id="desaccord" hidden></div>
+    <div id="jauges"></div>
+    <ol class="journal" id="journal" hidden></ol>
+    <div class="journal-totaux" id="journalTotaux"></div>
   </div>
   <div class="panneauCamera" id="panneauCamera" hidden>
     <p class="muet" style="margin:0 0 8px">Pas visible en entier&nbsp;? La caméra arrière est bien plus large — et la voix te guide sans que tu voies l'écran.</p>
@@ -219,7 +293,14 @@
     <div class="nomExercice" id="nomExercice"></div>
     <div class="consigne" id="consigne"></div>
     <div class="compteur"><b id="compteur">0</b> <span id="compteurCible"></span></div>
-    <div class="banc" id="banc" hidden></div>
+    <div class="banc" id="banc" hidden>
+      <div class="banc-pastilles">
+        <span class="banc-jeton" id="bancJeton">—</span>
+        <span class="banc-armement" id="bancArmement"></span>
+      </div>
+      <div class="banc-erreur" id="bancErreur"></div>
+      <div class="banc-parts" id="bancParts"></div>
+    </div>
     <div class="jauge" style="margin-top:10px"><div id="jauge"></div></div>
   </div>
 </section>
@@ -233,6 +314,11 @@ import { points_utilises, consigne_de_cadrage } from "../js/cadrage.js";
 import { VerrouEcran } from "../js/veille.js";
 import { DETECTIONS } from "../js/detections.js";
 import { CompteurMouvement } from "../js/compteur.js";
+import {
+  INSTRUMENTS, lire_instrument, dans_zone, SuiviTentatives,
+  formater_valeur, formater_zone,
+} from "../js/instruments.js";
+import { texte } from "../js/messages.js";
 
 const VERSION_WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const MODELE = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
@@ -274,12 +360,28 @@ let catalogue = [];
 let exercice = null;
 let pointsRequis = [];
 
-// Banc d'essai (`?banc=1`), pour repondre a « pourquoi ca ne compte pas ? »
-// autrement qu'en le devinant. Derriere un parametre d'URL comme `?poses=N` :
-// un testeur ordinaire n'a que faire de voir passer « milieu ».
-const banc = new URLSearchParams(location.search).has("banc");
+// Banc d'essai, pour repondre a « pourquoi ca ne compte pas ? » autrement
+// qu'en le devinant. **Visible par defaut**, et c'est un changement assume :
+// la demo n'est plus une vitrine mais le banc ou l'on regle les exercices, et
+// un outil de diagnostic derriere un parametre d'URL est un outil auquel on ne
+// pense pas au moment ou il servirait. `?banc=0` le masque pour montrer la
+// page a quelqu'un.
+const banc = new URLSearchParams(location.search).get("banc") !== "0";
 let tenuesParJeton = {};
 let jetonPrecedent = null;
+
+// Instruments : la detection redite en mesures + zones (instruments.js).
+// `lectures` porte, pour la detection puis pour chaque fonction d'erreur de
+// l'exercice, l'instrument, son suivi et la derniere lecture. Le comptage,
+// lui, ne passe jamais par la : il reste sur DETECTIONS.
+let lectures = [];
+let dernierCorps = null;
+let desaccords = 0;
+// Secondes passees dans chaque faute de forme, pendant la serie seulement.
+let tempsErreurs = {};
+let erreurPrecedente = null;
+let journalAffiche = "";
+let panneauOuvert = true;
 let poseLandmarker = null;
 let fileset = null;
 let posesDuDetecteur = null;
@@ -779,6 +881,12 @@ function reinitialiser() {
   poseSuivie = null;
   histoExercice = histogrammeVide();
   derniereImage = null;
+  tenuesParJeton = {};
+  jetonPrecedent = null;
+  preparerInstruments();
+  document.getElementById("banc").hidden = !banc;
+  document.getElementById("boutonMesures").hidden = !banc;
+  document.getElementById("panneauMesures").hidden = !banc || !panneauOuvert;
   document.getElementById("compteur").textContent = "0";
   document.getElementById("jauge").style.width = "0%";
   document.getElementById("compteurCible").textContent = "";
@@ -828,8 +936,17 @@ function boucle() {
     afficherConsigne("Recule un peu — je ne te vois pas en entier");
     dernierInstant = null;
     debutImmobile = null;
+    dernierCorps = null;
+    // Le temps sans corps est un jeton du banc comme un autre. Il n'etait
+    // compte nulle part, et pire : au retour du corps, l'absence etait
+    // creditee au dernier jeton vu — une pose perdue en bas d'une pompe
+    // passait pour du temps en « debut ». C'est pourtant une cause de
+    // repetition oubliee a part entiere : sans corps, le compteur ne voit
+    // jamais la position qui l'arme.
+    if (banc && !termine) mesurerBanc("perdu", maintenant / 1000);
   } else if (!termine) {
     traiter(construire_corps(landmarks), maintenant / 1000);
+    dessinerValeurs(ctx, canvas);
   }
 
   requestAnimationFrame(boucle);
@@ -898,23 +1015,302 @@ function mesurerBanc(jeton, instant) {
   const parts = Object.entries(tenuesParJeton)
     .sort((a, b) => b[1] - a[1])
     .map(([nom, t]) => `${nom} ${Math.round((t / total) * 100)}%`)
-    .join("  ");
+    .join("   ");
+
+  const pastille = document.getElementById("bancJeton");
+  pastille.textContent = jeton;
+  pastille.className = `banc-jeton z-${jeton}`;
+  document.getElementById("bancParts").textContent = parts;
 
   // L'etat du compteur est la vraie reponse : un squat filme avec une barre
   // reste sur « fin » et ne s'arme jamais, donc ne compte rien — ce que le
-  // seul jeton courant ne dit pas.
-  const arme = modeMaintien
-    ? ""
-    : `
-  compteur ${compteur.stage === "debut" ? "armé" : compteur.stage === "fin" ? "désarmé (attend « debut »)" : "jamais armé"}`;
+  // seul jeton courant ne dit pas. Un maintien n'a pas d'armement : il se
+  // mesure sur un seul seuil, et afficher une case vide ferait croire a une
+  // panne.
+  const armement = document.getElementById("bancArmement");
+  armement.hidden = Boolean(modeMaintien);
+  if (armement.hidden) return;
 
-  document.getElementById("banc").innerHTML = `  <b>${jeton}</b>${arme}
-  ${parts}`;
+  const etats = {
+    debut: ["armé", "arme"],
+    fin: ["désarmé — attend « debut »", "desarme"],
+  };
+  const [libelle, classe] = etats[compteur.stage] ?? ["jamais armé", "jamais"];
+  armement.textContent = libelle;
+  armement.className = `banc-armement ${classe}`;
+}
+
+// ----- instruments -----
+
+const LIBELLES_ZONE = { debut: "début", fin: "fin", maintien: "tenu" };
+
+function preparerInstruments() {
+  const noms = [exercice.detection, ...(exercice.erreurs ?? [])];
+  lectures = noms
+    .filter((nom) => INSTRUMENTS[nom])
+    .map((nom, rang) => ({
+      nom,
+      // Au-dela du premier, ce sont les fonctions d'erreur de l'exercice.
+      forme: rang > 0,
+      instrument: INSTRUMENTS[nom],
+      suivi: null,
+      lecture: null,
+      noeuds: [],
+    }));
+  dessinerJauges();
+  demarrerSuivis();
+  dernierCorps = null;
+  desaccords = 0;
+  document.getElementById("desaccord").hidden = true;
+}
+
+function demarrerSuivis() {
+  for (const l of lectures) {
+    l.suivi = new SuiviTentatives(l.instrument, { intervalle_max: INTERVALLE_MAX });
+  }
+  tempsErreurs = {};
+  erreurPrecedente = null;
+  journalAffiche = null;
+  dessinerJournal();
+}
+
+function pourcentage(mesure, valeur) {
+  const [bas, haut] = mesure.echelle;
+  return Math.max(0, Math.min(100, ((valeur - bas) / (haut - bas)) * 100));
+}
+
+// Une jauge par mesure, zones peintes une fois pour toutes : seuls le curseur
+// et la valeur bougent ensuite, a chaque image.
+function dessinerJauges() {
+  const conteneur = document.getElementById("jauges");
+  conteneur.innerHTML = "";
+  for (const l of lectures) {
+    l.noeuds = l.instrument.mesures.map((mesure) => {
+      const bloc = document.createElement("div");
+      bloc.className = `jm${l.forme ? " forme" : ""}`;
+      const zones = Object.entries(mesure.zones).map(([jeton, zone]) => {
+        const seuil = pourcentage(mesure, zone[1]);
+        const [gauche, largeur] = zone[0].startsWith("<") ? [0, seuil] : [seuil, 100 - seuil];
+        const classe = l.forme ? "erreur" : jeton;
+        return `<div class="jm-zone ${classe}" style="left:${gauche}%;width:${largeur}%"></div>`;
+      }).join("");
+      const seuils = Object.entries(mesure.zones)
+        .map(([jeton, zone]) =>
+          `${l.forme ? "erreur" : LIBELLES_ZONE[jeton] ?? jeton} ${formater_zone(mesure, zone)}`)
+        .join(" · ");
+      bloc.innerHTML =
+        `<div class="jm-tete"><span class="jm-libelle"></span><b class="jm-valeur">—</b></div>` +
+        `<div class="jm-barre">${zones}<div class="jm-curseur"></div></div>` +
+        `<div class="jm-seuils">${seuils}</div>`;
+      bloc.querySelector(".jm-libelle").textContent = mesure.libelle;
+      conteneur.appendChild(bloc);
+      return {
+        bloc,
+        valeur: bloc.querySelector(".jm-valeur"),
+        curseur: bloc.querySelector(".jm-curseur"),
+      };
+    });
+  }
+}
+
+function mesurerInstruments(corps, jeton, instant) {
+  dernierCorps = corps;
+  const comptage = phase === "comptage";
+  let cleErreur = null;
+
+  lectures.forEach((l, rang) => {
+    l.lecture = lire_instrument(l.instrument, corps);
+    if (rang === 0 && l.lecture.jeton !== jeton) {
+      // Ne devrait jamais arriver : verifier_instruments.mjs le garantit sur
+      // les poses du harnais. S'il arrive quand meme, les jauges mentent, et
+      // il faut le voir plutot que de les croire.
+      desaccords += 1;
+      const avis = document.getElementById("desaccord");
+      avis.hidden = false;
+      avis.textContent = `Instrument désaccordé (${desaccords}) : ` +
+        `détection « ${jeton} », instrument « ${l.lecture.jeton} »`;
+    }
+    if (rang > 0 && !cleErreur) cleErreur = DETECTIONS[l.nom]?.(corps) ?? null;
+    // Le suivi lit le jeton de la **detection**, qui fait autorite, et non
+    // celui de l'instrument.
+    if (comptage) {
+      const entree = l.suivi.observer(rang === 0 ? jeton : l.lecture.jeton, l.lecture.valeurs, instant);
+      if (rang === 0 && entree && !entree.complet && entree.significatif) signalerIncomplet(entree);
+    }
+  });
+
+  // Premiere faute rencontree, comme moteur.mettre_a_jour_erreur.
+  document.getElementById("bancErreur").textContent =
+    cleErreur ? (texte(cleErreur) ?? cleErreur) : "";
+  if (comptage && erreurPrecedente !== null && erreurPrecedente.cle) {
+    const delta = Math.min(instant - erreurPrecedente.instant, INTERVALLE_MAX);
+    tempsErreurs[erreurPrecedente.cle] = (tempsErreurs[erreurPrecedente.cle] ?? 0) + delta;
+  }
+  erreurPrecedente = comptage ? { cle: cleErreur, instant } : null;
+
+  majJauges(jeton);
+  dessinerJournal();
+  effacerSignalementEchu();
+}
+
+// La mesure est « bloquante » quand un demi-cycle vise une zone qu'elle
+// n'atteint pas encore — ou, pour un maintien, quand elle fait tomber la
+// position. C'est elle qu'on colore, parce que c'est elle qu'il faut corriger.
+function majJauges(jeton) {
+  if (!panneauOuvert) return;
+  lectures.forEach((l, rang) => {
+    const cible = rang === 0
+      ? (l.suivi.maintien ? (jeton === "maintien" ? null : "maintien") : l.suivi.ouvert?.cible)
+      : null;
+    l.instrument.mesures.forEach((mesure, i) => {
+      const noeud = l.noeuds[i];
+      const valeur = l.lecture.valeurs[i];
+      noeud.valeur.textContent = formater_valeur(mesure, valeur);
+      noeud.curseur.style.left = valeur === null ? "0%" : `${pourcentage(mesure, valeur)}%`;
+      const zoneAtteinte = Object.keys(mesure.zones)
+        .find((z) => dans_zone(valeur, mesure.zones[z]));
+      let classe = `jm${l.forme ? " forme" : ""}`;
+      if (zoneAtteinte) classe += l.forme ? " en-erreur" : ` en-${zoneAtteinte}`;
+      if (cible && mesure.zones[cible] && !dans_zone(valeur, mesure.zones[cible])) classe += " bloque";
+      if (noeud.bloc.className !== classe) noeud.bloc.className = classe;
+    });
+  });
+}
+
+// Le coach, par ecrit pour l'instant : la voix viendra avec les prises de son.
+// Une tentative trop courte (un tremblement autour du seuil de depart) n'arrive
+// jamais ici — le suivi la classe en hesitation.
+const DUREE_SIGNALEMENT = 2.5;
+let finSignalement = 0;
+
+function signalerIncomplet(entree) {
+  const cle = entree.type === "aller" ? "amplitude_aller_incomplet" : "amplitude_retour_incomplet";
+  afficherConsigne(texte(cle) ?? cle);
+  finSignalement = performance.now() / 1000 + DUREE_SIGNALEMENT;
+}
+
+// Efface le message une fois son temps ecoule, sans toucher a une consigne
+// posee entre-temps par autre chose.
+function effacerSignalementEchu() {
+  if (finSignalement && performance.now() / 1000 > finSignalement) {
+    finSignalement = 0;
+    if (phase === "comptage" && !modeMaintien) afficherConsigne("");
+  }
+}
+
+// Une ligne de journal nomme ce qui a manque, avec la valeur atteinte et la
+// zone qu'il fallait : « coude 42° (il faut < 30°) » est une consigne, « pas
+// compte » n'en est pas une.
+function decrireTentative(instrument, entree) {
+  const valeurs = (indices) => indices
+    .map((i) => {
+      const mesure = instrument.mesures[i];
+      const zone = mesure.zones[entree.cible];
+      return `${mesure.libelle.toLowerCase()} ${formater_valeur(mesure, entree.meilleures[i])}` +
+        (entree.complet ? "" : ` (il faut ${formater_zone(mesure, zone)})`);
+    })
+    .join(", ");
+  if (entree.complet) {
+    const atteintes = instrument.mesures
+      .map((m, i) => i)
+      .filter((i) => instrument.mesures[i].zones[entree.cible]);
+    return [`✓ répétition — ${valeurs(atteintes)} · ${entree.duree.toFixed(1)} s`, "ok"];
+  }
+  const debut = entree.type === "aller" ? "✗ pas jusqu'à la fin" : "✗ pas revenu au début";
+  // Chaque condition a pu etre remplie a son tour sans l'etre toutes a la
+  // fois : aucune n'est alors en faute prise seule, et c'est ce qu'il faut dire.
+  const quoi = entree.bloquantes.length ? valeurs(entree.bloquantes) : "conditions remplies séparément, jamais ensemble";
+  return [`${debut} — ${quoi}`, "ko"];
+}
+
+function dessinerJournal() {
+  const liste = document.getElementById("journal");
+  const totaux = document.getElementById("journalTotaux");
+  const l = lectures[0];
+  if (!l || !l.suivi || l.suivi.maintien) {
+    liste.hidden = true;
+    totaux.textContent = l?.suivi?.maintien && l.suivi.temps_perdu > 0
+      ? `Position perdue ${l.suivi.temps_perdu.toFixed(1)} s`
+      : "";
+    return;
+  }
+  // Les retours complets sont la norme et ne disent rien : on ne montre que
+  // les repetitions et les echecs. L'amplitude d'une repetition continue de
+  // monter tant qu'on reste en haut, d'ou le redessin tant qu'un sejour dure.
+  const entrees = l.suivi.journal
+    .filter((e) => e.significatif && !(e.complet && e.type === "retour"))
+    .slice(-4)
+    .reverse();
+  const html = entrees
+    .map((e) => {
+      const [phrase, classe] = decrireTentative(l.instrument, e);
+      return `<li class="${classe}">${phrase}</li>`;
+    })
+    .join("");
+  if (html !== journalAffiche) {
+    journalAffiche = html;
+    liste.innerHTML = html;
+    liste.hidden = !html;
+  }
+  const t = l.suivi.totaux;
+  totaux.textContent = t.aller_complet + t.aller_interrompu + t.retour_incomplet + t.hesitations
+    ? `${t.aller_complet} complètes · ${t.aller_interrompu} pas jusqu'à la fin · ` +
+      `${t.retour_incomplet} pas revenu au début · ${t.hesitations} hésitation(s)`
+    : "";
+}
+
+// Les valeurs ecrites sur l'image, au sommet de chaque angle. Dessinees apres
+// le `restore` du miroir, sinon le texte serait retourne ; c'est donc la
+// position qu'on retourne a la main.
+function dessinerValeurs(ctx, canvas) {
+  if (!banc || !dernierCorps || !lectures.length) return;
+  const taille = Math.round(canvas.height / 26);
+  ctx.font = `700 ${taille}px -apple-system, system-ui, sans-serif`;
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = Math.max(3, taille / 6);
+  // Les angles seulement : un ecart de hauteur (« -0.05 ») pose sur l'image
+  // encombre sans rien apprendre, sa jauge le dit mieux. Un meme angle lu par
+  // la detection et par une faute de forme n'est ecrit qu'une fois.
+  // Le sommet peut dependre de la pose (le coude le plus proche de la camera
+  // change de cote selon l'orientation) : c'est alors une fonction du corps.
+  const dejaEcrits = {};
+  lectures.forEach((l) => {
+    l.instrument.mesures.forEach((mesure, i) => {
+      const sommet = typeof mesure.sommet === "function" ? mesure.sommet(dernierCorps) : mesure.sommet;
+      const point = sommet ? dernierCorps[sommet] : null;
+      if (!point || !l.lecture || mesure.unite !== "°") return;
+      const valeur = formater_valeur(mesure, l.lecture.valeurs[i]);
+      const deja = (dejaEcrits[sommet] ??= []);
+      if (deja.includes(valeur)) return;
+      const decalage = deja.length;
+      deja.push(valeur);
+      const x = (miroir ? 1 - point.x : point.x) * canvas.width + taille * 0.6;
+      const y = point.y * canvas.height + decalage * taille * 1.1;
+      ctx.strokeStyle = "rgba(0,0,0,.85)";
+      ctx.fillStyle = l.forme ? "#ff9f9f" : "#ffe27a";
+      ctx.strokeText(valeur, x, y);
+      ctx.fillText(valeur, x, y);
+    });
+  });
+}
+
+// Ce que la demo garde d'un exercice pour le resume : des nombres, remis en
+// forme seulement au moment de copier.
+function diagnosticInstruments() {
+  return {
+    // Faux quand on a arrete avant le comptage : les parts decrivent alors la
+    // mise en place, pas une serie.
+    comptage: phase === "comptage",
+    parts: { ...tenuesParJeton },
+    erreurs: { ...tempsErreurs },
+    desaccords,
+    detection: lectures[0]?.suivi?.resume() ?? null,
+    formes: lectures.slice(1).map((l) => l.suivi.resume()),
+  };
 }
 
 function traiter(corps, instant) {
   const jeton = DETECTIONS[exercice.detection](corps);
-  if (banc && phase === "comptage") mesurerBanc(jeton, instant);
 
   // Le mode se deduit du jeton plutot que d'une metadonnee : une detection
   // qui parle de "maintien" mesure un temps, les autres comptent des
@@ -923,6 +1319,17 @@ function traiter(corps, instant) {
     modeMaintien = jeton === "maintien" || jeton === "repos";
     document.getElementById("compteurCible").textContent =
       modeMaintien ? `secondes / ${CIBLE_SECONDES}` : `/ ${CIBLE_REPETITIONS}`;
+  }
+
+  // Mesure **des la preparation** et plus seulement pendant le comptage :
+  // « je me mets en position et rien ne demarre » est precisement un probleme
+  // de preparation, et c'est la qu'on a besoin de voir le jeton. Les parts
+  // repartent a zero a `lancerComptage`, donc celles de la mise en place ne
+  // polluent pas celles de la serie. L'appel vient apres la deduction du mode,
+  // qui decide s'il y a un armement a montrer.
+  if (banc) {
+    mesurerBanc(jeton, instant);
+    mesurerInstruments(corps, jeton, instant);
   }
 
   if (phase !== "comptage") {
@@ -943,7 +1350,7 @@ function traiter(corps, instant) {
     majAffichage(Math.floor(secondesTenues), CIBLE_SECONDES);
   } else {
     dernierInstant = null;
-    const [, repetitions] = compteur.mettre_a_jour(jeton);
+    const [, repetitions] = compteur.mettre_a_jour(jeton, instant);
     majAffichage(repetitions, CIBLE_REPETITIONS);
   }
 }
@@ -1024,9 +1431,14 @@ function mesurerMouvement(corps, instant) {
 function lancerComptage() {
   phase = "comptage";
   compteur.reset();
+  // Les parts repartent a zero : celles de la mise en place repondaient a une
+  // autre question, et les melanger a celles de la serie rendrait les deux
+  // illisibles. Le banc, lui, reste allume depuis `reinitialiser`.
   tenuesParJeton = {};
   jetonPrecedent = null;
-  document.getElementById("banc").hidden = !banc;
+  // Meme regle pour les tentatives et les fautes de forme : ce qui s'est
+  // passe pendant la mise en place ne dit rien de la serie.
+  demarrerSuivis();
   secondesTenues = 0;
   dernierInstant = null;
   derniereValeur = 0;
@@ -1052,7 +1464,12 @@ function majAffichage(valeur, cible) {
   }
 }
 
+let diagnosticFin = null;
+
 function terminer(objectifAtteint) {
+  // Releve avant tout le reste : c'est l'etat de la serie qui vient de finir,
+  // et l'ecran de fin peut rester ouvert longtemps avant l'enregistrement.
+  diagnosticFin = diagnosticInstruments();
   arreterCapture();
   ecrirePerf();
   document.getElementById("finChiffre").textContent =
@@ -1173,10 +1590,93 @@ document.getElementById("boutonEnregistrer").addEventListener("click", () => {
     // la page s'affichait dans une webview bridee.
     technique: diagnostic(),
     fluidite: resumerHistogramme(histoExercice),
+    mesures: diagnosticFin,
   };
   ecrireResultats(resultats);
   dessinerListe();
   montrer("ecranChoix");
+});
+
+// Le diagnostic d'un exercice en quelques lignes. Tout est lu sur la forme
+// enregistree, jamais sur l'etat courant : un resultat d'une session
+// precedente se relit donc pareil, et un resultat d'avant les instruments
+// (sans `mesures`) n'en ajoute simplement aucune.
+function lignesMesures(m) {
+  if (!m) return [];
+  const lignes = [];
+  const secondes = (s) => `${s.toFixed(1)} s`;
+
+  const total = Object.values(m.parts ?? {}).reduce((a, b) => a + b, 0);
+  if (total > 0) {
+    const parts = Object.entries(m.parts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([jeton, t]) => `${jeton} ${Math.round((t / total) * 100)}%`)
+      .join(" · ");
+    lignes.push(`temps${m.comptage ? "" : " (mise en place, pas de série)"} : ${parts}`);
+  }
+
+  const d = m.detection;
+  if (d && !d.maintien) {
+    const t = d.totaux;
+    const tempo = [
+      d.tempo_aller !== null ? `aller ${secondes(d.tempo_aller)}` : null,
+      d.tempo_retour !== null ? `retour ${secondes(d.tempo_retour)}` : null,
+    ].filter(Boolean).join(", ");
+    lignes.push(
+      `tentatives : ${t.aller_complet} complètes, ${t.aller_interrompu} pas jusqu'à la fin, ` +
+      `${t.retour_incomplet} pas revenu au début, ${t.hesitations ?? 0} hésitation(s)` +
+      `${tempo ? ` · tempo médian ${tempo}` : ""}`
+    );
+  }
+  if (d && d.maintien && d.temps_perdu > 0) {
+    const causes = d.mesures
+      .filter((x) => x.hors_zone > 0)
+      .sort((a, b) => b.hors_zone - a.hors_zone)
+      .map((x) => `${x.libelle} ${secondes(x.hors_zone)}`)
+      .join(" ; ");
+    lignes.push(`position perdue ${secondes(d.temps_perdu)} : ${causes}`);
+  }
+
+  // Une ligne par mesure : l'etendue parcourue et, pour une repetition,
+  // jusqu'ou on est alle quand ca a compte. C'est l'amplitude qui dira de
+  // combien un seuil peut etre resserre sans rater de repetition.
+  for (const x of [...(d?.mesures ?? []), ...(m.formes ?? []).flatMap((f) => f.mesures)]) {
+    if (x.min === null) continue;
+    const f = (v) => formater_valeur(x, v);
+    const seuils = Object.entries(x.zones)
+      .map(([jeton, zone]) => `${LIBELLES_ZONE[jeton] ?? "erreur"} ${formater_zone(x, zone)}`)
+      .join(", ");
+    const amplitude = [
+      x.amplitude_aller !== null && x.amplitude_aller !== undefined ? `fin atteinte à ${f(x.amplitude_aller)}` : null,
+      x.amplitude_retour !== null && x.amplitude_retour !== undefined ? `début à ${f(x.amplitude_retour)}` : null,
+    ].filter(Boolean).join(", ");
+    lignes.push(`${x.libelle} : ${f(x.min)} → ${f(x.max)}${seuils ? ` [${seuils}]` : ""}` +
+      (amplitude ? ` · médianes : ${amplitude}` : ""));
+  }
+
+  if (d?.echecs?.length) {
+    const echecs = d.echecs.map((e) => {
+      const quoi = e.bloquantes.map((b) => {
+        const x = d.mesures[b.mesure];
+        const zone = x.zones[e.type === "aller" ? "fin" : "debut"];
+        return `${x.libelle.toLowerCase()} ${formater_valeur(x, b.valeur)} (${formater_zone(x, zone)})`;
+      }).join(", ") || "conditions remplies séparément, jamais ensemble";
+      return `${e.type === "aller" ? "pas jusqu'à la fin" : "pas revenu au début"} : ${quoi}`;
+    });
+    lignes.push(`derniers échecs : ${echecs.join(" ; ")}`);
+  }
+
+  const erreurs = Object.entries(m.erreurs ?? {}).filter(([, s]) => s > 0.05);
+  if (erreurs.length) {
+    lignes.push(`forme : ${erreurs.map(([cle, s]) => `${texte(cle) ?? cle} ${secondes(s)}`).join(" ; ")}`);
+  }
+  if (m.desaccords) lignes.push(`ATTENTION instrument désaccordé sur ${m.desaccords} image(s)`);
+  return lignes;
+}
+
+document.getElementById("boutonMesures").addEventListener("click", () => {
+  panneauOuvert = !panneauOuvert;
+  document.getElementById("panneauMesures").hidden = !panneauOuvert;
 });
 
 document.getElementById("boutonResume").addEventListener("click", async () => {
@@ -1192,7 +1692,8 @@ document.getElementById("boutonResume").addEventListener("click", async () => {
       ? `\n    [${f.median} img/s median, p10 ${f.p10}, mini ${f.mini}${f.pauses ? `, ${f.pauses} interruption(s)` : ""}]`
       : "";
     const technique = t ? `\n    [audio ${t.audio}, ${t.sons} sons, ${t.poses ?? "?"} poses${t.webview ? `, webview ${t.webview}` : ""}]` : "";
-    return `- ${nom} : ${r.valeur} ${r.unite} — ${soucis}${commentaire}${technique}${fluidite}`;
+    const mesures = lignesMesures(r.mesures).map((l) => `\n    ${l}`).join("");
+    return `- ${nom} : ${r.valeur} ${r.unite} — ${soucis}${commentaire}${technique}${fluidite}${mesures}`;
   });
 
   const minutes = lignesParMinute();

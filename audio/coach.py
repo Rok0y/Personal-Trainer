@@ -1,10 +1,9 @@
 import random
-import re
 import time
-import unicodedata
-from pathlib import Path
 
-from audio.lecteur import jouer
+from audio import annonces
+from audio.annonces import normaliser_nom  # noqa: F401  (reexport historique)
+from audio.lecteur import SILENCE_PRESENTATION, jouer, jouer_sequence  # noqa: F401
 
 messages = {
     "rep": ["rep.wav"],
@@ -17,26 +16,56 @@ messages = {
     "fin_seance": ["fin_seance.wav"],
     "debut_serie": ["debut_serie.wav"],
     "preparation": ["preparation.wav"],
-    "mi_parcours": [
-        "mi_parcours_1.wav",
-    ],
+    # Plusieurs variantes par cle : `coach()` en tire une au hasard, et c'est
+    # ce qui evite d'entendre exactement la meme phrase a chaque serie. Le
+    # suffixe `_1` existait pour ca depuis le debut, mais **les tables n'en
+    # declaraient qu'une** alors que le disque en portait deux ou trois : les
+    # prises etaient faites et ne sortaient jamais. Un fichier que rien ne
+    # declare est aussi muet qu'un fichier absent, et se voit encore moins —
+    # c'est le diff entre `audio/Fichiers/` et ce que le code reclame qui l'a
+    # sorti, pas une exception.
     "encore_5": [
         "encore_5_1.wav",
+        "encore_5_2.wav",
+        "encore_5_3.wav",
     ],
     "encore_3": [
         "encore_3_1.wav",
+        "encore_3_2.wav",
     ],
     "correction_gainage": [
         "correction_gainage_1.wav",
     ],
     "temps_20": [
         "temps_20_1.wav",
+        "temps_20_2.wav",
+        "temps_20_3.wav",
     ],
     "temps_10": [
         "temps_10_1.wav",
+        "temps_10_2.wav",
+        "temps_10_3.wav",
+        "temps_10_4.wav",
     ],
     "temps_5": [
         "temps_5_1.wav",
+        "temps_5_2.wav",
+        "temps_5_3.wav",
+    ],
+    # Les trois dernieres secondes, dites une par une. Les fichiers etaient
+    # sur le disque depuis le premier jet du coach, sans cle, sans priorite et
+    # sans seuil qui les demande — exactement l'inverse de `temps_30`, qui
+    # avait la priorite et rien d'autre. Rétablir un palier se fait avec sa
+    # cle, son fichier **et** sa priorite, plus le seuil qui l'appelle dans
+    # `annoncer_temps_restant` : les quatre, ou aucun.
+    "temps_3": [
+        "temps_3_1.wav",
+    ],
+    "temps_2": [
+        "temps_2_1.wav",
+    ],
+    "temps_1": [
+        "temps_1_1.wav",
     ],
     "repos_10": [
         "repos_10.wav",
@@ -63,14 +92,26 @@ priorites = {
     "repos": 8,
     "changement_exercice": 5,
     "fin_seance": 10,
-    "mi_parcours": 3,
     "encore_5": 4,
     "encore_3": 5,
     "correction_gainage": 7,
-    "temps_30": 4,
+    # `temps_30` vivait ici sans fichier ni entrée dans `messages`, et sans
+    # qu'aucun seuil ne la demande : `annoncer_temps_restant` s'arrête à 20.
+    # Une priorité orpheline ne fait rien de mal, mais elle laisse croire qu'un
+    # palier existe — c'est `scripts/verifier_annonces.py` qui l'a sortie, et
+    # c'est exactement la classe de défaut pour laquelle il a été écrit :
+    # `coach()` sortant en silence sur une clé inconnue, rien ne l'aurait dit.
+    # Rétablir un seuil de 30 s se fait dans `annoncer_temps_restant`, avec sa
+    # clé, son fichier et sa priorité — les trois, ou aucun.
     "temps_20": 6,
     "temps_10": 7,
     "temps_5": 8,
+    # Meme rang que `temps_5` : c'est la meme famille, et un rang >= 5 vide
+    # les petits sons en attente — donc le bip de la seconde en cours cede la
+    # place au nombre prononce, plutot que de faire la queue devant lui.
+    "temps_3": 8,
+    "temps_2": 8,
+    "temps_1": 8,
     "repos_20": 5,
     "repos_10": 6,
     "repos_5": 8,
@@ -79,10 +120,17 @@ priorites = {
 
 DELAIS_ENTRE_ANNONCES = {
     "correction_gainage": 8,
+    # Le guidage de cadrage est réévalué à **chaque image** de la préparation :
+    # sans ce délai, il se répéterait dès que la position vacille — le défaut
+    # exact qu'avait la correction de gainage juste au-dessus. Six secondes
+    # laissent le temps de faire le pas demandé avant qu'on le redemande.
+    # Il n'y a pas de clé `messages` correspondante : la consigne est
+    # **composée** de deux briques (`annonces.sequence_cadrage`), et seul le
+    # délai est partagé. C'est pour ça que `Lecteur.sequence` accepte une clé.
+    "cadrage": 6,
 }
 
 dernieres_annonces = {}
-DOSSIER_SONS = Path(__file__).with_name("Fichiers")
 
 
 def coach(event, valeur=None):
@@ -108,72 +156,52 @@ def coach(event, valeur=None):
     jouer(son, priorites.get(event, 5))
 
 
-DOSSIER_ANNONCES_ETAPES = Path(__file__).with_name("Fichiers") / "annonces_etapes"
+def annoncer_prochaine_etape(
+    etape,
+    nombre_halteres=0,
+    orientation=None,
+    amorce="prochain_exercice",
+    silence_avant=0.0,
+):
+    """« Prochain exercice. Curl biceps droit. Prépare un haltère de 8 kilos. »
 
+    **Composée de briques, plus cherchée toute faite.** Cette fonction cherchait
+    un `.wav` pré-enregistré par combinaison exercice × poids × séries ×
+    répétitions, dans `Fichiers/annonces_etapes/` : seize fichiers pour les
+    seules combinaisons déjà jouées, et rien à dire dès qu'un objectif bougeait
+    — c'est-à-dire à chaque progression. Elle retombait alors sur un
+    « changement d'exercice » générique, ce qui est exactement le moment où
+    l'annonce servait le plus.
 
-def normaliser_nom(texte):
-    texte_sans_accents = unicodedata.normalize("NFD", texte)
-    texte_sans_accents = "".join(
-        caractere
-        for caractere in texte_sans_accents
-        if unicodedata.category(caractere) != "Mn"
-    )
+    Elle en profite pour rappeler **comment se placer**, qui était l'autre
+    information manquante d'un changement d'exercice : on se tourne, on sort
+    son matériel, et ni l'un ni l'autre ne se lit sur un écran à trois mètres.
 
-    return re.sub(r"[^a-z0-9]+", "_", texte_sans_accents.lower()).strip("_")
+    `nombre_halteres` et `orientation` sont **injectés** : ils viennent de
+    `session.seances` et du catalogue, qu'`audio.annonces` ne peut pas importer
+    sans perdre sa légèreté d'imports (voir son en-tête).
 
+    `amorce` l'est pour une raison de plus : elle dépend de la **place du bloc
+    dans la séance**, que ce module ne voit pas. C'est `Circuit.amorce_annonce`
+    qui la tranche, et l'appelant qui la transmet — une séance n'est pas un
+    argument qu'un lecteur de sons ait à connaître.
 
-def nom_annonce_etape(etape):
+    La priorité vaut celle d'un événement important : une annonce longue doit
+    chasser les petits sons en attente plutôt que de faire la queue derrière
+    eux, et surtout ne pas être coupée en son milieu.
 
-    exercice = normaliser_nom(etape["exercice"])
-    series = etape["series"]
-    mot_series = "serie" if series == 1 else "series"
-    poids = etape.get("poids", 0)
-
-    if poids > 0:
-        debut = f"prochain_{exercice}_{poids}_kilos_{series}_{mot_series}"
-    else:
-        debut = f"prochain_{exercice}_{series}_{mot_series}"
-
-    if etape["mode"] == "repetitions":
-        return f"{debut}_{etape['repetitions']}_repetitions"
-
-    if etape["mode"] == "maintien":
-        return f"{debut}_{etape['duree']}_secondes"
-
-    if etape["mode"] == "chrono":
-        return f"{debut}_chrono_{etape['duree']}_secondes"
-
-    if etape["mode"] == "amrap":
-        return f"{debut}_amrap_{etape['duree']}_secondes"
-
-    return None
-
-
-def annoncer_prochaine_etape(etape, annonce_secours):
-
-    print("ANNONCE PROCHAINE ETAPE APPELEE")
-    print(etape)
-
+    `silence_avant` est le blanc qui la précède. Il vaut `SILENCE_PRESENTATION`
+    quand elle suit un « repose-toi » — les deux collées s'entendent comme une
+    seule phrase hachée — et zéro en début de séance, où elle est la première
+    chose dite et n'a rien derrière quoi respirer.
+    """
     if etape is None:
         return
 
-    nom = nom_annonce_etape(etape)
+    sons = annonces.sequence_prochain_exercice(etape, nombre_halteres, amorce)
+    sons += annonces.sequence_orientation(orientation)
 
-    if nom is None:
-        coach(annonce_secours)
-        return
-
-    candidats = list(DOSSIER_ANNONCES_ETAPES.glob(f"{nom}_*.wav"))
-
-    if not candidats:
-        print("AUCUN WAV ETAPE TROUVE")
-        print("Recherche :", nom)
-        coach(annonce_secours)
-        return
-
-    fichier = random.choice(candidats)
-
-    jouer(fichier.name)
+    jouer_sequence(sons, priorites.get("changement_exercice", 5), silence_avant)
 
 
 def annoncer_progression(repetitions, cible):
@@ -193,10 +221,14 @@ def annoncer_progression(repetitions, cible):
 
     if restantes == 5:
         coach("encore_5")
-        return
 
-    if cible >= 8 and repetitions == cible // 2:
-        coach("mi_parcours")
+    # **« À la moitié » a été retiré**, et ses trois prises restent sur le
+    # disque sans clé ni priorité — la règle « la clé, le fichier et la
+    # priorité : les trois, ou aucun » vaut dans ce sens-là aussi. Une clé qui
+    # ne sert plus laisse croire qu'un palier existe, et c'est exactement ce
+    # que `temps_30` avait fait croire. Elle tombait en plein milieu de la
+    # série, entre deux chiffres, et n'apprenait rien qu'on ne sache déjà :
+    # le coach comptait par-dessus lui-même.
 
 
 def annoncer_temps_restant(bloc, secondes_restantes):
@@ -209,6 +241,9 @@ def annoncer_temps_restant(bloc, secondes_restantes):
         (20, "temps_20"),
         (10, "temps_10"),
         (5, "temps_5"),
+        (3, "temps_3"),
+        (2, "temps_2"),
+        (1, "temps_1"),
     ]
 
     for seuil, message in seuils:

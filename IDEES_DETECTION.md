@@ -146,6 +146,23 @@ préalable.
 
 ---
 
+## Posé depuis : les instruments du banc d'essai
+
+`web/static/js/instruments.js` redécrit chaque détection en **mesures + zones
+ordonnées**, et la démo les affiche (jauges, angles sur l'image, journal des
+tentatives en demi-cycles, amplitude médiane dans le résumé copié). Ce n'est
+pas encore une piste réalisée — rien n'est enregistré image par image — mais
+c'est la matière qui manquait pour décider d'un seuil sur autre chose qu'une
+intuition. Suites naturelles, à trancher sur les mesures d'un test réel :
+
+- **seuils plus stricts** (le curl d'abord) : l'amplitude médiane des allers
+  complets dit jusqu'où l'on va vraiment quand ça compte ;
+- **un coach qui dit pourquoi** : « pas assez haut » sur un aller interrompu,
+  « tends complètement le bras » sur un retour incomplet — les demi-cycles
+  portent déjà l'information, il reste à la jumeler en Python et à l'annoncer ;
+- **plus de deux positions** (burpees, mouvements combinés) : un compteur qui
+  suit une *séquence* de zones au lieu d'un va-et-vient `debut`/`fin`.
+
 ## Ordre suggéré
 
 1. **Piste 2** (enregistrement de séquences) — préalable à presque tout le reste,

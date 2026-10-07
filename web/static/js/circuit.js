@@ -94,6 +94,8 @@ export class Exercice {
     erreurs_frequentes = null,
     variante_facile = null,
     variante_difficile = null,
+    orientation = null,
+    amplitude = null,
   }) {
     this.nom = nom;
     this.detection = detection;
@@ -104,6 +106,16 @@ export class Exercice {
     this.erreurs_frequentes = erreurs_frequentes ?? [];
     this.variante_facile = variante_facile;
     this.variante_difficile = variante_difficile;
+    // Le seul champ que le coach **prononce**. Il manquait ici, donc
+    // `bloc.exercice.orientation` valait `undefined` dans toute
+    // l'application et `sequence_orientation` rendait une liste vide : la
+    // voix n'a jamais dit de quel cote se placer, alors que la donnee etait
+    // bien exportee dans `mouvements.json`. Un champ present dans les
+    // donnees et absent du constructeur ne se signale nulle part.
+    this.orientation = orientation;
+    // Couple [fonction, cle de message] : la profondeur a atteindre pendant
+    // une repetition. Voir `suivre_amplitude` dans `moteur.js`.
+    this.amplitude = amplitude;
   }
 
   fiche() {
@@ -115,6 +127,7 @@ export class Exercice {
       erreurs_frequentes: [...this.erreurs_frequentes],
       variante_facile: this.variante_facile,
       variante_difficile: this.variante_difficile,
+      orientation: this.orientation,
       analyse_la_pose: this.detection !== null,
     };
   }
@@ -132,6 +145,8 @@ const CHAMPS_TEMPORELS = [
   "temps_amrap",
   "temps_echauffement",
   "dernier_tick_echauffement",
+  "amplitude_atteinte",
+  "avertissement_amplitude",
 ];
 
 export class BlocExercice {
@@ -172,6 +187,14 @@ export class BlocExercice {
     this.temps_restant_precedent = null;
   }
 }
+
+//: Comment annoncer un bloc selon sa place dans la seance. Memes valeurs
+//: qu'en Python : ce sont des cles du vocabulaire ferme d'`annonces.js`.
+export const AMORCES_PAR_POSITION = {
+  premier: "premier_exercice",
+  dernier: "dernier_exercice",
+  milieu: "prochain_exercice",
+};
 
 export class Circuit {
   constructor(exercices) {
@@ -259,6 +282,23 @@ export class Circuit {
 
   // Methode et non accesseur, comme en Python — la seule de cette famille de
   // lectures a l'etre.
+  /**
+   * Comment annoncer ce bloc, selon sa place dans la seance.
+   *
+   * Jumeau d'`amorce_annonce` : « le premier exercice sera » a l'entree,
+   * « pour finir » sur le dernier bloc, « prochain exercice » ailleurs. La
+   * comparaison est d'**identite** et non d'index, deux blocs pouvant porter
+   * le meme exercice.
+   */
+  amorce_annonce(bloc) {
+    if (!bloc || !this.exercices.length) return AMORCES_PAR_POSITION.milieu;
+    if (bloc === this.exercices[0]) return AMORCES_PAR_POSITION.premier;
+    if (bloc === this.exercices[this.exercices.length - 1]) {
+      return AMORCES_PAR_POSITION.dernier;
+    }
+    return AMORCES_PAR_POSITION.milieu;
+  }
+
   prochain_bloc() {
     const prochain_index = this._obtenir_vrai_prochain_exercice_index();
     if (prochain_index >= this.exercices.length) return null;
