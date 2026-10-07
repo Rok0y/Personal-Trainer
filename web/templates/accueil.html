@@ -166,40 +166,70 @@
        restent consultables sur /programmes, et se prennent par le sélecteur
        ci-dessous. #}
     {% if programme %}
+    {% set semaine = programme.semaine %}
     <section class="programme-resume">
         <div class="resume-entete">
             <h2>{{ programme.nom }}</h2>
-            <span class="resume-compte">{% if programme.battu %}Programme battu !{% else %}{{ programme.pourcentage }} % de progression{% endif %}</span>
+            {% if semaine and semaine.serie %}<span class="semaine-serie">{{ semaine.serie }} semaine{{ 's' if semaine.serie > 1 }} réussie{{ 's' if semaine.serie > 1 }} d'affilée</span>{% endif %}
         </div>
-        <div class="resume-jauge"><span style="width: {{ programme.pourcentage }}%"></span></div>
-        <p class="resume-detail">{{ programme.atteintes }} exigence{{ 's' if programme.atteintes > 1 }} sur {{ programme.total }} entièrement remplie{{ 's' if programme.atteintes > 1 }}</p>
-        {% if programme.prochaine %}
-        <div class="resume-prochaine">
-            <div>
-                <span class="resume-etiquette">Séance choisie (<span id="prochaine-position">{{ programme.prochaine.position }}</span>/{{ programme.prochaine.total }})</span>
-                {# Le nom de la séance, pas le libellé du programme : « Push » peut être
-                   joué par `upper_push`, et annoncer un nom que la liste ci-dessous
-                   ne porte pas rendrait le bandeau invérifiable. #}
-                <strong id="prochaine-libelle">{{ programme.prochaine.seance or programme.prochaine.libelle }}</strong>
+        {% if semaine %}
+        {% set colonnes = (semaine.total // semaine.tours) %}
+        <div class="semaine-tete">
+            <p class="semaine-titre">
+                {% if semaine.reussie %}Semaine réussie ! La suivante démarre à ta prochaine séance.
+                {% elif semaine.debut %}Cette semaine : {{ semaine.faites }}/{{ semaine.total }} · jusqu'au {{ semaine.fin|jour_court }}
+                {% else %}Ta semaine démarre à ta prochaine séance.{% endif %}
+            </p>
+            {# Le rythme est une préférence du profil : il se garde. « Pas
+               d'entre-deux » : un multiple du nombre de séances, rien d'autre. #}
+            {% if semaine.tours_possibles|length > 1 %}
+            <div class="semaine-rythme" role="group" aria-label="Séances par semaine">
+                {% for tours in semaine.tours_possibles %}
+                <button type="button" data-tours="{{ tours }}"{% if tours == semaine.tours %} class="actif" aria-pressed="true"{% endif %}>{{ tours * colonnes }}</button>
+                {% endfor %}
+                <span>par semaine</span>
             </div>
-            {% if programme.prochaine.seance and programme.prochaine.seance in seances %}
-            <button type="button" class="resume-demarrer" id="demarrer-programme" data-seance="{{ programme.prochaine.seance }}">Choisir cette séance</button>
             {% endif %}
         </div>
+        {# Une case par séance à faire, dans l'ordre du programme, une rangée par
+           tour. Toucher une case la propose : c'est une bascule ponctuelle,
+           rien n'est enregistré. #}
+        <div class="semaine-cases" style="--colonnes: {{ colonnes }}">
+            {% for case in semaine.cases %}
+            {% set proposee = case.position == semaine.prochaine.position %}
+            {% if case.seance and case.seance in seances %}
+            <button type="button" class="semaine-case{% if case.faite %} faite{% endif %}{% if proposee %} proposee{% endif %}" data-seance="{{ case.seance }}" data-position="{{ case.position }}">
+            {% else %}
+            <span class="semaine-case orpheline" title="Aucune séance jouable n'est liée à ce libellé">
+            {% endif %}
+                <span class="semaine-coche" aria-hidden="true">{% if case.faite %}✓{% endif %}</span>
+                <span class="semaine-libelle">{{ case.libelle }}</span>
+                <span class="semaine-jour">{% if case.faite %}{{ case.date|jour_court }}{% else %}à faire{% endif %}</span>
+            {% if case.seance and case.seance in seances %}</button>{% else %}</span>{% endif %}
+            {% endfor %}
+        </div>
+        {% if semaine.recents %}
+        <p class="semaine-recents">Semaines passées
+            {% for cycle in semaine.recents %}<span class="{{ 'ok' if cycle.reussi else 'ko' }}" title="Semaine du {{ cycle.debut|jour_court }} : {{ 'réussie' if cycle.reussi else 'incomplète' }}">{{ '✓' if cycle.reussi else '✗' }}</span>{% endfor %}
+        </p>
         {% endif %}
-        {# Bascule ponctuelle : rien n'est enregistré, le programme reprendra sa
-           proposition automatique au prochain chargement. Le sélecteur ne fait
-           que réécrire la cible du bouton ci-dessus. #}
-        {% if programme.seances_liees and programme.seances_liees|length > 1 %}
-        <label class="resume-bascule">
-            Commencer plutôt par
-            <select id="choix-seance-programme" data-total="{{ programme.prochaine.total if programme.prochaine else programme.seances_liees|length }}">
-                {% for lien in programme.seances_liees %}
-                <option value="{{ lien.seance }}" data-libelle="{{ lien.seance or lien.libelle }}" data-position="{{ lien.position }}"{% if programme.prochaine and lien.seance == programme.prochaine.seance %} selected{% endif %}>{{ lien.seance or lien.libelle }}</option>
-                {% endfor %}
-            </select>
-        </label>
+        {% if semaine.prochaine.seance and semaine.prochaine.seance in seances %}
+        <div class="resume-prochaine">
+            <div>
+                <span class="resume-etiquette">Séance proposée (<span id="prochaine-position">{{ semaine.prochaine.position }}</span>/{{ semaine.total }})</span>
+                {# Le nom de la séance, pas le libellé du programme : « Push » peut être
+                   joué par `Upper Push`, et annoncer un nom que la liste ci-dessous
+                   ne porte pas rendrait le bandeau invérifiable. #}
+                <strong id="prochaine-libelle">{{ semaine.prochaine.seance }}</strong>
+            </div>
+            <button type="button" class="resume-demarrer" id="demarrer-programme" data-seance="{{ semaine.prochaine.seance }}">Choisir cette séance</button>
+        </div>
         {% endif %}
+        {% endif %}
+        {# Les objectifs de fin passent au second rang : ce qu'on vient chercher
+           sur l'accueil, c'est ce qu'il reste à faire cette semaine. #}
+        <p class="semaine-objectifs">Objectifs du programme : {% if programme.battu %}tous atteints !{% else %}{{ programme.pourcentage }} % · {{ programme.atteintes }}/{{ programme.total }} rempli{{ 's' if programme.atteintes > 1 }}{% endif %}</p>
+        <div class="resume-jauge"><span style="width: {{ programme.pourcentage }}%"></span></div>
         <div class="resume-pied">
             <a class="resume-lien" href="/programmes">Voir le détail du programme</a>
             {# Changer de programme se fait sur `/programmes`, et la seule :
@@ -379,31 +409,39 @@
             if (carte) carte.scrollIntoView({ behavior: "smooth", block: "center" });
         });
     });
-    // Le libelle du programme est desormais le nom de la seance elle-meme
-    // (`progression.programmes.synchroniser_seances`), donc plus de « via » a
-    // afficher : il n'y a plus d'heuristique a rendre verifiable.
     // Le bandeau du programme reflete la seance retenue, d'ou qu'elle vienne :
-    // du selecteur, du bouton, ou d'un clic sur n'importe quelle carte de la
-    // liste. Sans ca il annoncait encore la proposition automatique apres un
-    // choix, et le bouton lancait autre chose que ce qui etait ecrit.
-    const choixSeanceProgramme = document.getElementById("choix-seance-programme");
+    // d'une case de la semaine, du bouton, ou d'un clic sur n'importe quelle
+    // carte de la liste. Sans ca il annoncait encore la proposition
+    // automatique apres un choix, et le bouton lancait autre chose que ce qui
+    // etait ecrit. Les cases portent `data-seance` : le gestionnaire generique
+    // ci-dessus les selectionne deja, il ne reste qu'a marquer la bonne.
+    const casesSemaine = Array.from(document.querySelectorAll(".semaine-case[data-seance]"));
     const boutonProgramme = document.getElementById("demarrer-programme");
     function refleterSeanceDuProgramme(nomSeance) {
-        if (!choixSeanceProgramme) return;
-        const option = Array.from(choixSeanceProgramme.options).find((o) => o.value === nomSeance);
-        if (!option) return;  // seance hors programme : le bandeau garde sa proposition
-        choixSeanceProgramme.value = nomSeance;
+        const candidates = casesSemaine.filter((c) => c.dataset.seance === nomSeance);
+        if (!candidates.length) return;  // seance hors programme : le bandeau garde sa proposition
+        // Deux cases peuvent porter la meme seance (deux tours par semaine) :
+        // c'est la premiere encore vide qu'on propose.
+        const cible = candidates.find((c) => !c.classList.contains("faite")) ?? candidates[0];
+        casesSemaine.forEach((c) => c.classList.toggle("proposee", c === cible));
         if (boutonProgramme) boutonProgramme.dataset.seance = nomSeance;
         const libelle = document.getElementById("prochaine-libelle");
         const position = document.getElementById("prochaine-position");
-        if (libelle) libelle.textContent = option.dataset.libelle;
-        if (position) position.textContent = option.dataset.position;
+        if (libelle) libelle.textContent = nomSeance;
+        if (position) position.textContent = cible.dataset.position;
     }
-    if (choixSeanceProgramme) {
-        choixSeanceProgramme.addEventListener("change", () => {
-            refleterSeanceDuProgramme(choixSeanceProgramme.value);
+    // Le rythme se garde sur le profil : la page se recharge pour relire la
+    // semaine avec le nouveau nombre de cases.
+    document.querySelectorAll(".semaine-rythme [data-tours]").forEach((bouton) => {
+        bouton.addEventListener("click", async () => {
+            const reponse = await fetch("/api/programme-tours", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tours: Number(bouton.dataset.tours) }),
+            });
+            if (reponse.ok) window.location.reload();
         });
-    }
+    });
     document.querySelectorAll(".session details").forEach((details) => {
         details.addEventListener("click", (evenement) => evenement.stopPropagation());
     });

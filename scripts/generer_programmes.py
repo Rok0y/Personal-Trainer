@@ -1,7 +1,7 @@
 """Oracle Python du portage de la lecture de `progression/programmes.py`.
 
 Un programme est une liste d'exigences ; tout le reste — niveau requis,
-avancement, prochaine séance — se **recalcule** à chaque lecture depuis
+avancement, semaine du programme — se **recalcule** à chaque lecture depuis
 l'historique et le matériel. C'est donc un pur calcul, et il se vérifie comme
 les autres : on fabrique des historiques, on pose des questions, on diffe.
 
@@ -17,7 +17,12 @@ pas :
 - **des poids et cibles décimaux**, parce que `prescription` les écrit avec
   `:g` : `5.0` doit s'écrire « 5 » des deux côtés, jamais « 5.0 » ;
 - **des liaisons de séance cassées** (un libellé qui pointe vers une séance
-  absente du catalogue), qui doivent rendre `None` et non le nom mort.
+  absente du catalogue), qui doivent rendre `None` et non le nom mort ;
+- **des historiques datés sur les seuils de la semaine** : un écart de sept
+  jours pile entre deux séances, et un « maintenant » tombant à sept ou à
+  quatorze jours pile de la dernière. Des dates tirées au hasard ne tombent
+  jamais exactement sur `debut + 7 j`, or c'est là que `>=` se distingue de
+  `>` — la leçon du harnais des ligues.
 
 Usage : `python -m scripts.generer_programmes`
 Sortie : scripts/fixtures_programmes.jsonl
@@ -25,6 +30,7 @@ Sortie : scripts/fixtures_programmes.jsonl
 
 import json
 import random
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from progression import niveaux, paliers, programmes
@@ -84,10 +90,17 @@ def _programme(tirage, noms, numero):
     # Les liens sont posés au hasard, y compris vers des séances qui
     # n'existent pas : `liaison_seances` doit alors rendre None.
     liens = {}
-    for libelle in libelles:
-        choix = tirage.choice([*CATALOGUE, "seance_disparue", None])
-        if choix:
-            liens[libelle] = choix
+    if tirage.random() < 0.5 and len(libelles) <= len(CATALOGUE):
+        # Une fois sur deux, un programme **entièrement jouable** : chaque
+        # libellé a sa séance. Sans lui, une case reste toujours vide, aucun
+        # cycle ne se boucle, et la série n'est comparée que sur des zéros.
+        for libelle, nom in zip(libelles, tirage.sample(list(CATALOGUE), len(libelles))):
+            liens[libelle] = nom
+    else:
+        for libelle in libelles:
+            choix = tirage.choice([*CATALOGUE, "seance_disparue", None])
+            if choix:
+                liens[libelle] = choix
 
     return {
         "nom": f"Programme {numero}",
@@ -100,7 +113,7 @@ def _programme(tirage, noms, numero):
 def _ancrer_dans_le_catalogue(tirage, seances):
     """Rattache l'historique aux séances du catalogue, et en abandonne.
 
-    Sans ça, `prochaine_seance` ne trouve presque jamais de séance appartenant
+    Sans ça, la semaine du programme ne trouve presque jamais de séance appartenant
     au programme : le générateur partagé tire ses noms parmi `bras`,
     `Upper Pull` et `None`, dont un seul est lié. Mesuré, le sabotage qui fait
     compter une séance abandonnée comme faite ne sortait que **4 divergences
@@ -117,6 +130,71 @@ def _ancrer_dans_le_catalogue(tirage, seances):
         seance["nom"] = tirage.choice(noms_lies)
         seance["statut"] = "abandoned" if tirage.random() < 0.25 else "finished"
     return seances
+
+
+#: Les écarts entre deux séances consécutives. Surtout de quoi rester dans un
+#: cycle, parfois une semaine vide pour casser une série, et **sept jours
+#: pile** assez souvent pour que le seuil du cycle soit visité.
+ECARTS = (
+    [timedelta(hours=2), timedelta(days=1), timedelta(days=2), timedelta(days=3)] * 3
+    + [timedelta(days=7)] * 2
+    + [timedelta(days=9), timedelta(days=15), timedelta(days=20)]
+)
+
+
+def _allonger_et_dater(tirage, seances, programme):
+    """Allonge l'historique et le date, puis rend « maintenant ».
+
+    Le générateur partagé produit au plus douze séances, toutes datées du même
+    mois sans écart réaliste : trop peu pour enchaîner des cycles et compter
+    une série. On ajoute des séances sans exercice (elles ne pèsent sur aucun
+    niveau) et on redate le tout dans l'ordre des identifiants, qui est
+    l'ordre chronologique que `semaine_du_programme` relit.
+
+    Les séances ajoutées **suivent le programme** le plus souvent — ses
+    séances jouables, dans l'ordre, parfois dans le désordre : tirées au
+    hasard dans le catalogue, elles ne bouclaient presque jamais un cycle, et
+    la série n'était comparée que sur des zéros (mesuré : 175 sur 180).
+    """
+    noms_lies = [*CATALOGUE, "seance_inconnue"]
+    jouables = [
+        nom for nom in (programme.get("seances") or {}).values() if nom in CATALOGUE
+    ]
+    suivant = max((s["id"] for s in seances), default=0) + 1
+    for rang, identifiant in enumerate(range(suivant, suivant + tirage.randint(0, 24))):
+        if jouables and tirage.random() < 0.8:
+            nom = (
+                jouables[rang % len(jouables)]
+                if tirage.random() < 0.8
+                else tirage.choice(jouables)
+            )
+        else:
+            nom = tirage.choice(noms_lies)
+        seances.insert(0, {
+            "id": identifiant,
+            "date": None,
+            "duree": 600,
+            "statut": "abandoned" if tirage.random() < 0.1 else "finished",
+            "nom": nom,
+            "exercices": [],
+        })
+
+    instant = datetime(2026, 3, 30, 18, 0) - timedelta(days=tirage.randint(0, 3))
+    for seance in sorted(seances, key=lambda s: s["id"]):
+        instant += tirage.choice(ECARTS)
+        seance["date"] = instant.strftime(programmes.FORMAT_DATE)
+
+    # « Maintenant » : souvent juste après la dernière séance, et une fois
+    # sur trois **exactement** sur un seuil — fin du cycle qu'elle aurait
+    # ouvert, ou fin de la semaine de grâce qui suit.
+    choix = tirage.random()
+    if choix < 0.15:
+        ecart = timedelta(days=7)
+    elif choix < 0.3:
+        ecart = timedelta(days=14)
+    else:
+        ecart = timedelta(hours=tirage.randint(0, 24 * 12))
+    return (instant + ecart).strftime(programmes.FORMAT_DATE)
 
 
 def _sans_personnalise(etat):
@@ -152,11 +230,14 @@ def main():
             for numero in range(TIRAGES):
                 connus = tirage.sample(noms, k=tirage.randint(2, max(2, len(noms) // 2)))
                 seances = _ancrer_dans_le_catalogue(tirage, tirer_historique(tirage, connus))
+                programme = _programme(tirage, noms, numero)
+                maintenant = _allonger_et_dater(tirage, seances, programme)
+                # 0 et 5 sont hors de toute gamme : la borne se vérifie aussi.
+                tours = tirage.choice([1, 1, 2, 2, 3, 0, 5])
                 # Les ancrages sont lus en base par `etats_niveaux` : on les
                 # neutralise, le harnais des niveaux les couvre déjà.
                 niveaux.recuperer_ancrages = lambda *_, **__: {}
 
-                programme = _programme(tirage, noms, numero)
                 cle = f"programme_{numero}"
                 # `tous_les_programmes` lit le disque : on l'y substitue, comme
                 # les autres harnais détournent la lecture des ancrages.
@@ -182,7 +263,11 @@ def main():
                     ],
                     "libelles": programmes.libelles_seances(programme),
                     "liaison": programmes.liaison_seances(cle, CATALOGUE),
-                    "prochaine": programmes.prochaine_seance(cle, seances, CATALOGUE),
+                    "tours": tours,
+                    "maintenant": maintenant,
+                    "semaine": programmes.semaine_du_programme(
+                        cle, seances, tours, maintenant, CATALOGUE
+                    ),
                     "etat_programme": _sans_personnalise(
                         programmes.etat_programme(cle, niveaux=etats)
                     ),

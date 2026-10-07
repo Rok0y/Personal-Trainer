@@ -48,7 +48,7 @@ VERSION_BASE = 1
 #: dans un export sans qu'on l'ait décidé.
 COLONNES_UTILISATEUR = (
     "id", "nom", "cree_le", "onboarding_termine",
-    "seance_initiale", "programme_choisi", "materiel",
+    "seance_initiale", "programme_choisi", "programme_tours", "materiel",
     # Le repère de hausse désigne une séance par son identifiant, et les
     # identifiants voyagent tels quels : il reste juste après l'import.
     "note_athlete", "note_relevee_apres",

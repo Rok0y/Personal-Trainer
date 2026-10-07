@@ -204,6 +204,14 @@ def initialiser():
     if "programme_choisi" not in colonnes_utilisateurs:
         curseur.execute("ALTER TABLE utilisateurs ADD COLUMN programme_choisi TEXT")
 
+    # Combien de fois par semaine on parcourt son programme (1 tour : chaque
+    # séance une fois, 2 : deux fois). Pas de DEFAULT : NULL vaut un tour, et
+    # c'est `progression.programmes.semaine_du_programme` qui le borne à ce
+    # que le programme permet — à la lecture, pour qu'un changement de
+    # programme n'ait pas à réécrire la préférence.
+    if "programme_tours" not in colonnes_utilisateurs:
+        curseur.execute("ALTER TABLE utilisateurs ADD COLUMN programme_tours INTEGER")
+
     # Matériel du profil (JSON). Pas de DEFAULT : NULL veut dire « rien de
     # déclaré », et `core.materiel.normaliser` en fait le matériel complet
     # d'avant cette colonne — un profil existant ne change donc pas de barème.
@@ -300,6 +308,7 @@ def _profil_depuis_ligne(ligne):
         "poids_corps_kg": ligne[10],
         "note_athlete": ligne[11],
         "note_relevee_apres": ligne[12],
+        "programme_tours": ligne[13],
     }
 
 
@@ -311,7 +320,7 @@ def lister_utilisateurs():
     curseur.execute(
         "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
         "programme_choisi, materiel, sexe, date_naissance, taille_cm, "
-        "poids_corps_kg, note_athlete, note_relevee_apres "
+        "poids_corps_kg, note_athlete, note_relevee_apres, programme_tours "
         "FROM utilisateurs ORDER BY id"
     )
     profils = [_profil_depuis_ligne(ligne) for ligne in curseur.fetchall()]
@@ -327,7 +336,7 @@ def recuperer_utilisateur(utilisateur_id):
     curseur.execute(
         "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
         "programme_choisi, materiel, sexe, date_naissance, taille_cm, "
-        "poids_corps_kg, note_athlete, note_relevee_apres "
+        "poids_corps_kg, note_athlete, note_relevee_apres, programme_tours "
         "FROM utilisateurs WHERE id = ?",
         (utilisateur_id,),
     )
@@ -422,6 +431,26 @@ def definir_note_athlete(note, utilisateur_id=None):
         "WHERE id = ?",
         (note, repere, utilisateur_id),
     )
+    conn.commit()
+    conn.close()
+
+
+def definir_programme_tours(utilisateur_id, tours):
+    """Enregistre le rythme du programme : combien de tours par semaine.
+
+    Même chemin que `definir_programme_choisi`, et même obligation pour
+    l'appelant d'enchaîner sur `core.utilisateur.rafraichir()`.
+    """
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "UPDATE utilisateurs SET programme_tours = ? WHERE id = ?",
+        (tours, utilisateur_id),
+    )
+    if curseur.rowcount == 0:
+        conn.close()
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
     conn.commit()
     conn.close()
 

@@ -1623,9 +1623,8 @@ import { cle_de_progression, graphique_progression } from "../js/graphique.js";
 import {
   etat_programme,
   etats_programmes,
-  liaison_seances,
-  prochaine_seance,
   resume_palier,
+  semaine_du_programme,
 } from "../js/programmes.js";
 import { enteriner_cibles_manuelles, est_cible_manuelle } from "../js/cible_manuelle.js";
 import { UNITE_SECONDES } from "../js/paliers.js";
@@ -5042,8 +5041,16 @@ async function definir_programme_suivi(cle) {
   dessiner_liste();
 }
 
+/** La semaine du programme pour le profil courant (voir `semaine_du_programme`). */
+function semaine_du_profil(declare, histoire) {
+  const profil = base.utilisateurs.find((u) => u.id === PROFIL);
+  return semaine_du_programme(
+    declare, histoire, seances, profil?.programme_tours ?? 1, historique.horodatage()
+  );
+}
+
 function dessiner_programme(etat, declare, histoire, options = {}) {
-  const suite = prochaine_seance(declare, histoire, seances);
+  const suite = semaine_du_profil(declare, histoire)?.prochaine;
   const prochaine = suite
     ? `<p class="programme-suite">À enchaîner : <b>${echapper(suite.libelle)}</b>` +
       (suite.seance ? ` · séance <b>${echapper(suite.seance)}</b>` : " · aucune séance liée") +
@@ -5506,39 +5513,91 @@ function dessiner_resume_programme() {
   const { seances: histoire, ancrages } = lecture_du_profil();
   const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
   const etat = etat_programme(moteur.baremes, cle, declare, niveaux);
-  const suite = prochaine_seance(declare, histoire, seances);
-  const liaison = liaison_seances(declare, seances);
-  const liees = Object.entries(liaison).filter(([, nom]) => nom);
+  const semaine = semaine_du_profil(declare, histoire);
+
+  // **Meme balisage que la carte du poste fixe** (`accueil.html`), aux memes
+  // classes : `programme_resume.css` est partagee, et deux cartes qui ne se
+  // ressemblent pas seraient deux choses a apprendre.
+  const colonnes = semaine ? semaine.total / semaine.tours : 0;
+  const jouable = (nom) => Boolean(nom && nom in seances);
+  const pluriel = (n) => (n > 1 ? "s" : "");
+  let corps = "";
+  if (semaine) {
+    const titre = semaine.reussie
+      ? "Semaine réussie ! La suivante démarre à ta prochaine séance."
+      : semaine.debut
+        ? `Cette semaine : ${semaine.faites}/${semaine.total} · jusqu'au ${jour_court(semaine.fin)}`
+        : "Ta semaine démarre à ta prochaine séance.";
+    const rythme = semaine.tours_possibles.length > 1
+      ? `<div class="semaine-rythme" role="group" aria-label="Séances par semaine">` +
+        semaine.tours_possibles
+          .map((tours) =>
+            `<button type="button" data-tours="${tours}"` +
+            (tours === semaine.tours ? ` class="actif" aria-pressed="true"` : "") +
+            `>${tours * colonnes}</button>`)
+          .join("") +
+        `<span>par semaine</span></div>`
+      : "";
+    const cases = semaine.cases
+      .map((c) => {
+        const contenu =
+          `<span class="semaine-coche" aria-hidden="true">${c.faite ? "✓" : ""}</span>` +
+          `<span class="semaine-libelle">${echapper(c.libelle)}</span>` +
+          `<span class="semaine-jour">${c.faite ? jour_court(c.date) : "à faire"}</span>`;
+        if (!jouable(c.seance)) {
+          return `<span class="semaine-case orpheline" title="Aucune séance jouable n'est liée à ce libellé">${contenu}</span>`;
+        }
+        const classes = ["semaine-case"];
+        if (c.faite) classes.push("faite");
+        if (c.position === semaine.prochaine.position) classes.push("proposee");
+        return (
+          `<button type="button" class="${classes.join(" ")}" ` +
+          `data-seance="${echapper(c.seance)}" data-position="${c.position}">${contenu}</button>`
+        );
+      })
+      .join("");
+    const recents = semaine.recents.length
+      ? `<p class="semaine-recents">Semaines passées ` +
+        semaine.recents
+          .map((cycle) =>
+            `<span class="${cycle.reussi ? "ok" : "ko"}" title="Semaine du ${jour_court(cycle.debut)} : ` +
+            `${cycle.reussi ? "réussie" : "incomplète"}">${cycle.reussi ? "✓" : "✗"}</span>`)
+          .join("") +
+        `</p>`
+      : "";
+    const suite = semaine.prochaine;
+    const proposee = jouable(suite.seance)
+      ? `<div class="resume-prochaine">` +
+        `<div><span class="resume-etiquette">Séance proposée ` +
+        `(<span id="positionProgramme">${suite.position}</span>/${semaine.total})</span>` +
+        `<strong id="libelleProgramme">${echapper(suite.seance)}</strong></div>` +
+        `<button type="button" class="resume-demarrer" id="demarrerProgramme" ` +
+        `data-seance="${echapper(suite.seance)}">Commencer</button></div>`
+      : `<p class="semaine-titre">Aucune séance de ce programme n'est liée à une séance jouable.</p>`;
+    corps =
+      `<div class="semaine-tete"><p class="semaine-titre">${titre}</p>${rythme}</div>` +
+      `<div class="semaine-cases" style="--colonnes:${colonnes}">${cases}</div>` +
+      recents + proposee;
+  }
 
   const carte = document.createElement("section");
   carte.className = "programme-resume";
   carte.innerHTML =
     `<div class="resume-entete"><h2>${echapper(etat.nom)}</h2>` +
-    `<span class="resume-compte">${
-      etat.battu ? "Programme battu !" : `${etat.pourcentage} % de progression`
-    }</span></div>` +
-    `<div class="resume-jauge"><span style="width:${etat.pourcentage}%"></span></div>` +
-    `<p class="resume-detail">${etat.atteintes} exigence${etat.atteintes > 1 ? "s" : ""} ` +
-    `sur ${etat.total} entièrement remplie${etat.atteintes > 1 ? "s" : ""}.</p>` +
-    (suite && suite.seance
-      ? `<div class="resume-prochaine">` +
-        `<div><span class="resume-etiquette">Séance choisie ` +
-        `(<span id="positionProgramme">${suite.position}</span>/${suite.total})</span>` +
-        `<strong id="libelleProgramme">${echapper(suite.seance)}</strong></div>` +
-        `<button type="button" class="resume-demarrer" id="demarrerProgramme" ` +
-        `data-seance="${echapper(suite.seance)}">Commencer</button></div>`
-      : `<p class="resume-detail">Aucune séance de ce programme n'est liée à une séance jouable.</p>`) +
-    (liees.length > 1
-      ? `<label class="resume-bascule">Commencer plutôt par <select id="choixSeanceProgramme">` +
-        liees
-          .map(
-            ([libelle, nom], index) =>
-              `<option value="${echapper(nom)}" data-position="${index + 1}"` +
-              `${nom === suite?.seance ? " selected" : ""}>${echapper(libelle)}</option>`
-          )
-          .join("") +
-        `</select></label>`
+    (semaine?.serie
+      ? `<span class="semaine-serie">${semaine.serie} semaine${pluriel(semaine.serie)} ` +
+        `réussie${pluriel(semaine.serie)} d'affilée</span>`
       : "") +
+    `</div>` +
+    corps +
+    // Les objectifs de fin passent au second rang : ce qu'on vient chercher
+    // sur l'accueil, c'est ce qu'il reste a faire cette semaine.
+    `<p class="semaine-objectifs">Objectifs du programme : ${
+      etat.battu
+        ? "tous atteints !"
+        : `${etat.pourcentage} % · ${etat.atteintes}/${etat.total} rempli${pluriel(etat.atteintes)}`
+    }</p>` +
+    `<div class="resume-jauge"><span style="width:${etat.pourcentage}%"></span></div>` +
     `<div class="resume-pied">` +
     `<button type="button" class="resume-lien" id="versProgrammes">Voir le détail du programme</button>` +
     `</div>`;
@@ -5554,16 +5613,51 @@ function dessiner_resume_programme() {
     montrer("ecranProgrammes");
   });
 
-  // **Bascule ponctuelle** : elle ne stocke rien et ne fait que reecrire la
-  // cible du bouton. La proposition automatique reprend la main au prochain
-  // affichage — c'est « pour aujourd'hui », pas « desormais ».
-  carte.querySelector("#choixSeanceProgramme")?.addEventListener("change", (evenement) => {
-    const option = evenement.target.selectedOptions[0];
-    $("demarrerProgramme").dataset.seance = evenement.target.value;
-    $("libelleProgramme").textContent = evenement.target.value;
-    $("positionProgramme").textContent = option.dataset.position;
-  });
+  // **Toucher une case la propose** : une bascule ponctuelle, qui ne stocke
+  // rien et ne fait que reecrire la cible du bouton. La proposition
+  // automatique — la premiere case vide — reprend la main au prochain
+  // affichage : c'est « pour aujourd'hui », pas « desormais ». Elle ne lance
+  // rien non plus : on touche une case pour lire ce qu'elle propose, la
+  // camera ne s'ouvre qu'au bouton.
+  const cases = [...carte.querySelectorAll(".semaine-case[data-seance]")];
+  for (const caseSemaine of cases) {
+    caseSemaine.addEventListener("click", () => {
+      cases.forEach((c) => c.classList.toggle("proposee", c === caseSemaine));
+      $("demarrerProgramme").dataset.seance = caseSemaine.dataset.seance;
+      $("libelleProgramme").textContent = caseSemaine.dataset.seance;
+      $("positionProgramme").textContent = caseSemaine.dataset.position;
+    });
+  }
 
+  // Le rythme, lui, **persiste** : c'est une preference du profil, comme le
+  // programme suivi.
+  for (const bouton of carte.querySelectorAll(".semaine-rythme [data-tours]")) {
+    bouton.addEventListener("click", async () => {
+      const utilisateur = base.utilisateurs.find((u) => u.id === PROFIL);
+      if (!utilisateur) return;
+      utilisateur.programme_tours = Number(bouton.dataset.tours);
+      await stockage.sauver(base);
+      dessiner_resume_programme();
+    });
+  }
+}
+
+//: Les jours de la semaine, du dimanche au samedi comme `getUTCDay` les
+//: numerote. Ecrits ici plutot que tires de `toLocaleDateString` : la langue
+//: de l'appareil n'est pas garantie francaise.
+const JOURS_COURTS = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."];
+
+/**
+ * « lun. 06/10 » depuis une date de seance « JJ/MM/AAAA HH:MM ».
+ *
+ * Jumeau du filtre `jour_court` de `web/app.py`. En `Date.UTC`, comme le
+ * calcul de la semaine : la date stockee est une heure murale sans fuseau.
+ */
+function jour_court(texte) {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(texte ?? "");
+  if (!m) return texte ?? "";
+  const jour = new Date(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1]))).getUTCDay();
+  return `${JOURS_COURTS[jour]} ${m[1].padStart(2, "0")}/${m[2].padStart(2, "0")}`;
 }
 
 /**

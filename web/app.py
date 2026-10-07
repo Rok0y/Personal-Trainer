@@ -5,6 +5,7 @@ import sqlite3
 import time
 import unicodedata
 import webbrowser
+from datetime import datetime
 
 from flask import (
     Flask,
@@ -33,6 +34,7 @@ from historique.database import (
     definir_note_athlete,
     definir_onboarding,
     definir_programme_choisi,
+    definir_programme_tours,
     derniere_performance,
     enregistrer_ancrage,
     enregistrer_ressentis,
@@ -69,11 +71,11 @@ from progression.programmes import (
     est_personnalise,
     etat_programme,
     etats_programmes,
-    liaison_seances,
+    FORMAT_DATE,
     LIBELLE_CHARGE,
-    libelles_seances,
-    prochaine_seance,
+    semaine_du_programme,
     supprimer_programme,
+    TOURS_MAX,
     tous_les_programmes,
 )
 from progression.ressenti import ECHELLE, evaluation_seance, jugements_par_seance
@@ -171,6 +173,23 @@ def _exiger_onboarding():
     return redirect("/bienvenue")
 
 
+#: Les jours de la semaine, du lundi au dimanche, tels que `weekday()` les
+#: numérote. Écrits ici plutôt que tirés de la locale du système : celle d'un
+#: poste Windows n'est pas garantie française, et une carte qui dirait « Mon. »
+#: un jour sur deux ne se lit pas.
+JOURS_COURTS = ("lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim.")
+
+
+@app.template_filter("jour_court")
+def jour_court(texte):
+    """« lun. 06/10 » depuis une date de séance, ou le texte tel quel s'il est illisible."""
+    try:
+        instant = datetime.strptime(texte, FORMAT_DATE)
+    except (TypeError, ValueError):
+        return texte or ""
+    return f"{JOURS_COURTS[instant.weekday()]} {instant:%d/%m}"
+
+
 @app.context_processor
 def _profil_dans_les_templates():
     """Rend le profil connecté disponible partout, sans le passer route par route."""
@@ -197,31 +216,6 @@ def programme_de_l_accueil():
     if cle not in disponibles:
         return None, disponibles
     return etat_programme(cle), disponibles
-
-
-def seances_du_programme(cle, catalogue_seances):
-    """Les séances du programme jouables dans l'app, dans l'ordre du programme.
-
-    Sert au sélecteur qui permet de démarrer une autre séance que celle
-    proposée. Les libellés sans séance correspondante sont écartés :
-    `liaison_seances` rend None quand aucune séance ne partage d'exercice avec
-    eux, et il n'y aurait donc rien à lancer.
-    """
-    liaisons = liaison_seances(cle, catalogue_seances)
-    libelles = libelles_seances(tous_les_programmes().get(cle, {}))
-    # `position` compte sur l'ordre complet du programme, pas sur la liste
-    # filtrée : c'est le rang que l'utilisateur lit dans « séance 2/3 », et il
-    # ne doit pas se décaler parce qu'un libellé n'a pas de séance jouable.
-    return [
-        {
-            "libelle": libelle,
-            "seance": liaisons.get(libelle),
-            "position": rang,
-            "total": len(libelles),
-        }
-        for rang, libelle in enumerate(libelles, start=1)
-        if liaisons.get(libelle) in catalogue_seances
-    ]
 
 
 def noms_exercices_individuels():
@@ -459,25 +453,36 @@ def index():
         # enchaîner maintenant. Un seul, parce qu'on n'en fait qu'un à la fois.
         programme, programmes_disponibles = programme_de_l_accueil()
         if programme is not None:
-            programme["prochaine"] = prochaine_seance(
-                programme["cle"], historique, seances
-            )
-            programme["seances_liees"] = seances_du_programme(
-                programme["cle"], seances
+            # La semaine du programme : une case par séance à faire, cochée
+            # quand elle l'est. Elle porte aussi la séance proposée — la
+            # première case vide — et c'est elle qui remplace l'ancienne
+            # proposition « en boucle », qui contredisait les cases.
+            semaine = semaine_du_programme(
+                programme["cle"],
+                historique,
+                (utilisateur_connecte() or {}).get("programme_tours"),
+                catalogue_seances=seances,
             )
             # Une séance déjà choisie prime sur la proposition automatique : le
             # bandeau annonçait sinon « Jambes et abdos » après un clic sur
             # « Push », et le choix de l'utilisateur n'apparaissait nulle part.
-            choisie = next(
-                (
-                    lien
-                    for lien in programme["seances_liees"]
-                    if lien["seance"] == controleur.nom_selectionne
-                ),
-                None,
-            )
-            if choisie is not None:
-                programme["prochaine"] = dict(choisie)
+            # Elle désigne sa première case vide, à défaut sa première case.
+            if semaine is not None:
+                cases = [
+                    case
+                    for case in semaine["cases"]
+                    if case["seance"] == controleur.nom_selectionne
+                    and case["seance"] in seances
+                ]
+                if cases:
+                    case = next((c for c in cases if not c["faite"]), cases[0])
+                    semaine["prochaine"] = {
+                        "libelle": case["libelle"],
+                        "seance": case["seance"],
+                        "position": case["position"],
+                        "total": semaine["total"],
+                    }
+            programme["semaine"] = semaine
         dernieres_series = {}
         for seance in historique:
             nom = seance.get("nom")
@@ -1094,6 +1099,25 @@ def choisir_programme():
     # afficherait encore le programme précédent.
     rafraichir()
     return jsonify({"ok": True, "cle": cle})
+
+
+@app.route("/api/programme-tours", methods=["POST"])
+def choisir_rythme_programme():
+    """Combien de fois par semaine je parcours mon programme : 1, 2 ou 3 tours.
+
+    La borne de ce que le programme permet (« 3 ou 6 », jamais 9) n'est pas
+    posée ici mais à la lecture, par `semaine_du_programme` : la préférence
+    survit ainsi à un changement de programme au lieu d'être réécrite.
+    """
+    donnees = request.get_json(silent=True) or {}
+    tours = donnees.get("tours")
+    if not isinstance(tours, int) or isinstance(tours, bool) or not 1 <= tours <= TOURS_MAX:
+        return jsonify({"erreur": f"Le rythme est un nombre de tours de 1 à {TOURS_MAX}"}), 400
+
+    profil = utilisateur_connecte()
+    definir_programme_tours(profil["id"], tours)
+    rafraichir()
+    return jsonify({"ok": True, "tours": tours})
 
 
 @app.route("/creer-programme")

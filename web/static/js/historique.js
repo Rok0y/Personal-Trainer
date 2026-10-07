@@ -106,6 +106,9 @@ export function creer_utilisateur(base, nom, maintenant) {
     onboarding_termine: 0,
     seance_initiale: null,
     programme_choisi: null,
+    // Le rythme du programme, en tours par semaine. `null` vaut un tour, et
+    // `semaine_du_programme` le borne a ce que le programme permet.
+    programme_tours: null,
     materiel: null,
     // Les mesures du corps. `null` veut dire « non renseigne » et non zero :
     // personne n'est oblige de les donner, rien ne les lit encore.

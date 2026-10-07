@@ -10,7 +10,7 @@ dessus :
    libelle de programme a une seance jouable ; sans la mise a jour,
    `liaison_seances` rend None et le programme ne pilote plus rien ;
 3. `seances.nom_seance` en base — c'est par ce nom que l'accueil retrouve la
-   « derniere fois » et que `prochaine_seance` sait ou en est le programme ;
+   « derniere fois » et que la semaine du programme coche ses cases ;
 4. `utilisateurs.seance_initiale` — la seance choisie a l'inscription.
 
 `exercices` et `series_realisees` heritent par leur cle etrangere : rien a y

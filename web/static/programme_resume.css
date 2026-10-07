@@ -5,11 +5,16 @@
    delibere : on n'en suit qu'un a la fois, l'ecran des programmes reste celui
    qui les liste tous.
 
-   Deux reglages y cohabitent et ne se confondent pas. « Changer de
-   programme » **persiste** (c'est une preference du profil), « Commencer
-   plutot par » est une **bascule ponctuelle** qui ne stocke rien : elle
-   reecrit seulement la cible du bouton de demarrage, et la proposition
-   automatique reprend la main au prochain chargement.
+   Elle montre d'abord **la semaine** : une case par seance a faire, dans
+   l'ordre du programme et une rangee par tour, cochee quand elle est faite
+   (`semaine_du_programme`). Les objectifs de fin passent au second rang.
+
+   Trois reglages y cohabitent et ne se confondent pas. « Changer de
+   programme » et le **rythme** (3 ou 6 seances par semaine) **persistent** —
+   ce sont des preferences du profil —, alors que toucher une case est une
+   **bascule ponctuelle** qui ne stocke rien : elle reecrit seulement la cible
+   du bouton de demarrage, et la proposition automatique (la premiere case
+   vide) reprend la main au prochain chargement.
 
    Le bandeau annonce la seance **retenue**, pas la proposition automatique :
    des qu'une seance du programme est choisie, elle prime — sans quoi le
@@ -55,3 +60,79 @@
     background: var(--glass-strong); color: var(--text); font: inherit; font-size: 12px; cursor: pointer;
 }
 .resume-lien { display: inline-block; margin-top: 12px; color: var(--teal); font-size: 12px; font-weight: 700; }
+
+/* ------------------------------------------------------------- la semaine */
+.semaine-serie {
+    color: var(--teal); font-size: 12px; font-weight: 700;
+    padding: 3px 10px; border-radius: 999px; border: 1px solid var(--teal);
+}
+.semaine-tete {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px 16px; flex-wrap: wrap; margin: 12px 0 10px;
+}
+.semaine-titre { margin: 0; color: var(--muted); font-size: 13px; }
+.semaine-rythme { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.semaine-rythme button {
+    min-width: 34px; padding: 5px 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border-strong); background: transparent; color: var(--text);
+    font: inherit; font-weight: 700;
+}
+.semaine-rythme button.actif { background: var(--teal); border-color: var(--teal); color: #0a0d13; }
+.semaine-rythme span { margin-left: 4px; }
+
+/* Une colonne par seance du programme : les tours s'empilent, si bien qu'on
+   lit d'un coup d'oeil « deux Push faits, un Pull a faire ». `minmax(0, 1fr)`
+   et non `1fr` : un libelle long ne doit pas elargir sa colonne au point de
+   faire deborder la carte sur un telephone. */
+.semaine-cases {
+    display: grid; grid-template-columns: repeat(var(--colonnes, 3), minmax(0, 1fr));
+    gap: 8px; margin-bottom: 12px;
+}
+.semaine-case {
+    display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto;
+    column-gap: 8px; align-items: center; text-align: left;
+    padding: 9px 10px; border-radius: 10px; min-width: 0;
+    border: 1px solid var(--border-strong); background: var(--glass-strong, transparent);
+    color: var(--text); font: inherit; cursor: pointer;
+    /* Le poste fixe met ses boutons en capitales : une case n'est pas un
+       bouton d'action, elle se lit comme une ligne de liste. */
+    text-transform: none; letter-spacing: normal;
+}
+button.semaine-case:hover { border-color: var(--teal); }
+.semaine-coche {
+    grid-row: 1 / 3; width: 22px; height: 22px; border-radius: 6px;
+    display: grid; place-items: center; font-size: 14px; font-weight: 700;
+    border: 2px solid var(--border-strong); color: #0a0d13;
+}
+/* Deux lignes au plus, et non une ellipse : sur un telephone, « Jamb… »
+   ne dit plus quelle seance il reste a faire. */
+.semaine-libelle {
+    font-size: 13px; font-weight: 700; line-height: 1.2; overflow: hidden;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere;
+}
+.semaine-jour { font-size: 11px; color: var(--muted); }
+.semaine-case.faite { border-color: rgba(27, 232, 196, .45); background: rgba(27, 232, 196, .08); }
+.semaine-case.faite .semaine-coche { background: var(--teal); border-color: var(--teal); }
+.semaine-case.faite .semaine-jour { color: var(--teal); }
+/* La seance proposee porte la couleur du bandeau « Seance proposee » juste en
+   dessous : c'est le meme objet, vu deux fois. */
+.semaine-case.proposee { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange) inset; }
+.semaine-case.orpheline { cursor: default; opacity: .55; }
+
+.semaine-recents { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; color: var(--muted); font-size: 12px; }
+.semaine-recents span {
+    width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center;
+    font-size: 12px; font-weight: 700;
+}
+.semaine-recents .ok { background: rgba(27, 232, 196, .18); color: var(--teal); }
+.semaine-recents .ko { background: rgba(255, 138, 76, .14); color: var(--orange); }
+.semaine-objectifs { margin: 16px 0 0; color: var(--muted); font-size: 12px; }
+.semaine-objectifs + .resume-jauge { height: 5px; margin: 6px 0 12px; }
+
+/* Sur un telephone, trois colonnes laissent trop peu de place a cote de la
+   coche : elle passe au-dessus, et le libelle recupere toute la largeur. */
+@media (max-width: 520px) {
+    .semaine-case { grid-template-columns: 1fr; row-gap: 4px; padding: 8px; }
+    .semaine-coche { grid-row: auto; width: 20px; height: 20px; }
+    .semaine-libelle { font-size: 12px; }
+}
