@@ -267,7 +267,12 @@ export const INSTRUMENTS = {
   pompe_detection: {
     ordre: ["debut", "fin"],
     defaut: "milieu",
-    mesures: [coude_proche({ debut: ["<", 100], fin: [">", 160] }), visibilite_bras(), profondeur_epaules()],
+    mesures: [coude_proche({ debut: ["<", 120], fin: [">", 160] }), visibilite_bras(), profondeur_epaules()],
+  },
+  pompe_profondeur: {
+    ordre: ["profond"],
+    defaut: null,
+    mesures: [coude_proche({ profond: ["<", 100] })],
   },
   developpe_couche_sol_detection: {
     ordre: ["debut", "fin"],
@@ -303,7 +308,7 @@ export const INSTRUMENTS = {
     defaut: null,
     mesures: [{
       libelle: "Écart des coudes (÷ largeur d'épaules)", unite: "", echelle: [0, 2],
-      sommet: "coude_gauche", zones: { forme_coudes_trop_ecartes: [">", 1.35] },
+      sommet: "coude_gauche", zones: { forme_coudes_trop_ecartes: [">", 1.5] },
       valeur: (corps) =>
         corps.coude_gauche.y < corps.epaule_gauche.y && corps.coude_droit.y < corps.epaule_droite.y
           ? _ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps)

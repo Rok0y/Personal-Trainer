@@ -130,6 +130,33 @@ def mettre_a_jour_erreur(exercice, corps, etat):
     etat.erreur = texte(cle) if cle else None
 
 
+def suivre_amplitude(exercice, corps, bloc, etat, stage_avant, stage, rep_comptee):
+    """Avertit d'une répétition comptée qui n'est pas allée assez loin.
+
+    Le jeton d'amplitude est retenu tant que le compteur est armé, c'est-à-dire
+    de `"debut"` jusqu'à la répétition, et oublié à chaque nouvel armement —
+    y compris après une remise à zéro du compteur, qui le rearme depuis rien.
+    L'avertissement est posé au moment où la répétition compte et reste
+    affiché **jusqu'à la suivante** : effacé à l'image d'après, il ne se
+    lirait jamais. Une faute de forme du moment passe devant lui.
+    """
+    if exercice.amplitude is None:
+        return
+    atteinte, cle = exercice.amplitude
+    if stage == "debut":
+        if stage_avant != "debut":
+            bloc.amplitude_atteinte = False
+        if atteinte(corps):
+            bloc.amplitude_atteinte = True
+    if rep_comptee:
+        bloc.avertissement_amplitude = (
+            None if getattr(bloc, "amplitude_atteinte", False) else cle
+        )
+    avertissement = getattr(bloc, "avertissement_amplitude", None)
+    if etat.erreur is None and avertissement:
+        etat.erreur = texte(avertissement)
+
+
 def poser_etape(etat, jeton):
     """Publie l'étape du mouvement, sous sa forme brute et sous sa forme lisible.
 
@@ -148,7 +175,11 @@ def gerer_mode_repetitions(
     mettre_a_jour_erreur(exercice, corps, etat)
     stage_detecte = exercice.detection(corps)
 
+    stage_avant, repetitions_avant = compteur.stage, compteur.repetitions
     stage, repetitions = compteur.mettre_a_jour(stage_detecte, seance.maintenant())
+    suivre_amplitude(
+        exercice, corps, bloc, etat, stage_avant, stage, repetitions > repetitions_avant
+    )
 
     if repetitions > derniere_rep:
         coach("compteur", repetitions)

@@ -34,6 +34,7 @@ Sortie : scripts/fixtures_seances.jsonl (un pas par ligne),
 
 import hashlib
 import json
+import math
 import random
 from pathlib import Path
 
@@ -41,6 +42,7 @@ import audio.coach
 
 from mouvements.compteur import CompteurMouvement
 from scripts.generer_fixtures import pose_au_hasard, serialiser
+from vision.body import Body, LandmarkPoint
 from session.moteur import executer_mode
 from session.seances import catalogue_mouvements, construire_circuit
 from core.state import EtatSeance
@@ -54,6 +56,13 @@ DESTINATION = Path(__file__).parent / "fixtures_seances.jsonl"
 #: images.
 POSES = Path(__file__).parent / "fixtures_poses.jsonl"
 NOMBRE_DE_POSES = 400
+#: Poses de pompe construites, ajoutees **apres** les poses au hasard pour que
+#: celles-ci gardent leurs index : un coude a 170, 110 et 80 degres. La marche
+#: aleatoire n'arme jamais une pompe peu profonde — mesure, l'avertissement
+#: d'amplitude retire du JavaScript laissait le harnais vert —, donc le
+#: scenario `pompes_peu_profondes` les vise par leur index.
+ANGLES_POMPE = {"tendu": 170, "peu_profond": 110, "profond": 80}
+POSE_POMPE = {nom: NOMBRE_DE_POSES + i for i, nom in enumerate(ANGLES_POMPE)}
 #: Catalogue propre au harnais : les séances contiennent aussi des
 #: échauffements, absents du `catalogue.json` de la démo — qui, lui, ne liste
 #: que les exercices testables et n'a pas à changer pour nous. Il porte le nom
@@ -86,6 +95,25 @@ CHAMPS_ETAT = (
     "temps_echauffement", "duree_echauffement", "temps_amrap_restant",
     "prochaine_etape", "fiche_suivante",
 )
+
+
+def pose_pompe(rng, angle):
+    """Une pose quelconque dont le bras gauche plie le coude a `angle` degres,
+    et qui est le seul bien vu : c'est donc lui que `_bras_proche` lit."""
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    epaule = LandmarkPoint(0.4, 0.6, 0, 1)
+    coude = LandmarkPoint(0.4, 0.7, 0, 1)
+    rad = math.radians(angle)
+    points["epaule_gauche"] = epaule
+    points["coude_gauche"] = coude
+    points["poignet_gauche"] = LandmarkPoint(
+        coude.x + 0.1 * math.sin(rad), coude.y - 0.1 * math.cos(rad), 0, 1
+    )
+    for nom in ("coude_droit", "poignet_droit"):
+        ancien = points[nom]
+        points[nom] = LandmarkPoint(ancien.x, ancien.y, ancien.z, 0)
+    return Body(points)
 
 
 def observer_etat(etat):
@@ -268,6 +296,16 @@ def jouer(circuit, horloge, nom, arguments, contexte=None,
             contexte["derniere_rep"] = 0
         return list(triplet), None
 
+    if nom == "aller_a_l_amplitude":
+        # Commande du harnais : amene au premier bloc dont l'exercice verifie
+        # une amplitude (les pompes). Pilotee par les donnees, comme
+        # `aller_au_superset`, pour survivre a un reordonnancement.
+        for _ in range(len(circuit.exercices)):
+            bloc = circuit.bloc_actuel
+            if bloc is None or bloc.exercice.amplitude is not None:
+                break
+            circuit.passer_exercice_suivant()
+        return None, None
     if nom == "aller_au_superset":
         # Commande du harnais, pas du circuit : elle amène à la première paire
         # entrelacée de la séance. Pilotée par les données et non par un
@@ -366,6 +404,25 @@ SCENARIOS_NOMMES = {
         ("terminer_serie_manuellement", None),
         ("refaire_derniere_serie", None),
         ("terminer_serie_manuellement", None),
+    ],
+    # Une pompe peu profonde compte, et l'avertissement reste affiche jusqu'a
+    # la suivante, qu'une pompe profonde efface. Un `avancer` d'une seconde
+    # avant chaque image tient le delai minimal entre deux repetitions.
+    "pompes_peu_profondes": [
+        ("aller_a_l_amplitude", None),
+        ("commencer_exercice", None),
+        *[
+            pas
+            for pose in (
+                "tendu", "peu_profond", "tendu", "tendu",
+                "profond", "peu_profond", "tendu", "tendu",
+                "peu_profond", "tendu", "peu_profond", "profond", "tendu",
+            )
+            for pas in (
+                ("avancer", {"secondes": 1}),
+                ("image", {"pose": POSE_POMPE[pose]}),
+            )
+        ],
     ],
     "sauter_les_repos": [
         ("commencer_exercice", None),
@@ -478,6 +535,7 @@ def main():
     # graine : le JS lit ce fichier plutôt que de retirer les siennes.
     poses = random.Random(GRAINE + 1)
     banque = [pose_au_hasard(poses) for _ in range(NOMBRE_DE_POSES)]
+    banque += [pose_pompe(poses, angle) for angle in ANGLES_POMPE.values()]
     with POSES.open("w", encoding="utf-8") as fichier:
         for corps in banque:
             fichier.write(json.dumps(serialiser(corps)) + "\n")
@@ -501,6 +559,10 @@ def main():
             # le scenario `decompte_final` a fini par montrer, apres des mois
             # ou aucun pas du harnais n'observait `fiche_suivante`.
             "orientation": exercice.orientation,
+            "amplitude": (
+                None if exercice.amplitude is None
+                else [exercice.amplitude[0].__name__, exercice.amplitude[1]]
+            ),
         }
         for nom, exercice in mouvements.items()
     }, ensure_ascii=False, indent=1), encoding="utf-8")

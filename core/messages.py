@@ -36,6 +36,8 @@ MESSAGES = {
     "forme_genou_avant_trop_avance": (
         "Attention à ne pas trop avancer ton genou avant"
     ),
+    # Comptée quand même : la pompe a été faite, elle n'est pas allée assez bas.
+    "forme_pompe_pas_assez_profonde": "Descends la poitrine plus près du sol",
     # --- Répétition incomplète : une tentative a vraiment progressé, sans
     # atteindre la position visée. L'aller vise la position qui compte la
     # répétition, le retour celle qui réarme le compteur.

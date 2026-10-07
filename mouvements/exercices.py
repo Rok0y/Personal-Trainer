@@ -262,13 +262,40 @@ def _angle_coude_proche(corps):
     return calculer_angle(epaule, coude, poignet)
 
 
+# Deux seuils en bas, et ils ne disent pas la meme chose. Le premier decide si
+# la pompe **compte** ; le second si elle etait **assez profonde**. Ils etaient
+# confondus a 100 degres : une pompe qui s'arretait a 110 n'etait pas comptee,
+# sans rien dire — une sur deux, a la seance du 5 octobre. Elle compte
+# desormais, et l'ecart se dit en avertissement (`pompe_profondeur`), jamais en
+# repetition retiree : meme regle que la faute du genou des fentes.
+SEUIL_COMPTAGE_POMPE = 120
+SEUIL_PROFONDEUR_POMPE = 100
+
+
 def pompe_detection(corps):
     angle_coude = _angle_coude_proche(corps)
-    if angle_coude < 100:
+    if angle_coude < SEUIL_COMPTAGE_POMPE:
         return "debut"
     elif angle_coude > 160:
         return "fin"
     return "milieu"
+
+
+def pompe_profondeur(corps):
+    """`"profond"` quand le coude passe sous l'angle d'une pompe complète.
+
+    Ce n'est pas une faute de forme : une image à 110° ne dit rien, toute
+    pompe profonde y passe en descendant. Le moteur retient si ce jeton a été
+    vu **pendant la descente** (`Exercice.amplitude`), et n'avertit qu'une
+    fois la répétition comptée.
+    """
+    if _angle_coude_proche(corps) < SEUIL_PROFONDEUR_POMPE:
+        return "profond"
+    return None
+
+
+# Ce qui est verifie pendant la descente, et ce qu'on dit si ca manque.
+AMPLITUDE_POMPE = (pompe_profondeur, "forme_pompe_pas_assez_profonde")
 
 
 pompe = Exercice(
@@ -284,6 +311,7 @@ pompe = Exercice(
     # ne compte pas mieux, c'est le seuil qu'il faut regarder, pas la vue.
     orientation="profil",
     detection=pompe_detection,
+    amplitude=AMPLITUDE_POMPE,
     description="Pompes au sol, mains sous les épaules, corps aligné des talons à la tête.",
     instructions=[
         "Garde la tête dans le prolongement du dos, regard vers le sol.",
@@ -418,9 +446,10 @@ def extension_triceps_erreur_coudes(corps):
     if not _coudes_leves(corps):
         return None
     ecart = _ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps)
-    # 1,35 et non 1,1 : des coudes a la largeur des epaules sont deja
-    # acceptables sur ce mouvement, et l'alerte reprochait une position correcte.
-    if ecart is not None and ecart > 1.35:
+    # 1,5 et non 1,1 : des coudes a la largeur des epaules sont deja
+    # acceptables sur ce mouvement, et l'alerte reprochait une position
+    # correcte. Passe par 1,35, encore juge severe a la seance du 5 octobre.
+    if ecart is not None and ecart > 1.5:
         return "forme_coudes_trop_ecartes"
     return None
 
@@ -1328,6 +1357,7 @@ pompes_inclinees = Exercice(
     # Les angles de coude ne dépendent pas de l'inclinaison : la détection des
     # pompes s'applique telle quelle.
     detection=pompe_detection,
+    amplitude=AMPLITUDE_POMPE,
     description=(
         "Pompes mains posées sur une chaise ou un plan de travail : "
         "plus le support est haut, plus le mouvement est facile."
@@ -1355,6 +1385,7 @@ pompes_sur_les_genoux = Exercice(
     nom="Pompes sur les genoux",
     orientation="profil",
     detection=pompe_detection,
+    amplitude=AMPLITUDE_POMPE,
     description=(
         "Pompes au sol avec les genoux posés : la moitié du corps à soulever en moins."
     ),

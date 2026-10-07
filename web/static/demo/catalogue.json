@@ -21,7 +21,8 @@
     "orientation": "allonge_camera_de_cote",
     "analyse_la_pose": true,
     "detection": "crunches_detection",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": null
   },
   {
     "nom": "Curl biceps droit",
@@ -48,7 +49,8 @@
     "detection": "curl_biceps_droit_detection",
     "erreurs": [
       "coude_avance_curl_droit"
-    ]
+    ],
+    "amplitude": null
   },
   {
     "nom": "Curl biceps gauche",
@@ -75,7 +77,8 @@
     "detection": "curl_biceps_gauche_detection",
     "erreurs": [
       "coude_avance_curl_gauche"
-    ]
+    ],
+    "amplitude": null
   },
   {
     "nom": "Developpé couché altères",
@@ -100,7 +103,8 @@
     "orientation": "allonge_camera_de_cote",
     "analyse_la_pose": true,
     "detection": "developpe_couche_sol_detection",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": null
   },
   {
     "nom": "Développé épaule",
@@ -125,7 +129,8 @@
     "orientation": "face",
     "analyse_la_pose": true,
     "detection": "developpe_epaule_detection",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": null
   },
   {
     "nom": "Elevations latérales",
@@ -149,7 +154,8 @@
     "orientation": "face",
     "analyse_la_pose": true,
     "detection": "elevation_laterale_detection",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": null
   },
   {
     "nom": "Extension Triceps",
@@ -177,7 +183,8 @@
     "detection": "extension_triceps_au_dessus_de_la_tete_detection",
     "erreurs": [
       "extension_triceps_erreur_coudes"
-    ]
+    ],
+    "amplitude": null
   },
   {
     "nom": "Fente droite",
@@ -206,7 +213,8 @@
     "detection": "fente_droite_detection",
     "erreurs": [
       "fente_droite_erreur_genou"
-    ]
+    ],
+    "amplitude": null
   },
   {
     "nom": "Fente gauche",
@@ -235,7 +243,8 @@
     "detection": "fente_gauche_detection",
     "erreurs": [
       "fente_gauche_erreur_genou"
-    ]
+    ],
+    "amplitude": null
   },
   {
     "nom": "Gainage planche",
@@ -260,7 +269,8 @@
     "orientation": "profil",
     "analyse_la_pose": true,
     "detection": "detection_gainage",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": null
   },
   {
     "nom": "Gainage planche laterale droite",
@@ -285,7 +295,8 @@
     "orientation": "face",
     "analyse_la_pose": true,
     "detection": "detection_gainage_laterale_droite",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": null
   },
   {
     "nom": "Gainage planche laterale gauche",
@@ -310,7 +321,8 @@
     "orientation": "face",
     "analyse_la_pose": true,
     "detection": "detection_gainage_laterale_gauche",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": null
   },
   {
     "nom": "Gainage sur les genoux",
@@ -334,7 +346,8 @@
     "orientation": "profil",
     "analyse_la_pose": true,
     "detection": "detection_gainage",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": null
   },
   {
     "nom": "Oiseau",
@@ -363,7 +376,8 @@
     "detection": "oiseau_detection",
     "erreurs": [
       "oiseau_erreur_coudes"
-    ]
+    ],
+    "amplitude": null
   },
   {
     "nom": "Pompes",
@@ -388,7 +402,11 @@
     "orientation": "profil",
     "analyse_la_pose": true,
     "detection": "pompe_detection",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": [
+      "pompe_profondeur",
+      "forme_pompe_pas_assez_profonde"
+    ]
   },
   {
     "nom": "Pompes inclinées",
@@ -413,7 +431,11 @@
     "orientation": "profil",
     "analyse_la_pose": true,
     "detection": "pompe_detection",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": [
+      "pompe_profondeur",
+      "forme_pompe_pas_assez_profonde"
+    ]
   },
   {
     "nom": "Pompes sur les genoux",
@@ -437,7 +459,11 @@
     "orientation": "profil",
     "analyse_la_pose": true,
     "detection": "pompe_detection",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": [
+      "pompe_profondeur",
+      "forme_pompe_pas_assez_profonde"
+    ]
   },
   {
     "nom": "Rowing penche",
@@ -469,7 +495,8 @@
     "erreurs": [
       "rowing_penche_erreur_buste",
       "rowing_penche_erreur_genoux"
-    ]
+    ],
+    "amplitude": null
   },
   {
     "nom": "Rowing unilateral droit",
@@ -498,7 +525,8 @@
     "detection": "rowing_unilateral_droit_detection",
     "erreurs": [
       "rowing_unilateral_droit_erreur_buste"
-    ]
+    ],
+    "amplitude": null
   },
   {
     "nom": "Rowing unilateral gauche",
@@ -527,7 +555,8 @@
     "detection": "rowing_unilateral_gauche_detection",
     "erreurs": [
       "rowing_unilateral_gauche_erreur_buste"
-    ]
+    ],
+    "amplitude": null
   },
   {
     "nom": "Souleve de terre roumain",
@@ -554,7 +583,8 @@
     "orientation": "face",
     "analyse_la_pose": true,
     "detection": "souleve_de_terre_roumain_detection",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": null
   },
   {
     "nom": "Squat",
@@ -581,7 +611,8 @@
     "orientation": "face",
     "analyse_la_pose": true,
     "detection": "squat_detection",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": null
   },
   {
     "nom": "Squat sur chaise",
@@ -606,6 +637,7 @@
     "orientation": "face",
     "analyse_la_pose": true,
     "detection": "squat_sur_chaise_detection",
-    "erreurs": []
+    "erreurs": [],
+    "amplitude": null
   }
 ]

@@ -2333,6 +2333,12 @@ function boucle(horodatage) {
   // tournait — ni cadrage, ni geste, ni meme un message.
   if (corps_brut) {
     const corps = construire_corps(corps_brut);
+    // Un corps vu efface « place-toi devant la camera », comme `main.py` le
+    // fait a chaque image. Sans cette ligne, une seule image perdue pendant
+    // l'effort figeait le message jusqu'a la fin de la serie : `jouer_exercice`
+    // ne touche pas a la consigne, et on se faisait dire de se placer alors
+    // qu'on l'etait. Les branches qui ont quelque chose a dire la reecrivent.
+    etat.consigne = null;
     observer_gestes(corps);
     // **L'installation passe avant le guide, et le guide avant le reste.**
     // L'ordre est la correction : `demarrer()` ouvrait le guide du premier

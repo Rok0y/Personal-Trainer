@@ -152,11 +152,23 @@ function angle_coude_proche(corps) {
   return calculer_angle(epaule, coude, poignet);
 }
 
+// Deux seuils en bas : le premier decide si la pompe compte, le second si
+// elle etait assez profonde. Jumeaux des constantes Python.
+export const SEUIL_COMPTAGE_POMPE = 120;
+export const SEUIL_PROFONDEUR_POMPE = 100;
+
 export function pompe_detection(corps) {
   const angle_coude = angle_coude_proche(corps);
-  if (angle_coude < 100) return "debut";
+  if (angle_coude < SEUIL_COMPTAGE_POMPE) return "debut";
   else if (angle_coude > 160) return "fin";
   return "milieu";
+}
+
+// Jumelle de `pompe_profondeur` : un jeton, pas une faute — le moteur retient
+// s'il a ete vu pendant la descente.
+export function pompe_profondeur(corps) {
+  if (angle_coude_proche(corps) < SEUIL_PROFONDEUR_POMPE) return "profond";
+  return null;
 }
 
 // Ecart vertical moins ecart horizontal entre le milieu des epaules et celui
@@ -224,7 +236,7 @@ export function extension_triceps_au_dessus_de_la_tete_detection(corps) {
 export function extension_triceps_erreur_coudes(corps) {
   if (!coudes_leves(corps)) return null;
   const ecart = ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps);
-  if (ecart !== null && ecart > 1.35) return "forme_coudes_trop_ecartes";
+  if (ecart !== null && ecart > 1.5) return "forme_coudes_trop_ecartes";
   return null;
 }
 
@@ -699,6 +711,7 @@ export const DETECTIONS = {
   curl_biceps_gauche_detection,
   elevation_laterale_detection,
   pompe_detection,
+  pompe_profondeur,
   developpe_couche_sol_detection,
   extension_triceps_au_dessus_de_la_tete_detection,
   developpe_epaule_detection,

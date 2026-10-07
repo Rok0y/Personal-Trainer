@@ -128,6 +128,8 @@
   .banc-jeton.z-debut { color: #8cc4ff; border-color: rgba(75,155,255,.8); background: rgba(75,155,255,.22); }
   .banc-jeton.z-fin, .banc-jeton.z-maintien { color: #7ee2ad; border-color: rgba(63,191,127,.85); background: rgba(63,191,127,.22); }
   .banc-jeton.z-milieu, .banc-jeton.z-repos { color: #c3d0e0; }
+  /* Pose perdue : le compteur ne voit rien, ca doit sauter aux yeux. */
+  .banc-jeton.z-perdu { color: #ff8f8f; border-color: rgba(255,107,107,.7); background: rgba(255,107,107,.18); }
   .banc-erreur { color: #ff8f8f; font-weight: 700; font-size: 17px; min-height: 0; margin-top: 6px; }
 
   /* Les mesures vivent dans une colonne a droite plutot que sous le compteur :
@@ -935,6 +937,13 @@ function boucle() {
     dernierInstant = null;
     debutImmobile = null;
     dernierCorps = null;
+    // Le temps sans corps est un jeton du banc comme un autre. Il n'etait
+    // compte nulle part, et pire : au retour du corps, l'absence etait
+    // creditee au dernier jeton vu — une pose perdue en bas d'une pompe
+    // passait pour du temps en « debut ». C'est pourtant une cause de
+    // repetition oubliee a part entiere : sans corps, le compteur ne voit
+    // jamais la position qui l'arme.
+    if (banc && !termine) mesurerBanc("perdu", maintenant / 1000);
   } else if (!termine) {
     traiter(construire_corps(landmarks), maintenant / 1000);
     dessinerValeurs(ctx, canvas);

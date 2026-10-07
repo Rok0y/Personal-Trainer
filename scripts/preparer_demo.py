@@ -62,10 +62,25 @@ def exporter_catalogue():
         # qui s'exécutent, à ne pas confondre avec `erreurs_frequentes`, qui
         # est de la pédagogie écrite. Six exercices sur vingt-trois en ont.
         fiche["erreurs"] = [verifier.__name__ for verifier in exercice.erreurs]
+        fiche["amplitude"] = exporter_amplitude(exercice)
         exercices.append(fiche)
 
     exercices.sort(key=lambda f: f["nom"])
     return exercices, sans_detection
+
+
+def exporter_amplitude(mouvement):
+    """`[nom de fonction, clé de message]`, ou None.
+
+    Même règle que `detection` et `erreurs` : la fonction voyage par son nom,
+    que `detections.js` porte aussi. Un champ oublié ici ne lève rien — le
+    navigateur construirait simplement ses pompes sans avertissement, comme il
+    a construit des mois durant ses exercices sans `orientation`.
+    """
+    if mouvement.amplitude is None:
+        return None
+    fonction, cle = mouvement.amplitude
+    return [fonction.__name__, cle]
 
 
 def decrire(nom, mouvement):
@@ -83,6 +98,7 @@ def decrire(nom, mouvement):
         None if mouvement.detection is None else mouvement.detection.__name__
     )
     fiche["erreurs"] = [verifier.__name__ for verifier in mouvement.erreurs]
+    fiche["amplitude"] = exporter_amplitude(mouvement)
     # Les deux champs que `fiche_mouvement` ajoute cote Flask, et dont les
     # fiches de l'application ont besoin : quel materiel il faut, et si le
     # mouvement compte quelque part. Un echauffement n'a ni niveau, ni record,

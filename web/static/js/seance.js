@@ -47,7 +47,19 @@ export function exercice_pour(mouvements, nom) {
     // ce qu'ecrit le Python pour « rien de sur a dire », et c'est cette valeur
     // que le harnais compare.
     orientation: fiche.orientation ?? null,
+    amplitude: amplitude_pour(fiche.amplitude),
   });
+}
+
+/**
+ * `[nom de fonction, cle]` exporte par le Python, vers `[fonction, cle]`.
+ * Une fonction inconnue de `detections.js` rend null plutot qu'un couple
+ * dont l'appel leverait a chaque image.
+ */
+export function amplitude_pour(exporte) {
+  if (!Array.isArray(exporte)) return null;
+  const fonction = DETECTIONS[exporte[0]];
+  return fonction ? [fonction, exporte[1]] : null;
 }
 
 /** Un `Circuit` depuis la definition JSON d'une seance. */

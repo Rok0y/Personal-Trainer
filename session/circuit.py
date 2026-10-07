@@ -116,10 +116,18 @@ class Exercice:
         variante_facile=None,
         variante_difficile=None,
         orientation=None,
+        amplitude=None,
     ):
         """`detection` à None décrit un mouvement guidé sans analyse de pose
         (échauffement) : seuls les modes de `MODES_AVEC_DETECTION_OBLIGATOIRE`
-        l'exigent, et `construire_circuit` refuse les combinaisons invalides."""
+        l'exigent, et `construire_circuit` refuse les combinaisons invalides.
+
+        `amplitude` est un couple (fonction, clé de message) : la fonction rend
+        un jeton vrai quand le mouvement va assez loin, et le moteur vérifie
+        qu'elle l'a rendu **au moins une fois pendant la répétition** — chose
+        qu'une fonction d'`erreurs`, évaluée image par image, ne peut pas dire.
+        Une répétition qui ne l'atteint pas compte quand même ; la clé
+        s'affiche jusqu'à la suivante."""
         self.nom = nom
         self.detection = detection
         self.description = description
@@ -130,6 +138,7 @@ class Exercice:
         self.variante_facile = variante_facile
         self.variante_difficile = variante_difficile
         self.orientation = orientation
+        self.amplitude = amplitude
 
     def fiche(self):
         """Ce que l'exercice a à dire, sous une forme sérialisable.
@@ -710,6 +719,8 @@ class Circuit:
             "temps_amrap",
             "temps_echauffement",
             "dernier_tick_echauffement",
+            "amplitude_atteinte",
+            "avertissement_amplitude",
         ):
             if hasattr(bloc, nom):
                 delattr(bloc, nom)

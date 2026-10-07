@@ -189,6 +189,26 @@ export function mettre_a_jour_erreur(exercice, corps, etat, texte) {
 }
 
 /**
+ * Jumelle de `suivre_amplitude` : avertit d'une repetition comptee qui n'est
+ * pas allee assez loin. Le jeton est retenu tant que le compteur est arme,
+ * oublie a chaque nouvel armement, et l'avertissement reste affiche jusqu'a
+ * la repetition suivante — une faute de forme du moment passe devant lui.
+ */
+export function suivre_amplitude(exercice, corps, bloc, etat, stage_avant, stage, rep_comptee, texte) {
+  if (!exercice.amplitude) return;
+  const [atteinte, cle] = exercice.amplitude;
+  if (stage === "debut") {
+    if (stage_avant !== "debut") bloc.amplitude_atteinte = false;
+    if (atteinte(corps)) bloc.amplitude_atteinte = true;
+  }
+  if (rep_comptee) {
+    bloc.avertissement_amplitude = bloc.amplitude_atteinte === true ? null : cle;
+  }
+  const avertissement = bloc.avertissement_amplitude ?? null;
+  if (etat.erreur === null && avertissement) etat.erreur = texte(avertissement);
+}
+
+/**
  * Publie l'etape du mouvement, sous sa forme brute et sous sa forme lisible.
  *
  * Les deux, parce qu'elles ne servent pas au meme public : le jeton reste la
@@ -212,7 +232,12 @@ export function gerer_mode_repetitions({
   mettre_a_jour_erreur(exercice, corps, etat, messages.texte);
   const stage_detecte = exercice.detection(corps);
 
+  const stage_avant = compteur.stage;
+  const repetitions_avant = compteur.repetitions;
   const [stage, repetitions] = compteur.mettre_a_jour(stage_detecte, seance.maintenant());
+  suivre_amplitude(
+    exercice, corps, bloc, etat, stage_avant, stage, repetitions > repetitions_avant, messages.texte
+  );
 
   if (repetitions > derniere_rep) {
     coach("compteur", repetitions);

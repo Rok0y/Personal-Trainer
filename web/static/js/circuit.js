@@ -95,6 +95,7 @@ export class Exercice {
     variante_facile = null,
     variante_difficile = null,
     orientation = null,
+    amplitude = null,
   }) {
     this.nom = nom;
     this.detection = detection;
@@ -112,6 +113,9 @@ export class Exercice {
     // bien exportee dans `mouvements.json`. Un champ present dans les
     // donnees et absent du constructeur ne se signale nulle part.
     this.orientation = orientation;
+    // Couple [fonction, cle de message] : la profondeur a atteindre pendant
+    // une repetition. Voir `suivre_amplitude` dans `moteur.js`.
+    this.amplitude = amplitude;
   }
 
   fiche() {
@@ -141,6 +145,8 @@ const CHAMPS_TEMPORELS = [
   "temps_amrap",
   "temps_echauffement",
   "dernier_tick_echauffement",
+  "amplitude_atteinte",
+  "avertissement_amplitude",
 ];
 
 export class BlocExercice {

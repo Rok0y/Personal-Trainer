@@ -25,6 +25,7 @@
   "erreurs": [
    "coude_avance_curl_droit"
   ],
+  "amplitude": null,
   "materiel": "Un haltère",
   "est_echauffement": false
  },
@@ -54,6 +55,7 @@
   "erreurs": [
    "coude_avance_curl_gauche"
   ],
+  "amplitude": null,
   "materiel": "Un haltère",
   "est_echauffement": false
  },
@@ -80,6 +82,7 @@
   "analyse_la_pose": true,
   "detection": "elevation_laterale_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Deux haltères",
   "est_echauffement": false
  },
@@ -107,6 +110,10 @@
   "analyse_la_pose": true,
   "detection": "pompe_detection",
   "erreurs": [],
+  "amplitude": [
+   "pompe_profondeur",
+   "forme_pompe_pas_assez_profonde"
+  ],
   "materiel": "",
   "est_echauffement": false
  },
@@ -137,6 +144,7 @@
   "erreurs": [
    "extension_triceps_erreur_coudes"
   ],
+  "amplitude": null,
   "materiel": "Un haltère",
   "est_echauffement": false
  },
@@ -164,6 +172,7 @@
   "analyse_la_pose": true,
   "detection": "developpe_couche_sol_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Deux haltères et un tapis",
   "est_echauffement": false
  },
@@ -191,6 +200,7 @@
   "analyse_la_pose": true,
   "detection": "developpe_epaule_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Deux haltères",
   "est_echauffement": false
  },
@@ -217,6 +227,7 @@
   "analyse_la_pose": true,
   "detection": "crunches_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Un tapis",
   "est_echauffement": false
  },
@@ -244,6 +255,7 @@
   "analyse_la_pose": true,
   "detection": "detection_gainage",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Un tapis",
   "est_echauffement": false
  },
@@ -273,6 +285,7 @@
   "analyse_la_pose": true,
   "detection": "squat_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Deux haltères (facultatif) et un tapis",
   "est_echauffement": false
  },
@@ -304,6 +317,7 @@
   "erreurs": [
    "fente_droite_erreur_genou"
   ],
+  "amplitude": null,
   "materiel": "Deux haltères (facultatif) et un tapis",
   "est_echauffement": false
  },
@@ -335,6 +349,7 @@
   "erreurs": [
    "fente_gauche_erreur_genou"
   ],
+  "amplitude": null,
   "materiel": "Deux haltères (facultatif) et un tapis",
   "est_echauffement": false
  },
@@ -364,6 +379,7 @@
   "analyse_la_pose": true,
   "detection": "souleve_de_terre_roumain_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Deux haltères",
   "est_echauffement": false
  },
@@ -391,6 +407,7 @@
   "analyse_la_pose": true,
   "detection": "detection_gainage_laterale_droite",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Un tapis",
   "est_echauffement": false
  },
@@ -418,6 +435,7 @@
   "analyse_la_pose": true,
   "detection": "detection_gainage_laterale_gauche",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Un tapis",
   "est_echauffement": false
  },
@@ -449,6 +467,7 @@
   "erreurs": [
    "rowing_unilateral_droit_erreur_buste"
   ],
+  "amplitude": null,
   "materiel": "Un haltère et une chaise",
   "est_echauffement": false
  },
@@ -480,6 +499,7 @@
   "erreurs": [
    "rowing_unilateral_gauche_erreur_buste"
   ],
+  "amplitude": null,
   "materiel": "Un haltère et une chaise",
   "est_echauffement": false
  },
@@ -514,6 +534,7 @@
    "rowing_penche_erreur_buste",
    "rowing_penche_erreur_genoux"
   ],
+  "amplitude": null,
   "materiel": "Deux haltères",
   "est_echauffement": false
  },
@@ -545,6 +566,7 @@
   "erreurs": [
    "oiseau_erreur_coudes"
   ],
+  "amplitude": null,
   "materiel": "Deux haltères",
   "est_echauffement": false
  },
@@ -572,6 +594,10 @@
   "analyse_la_pose": true,
   "detection": "pompe_detection",
   "erreurs": [],
+  "amplitude": [
+   "pompe_profondeur",
+   "forme_pompe_pas_assez_profonde"
+  ],
   "materiel": "Une chaise",
   "est_echauffement": false
  },
@@ -598,6 +624,10 @@
   "analyse_la_pose": true,
   "detection": "pompe_detection",
   "erreurs": [],
+  "amplitude": [
+   "pompe_profondeur",
+   "forme_pompe_pas_assez_profonde"
+  ],
   "materiel": "Un tapis",
   "est_echauffement": false
  },
@@ -624,6 +654,7 @@
   "analyse_la_pose": true,
   "detection": "detection_gainage",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Un tapis",
   "est_echauffement": false
  },
@@ -651,6 +682,7 @@
   "analyse_la_pose": true,
   "detection": "squat_sur_chaise_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "Une chaise",
   "est_echauffement": false
  },
@@ -669,6 +701,7 @@
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -687,6 +720,7 @@
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -705,6 +739,7 @@
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -723,6 +758,7 @@
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -741,6 +777,7 @@
   "analyse_la_pose": true,
   "detection": "elevation_laterale_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -759,6 +796,7 @@
   "analyse_la_pose": true,
   "detection": "pompe_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -778,6 +816,7 @@
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -796,6 +835,7 @@
   "analyse_la_pose": true,
   "detection": "squat_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -814,6 +854,7 @@
   "analyse_la_pose": true,
   "detection": "squat_detection",
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -832,6 +873,7 @@
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -850,6 +892,7 @@
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -868,6 +911,7 @@
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -886,6 +930,7 @@
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -904,6 +949,7 @@
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -922,6 +968,7 @@
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  },
@@ -940,6 +987,7 @@
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
+  "amplitude": null,
   "materiel": "",
   "est_echauffement": true
  }
