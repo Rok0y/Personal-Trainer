@@ -1,20 +1,25 @@
 [
   {
     "nom": "Crunches",
-    "description": "Crunch au sol : décoller les épaules en contractant les abdominaux.",
+    "description": "Sur le dos, enrouler le haut du corps pour décoller les épaules du sol : ce sont les abdominaux qui travaillent.",
     "mise_en_place": [
-      "Allongé sur le dos, genoux pliés, pieds à plat sur le tapis.",
-      "Place-toi de façon à avoir la caméra sur le côté."
+      "Allonge-toi sur le dos sur un tapis, genoux pliés, pieds à plat.",
+      "Pose les mains sur le haut des cuisses.",
+      "Place la caméra sur le côté, à hauteur du sol, pour qu'elle te voie de profil."
     ],
     "instructions": [
-      "Garde le menton décollé du buste, sans tirer sur la nuque.",
-      "Redescends sans relâcher complètement les abdominaux.",
-      "Pose les mains sur le sol derrière la tête, puis pose-les sur tes genoux."
+      "Enroule le haut du dos pour décoller les épaules : tes mains glissent vers tes genoux.",
+      "Redescends doucement, sans reposer complètement la tête.",
+      "Souffle en montant, inspire en descendant."
     ],
     "erreurs_frequentes": [
-      "Tirer sur la nuque avec les mains : garde le menton décollé du buste.",
-      "Décoller tout le dos : seules les épaules et le haut du dos se lèvent.",
-      "Aller trop vite : c'est la contraction qui compte, pas la vitesse."
+      "Tirer sur la nuque : les mains restent sur les cuisses.",
+      "Se relever en entier : seuls les épaules et le haut du dos décollent.",
+      "Aller vite : c'est le ventre qui doit faire le travail, pas l'élan."
+    ],
+    "sensations": [
+      "Le ventre se contracte et chauffe.",
+      "Si c'est surtout le cou qui fatigue, regarde le plafond et garde les mains sur les cuisses."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -27,21 +32,25 @@
   },
   {
     "nom": "Curl biceps droit",
-    "description": "Curl biceps avec haltère du bras droit.",
+    "description": "Plier le bras droit pour monter un haltère vers l'épaule : c'est le devant du bras qui travaille.",
     "mise_en_place": [
-      "Debout, un haltère dans la main droite, bras le long du corps.",
-      "Place-toi face à la caméra.",
-      "Il faut que ta tête et tes hanches soient visibles à l'écran."
+      "Debout, un haltère dans la main droite, bras tendu le long du corps.",
+      "Paume de la main tournée vers l'avant.",
+      "Place-toi face à la caméra : on doit voir ta tête, tes bras et tes hanches."
     ],
     "instructions": [
-      "Garde le coude proche du corps.",
-      "Contrôle la descente.",
-      "Ne balance pas le mouvement."
+      "Plie le coude pour monter l'haltère jusqu'à l'épaule.",
+      "Redescends doucement jusqu'à ce que le bras soit bien tendu.",
+      "Le coude reste collé contre ton flanc, il ne bouge pas."
     ],
     "erreurs_frequentes": [
-      "Balancer le buste pour lancer l'haltère : le dos doit rester immobile.",
-      "Le coude qui part en avant : le mouvement devient une élévation.",
-      "Laisser tomber l'haltère à la descente au lieu de la freiner."
+      "Balancer le buste pour lancer l'haltère : le dos reste immobile.",
+      "Le coude qui part vers l'avant : garde-le contre toi.",
+      "Laisser tomber l'haltère : freine-le en redescendant."
+    ],
+    "sensations": [
+      "Le devant du bras (le biceps) chauffe, de plus en plus vers la fin de la série.",
+      "Une douleur au coude ou au poignet n'est pas normale : prends plus léger."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -56,21 +65,25 @@
   },
   {
     "nom": "Curl biceps gauche",
-    "description": "Curl biceps avec haltère du bras gauche.",
+    "description": "Plier le bras gauche pour monter un haltère vers l'épaule : c'est le devant du bras qui travaille.",
     "mise_en_place": [
-      "Debout, un haltère dans la main gauche, bras le long du corps.",
-      "Place-toi face à la caméra.",
-      "Il faut que ta tête et tes hanches soient visibles à l'écran."
+      "Debout, un haltère dans la main gauche, bras tendu le long du corps.",
+      "Paume de la main tournée vers l'avant.",
+      "Place-toi face à la caméra : on doit voir ta tête, tes bras et tes hanches."
     ],
     "instructions": [
-      "Garde le coude proche du corps.",
-      "Contrôle la descente.",
-      "Ne balance pas le mouvement."
+      "Plie le coude pour monter l'haltère jusqu'à l'épaule.",
+      "Redescends doucement jusqu'à ce que le bras soit bien tendu.",
+      "Le coude reste collé contre ton flanc, il ne bouge pas."
     ],
     "erreurs_frequentes": [
-      "Balancer le buste pour lancer l'haltère : le dos doit rester immobile.",
-      "Le coude qui part en avant : le mouvement devient une élévation.",
-      "Laisser tomber l'haltère à la descente au lieu de la freiner."
+      "Balancer le buste pour lancer l'haltère : le dos reste immobile.",
+      "Le coude qui part vers l'avant : garde-le contre toi.",
+      "Laisser tomber l'haltère : freine-le en redescendant."
+    ],
+    "sensations": [
+      "Le devant du bras (le biceps) chauffe, de plus en plus vers la fin de la série.",
+      "Une douleur au coude ou au poignet n'est pas normale : prends plus léger."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -85,21 +98,25 @@
   },
   {
     "nom": "Developpé couché altères",
-    "description": "Développé couché au sol, un haltère dans chaque main, poussée verticale.",
+    "description": "Sur le dos, au sol, pousser deux haltères vers le plafond : la poitrine, les épaules et l'arrière des bras travaillent.",
     "mise_en_place": [
-      "Allongé sur le dos sur un tapis, jambes tendues ou genoux pliés, au choix.",
+      "Allonge-toi sur le dos sur un tapis, genoux pliés et pieds à plat.",
       "Un haltère dans chaque main, bras tendus au-dessus de la poitrine.",
-      "Place la caméra sur le côté, à hauteur de ton corps, et non vers tes pieds."
+      "Place la caméra sur le côté, à hauteur du sol, pour qu'elle voie ton corps de profil."
     ],
     "instructions": [
-      "Garde la tête posée au sol, regard vers le plafond.",
-      "Garde les bras dans l'axe de la poitrine.",
-      "Descends les coudes jusqu'au niveau du buste, pas plus bas."
+      "Plie les coudes pour descendre les haltères vers la poitrine.",
+      "Arrête-toi quand les coudes touchent le sol.",
+      "Pousse vers le plafond jusqu'à ce que les bras soient tendus."
     ],
     "erreurs_frequentes": [
-      "Descendre les coudes trop bas : ça met l'épaule en tension inutile.",
-      "Écarter complètement les coudes au lieu de les garder à 45°.",
-      "Cambrer le bas du dos pour pousser plus lourd."
+      "Les coudes écartés en croix : garde-les en diagonale, un peu le long du corps.",
+      "Creuser le bas du dos pour pousser : garde le dos posé sur le tapis.",
+      "Laisser retomber les haltères : descends-les doucement."
+    ],
+    "sensations": [
+      "La poitrine et l'arrière des bras travaillent.",
+      "Si l'avant de l'épaule fait mal, descends moins bas."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -112,21 +129,25 @@
   },
   {
     "nom": "Développé épaule",
-    "description": "Développé épaule debout : pousser les haltères au-dessus de la tête.",
+    "description": "Debout, pousser deux haltères au-dessus de la tête : ce sont les épaules qui travaillent.",
     "mise_en_place": [
-      "Debout, un haltère dans chaque main à hauteur des épaules, paumes vers l'avant.",
-      "Gaine le ventre pour éviter de cambrer.",
-      "Place-toi face à la caméra, bras entièrement visibles au-dessus de la tête."
+      "Debout, un haltère dans chaque main, posés à hauteur des épaules.",
+      "Paumes tournées vers l'avant, coudes vers le bas.",
+      "Place-toi face à la caméra : on doit voir tes bras en entier, même tendus au-dessus de ta tête."
     ],
     "instructions": [
-      "Garde la tête droite, sans avancer le menton.",
-      "Pousse les haltères à la verticale jusqu'à tendre les bras.",
-      "Redescends jusqu'à hauteur des oreilles."
+      "Pousse les haltères vers le haut jusqu'à tendre les bras.",
+      "Redescends-les jusqu'aux épaules, coudes bien pliés.",
+      "Serre le ventre pour ne pas creuser le dos."
     ],
     "erreurs_frequentes": [
-      "Cambrer le bas du dos quand la charge devient lourde.",
-      "Ne pas tendre complètement les bras en haut du mouvement.",
-      "Descendre les coudes trop bas sous la ligne des épaules."
+      "Creuser le bas du dos quand ça devient dur : serre le ventre et les fesses.",
+      "S'arrêter avant d'avoir les bras tendus en haut.",
+      "Avancer le menton : la tête reste droite."
+    ],
+    "sensations": [
+      "Le dessus des épaules et l'arrière des bras chauffent.",
+      "Une douleur dans le bas du dos veut dire que tu te cambres : prends plus léger."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -139,20 +160,24 @@
   },
   {
     "nom": "Elevations latérales",
-    "description": "Élévations latérales à deux haltères : monter les bras sur les côtés jusqu'à hauteur des épaules.",
+    "description": "Lever les deux bras sur les côtés, haltères en main, jusqu'à la hauteur des épaules : ce sont les épaules qui travaillent.",
     "mise_en_place": [
       "Debout, un haltère dans chaque main, bras le long du corps.",
-      "Place-toi face à la caméra, les deux bras entièrement visibles."
+      "Place-toi face à la caméra : on doit voir tes deux bras en entier."
     ],
     "instructions": [
-      "Monte les bras sur les côtés, pas devant toi, jusqu'à hauteur des épaules.",
-      "Garde les bras presque tendus.",
-      "Contrôle la descente jusqu'en bas, mains le long des cuisses."
+      "Monte les bras sur les côtés, pas devant toi, jusqu'à la hauteur des épaules.",
+      "Garde les bras presque tendus, juste un peu pliés aux coudes.",
+      "Redescends doucement, jusqu'à ce que les mains touchent presque les cuisses."
     ],
     "erreurs_frequentes": [
-      "Monter plus haut que les épaules : inutile, et ça sollicite le cou.",
-      "Hausser les épaules vers les oreilles pendant la montée.",
-      "Prendre trop lourd et s'aider d'une impulsion des jambes."
+      "Monter les bras plus haut que les épaules : ça ne sert à rien et ça fatigue le cou.",
+      "Remonter les épaules vers les oreilles : garde-les basses.",
+      "Prendre trop lourd et donner un coup de jambes pour lancer les bras."
+    ],
+    "sensations": [
+      "Le haut et le côté des épaules brûlent : c'est normal, et ça vient vite.",
+      "Si tu le sens surtout dans le cou, baisse les épaules et prends plus léger."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -165,22 +190,26 @@
   },
   {
     "nom": "Extension Triceps",
-    "description": "Extension triceps à un haltère tenu à deux mains, derrière la tête.",
+    "description": "Un haltère tenu à deux mains au-dessus de la tête, qu'on descend derrière la nuque puis qu'on remonte : c'est l'arrière des bras qui travaille.",
     "mise_en_place": [
-      "Debout ou assis, un haltère tenu à deux mains au-dessus de la tête.",
-      "Coudes serrés vers l'avant, proches des oreilles.",
-      "Place-toi face à la caméra, tête et bras entièrement visibles."
+      "Debout, ou sur une chaise, un haltère tenu à deux mains au-dessus de la tête.",
+      "Les coudes pointent vers le haut, près des oreilles.",
+      "Place-toi face à la caméra : on doit voir ta tête et tes bras en entier."
     ],
     "instructions": [
-      "Garde les coudes en l'air, au-dessus des épaules, tout le mouvement.",
-      "Garde les mains jointes sur l'haltère.",
-      "Garde les coudes serrés près de la tête, ils ne s'écartent pas.",
-      "Descends l'haltère derrière la nuque sans à-coup."
+      "Plie les coudes pour descendre l'haltère derrière la nuque.",
+      "Remonte en tendant les bras.",
+      "Les coudes restent en l'air et près de la tête pendant tout le mouvement.",
+      "Tes deux mains restent sur l'haltère."
     ],
     "erreurs_frequentes": [
-      "Les coudes qui s'écartent vers l'extérieur pendant la descente.",
-      "Cambrer le dos pour compenser une charge trop lourde.",
-      "Descendre l'haltère derrière la nuque sans contrôle."
+      "Les coudes qui s'écartent sur les côtés pendant la descente.",
+      "Creuser le bas du dos pour aider : prends plus léger.",
+      "Descendre trop vite : l'haltère passe près de ta tête, reste maître du geste."
+    ],
+    "sensations": [
+      "L'arrière des bras (le triceps) chauffe.",
+      "Une gêne dans l'épaule ou au coude veut dire : plus léger, ou moins bas."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -195,23 +224,25 @@
   },
   {
     "nom": "Fente droite",
-    "description": "Fente avec la jambe droite vers l'avant, jusqu'à ce que le genou droit soit fléchi à environ 90 degrés.",
+    "description": "Un grand pas en avant avec la jambe droite, puis descendre le genou arrière vers le sol : les cuisses et les fesses travaillent.",
     "mise_en_place": [
-      "Debout, jambe droite avancée d'un grand pas.",
-      "Un haltère dans chaque main si tu veux charger ; sinon mains sur les hanches.",
-      "Buste droit, regard devant.",
-      "Place-toi de profil, la caméra à ta gauche, jambes entières visibles."
+      "Debout, fais un grand pas en avant avec la jambe droite.",
+      "Mains sur les hanches, ou un haltère dans chaque main si tu veux plus dur.",
+      "Place-toi de profil, la caméra à ta gauche : on doit voir tes jambes en entier."
     ],
     "instructions": [
-      "Garde le buste droit.",
-      "Descends le genou arrière vers le sol sans le toucher.",
-      "Le genou avant ne doit pas dépasser la pointe du pied.",
-      "Remonte en poussant sur le talon avant."
+      "Plie les deux genoux pour descendre le genou arrière vers le sol, sans le poser.",
+      "En bas, le genou avant est plié à angle droit.",
+      "Remonte en poussant sur le pied avant."
     ],
     "erreurs_frequentes": [
-      "Le genou avant qui dépasse largement la pointe du pied.",
-      "Le buste qui bascule en avant.",
-      "Un pas trop court, qui écrase le genou arrière."
+      "Le genou avant qui part loin devant le pied : fais un plus grand pas.",
+      "Le buste qui penche en avant : reste droit, regard devant.",
+      "Perdre l'équilibre : écarte un peu plus les pieds, comme sur des rails."
+    ],
+    "sensations": [
+      "Le devant de la cuisse droite et la fesse droite travaillent.",
+      "Une douleur dans le genou avant veut dire : pas plus grand, ou descends moins."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -226,23 +257,25 @@
   },
   {
     "nom": "Fente gauche",
-    "description": "Fente avec la jambe gauche vers l'avant, jusqu'à ce que le genou gauche soit fléchi à environ 90 degrés.",
+    "description": "Un grand pas en avant avec la jambe gauche, puis descendre le genou arrière vers le sol : les cuisses et les fesses travaillent.",
     "mise_en_place": [
-      "Debout, jambe gauche avancée d'un grand pas.",
-      "Un haltère dans chaque main si tu veux charger ; sinon mains sur les hanches.",
-      "Buste droit, regard devant.",
-      "Place-toi de profil, la caméra à ta droite, jambes entières visibles."
+      "Debout, fais un grand pas en avant avec la jambe gauche.",
+      "Mains sur les hanches, ou un haltère dans chaque main si tu veux plus dur.",
+      "Place-toi de profil, la caméra à ta droite : on doit voir tes jambes en entier."
     ],
     "instructions": [
-      "Garde le buste droit.",
-      "Descends le genou arrière vers le sol sans le toucher.",
-      "Le genou avant ne doit pas dépasser la pointe du pied.",
-      "Remonte en poussant sur le talon avant."
+      "Plie les deux genoux pour descendre le genou arrière vers le sol, sans le poser.",
+      "En bas, le genou avant est plié à angle droit.",
+      "Remonte en poussant sur le pied avant."
     ],
     "erreurs_frequentes": [
-      "Le genou avant qui dépasse largement la pointe du pied.",
-      "Le buste qui bascule en avant.",
-      "Un pas trop court, qui écrase le genou arrière."
+      "Le genou avant qui part loin devant le pied : fais un plus grand pas.",
+      "Le buste qui penche en avant : reste droit, regard devant.",
+      "Perdre l'équilibre : écarte un peu plus les pieds, comme sur des rails."
+    ],
+    "sensations": [
+      "Le devant de la cuisse gauche et la fesse gauche travaillent.",
+      "Une douleur dans le genou avant veut dire : pas plus grand, ou descends moins."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -257,21 +290,25 @@
   },
   {
     "nom": "Gainage planche",
-    "description": "Maintenir une position de planche avec le corps aligné.",
+    "description": "Tenir le corps droit comme une planche, en appui sur les avant-bras et la pointe des pieds : le ventre et le dos travaillent.",
     "mise_en_place": [
-      "Avant-bras au sol, coudes à l'aplomb des épaules, pieds sur la pointe.",
-      "Corps aligné des talons aux épaules, regard vers le sol.",
-      "Place-toi de profil face à la caméra, corps entier dans le champ."
+      "Avant-bras posés au sol, coudes sous les épaules.",
+      "Tends les jambes et pose-toi sur la pointe des pieds.",
+      "Place-toi de profil : ton côté tourné vers la caméra, et ton corps entier dans l'image."
     ],
     "instructions": [
-      "Garde le dos droit.",
-      "Contracte les abdominaux.",
-      "Ne laisse pas tomber les hanches."
+      "Ton corps forme une ligne droite, des talons à la tête.",
+      "Serre le ventre et les fesses.",
+      "Respire calmement pendant tout le temps."
     ],
     "erreurs_frequentes": [
-      "Les hanches qui s'affaissent : le bas du dos encaisse tout.",
-      "Les fesses trop hautes : la position devient facile et ne travaille plus.",
-      "Bloquer sa respiration : respire calmement pendant tout le maintien."
+      "Les fesses qui tombent : c'est le bas du dos qui prend tout.",
+      "Les fesses trop hautes : c'est plus facile, mais ça ne travaille plus.",
+      "Bloquer sa respiration : continue de respirer."
+    ],
+    "sensations": [
+      "Le ventre tremble un peu : c'est normal, c'est lui qui travaille.",
+      "Une douleur dans le bas du dos veut dire que les fesses tombent : remonte-les un peu, ou pose les genoux."
     ],
     "variante_facile": "Gainage sur les genoux",
     "variante_difficile": null,
@@ -284,21 +321,25 @@
   },
   {
     "nom": "Gainage planche laterale droite",
-    "description": "Maintenir une position de planche latérale sur le côté droit, corps aligné.",
+    "description": "Tenir le corps droit sur le côté droit, en appui sur l'avant-bras et les pieds : le côté du ventre travaille.",
     "mise_en_place": [
-      "Allongé sur le côté droit, avant-bras droit au sol, coude sous l'épaule.",
-      "Jambes tendues, pieds superposés, hanches décollées du sol.",
-      "Place-toi face à la caméra, corps entier dans le champ."
+      "Allonge-toi sur le côté droit, avant-bras droit au sol, coude sous l'épaule.",
+      "Jambes tendues, pieds posés l'un sur l'autre.",
+      "Place-toi face à la caméra : on doit voir ton corps entier, de la tête aux pieds."
     ],
     "instructions": [
-      "Garde le corps aligné de la tête aux pieds.",
-      "Contracte les abdominaux et les obliques.",
-      "Ne laisse pas tomber les hanches."
+      "Pousse dans le sol avec l'avant-bras et décolle les hanches.",
+      "Ton corps forme une ligne droite, de la tête aux pieds.",
+      "Respire calmement pendant tout le temps."
     ],
     "erreurs_frequentes": [
       "Les hanches qui redescendent vers le sol au fil des secondes.",
-      "Le buste qui pivote vers l'avant ou vers l'arrière.",
-      "Poser l'épaule sur le coude au lieu de pousser dans le sol."
+      "Le buste qui bascule vers l'avant ou vers l'arrière.",
+      "S'écraser sur l'épaule : pousse le sol pour te grandir."
+    ],
+    "sensations": [
+      "Le côté droit du ventre travaille, et l'épaule qui te porte aussi.",
+      "Si c'est trop dur, pose le genou du dessous au sol."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -311,21 +352,25 @@
   },
   {
     "nom": "Gainage planche laterale gauche",
-    "description": "Maintenir une position de planche latérale sur le côté gauche, corps aligné.",
+    "description": "Tenir le corps droit sur le côté gauche, en appui sur l'avant-bras et les pieds : le côté du ventre travaille.",
     "mise_en_place": [
-      "Allongé sur le côté gauche, avant-bras gauche au sol, coude sous l'épaule.",
-      "Jambes tendues, pieds superposés, hanches décollées du sol.",
-      "Place-toi face à la caméra, corps entier dans le champ."
+      "Allonge-toi sur le côté gauche, avant-bras gauche au sol, coude sous l'épaule.",
+      "Jambes tendues, pieds posés l'un sur l'autre.",
+      "Place-toi face à la caméra : on doit voir ton corps entier, de la tête aux pieds."
     ],
     "instructions": [
-      "Garde le corps aligné de la tête aux pieds.",
-      "Contracte les abdominaux et les obliques.",
-      "Ne laisse pas tomber les hanches."
+      "Pousse dans le sol avec l'avant-bras et décolle les hanches.",
+      "Ton corps forme une ligne droite, de la tête aux pieds.",
+      "Respire calmement pendant tout le temps."
     ],
     "erreurs_frequentes": [
       "Les hanches qui redescendent vers le sol au fil des secondes.",
-      "Le buste qui pivote vers l'avant ou vers l'arrière.",
-      "Poser l'épaule sur le coude au lieu de pousser dans le sol."
+      "Le buste qui bascule vers l'avant ou vers l'arrière.",
+      "S'écraser sur l'épaule : pousse le sol pour te grandir."
+    ],
+    "sensations": [
+      "Le côté gauche du ventre travaille, et l'épaule qui te porte aussi.",
+      "Si c'est trop dur, pose le genou du dessous au sol."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -338,20 +383,24 @@
   },
   {
     "nom": "Gainage sur les genoux",
-    "description": "Planche sur les avant-bras avec les genoux posés au sol.",
+    "description": "La planche en appui sur les avant-bras et les genoux : la version douce du gainage.",
     "mise_en_place": [
-      "Pose les avant-bras au sol, coudes sous les épaules.",
-      "Pose les genoux au sol, hanches alignées avec les épaules.",
-      "Place-toi de profil face à la caméra."
+      "Avant-bras posés au sol, coudes sous les épaules.",
+      "Genoux au sol, recule-les jusqu'à ce que tes hanches soient alignées avec tes épaules.",
+      "Place-toi de profil : ton côté tourné vers la caméra, et ton corps entier dans l'image."
     ],
     "instructions": [
-      "Serre les abdominaux et les fessiers.",
-      "Garde une ligne droite des épaules aux genoux.",
-      "Respire normalement, ne bloque pas."
+      "Serre le ventre et les fesses.",
+      "Ton corps forme une ligne droite, des épaules aux genoux.",
+      "Respire calmement, ne bloque pas."
     ],
     "erreurs_frequentes": [
-      "Les hanches trop hautes : le gainage ne travaille plus.",
-      "Le bas du dos creusé : rentre légèrement le bassin."
+      "Les fesses trop hautes : ça devient facile et ça ne travaille plus.",
+      "Le bas du dos creusé : rentre un peu le ventre."
+    ],
+    "sensations": [
+      "Le ventre travaille, il peut trembler un peu.",
+      "Quand tu tiens tout le temps demandé sans peine, passe à la planche complète."
     ],
     "variante_facile": null,
     "variante_difficile": "Gainage planche",
@@ -364,23 +413,25 @@
   },
   {
     "nom": "Oiseau",
-    "description": "Oiseau debout à deux haltères : écarter les bras sur les côtés, coudes légèrement fléchis.",
+    "description": "Buste en avant, ouvrir les bras sur les côtés avec des haltères légers, comme des ailes : l'arrière des épaules et le haut du dos travaillent.",
     "mise_en_place": [
-      "Debout, buste penché vers l'avant, un haltère dans chaque main.",
-      "Coudes légèrement fléchis, bras pendants sous les épaules.",
-      "Place-toi face à la caméra, les deux bras entièrement visibles."
+      "Debout, penche le buste en avant, un haltère léger dans chaque main.",
+      "Les bras pendent sous les épaules, coudes un peu pliés.",
+      "Place-toi face à la caméra : on doit voir tes deux bras en entier."
     ],
     "instructions": [
-      "Penche légèrement le buste en avant.",
-      "Garde les coudes légèrement fléchis.",
-      "Écarte les bras sur les côtés jusqu'à hauteur des épaules.",
-      "Contracte les omoplates en haut du mouvement.",
-      "Contrôle la descente."
+      "Ouvre les bras sur les côtés jusqu'à la hauteur des épaules.",
+      "Garde les coudes un peu pliés, toujours de la même façon.",
+      "En haut, rapproche les épaules vers l'arrière, puis redescends doucement."
     ],
     "erreurs_frequentes": [
-      "Prendre trop lourd : le mouvement devient un tirage, pas un écarté.",
-      "Tendre complètement les bras, ou au contraire plier les coudes à angle droit.",
-      "Se redresser pour aider la montée."
+      "Prendre trop lourd : le mouvement devient un tirage, pas une ouverture.",
+      "Tendre complètement les bras, ou au contraire les plier à angle droit.",
+      "Se redresser pour aider les bras à monter."
+    ],
+    "sensations": [
+      "L'arrière des épaules et le haut du dos travaillent : ça vient vite, même léger.",
+      "Si c'est surtout le cou qui force, prends plus léger."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -395,21 +446,25 @@
   },
   {
     "nom": "Pompes",
-    "description": "Pompes au sol, mains sous les épaules, corps aligné des talons à la tête.",
+    "description": "La pompe classique au sol : pousser le sol pour monter et descendre le corps. Ce sont la poitrine, l'arrière des bras et les épaules qui travaillent.",
     "mise_en_place": [
-      "Mains au sol un peu plus larges que les épaules, bras tendus.",
-      "Corps aligné des talons aux épaules, regard vers le sol.",
-      "Place-toi de profil face à la caméra, corps entier dans le champ."
+      "Mains au sol, un peu plus écartées que les épaules, bras tendus.",
+      "Pose-toi sur la pointe des pieds : ton corps fait une ligne droite, des talons à la tête.",
+      "Place-toi de profil : ton côté tourné vers la caméra, et ton corps entier dans l'image."
     ],
     "instructions": [
-      "Garde la tête dans le prolongement du dos, regard vers le sol.",
-      "N'écarte pas trop les coudes.",
-      "Garde les jambes et le dos alignés."
+      "Plie les coudes pour descendre la poitrine près du sol.",
+      "Pousse dans le sol pour remonter, jusqu'à ce que les bras soient tendus.",
+      "Regarde le sol, un peu devant tes mains."
     ],
     "erreurs_frequentes": [
-      "Les hanches qui tombent ou qui remontent : garde une ligne droite.",
-      "Les coudes complètement écartés à 90° : garde-les à environ 45°.",
+      "Les fesses qui tombent ou qui montent : ton corps reste droit comme une planche.",
+      "Les coudes écartés en croix : garde-les plutôt le long du corps, en diagonale.",
       "Ne descendre qu'à moitié : la poitrine doit approcher du sol."
+    ],
+    "sensations": [
+      "La poitrine et l'arrière des bras travaillent, le ventre aussi pour te tenir droit.",
+      "Si tu ne peux pas en faire une seule, passe aux pompes sur les genoux."
     ],
     "variante_facile": "Pompes sur les genoux",
     "variante_difficile": null,
@@ -425,21 +480,26 @@
   },
   {
     "nom": "Pompes contre le mur",
-    "description": "Pompes debout, les mains contre un mur : le même mouvement que la pompe, avec beaucoup moins de poids à pousser.",
+    "description": "Pompes debout, les mains contre un mur : le même mouvement que la pompe, avec beaucoup moins de poids à pousser. C'est la première marche vers les pompes.",
     "mise_en_place": [
       "Mets-toi face à un mur, à environ un bras de distance.",
-      "Pose les mains à plat sur le mur, à hauteur de poitrine, un peu plus écartées que les épaules.",
+      "Pose les mains à plat sur le mur, à hauteur de poitrine.",
+      "Écarte les mains un peu plus que les épaules.",
       "Place la caméra sur le côté, pour qu'elle te voie de profil, des pieds à la tête."
     ],
     "instructions": [
       "Plie les coudes pour approcher la poitrine du mur.",
-      "Garde le corps bien droit, des talons à la tête.",
-      "Pousse sur les mains pour revenir, bras tendus."
+      "Pousse sur les mains pour revenir, bras tendus.",
+      "Ton corps reste droit, des talons à la tête."
     ],
     "erreurs_frequentes": [
       "Les mains trop hautes : garde-les à hauteur de poitrine.",
-      "Les fesses qui partent en arrière : le corps reste droit comme une planche.",
-      "Si c'est trop facile, recule les pieds d'un pas."
+      "Les fesses qui partent en arrière : ton corps reste droit comme une planche.",
+      "Rester trop près du mur : recule les pieds d'un pas si c'est trop facile."
+    ],
+    "sensations": [
+      "La poitrine et l'arrière des bras travaillent, doucement.",
+      "Si c'est très facile, recule les pieds : plus tu es loin du mur, plus c'est dur."
     ],
     "variante_facile": null,
     "variante_difficile": "Pompes inclinées",
@@ -455,21 +515,25 @@
   },
   {
     "nom": "Pompes inclinées",
-    "description": "Pompes mains posées sur une chaise ou un plan de travail : plus le support est haut, plus le mouvement est facile.",
+    "description": "Pompes les mains posées sur une chaise ou un plan de travail : plus le support est haut, plus c'est facile.",
     "mise_en_place": [
-      "Pose les mains à plat sur l'assise d'une chaise stable, écartées de la largeur des épaules.",
-      "Recule les pieds jusqu'à former une ligne droite des talons aux épaules.",
-      "Place-toi de profil face à la caméra, corps entier visible."
+      "Pose les mains à plat sur l'assise d'une chaise stable, calée contre un mur.",
+      "Recule les pieds jusqu'à ce que ton corps fasse une ligne droite, des talons aux épaules.",
+      "Place-toi de profil : ton côté tourné vers la caméra, et ton corps entier dans l'image."
     ],
     "instructions": [
-      "Descends la poitrine vers la chaise en pliant les coudes.",
-      "Garde le corps aligné, sans creuser le bas du dos.",
-      "Remonte en poussant sur les mains, sans bloquer les coudes."
+      "Plie les coudes pour descendre la poitrine vers la chaise.",
+      "Pousse sur les mains pour remonter, bras tendus.",
+      "Ton corps reste droit pendant tout le mouvement."
     ],
     "erreurs_frequentes": [
-      "Les hanches qui tombent : contracte les fessiers et les abdominaux.",
-      "Les coudes qui partent à 90° du buste : garde-les à environ 45°.",
-      "Descendre trop peu : la poitrine doit approcher du support."
+      "Les fesses qui tombent : serre le ventre et les fesses.",
+      "Les coudes écartés en croix : garde-les en diagonale, un peu le long du corps.",
+      "Descendre trop peu : la poitrine doit approcher de la chaise."
+    ],
+    "sensations": [
+      "La poitrine et l'arrière des bras travaillent.",
+      "Trop dur ? Mets les mains plus haut, sur un plan de travail ou contre un mur."
     ],
     "variante_facile": "Pompes contre le mur",
     "variante_difficile": "Pompes sur les genoux",
@@ -485,20 +549,25 @@
   },
   {
     "nom": "Pompes sur les genoux",
-    "description": "Pompes au sol avec les genoux posés : la moitié du corps à soulever en moins.",
+    "description": "Pompes au sol avec les genoux posés : une bonne partie du poids en moins, mais le même mouvement.",
     "mise_en_place": [
-      "Pose les genoux sur un tapis, mains au sol un peu plus larges que les épaules.",
-      "Aligne les épaules, les hanches et les genoux ; les pieds restent en l'air.",
-      "Place-toi de profil face à la caméra."
+      "Pose les genoux sur un tapis, mains au sol un peu plus écartées que les épaules.",
+      "Avance les mains jusqu'à ce que les épaules, les hanches et les genoux soient alignés.",
+      "Place-toi de profil : ton côté tourné vers la caméra, et ton corps entier dans l'image."
     ],
     "instructions": [
-      "Descends la poitrine vers le sol en pliant les coudes.",
-      "Garde la tête dans le prolongement du dos.",
-      "Remonte sans creuser le bas du dos."
+      "Plie les coudes pour descendre la poitrine vers le sol.",
+      "Pousse dans le sol pour remonter, bras tendus.",
+      "Regarde le sol, un peu devant tes mains."
     ],
     "erreurs_frequentes": [
-      "S'asseoir sur les talons : les hanches doivent rester dans l'axe.",
-      "Descendre la tête avant la poitrine."
+      "Les fesses qui reculent vers les talons : avance les hanches.",
+      "Baisser la tête au lieu de descendre la poitrine.",
+      "Creuser le bas du dos : serre le ventre."
+    ],
+    "sensations": [
+      "La poitrine et l'arrière des bras travaillent.",
+      "Si tu ne peux pas en faire, passe aux pompes sur une chaise."
     ],
     "variante_facile": "Pompes inclinées",
     "variante_difficile": "Pompes",
@@ -514,25 +583,25 @@
   },
   {
     "nom": "Rowing penche",
-    "description": "Rowing penché à deux haltères en prise neutre : tirer les coudes le plus haut possible.",
+    "description": "Buste en avant, tirer deux haltères vers les hanches : tout le dos travaille.",
     "mise_en_place": [
-      "Debout, un haltère dans chaque main, buste penché vers l'avant.",
-      "Genoux presque tendus, dos plat, regard vers le sol devant toi.",
-      "Place-toi de profil, la caméra à ta gauche, corps entier visible."
+      "Debout, un haltère dans chaque main, paumes tournées l'une vers l'autre.",
+      "Genoux un peu pliés, penche le buste en avant, dos plat, regard vers le sol.",
+      "Place-toi de profil, la caméra à ta gauche : on doit voir ton corps entier."
     ],
     "instructions": [
-      "Penche le buste en avant, dos droit.",
-      "Garde les jambes presque tendues, avec une légère flexion des genoux.",
-      "Saisis les haltères en prise neutre.",
-      "Tire les coudes le plus haut possible, le long du corps.",
-      "Monte le poignet au-dessus de la hanche.",
-      "Contracte les omoplates en haut du mouvement.",
-      "Contrôle la descente."
+      "Tire les deux coudes vers le haut, le long du corps.",
+      "Monte jusqu'à ce que les mains passent au-dessus des hanches.",
+      "En haut, rapproche les épaules vers l'arrière, puis redescends doucement."
     ],
     "erreurs_frequentes": [
-      "Se redresser au fil des répétitions : le buste doit rester penché.",
+      "Se redresser au fil des répétitions : le buste reste penché.",
       "Arrondir le dos, surtout en fin de série.",
-      "Plier les genoux pour compenser un manque de souplesse."
+      "Plier beaucoup les genoux : ils restent juste un peu pliés."
+    ],
+    "sensations": [
+      "Le milieu et le haut du dos travaillent, l'arrière des cuisses tient la position.",
+      "Une douleur dans le bas du dos veut dire : prends plus léger et garde le dos plat."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -548,23 +617,25 @@
   },
   {
     "nom": "Rowing unilateral droit",
-    "description": "Rowing unilatéral bras droit : tirer l'haltère vers la hanche en contractant le dos.",
+    "description": "Buste en avant, une main sur une chaise, tirer un haltère vers la hanche avec le bras droit : le dos et l'arrière de l'épaule travaillent.",
     "mise_en_place": [
-      "Main gauche en appui sur une chaise, dos à plat.",
+      "Pose la main gauche sur l'assise d'une chaise, et penche le buste en avant, dos plat.",
       "Haltère dans la main droite, bras tendu vers le sol.",
-      "Place-toi de profil, la caméra à ta droite, buste et bras visibles."
+      "Place-toi de profil, la caméra à ta droite : on doit voir ton buste et ton bras droit."
     ],
     "instructions": [
-      "Garde le dos droit, buste penché en avant.",
-      "Tire le coude vers l'arrière, proche du corps.",
-      "Monte le poignet au-dessus de la hanche.",
-      "Contracte l'omoplate en haut du mouvement.",
-      "Contrôle la descente."
+      "Tire l'haltère vers ta hanche en pliant le coude.",
+      "Monte jusqu'à ce que la main passe au-dessus de la hanche.",
+      "En haut, serre l'épaule vers l'arrière, puis redescends doucement."
     ],
     "erreurs_frequentes": [
-      "Ne pas assez pencher le buste : il doit être proche de l'horizontale.",
-      "Tirer avec le bras seul au lieu d'amener l'omoplate vers la colonne.",
+      "Se redresser : le buste reste penché, presque à l'horizontale.",
+      "Tirer seulement avec le bras : pense à ramener le coude loin derrière toi.",
       "Tourner le buste pour monter plus haut."
+    ],
+    "sensations": [
+      "Le milieu du dos, du côté droit, et l'arrière du bras travaillent.",
+      "Une douleur dans le bas du dos veut dire : appuie-toi plus sur la chaise, dos plat."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -579,23 +650,25 @@
   },
   {
     "nom": "Rowing unilateral gauche",
-    "description": "Rowing unilatéral bras gauche : tirer l'haltère vers la hanche en contractant le dos.",
+    "description": "Buste en avant, une main sur une chaise, tirer un haltère vers la hanche avec le bras gauche : le dos et l'arrière de l'épaule travaillent.",
     "mise_en_place": [
-      "Main droite en appui sur une chaise, dos à plat.",
+      "Pose la main droite sur l'assise d'une chaise, et penche le buste en avant, dos plat.",
       "Haltère dans la main gauche, bras tendu vers le sol.",
-      "Place-toi de profil, la caméra à ta gauche, buste et bras visibles."
+      "Place-toi de profil, la caméra à ta gauche : on doit voir ton buste et ton bras gauche."
     ],
     "instructions": [
-      "Garde le dos droit, buste penché en avant.",
-      "Tire le coude vers l'arrière, proche du corps.",
-      "Monte le poignet au-dessus de la hanche.",
-      "Contracte l'omoplate en haut du mouvement.",
-      "Contrôle la descente."
+      "Tire l'haltère vers ta hanche en pliant le coude.",
+      "Monte jusqu'à ce que la main passe au-dessus de la hanche.",
+      "En haut, serre l'épaule vers l'arrière, puis redescends doucement."
     ],
     "erreurs_frequentes": [
-      "Ne pas assez pencher le buste : il doit être proche de l'horizontale.",
-      "Tirer avec le bras seul au lieu d'amener l'omoplate vers la colonne.",
+      "Se redresser : le buste reste penché, presque à l'horizontale.",
+      "Tirer seulement avec le bras : pense à ramener le coude loin derrière toi.",
       "Tourner le buste pour monter plus haut."
+    ],
+    "sensations": [
+      "Le milieu du dos, du côté gauche, et l'arrière du bras travaillent.",
+      "Une douleur dans le bas du dos veut dire : appuie-toi plus sur la chaise, dos plat."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -610,23 +683,25 @@
   },
   {
     "nom": "Souleve de terre roumain",
-    "description": "Souleve de terre roumain : descente des mains vers les pieds, jambes semi-tendues.",
+    "description": "Pencher le buste en avant en reculant les fesses, puis se redresser : l'arrière des cuisses, les fesses et le bas du dos travaillent.",
     "mise_en_place": [
-      "Debout, un haltère dans chaque main devant les cuisses.",
-      "Genoux très légèrement fléchis, et ils le restent tout le mouvement.",
-      "Place-toi face à la caméra, corps entier visible."
+      "Debout, un haltère dans chaque main, devant les cuisses.",
+      "Genoux à peine pliés, et ils restent comme ça tout le mouvement.",
+      "Place-toi face à la caméra : on doit voir ton corps entier, jusqu'aux pieds."
     ],
     "instructions": [
-      "Garde le dos droit tout au long du mouvement.",
-      "Pousse les hanches vers l'arrière.",
-      "Garde une légère flexion des genoux, sans les plier davantage pendant la descente.",
-      "Rapproche les mains des pieds sans arrondir le dos.",
-      "Remonte en contractant les fessiers."
+      "Recule les fesses et penche le buste en avant, dos bien droit.",
+      "Fais glisser les haltères le long des jambes, jusqu'aux chevilles.",
+      "Remonte en serrant les fesses, jusqu'à être debout."
     ],
     "erreurs_frequentes": [
-      "Plier les genoux comme pour un squat : le mouvement vient des hanches.",
-      "Arrondir le bas du dos en descendant : c'est le principal risque.",
-      "Éloigner les haltères des jambes au lieu de les faire glisser le long."
+      "Plier les genoux comme pour un squat : ce sont les fesses qui reculent.",
+      "Arrondir le dos en descendant : c'est le vrai danger, garde-le plat.",
+      "Éloigner les haltères des jambes : ils restent collés à toi."
+    ],
+    "sensations": [
+      "L'arrière des cuisses s'étire en descendant, les fesses travaillent en remontant.",
+      "Une douleur dans le bas du dos n'est pas normale : descends moins bas, dos plat."
     ],
     "variante_facile": null,
     "variante_difficile": null,
@@ -639,23 +714,25 @@
   },
   {
     "nom": "Squat",
-    "description": "Squat descendu jusqu'à ce que les coudes touchent les genoux : c'est ce contact qui valide la répétition, chargé ou à vide.",
+    "description": "Plier les jambes comme pour s'asseoir, puis se relever : les cuisses et les fesses travaillent.",
     "mise_en_place": [
-      "Pieds écartés de la largeur des hanches, pointes légèrement vers l'extérieur.",
-      "Un haltère dans chaque main si tu veux charger, bras le long du corps ; sinon à vide, bras libres.",
-      "Place-toi face à la caméra, jambes entières visibles."
+      "Debout, pieds écartés de la largeur des hanches, pointes un peu tournées vers l'extérieur.",
+      "À vide, bras libres ; avec des haltères, un dans chaque main, bras le long du corps.",
+      "Place-toi face à la caméra : on doit voir tes jambes en entier."
     ],
     "instructions": [
-      "Garde le dos droit, regard devant.",
-      "Descends les hanches vers l'arrière, comme pour t'asseoir.",
-      "En bas, va toucher tes genoux avec tes coudes : c'est ce contact qui compte la répétition.",
-      "À vide, laisse tes bras descendre devant toi pour aller les chercher.",
-      "Remonte en poussant sur les talons."
+      "Descends les fesses vers l'arrière, comme pour t'asseoir sur une chaise.",
+      "En bas, va toucher tes genoux avec tes coudes : c'est ce qui compte la répétition.",
+      "Remonte en poussant dans tes talons, jusqu'à être debout."
     ],
     "erreurs_frequentes": [
-      "Les genoux qui rentrent vers l'intérieur pendant la remontée.",
-      "Le dos qui s'arrondit en bas du mouvement.",
-      "Décoller les talons : garde le poids réparti sur tout le pied."
+      "Les genoux qui se rapprochent l'un de l'autre : pousse-les vers l'extérieur.",
+      "Le dos qui s'arrondit : regarde devant toi, poitrine ouverte.",
+      "Les talons qui décollent : garde les pieds bien à plat."
+    ],
+    "sensations": [
+      "Le devant des cuisses et les fesses chauffent.",
+      "Une douleur dans le genou n'est pas normale : descends moins bas, ou passe au squat sur chaise."
     ],
     "variante_facile": "Squat sur chaise",
     "variante_difficile": null,
@@ -668,21 +745,25 @@
   },
   {
     "nom": "Squat sur chaise",
-    "description": "Squat au poids du corps, en s'asseyant sur une chaise puis en se relevant.",
+    "description": "S'asseoir sur une chaise puis se relever, sans les mains : la version la plus simple du squat.",
     "mise_en_place": [
-      "Place une chaise derrière toi, debout, pieds écartés de la largeur des hanches.",
-      "Tends les bras devant toi pour l'équilibre.",
-      "Place-toi face à la caméra, jambes entières visibles."
+      "Une chaise derrière toi, debout, pieds écartés de la largeur des hanches.",
+      "Tends les bras devant toi pour garder l'équilibre.",
+      "Place-toi face à la caméra : on doit voir tes jambes en entier."
     ],
     "instructions": [
-      "Descends les hanches vers l'arrière comme pour t'asseoir.",
-      "Effleure l'assise sans t'y poser vraiment, ou assieds-toi si c'est trop dur.",
-      "Remonte en poussant sur les talons."
+      "Recule les fesses et descends comme pour t'asseoir.",
+      "Effleure la chaise sans t'y poser, ou assieds-toi si c'est trop dur.",
+      "Relève-toi en poussant dans tes talons."
     ],
     "erreurs_frequentes": [
-      "Les genoux qui rentrent vers l'intérieur : garde-les dans l'axe des pieds.",
+      "Les genoux qui se rapprochent l'un de l'autre : pousse-les vers l'extérieur.",
       "Le dos qui s'arrondit : regarde devant toi, poitrine ouverte.",
-      "Se laisser tomber sur la chaise : contrôle la descente."
+      "Se laisser tomber sur la chaise : descends doucement."
+    ],
+    "sensations": [
+      "Le devant des cuisses et les fesses travaillent.",
+      "Si tu te relèves sans élan à chaque fois, passe au squat sans chaise."
     ],
     "variante_facile": null,
     "variante_difficile": "Squat",

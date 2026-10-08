@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fiches d'exercice — relecture</title>
+<!-- Detecte qu'un deploiement est arrive et va le chercher (voir baremes.html). -->
+<script type="module" src="../js/version.js"></script>
+<!--
+    La page de relecture des fiches d'exercice.
+
+    Elle n'est pas un ecran d'entrainement. Elle existe parce qu'une consigne ne
+    se juge pas en la lisant dans le code : elle se juge **comme la lira la
+    personne qui s'entraine**, et a cote de ce que l'application en fait. Une
+    testeuse debutante a trouve les fiches trop techniques, muettes sur ce
+    qu'on doit sentir, et parfois contradictoires (« place-toi de profil face a
+    la camera ») — trois defauts qu'aucun harnais ne voit, parce que le texte
+    n'est lu par aucune machine.
+
+    **Le circuit est celui de `baremes.html`** : on relit et on corrige ici, on
+    copie le `fiches.json` rendu en bas de page, on le colle dans
+    `mouvements/fiches.json`, on pousse. Les deux applications lisent ce
+    fichier, donc elles changent ensemble.
+
+    **Ce que la page montre a cote du texte n'est pas recopie** : l'orientation
+    et les changements que le coach prononcera viennent de `mouvements.json` et
+    `sons.json`, ce que la detection verifie vient des instruments du banc
+    d'essai (`instruments.js`). C'est ce qui rend les contradictions visibles :
+    la consigne doit demander ce que la machine regarde — la lecon du squat, ou
+    l'ecran decrivait une position pendant que la detection attendait un
+    contact coude-genou.
+
+    Les avertissements (jargon, phrase longue, accord genre) sont une **aide a
+    la relecture**, jamais une regle : ils signalent, ils ne bloquent rien.
+
+    Publique, simplement non listee, comme `baremes.html`.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../palette.css">
+<link rel="stylesheet" href="../exercices.css">
+<style>
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+        margin: 0; padding: 20px 16px; background: var(--bg); color: var(--text);
+        font: 400 14px 'Space Grotesk', system-ui, sans-serif;
+    }
+    main { width: min(1320px, 100%); margin: 0 auto; }
+    h1 { font: 400 clamp(28px, 5vw, 44px) 'Bebas Neue', sans-serif; margin: 0 0 4px; color: var(--teal); }
+    h2.titre { font: 400 23px 'Bebas Neue', sans-serif; margin: 30px 0 8px; }
+    h3 { font: 700 12px 'Space Grotesk', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 16px 0 6px; }
+    .kicker { color: var(--muted); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; font-weight: 700; margin: 0 0 16px; }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 80ch; }
+    .barre { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
+    .bouton {
+        background: var(--teal); color: var(--bg); border: 0; border-radius: 999px;
+        padding: 9px 18px; font: 700 12px 'Space Grotesk', sans-serif;
+        letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+    }
+    .bouton.secondaire { background: none; color: var(--text); border: 1px solid var(--border-strong); }
+    .etat { font-size: 12px; color: var(--muted); }
+
+    .disposition { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; align-items: start; }
+    /* En colonne, la liste ne colle plus et ne prend qu'un tiers d'ecran :
+       sinon elle masquerait l'editeur qu'on vient d'ouvrir. */
+    @media (max-width: 820px) {
+        .disposition { grid-template-columns: 1fr; }
+        .liste { position: static; max-height: 34vh; }
+    }
+
+    .liste { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow-y: auto; }
+    .liste h3 { margin: 10px 0 4px; }
+    .liste button {
+        display: flex; align-items: center; gap: 8px; text-align: left; width: 100%;
+        background: var(--glass); color: var(--text); border: 1px solid var(--border);
+        border-radius: 8px; padding: 7px 10px; font: 500 13px 'Space Grotesk', sans-serif; cursor: pointer;
+    }
+    .liste button.actif { border-color: var(--teal); }
+    .pastille { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--muted); }
+    .pastille.relu { background: var(--teal); }
+    .pastille.modifie { background: var(--orange); }
+    .liste .alertes { margin-left: auto; color: var(--orange); font-size: 11px; font-weight: 700; }
+
+    .travail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+    @media (max-width: 1100px) { .travail { grid-template-columns: 1fr; } }
+
+    .editeur label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin: 12px 0 4px; }
+    .editeur label small { text-transform: none; letter-spacing: 0; }
+    textarea {
+        width: 100%; background: var(--glass-strong); color: var(--text);
+        border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 10px;
+        font: 400 13px/1.5 'Space Grotesk', sans-serif; resize: vertical;
+    }
+    textarea.modifie { border-color: var(--orange); }
+    textarea:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
+
+    .machine { background: var(--glass); border: 1px solid var(--border-strong); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+    .machine ul { margin: 4px 0 0; padding-left: 18px; line-height: 1.6; }
+    .machine code { color: var(--teal); }
+    .alertes-fiche { border-color: var(--orange); }
+    .alertes-fiche li { color: var(--orange); }
+    .apercu h1.nom { font: 400 32px 'Bebas Neue', sans-serif; color: var(--text); margin: 0 0 6px; }
+    .apercu .resume { color: var(--muted); line-height: 1.6; margin: 0 0 14px; }
+    .apercu ol, .apercu ul { margin: 0; padding-left: 20px; line-height: 1.7; }
+
+    #json { min-height: 220px; font: 400 12px ui-monospace, monospace; white-space: pre; }
+</style>
+</head>
+<body>
+<main>
+    <p class="kicker">Outil de relecture — pas un écran d'entraînement</p>
+    <h1>Fiches d'exercice</h1>
+    <p class="hint">
+        Relis chaque fiche comme si tu découvrais le sport. Corrige le texte à
+        gauche, l'aperçu à droite montre ce qu'on verra dans l'application.
+        Quand tout te convient, copie le <code>fiches.json</code> du bas de page,
+        colle-le dans <code>mouvements/fiches.json</code>, commit, push.
+    </p>
+    <div class="barre">
+        <span class="etat" id="etat"></span>
+        <button class="bouton secondaire" id="reinitialiser">Revenir aux fiches déployées</button>
+    </div>
+
+    <div class="disposition">
+        <nav class="liste" id="liste" aria-label="Mouvements"></nav>
+
+        <section>
+            <div class="barre">
+                <button class="bouton" id="marquerRelu">Marquer comme relue</button>
+                <button class="bouton secondaire" id="suivante">Fiche suivante à relire</button>
+                <button class="bouton secondaire" id="annulerFiche">Annuler mes changements sur cette fiche</button>
+            </div>
+            <div class="travail">
+                <div class="editeur" id="editeur"></div>
+                <div>
+                    <div class="machine alertes-fiche" id="alertes" hidden></div>
+                    <div class="machine" id="machine"></div>
+                    <div class="apercu" id="apercu"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <h2 class="titre">Le fichier à coller</h2>
+    <p class="hint">
+        Contenu exact de <code>mouvements/fiches.json</code>. Sur l'iPad : copie,
+        ouvre le fichier dans GitHub, remplace tout, commit.
+    </p>
+    <div class="barre">
+        <button class="bouton" id="copier">Copier le JSON</button>
+        <span class="etat" id="copie"></span>
+    </div>
+    <textarea id="json" spellcheck="false" readonly></textarea>
+</main>
+
+<script type="module">
+import { INSTRUMENTS, formater_zone } from "../js/instruments.js";
+
+const $ = (id) => document.getElementById(id);
+const CLE_BROUILLON = "dev.fiches";
+
+//: Les champs d'une fiche, dans l'ordre ou on les lit — le meme que
+//: `mouvements/fiches.py`. Une liste s'edite une ligne par consigne.
+const CHAMPS = [
+  ["description", "Ce que c'est", "une phrase"],
+  ["mise_en_place", "Se mettre en place", "une ligne par consigne"],
+  ["instructions", "Exécution", "une ligne par consigne"],
+  ["sensations", "Ce que tu dois sentir", "une ligne par consigne"],
+  ["erreurs_frequentes", "À éviter", "une ligne par consigne"],
+];
+
+//: Des mots qu'une debutante ne connait pas forcement. Une aide, pas une
+//: regle : certains ont leur place s'ils sont expliques dans la meme phrase.
+const JARGON = [
+  "gainé", "gaine le", "gainer", "prolongement", "concentrique", "excentrique",
+  "omoplate", "amplitude", "obliques", "fléchi", "flexion", "extension",
+  "prise neutre", "verrouill", "contraction", "sollicite", "à l'aplomb",
+  "aligné des", "mobilité", "unilatéral", "abducteur",
+];
+
+//: Des accords qui supposent un genre : l'application s'adresse a n'importe
+//: qui, donc la fiche aussi. Ni « assis » ni « assise » : l'assise d'une
+//: chaise est un nom, et le premier releve les confondait. Les bornes sont
+//: des lettres Unicode, `\b` ignorant les accents.
+const GENRE = /(?<!\p{L})(prêt|prête|allongé|allongée|penchée|fatigué|fatiguée|sûr|sûre|installé|installée)(?!\p{L})/iu;
+
+//: Par phrase, et une phrase s'arrete aussi a deux-points : une description
+//: « ce que c'est : ce qui travaille » se lit en deux temps.
+const MOTS_MAX = 18;
+
+const deployees = await (await fetch("../donnees/fiches.json")).json();
+const mouvements = await (await fetch("../donnees/mouvements.json")).json();
+const sons = await (await fetch("../donnees/sons.json")).json();
+
+const brouillon = lire_brouillon();
+let fiches = brouillon?.fiches ?? structuredClone(deployees);
+let statuts = brouillon?.statuts ?? {};
+let courant = Object.keys(fiches)[0];
+
+/**
+ * Le brouillon, **s'il porte encore sur les fiches deployees** : un
+ * deploiement passe depuis le rendrait trompeur (meme regle que
+ * `baremes.html`). Commodite de la page seulement.
+ */
+function lire_brouillon() {
+  try {
+    const brut = localStorage.getItem(CLE_BROUILLON);
+    if (!brut) return null;
+    const enregistre = JSON.parse(brut);
+    if (enregistre.base !== JSON.stringify(deployees)) {
+      localStorage.removeItem(CLE_BROUILLON);
+      return null;
+    }
+    return enregistre;
+  } catch { return null; }
+}
+
+function ecrire_brouillon() {
+  try {
+    localStorage.setItem(CLE_BROUILLON, JSON.stringify({
+      base: JSON.stringify(deployees), fiches, statuts,
+    }));
+  } catch { /* tant pis : un brouillon perdu ne coute qu'une ressaisie */ }
+}
+
+const echapper = (texte) => String(texte ?? "")
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+const est_modifiee = (nom) => JSON.stringify(fiches[nom]) !== JSON.stringify(deployees[nom]);
+
+function statut(nom) {
+  if (est_modifiee(nom)) return "modifie";
+  return statuts[nom] === "relu" ? "relu" : "";
+}
+
+// ------------------------------------------------------------------
+// Avertissements
+// ------------------------------------------------------------------
+
+/** Les lignes de la fiche, avec le champ d'ou elles viennent. */
+function lignes_de(fiche) {
+  const lignes = [];
+  for (const [champ, titre] of CHAMPS) {
+    const valeur = fiche[champ];
+    for (const ligne of Array.isArray(valeur) ? valeur : [valeur]) {
+      if (ligne) lignes.push({ titre, ligne });
+    }
+  }
+  return lignes;
+}
+
+/**
+ * Ce qui merite un second regard. Aucune n'est bloquante — le fichier se
+ * copie quoi qu'il arrive.
+ */
+function alertes(nom) {
+  const fiche = fiches[nom];
+  const mouvement = mouvements[nom] ?? {};
+  const sortie = [];
+  for (const { titre, ligne } of lignes_de(fiche)) {
+    const bas = ligne.toLowerCase();
+    const mots = JARGON.filter((m) => bas.includes(m));
+    if (mots.length) sortie.push(`${titre} — mot technique (${mots.join(", ")}) : « ${ligne} »`);
+    for (const phrase of ligne.split(/[.!?:;]/)) {
+      const nombre = phrase.trim().split(/\s+/).filter(Boolean).length;
+      if (nombre > MOTS_MAX) sortie.push(`${titre} — phrase longue (${nombre} mots) : « ${phrase.trim()} »`);
+    }
+    if (GENRE.test(ligne)) sortie.push(`${titre} — accord qui suppose un genre : « ${ligne} »`);
+  }
+  // Ce que le coach dit doit se retrouver dans ce que la fiche demande, et
+  // jamais son contraire.
+  const mise = (fiche.mise_en_place ?? []).join(" ").toLowerCase();
+  const o = mouvement.orientation;
+  if (o && o.startsWith("profil") && /face à la caméra/.test(mise)) {
+    sortie.push("Mise en place — la voix dit « de profil », le texte dit « face à la caméra » : contradiction.");
+  }
+  if (o === "face" && /profil/.test(mise)) {
+    sortie.push("Mise en place — la voix dit « face à la caméra », le texte parle de profil : contradiction.");
+  }
+  if (o && !mise.includes(o === "face" ? "face" : o.startsWith("profil") ? "profil" : "côté")) {
+    sortie.push("Mise en place — aucune ligne ne dit comment se placer par rapport à la caméra.");
+  }
+  if (!mouvement.est_echauffement && !(fiche.sensations ?? []).length) {
+    sortie.push("Ce que tu dois sentir — vide : c'est la seule façon de savoir qu'on s'y prend bien.");
+  }
+  return sortie;
+}
+
+// ------------------------------------------------------------------
+// Rendu
+// ------------------------------------------------------------------
+
+function dessiner_liste() {
+  const groupes = [
+    ["Exercices", Object.keys(fiches).filter((n) => !est_echauffement(n))],
+    ["Échauffements", Object.keys(fiches).filter((n) => est_echauffement(n))],
+  ];
+  $("liste").innerHTML = groupes.map(([titre, noms]) =>
+    `<h3>${titre}</h3>` + noms.map((nom) => {
+      const n = alertes(nom).length;
+      return `<button type="button" data-nom="${echapper(nom)}" class="${nom === courant ? "actif" : ""}">` +
+        `<span class="pastille ${statut(nom)}"></span>${echapper(nom)}` +
+        (n ? `<span class="alertes">${n}</span>` : "") + `</button>`;
+    }).join("")
+  ).join("");
+  for (const bouton of $("liste").querySelectorAll("button")) {
+    bouton.addEventListener("click", () => choisir(bouton.dataset.nom));
+  }
+}
+
+/** Les echauffements a part, comme dans tout le reste de l'application. */
+const est_echauffement = (nom) => Boolean(mouvements[nom]?.est_echauffement);
+
+function dessiner_editeur() {
+  const fiche = fiches[courant];
+  const origine = deployees[courant];
+  $("editeur").innerHTML = CHAMPS.map(([champ, titre, aide]) => {
+    const valeur = Array.isArray(fiche[champ]) ? fiche[champ].join("\n") : fiche[champ] ?? "";
+    const modifie = JSON.stringify(fiche[champ]) !== JSON.stringify(origine?.[champ]);
+    const lignes = Math.max(2, valeur.split("\n").length + 1);
+    return `<label for="champ-${champ}">${titre} <small>— ${aide}</small></label>` +
+      `<textarea id="champ-${champ}" data-champ="${champ}" rows="${lignes}" class="${modifie ? "modifie" : ""}">${echapper(valeur)}</textarea>`;
+  }).join("");
+  for (const zone of $("editeur").querySelectorAll("textarea")) {
+    zone.addEventListener("input", () => {
+      const champ = zone.dataset.champ;
+      fiches[courant][champ] = champ === "description"
+        ? zone.value.replace(/\s*\n\s*/g, " ").trim()
+        : zone.value.split("\n").map((l) => l.trim()).filter(Boolean);
+      zone.classList.toggle("modifie", JSON.stringify(fiches[courant][champ]) !== JSON.stringify(deployees[courant]?.[champ]));
+      delete statuts[courant];
+      ecrire_brouillon();
+      dessiner_controle();
+      dessiner_liste();
+      dessiner_json();
+    });
+  }
+}
+
+/** Ce que l'application dit et verifie pour ce mouvement — jamais recopie. */
+function dessiner_machine() {
+  const m = mouvements[courant] ?? {};
+  const items = [];
+  const brique = m.orientation ? sons.textes?.[`orientation_${m.orientation}`] : null;
+  items.push(brique
+    ? `Le coach dira : <code>${echapper(brique)}</code>`
+    : "Le coach ne dit rien du placement (aucune orientation déclarée).");
+  for (const [fraction, quoi] of m.changements ?? []) {
+    const texte = sons.textes?.[`changement_${quoi}`] ?? quoi;
+    items.push(`À ${Math.round(fraction * 100)} % du chrono, le coach dira : <code>${echapper(texte)}</code>`);
+  }
+  if (m.variante_facile) items.push(`Plus facile : ${echapper(m.variante_facile)}`);
+  if (m.variante_difficile) items.push(`Plus difficile : ${echapper(m.variante_difficile)}`);
+
+  const instrument = m.detection ? INSTRUMENTS[m.detection] : null;
+  let verifie = "";
+  if (!m.detection) {
+    verifie = "<p class=\"hint\">Aucune détection : le mouvement avance au chrono, rien n'est vérifié.</p>";
+  } else if (instrument) {
+    const lignes = instrument.mesures
+      .filter((mesure) => Object.keys(mesure.zones).length)
+      .map((mesure) => {
+        const zones = Object.entries(mesure.zones)
+          .map(([jeton, zone]) => `${jeton} ${formater_zone(mesure, zone)}`).join(", ");
+        return `<li>${echapper(mesure.libelle)} : <code>${echapper(zones)}</code></li>`;
+      });
+    verifie = `<h3>Ce que la détection vérifie (${echapper(m.detection)})</h3><ul>${lignes.join("")}</ul>` +
+      `<p class="hint">Une répétition compte en passant de <code>debut</code> à <code>fin</code>. La consigne doit faire atteindre ces positions.</p>`;
+  }
+  const erreurs = (m.erreurs ?? []).length
+    ? `<h3>Fautes signalées en direct</h3><ul>${m.erreurs.map((e) => `<li><code>${echapper(e)}</code></li>`).join("")}</ul>`
+    : "";
+  $("machine").innerHTML = `<h3>Ce que l'application en fait</h3><ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul>${verifie}${erreurs}`;
+}
+
+/** L'apercu, avec les classes de la fiche reelle (`exercices.css`). */
+function dessiner_apercu() {
+  const fiche = fiches[courant];
+  const bloc = (titre, lignes, balise = "ol", classe = "") => lignes?.length
+    ? `<div class="bloc${classe}"><h2>${titre}</h2><${balise}>${lignes.map((l) => `<li>${echapper(l)}</li>`).join("")}</${balise}></div>`
+    : "";
+  $("apercu").innerHTML =
+    `<h1 class="nom">${echapper(courant)}</h1>` +
+    `<p class="resume">${echapper(fiche.description)}</p>` +
+    bloc("Se mettre en place", fiche.mise_en_place) +
+    bloc("Exécution", fiche.instructions) +
+    bloc("Ce que tu dois sentir", fiche.sensations, "ul") +
+    bloc("À éviter", fiche.erreurs_frequentes, "ul", " attention");
+}
+
+function dessiner_controle() {
+  const liste = alertes(courant);
+  $("alertes").hidden = liste.length === 0;
+  $("alertes").innerHTML = `<h3>À regarder de plus près</h3><ul>${liste.map((a) => `<li>${echapper(a)}</li>`).join("")}</ul>`;
+  dessiner_apercu();
+  dessiner_etat();
+}
+
+function dessiner_etat() {
+  const noms = Object.keys(fiches);
+  const relues = noms.filter((n) => statut(n) === "relu").length;
+  const modifiees = noms.filter(est_modifiee).length;
+  $("etat").textContent = `${relues} relues, ${modifiees} modifiées, ${noms.length - relues - modifiees} à relire — sur ${noms.length}.`;
+  $("marquerRelu").textContent = statuts[courant] === "relu" ? "Relue ✓" : "Marquer comme relue";
+}
+
+/**
+ * Le fichier, avec la mise en forme du fichier source (deux espaces, retour
+ * a la ligne final) : un fichier recolle sans modification ne doit faire
+ * aucun diff.
+ */
+function dessiner_json() {
+  $("json").value = JSON.stringify(fiches, null, 2) + "\n";
+}
+
+function choisir(nom) {
+  courant = nom;
+  dessiner_liste();
+  dessiner_editeur();
+  dessiner_machine();
+  dessiner_controle();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+$("marquerRelu").addEventListener("click", () => {
+  if (statuts[courant] === "relu") delete statuts[courant];
+  else statuts[courant] = "relu";
+  ecrire_brouillon();
+  dessiner_liste();
+  dessiner_etat();
+});
+
+$("suivante").addEventListener("click", () => {
+  const noms = Object.keys(fiches);
+  const depart = noms.indexOf(courant);
+  for (let i = 1; i <= noms.length; i += 1) {
+    const nom = noms[(depart + i) % noms.length];
+    if (statut(nom) === "") return choisir(nom);
+  }
+  $("etat").textContent = "Toutes les fiches ont été relues ou modifiées.";
+});
+
+$("annulerFiche").addEventListener("click", () => {
+  fiches[courant] = structuredClone(deployees[courant]);
+  delete statuts[courant];
+  ecrire_brouillon();
+  choisir(courant);
+  dessiner_json();
+});
+
+$("reinitialiser").addEventListener("click", () => {
+  if (!confirm("Effacer toutes tes corrections et revenir aux fiches déployées ?")) return;
+  fiches = structuredClone(deployees);
+  statuts = {};
+  try { localStorage.removeItem(CLE_BROUILLON); } catch { /* rien a faire */ }
+  choisir(courant);
+  dessiner_json();
+});
+
+$("copier").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText($("json").value);
+    $("copie").textContent = "Copié.";
+  } catch {
+    $("json").removeAttribute("readonly");
+    $("json").select();
+    $("copie").textContent = "Sélectionné — copie à la main.";
+  }
+  setTimeout(() => { $("copie").textContent = ""; }, 4000);
+});
+
+choisir(courant);
+dessiner_json();
+</script>
+</body>
+</html>

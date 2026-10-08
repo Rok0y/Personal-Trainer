@@ -148,6 +148,7 @@ function catalogue_pour(fiches) {
       instructions: fiche.instructions,
       mise_en_place: fiche.mise_en_place,
       erreurs_frequentes: fiche.erreurs_frequentes,
+      sensations: fiche.sensations ?? [],
       erreurs: (fiche.erreurs ?? []).map((nom) => DETECTIONS[nom]),
       variante_facile: fiche.variante_facile,
       variante_difficile: fiche.variante_difficile,

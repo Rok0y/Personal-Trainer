@@ -39,6 +39,7 @@ export function exercice_pour(mouvements, nom) {
     instructions: fiche.instructions,
     mise_en_place: fiche.mise_en_place,
     erreurs_frequentes: fiche.erreurs_frequentes,
+    sensations: fiche.sensations ?? [],
     erreurs: (fiche.erreurs ?? []).map((n) => DETECTIONS[n]).filter(Boolean),
     variante_facile: fiche.variante_facile,
     variante_difficile: fiche.variante_difficile,

@@ -1032,6 +1032,7 @@
        non listee — il ne faut donc rien y mettre qui ne puisse pas l'etre. -->
   <p class="muet" id="lienDev" hidden style="margin-top:1.4rem">
     <a href="../dev/baremes.html">Barèmes et ligues — page de réglage</a>
+    · <a href="../dev/fiches.html">Fiches d'exercice — page de relecture</a>
   </p>
 </section>
 
@@ -2325,6 +2326,7 @@ function ouvrir_guide_exercice(bloc) {
   $("guideBlocs").innerHTML = [
     liste_guide("Installe-toi", fiche.mise_en_place),
     liste_guide("Le mouvement", fiche.instructions),
+    liste_guide("Ce que tu dois sentir", fiche.sensations),
     liste_guide("À éviter", fiche.erreurs_frequentes),
   ].join("");
 
@@ -5011,6 +5013,7 @@ function dessiner_fiche(nom) {
     (etat ? bloc_recalage(nom, etat) : "") +
     liste("Se mettre en place", fiche.mise_en_place) +
     liste("Exécution", fiche.instructions) +
+    liste("Ce que tu dois sentir", fiche.sensations, "ul") +
     liste("À éviter", fiche.erreurs_frequentes, "ul", " attention") +
     (variantes
       ? `<div class="bloc"><h2>Adapter la difficulté</h2><div class="variantes">${variantes}</div>${filet}</div>`

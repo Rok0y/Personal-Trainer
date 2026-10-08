@@ -663,6 +663,7 @@ def main():
             "instructions": list(exercice.instructions),
             "mise_en_place": list(exercice.mise_en_place),
             "erreurs_frequentes": list(exercice.erreurs_frequentes),
+            "sensations": list(exercice.sensations),
             "variante_facile": exercice.variante_facile,
             "variante_difficile": exercice.variante_difficile,
             # Sans elle, le JavaScript construit ses exercices sans

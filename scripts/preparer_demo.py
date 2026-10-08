@@ -157,6 +157,14 @@ def exporter_baremes():
     (DONNEES / "reglages.json").write_text(
         CHEMIN_REGLAGES.read_text(encoding="utf-8"), encoding="utf-8"
     )
+    # Meme regle pour les fiches d'exercice, que `dev/fiches.html` edite : le
+    # fichier source part tel quel, pour que la page rende exactement ce
+    # qu'il faut recoller dans `mouvements/fiches.json`.
+    from mouvements.fiches import FICHIER as CHEMIN_FICHES
+
+    (DONNEES / "fiches.json").write_text(
+        CHEMIN_FICHES.read_text(encoding="utf-8"), encoding="utf-8"
+    )
     from session.seances import MATERIEL_EXERCICES, nombre_halteres
 
     return {

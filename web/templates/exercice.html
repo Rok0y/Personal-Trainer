@@ -182,6 +182,15 @@
     </div>
     {%- endif %}
 
+    {%- if fiche.sensations %}
+    <div class="bloc">
+        <h2>Ce que tu dois sentir</h2>
+        <ul>
+            {% for sensation in fiche.sensations %}<li>{{ sensation }}</li>{% endfor %}
+        </ul>
+    </div>
+    {%- endif %}
+
     {%- if fiche.erreurs_frequentes %}
     <div class="bloc attention">
         <h2>À éviter</h2>

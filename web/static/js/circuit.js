@@ -96,6 +96,7 @@ export class Exercice {
     orientation = null,
     amplitude = null,
     changements = null,
+    sensations = null,
   }) {
     this.nom = nom;
     this.detection = detection;
@@ -120,6 +121,7 @@ export class Exercice {
     // Meme piege que l'orientation — un champ oublie ici rendrait les
     // echauffements muets sans que rien ne le signale.
     this.changements = (changements ?? []).map((c) => [...c]);
+    this.sensations = sensations ?? [];
   }
 
   fiche() {
@@ -129,6 +131,7 @@ export class Exercice {
       mise_en_place: [...this.mise_en_place],
       instructions: [...this.instructions],
       erreurs_frequentes: [...this.erreurs_frequentes],
+      sensations: [...this.sensations],
       variante_facile: this.variante_facile,
       variante_difficile: this.variante_difficile,
       orientation: this.orientation,

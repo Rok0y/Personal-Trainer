@@ -82,6 +82,8 @@ class Exercice:
       ce qu'aucune détection ne saura jamais dire ;
     - `instructions` — l'exécution, geste par geste ;
     - `erreurs_frequentes` — de la pédagogie écrite, lue au calme avant l'effort ;
+    - `sensations` — ce qu'on doit sentir, et ce qui ne doit pas arriver : la
+      seule façon, pour quelqu'un qui découvre, de savoir s'il s'y prend bien ;
     - `erreurs` — des **fonctions** de vérification temps réel, qui retournent
       une clé de `core.messages`. Rien à voir avec la liste précédente : l'une
       se lit, l'autre s'exécute trente fois par seconde.
@@ -127,6 +129,7 @@ class Exercice:
         orientation=None,
         amplitude=None,
         changements=None,
+        sensations=None,
     ):
         """`detection` à None décrit un mouvement guidé sans analyse de pose
         (échauffement) : seuls les modes de `MODES_AVEC_DETECTION_OBLIGATOIRE`
@@ -150,6 +153,7 @@ class Exercice:
         self.orientation = orientation
         self.amplitude = amplitude
         self.changements = [tuple(changement) for changement in changements or []]
+        self.sensations = sensations or []
 
     def fiche(self):
         """Ce que l'exercice a à dire, sous une forme sérialisable.
@@ -165,6 +169,7 @@ class Exercice:
             "mise_en_place": list(self.mise_en_place),
             "instructions": list(self.instructions),
             "erreurs_frequentes": list(self.erreurs_frequentes),
+            "sensations": list(self.sensations),
             "variante_facile": self.variante_facile,
             "variante_difficile": self.variante_difficile,
             "orientation": self.orientation,
