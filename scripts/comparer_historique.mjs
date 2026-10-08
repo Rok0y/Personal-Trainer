@@ -1,18 +1,15 @@
-// Rejoue en JavaScript les ecritures relevees par `generer_historique.py`.
+// Rejoue une suite d'ecritures figee sur la base de l'historique.
 //
-// La question verifiee : a ecritures identiques, `recuperer_historique` rend-il
-// la meme structure des deux cotes ? Cela couvre les jointures, les valeurs de
-// repli, l'ordre des seances, le detail des series et le cloisonnement par
-// profil — les deux profils sont relus apres *chaque* ecriture, donc une
-// seance qui deborderait sur l'autre historique se verrait au pas ou elle est
-// ecrite, pas trois cents pas plus loin.
+// La question verifiee : a ecritures identiques, `recuperer_historique`
+// rend-il toujours la meme structure ? Cela couvre les jointures, les valeurs
+// de repli, l'ordre des seances, le detail des series et le cloisonnement par
+// profil — chaque profil est relu apres *chaque* ecriture, donc une seance qui
+// deborderait sur l'autre historique se verrait au pas ou elle est ecrite, pas
+// trois cents pas plus loin. Un troisieme profil est cree puis supprime, et
+// continue d'etre relu : c'est la seule facon de voir une seance, un exercice
+// ou un ancrage laisse derriere.
 //
-// Usage : node scripts/comparer_historique.mjs
-// Prealable : python -m scripts.generer_historique
-
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+// Usage : node scripts/comparer_historique.mjs [--mettre-a-jour]
 
 import {
   base_vide, creer_utilisateur, enregistrer_seance, enregistrer_ressentis,
@@ -22,12 +19,10 @@ import {
   recuperer_ancrages, statistiques_exercices, exporter, importer,
 } from "../web/static/js/historique.js";
 import { normaliser as normaliser_variantes } from "../web/static/js/variantes.js";
+import { METTRE_A_JOUR, Releve, lire_lignes } from "./fixtures.mjs";
 
-const ICI = dirname(fileURLToPath(import.meta.url));
-const FIXTURES = join(ICI, "fixtures_historique.jsonl");
-
-// Meme horloge figee que cote Python : `enregistrer_seance` horodate, et deux
-// executions ecriraient sinon des dates differentes.
+// Horloge figee : `enregistrer_seance` horodate, et deux executions
+// ecriraient sinon des dates differentes.
 const DEBUT = new Date(2026, 2, 1, 8, 0);
 const PAS_MINUTES = 1;
 
@@ -36,18 +31,11 @@ function horloge_figee() {
   return () => new Date(DEBUT.getTime() + appels++ * PAS_MINUTES * 60_000);
 }
 
-const ECARTS_DETAILLES = 3;
-
 function main() {
-  const pas = readFileSync(FIXTURES, "utf-8")
-    .split("\n")
-    .filter((l) => l.trim())
-    .map((l) => JSON.parse(l));
-
+  const pas = lire_lignes("historique");
   const base = base_vide();
   const maintenant = horloge_figee();
-  const echecs = [];
-  let valeurs = 0;
+  const releve = new Releve();
 
   for (const ligne of pas) {
     const a = ligne.arguments;
@@ -83,63 +71,40 @@ function main() {
       erreur = e.message;
     }
 
-    const ecarts = [];
-    if (erreur) ecarts.push({ champ: "(exception)", attendu: "aucune", obtenu: erreur });
-    if (JSON.stringify(ligne.resultat) !== JSON.stringify(resultat)) {
-      ecarts.push({
-        champ: "(valeur de retour)",
-        attendu: JSON.stringify(ligne.resultat),
-        obtenu: JSON.stringify(resultat),
-      });
-    }
+    const ou = `pas ${ligne.pas} — ${ligne.commande}`;
+    // Une exception est un comportement releve, au meme titre qu'un resultat.
+    releve.verifier(`${ou} / exception`, ligne, "erreur", erreur ?? undefined);
+    releve.verifier(`${ou} / valeur de retour`, ligne, "resultat", resultat);
 
-    for (const [profil, attendu] of Object.entries(ligne.historique)) {
-      const obtenu = recuperer_historique(base, Number(profil));
-      valeurs += JSON.stringify(attendu).length;
-      if (JSON.stringify(attendu) !== JSON.stringify(obtenu)) {
-        ecarts.push({
-          champ: `historique du profil ${profil}`,
-          attendu: JSON.stringify(attendu).slice(0, 260),
-          obtenu: JSON.stringify(obtenu).slice(0, 260),
-        });
-      }
+    for (const profil of Object.keys(ligne.historique)) {
+      releve.verifier(
+        `${ou} / historique du profil ${profil}`,
+        ligne.historique, profil,
+        recuperer_historique(base, Number(profil))
+      );
     }
-    for (const [profil, attendu] of Object.entries(ligne.ancrages)) {
-      const obtenu = recuperer_ancrages(base, Number(profil));
-      if (JSON.stringify(attendu) !== JSON.stringify(obtenu)) {
-        ecarts.push({
-          champ: `ancrages du profil ${profil}`,
-          attendu: JSON.stringify(attendu).slice(0, 260),
-          obtenu: JSON.stringify(obtenu).slice(0, 260),
-        });
-      }
+    for (const profil of Object.keys(ligne.ancrages)) {
+      releve.verifier(
+        `${ou} / ancrages du profil ${profil}`,
+        ligne.ancrages, profil,
+        recuperer_ancrages(base, Number(profil))
+      );
     }
-    for (const [profil, attendu] of Object.entries(ligne.statistiques ?? {})) {
-      const obtenu = statistiques_exercices(recuperer_historique(base, Number(profil)));
-      if (JSON.stringify(attendu) !== JSON.stringify(obtenu)) {
-        ecarts.push({
-          champ: `statistiques du profil ${profil}`,
-          attendu: JSON.stringify(attendu).slice(0, 260),
-          obtenu: JSON.stringify(obtenu).slice(0, 260),
-        });
-      }
+    for (const profil of Object.keys(ligne.statistiques ?? {})) {
+      releve.verifier(
+        `${ou} / statistiques du profil ${profil}`,
+        ligne.statistiques, profil,
+        statistiques_exercices(recuperer_historique(base, Number(profil)))
+      );
     }
-
-    for (const [profil, attendu] of Object.entries(ligne.notes ?? {})) {
+    for (const profil of Object.keys(ligne.notes ?? {})) {
       const u = base.utilisateurs.find((x) => x.id === Number(profil));
-      const obtenu = u
-        ? [u.note_athlete ?? null, u.note_relevee_apres ?? null, normaliser_variantes(u.variantes)]
-        : null;
-      if (JSON.stringify(attendu) !== JSON.stringify(obtenu)) {
-        ecarts.push({
-          champ: `note du profil ${profil}`,
-          attendu: JSON.stringify(attendu),
-          obtenu: JSON.stringify(obtenu),
-        });
-      }
+      releve.verifier(
+        `${ou} / note du profil ${profil}`,
+        ligne.notes, profil,
+        u ? [u.note_athlete ?? null, u.note_relevee_apres ?? null, normaliser_variantes(u.variantes)] : null
+      );
     }
-
-    if (ecarts.length) echecs.push({ ligne, ecarts });
   }
 
   const seances = base.seances.length;
@@ -159,22 +124,13 @@ function main() {
       JSON.stringify(recuperer_historique(relue, 2));
   console.log(`export puis import : ${aller_retour ? "base identique" : "BASE ALTEREE"}`);
 
-  if (!echecs.length && aller_retour) {
-    console.log("\nAucun ecart : le portage de l'historique est fidele.");
-    return;
-  }
-
-  console.log(`\n${echecs.length} ecritures divergent. Les ${ECARTS_DETAILLES} premieres :\n`);
-  for (const { ligne, ecarts } of echecs.slice(0, ECARTS_DETAILLES)) {
-    console.log(`  pas ${ligne.pas} — ${ligne.commande}`);
-    for (const e of ecarts) {
-      console.log(`    ${e.champ}`);
-      console.log(`      python = ${e.attendu}`);
-      console.log(`      js     = ${e.obtenu}`);
-    }
-    console.log();
-  }
-  process.exitCode = 1;
+  if (!aller_retour && !METTRE_A_JOUR) process.exitCode = 1;
+  releve.conclure({
+    fichier: "historique",
+    lignes: pas,
+    succes: "Aucun ecart : l'historique rend les reponses figees.",
+    detail: 3,
+  });
 }
 
 main();

@@ -1,4 +1,4 @@
-// Jumeau de progression/objectifs.py — **c'est ici que le moteur pilote les
+// **c'est ici que le moteur pilote les
 // seances**.
 //
 // Le principe directeur de tout `progression/` est la distinction niveau /

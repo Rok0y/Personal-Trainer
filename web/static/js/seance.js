@@ -22,6 +22,26 @@ import {
 import { DETECTIONS } from "./detections.js";
 
 /**
+ * Les mouvements avec leurs textes de fiche.
+ *
+ * `donnees/mouvements.json` porte ce qui est couple au code (detection,
+ * erreurs, amplitude, orientation, changements, variantes, materiel) ;
+ * `donnees/fiches.json` porte le texte, edite sur `dev/fiches.html`. Les
+ * assembler au chargement plutot que de recopier le texte dans les mouvements
+ * est ce qui fait qu'une fiche modifiee change vraiment l'application.
+ *
+ * Ne leve jamais : un mouvement sans fiche garde simplement des textes vides,
+ * et `verifier_donnees.mjs` le signale a froid.
+ */
+export function avec_fiches(mouvements, fiches) {
+  const complets = {};
+  for (const [nom, mouvement] of Object.entries(mouvements)) {
+    complets[nom] = { ...mouvement, ...(fiches[nom] ?? {}) };
+  }
+  return complets;
+}
+
+/**
  * Un `Exercice` depuis sa fiche exportee.
  *
  * Les fonctions sont retrouvees par leur **nom** : `detections.js` porte les

@@ -1,4 +1,4 @@
-// Jumeau de mouvements/positions.py — les gestes de controle de la seance.
+// Les gestes de controle de la seance.
 
 import { calculer_angle } from "./outils.js";
 

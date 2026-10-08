@@ -1,4 +1,4 @@
-// Jumeau de core/messages.py — tout ce que l'application dit par ecrit.
+// Tout ce que l'application dit par ecrit.
 //
 // **Une cle, un message.** Meme convention que le coach vocal, ou
 // "debut_serie" designe un .wav : un message est designe par une cle stable,

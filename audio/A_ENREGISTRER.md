@@ -1,7 +1,7 @@
 # Ce qu'il reste a enregistrer
 
 > Ce fichier est **genere**. Ne le modifie pas a la main : relance
-> `python -m scripts.lister_annonces` apres chaque lot, il se met a jour tout
+> `node scripts/lister_annonces.mjs` apres chaque lot, il se met a jour tout
 > seul et recompte ce qui reste.
 
 ## Comment enregistrer
@@ -9,8 +9,8 @@
 1. Enregistre chaque phrase dans un `.wav` portant **exactement** le nom donne
    ci-dessous, et depose-le dans `audio/a_traiter/`.
 2. Lance `python audio/nettoyer_sons.py` : il rogne les silences, pose un fondu
-   et ecrit le resultat dans `audio/Fichiers/`.
-3. Lance `python -m scripts.preparer_demo` pour que l'application les recoive.
+   et ecrit le resultat dans `web/static/sons/`, ou l'application le lit.
+3. Relance ce script pour recompter, et pousse.
 
 ## Quatre choses a savoir avant de commencer
 
@@ -36,9 +36,9 @@ d'un groupe nominal — la ou la voix ne s'arrete jamais — et s'entend comme u
 saccadement.
 
 **Le nom du fichier est le texte.** Si une formulation ne te plait pas, change
-le texte dans `audio/annonces.py` et relance ce script : le nom de fichier
-suivra. L'inverse — renommer un fichier — ne changerait rien, le code cherche
-le nom que la table produit.
+le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
+`briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
+un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
 **25 prises restantes.**
 

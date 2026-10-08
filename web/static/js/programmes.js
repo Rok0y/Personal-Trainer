@@ -1,23 +1,16 @@
-// Jumeau de la **lecture** de progression/programmes.py.
+// Les programmes sportifs, en lecture.
 //
 // Un programme ne stocke aucune donnee de progression : il declare, pour
 // chaque exercice, la performance a atteindre. Le niveau requis en est deduit,
 // le niveau acquis vient de l'historique, et l'ecart se recalcule a chaque
 // affichage. Rien a migrer, rien a tenir a jour.
 //
-// **Seule la lecture est portee, et c'est une decision.** L'ecriture —
-// `valider_programme`, `enregistrer_programme`, `synchroniser_seances`,
-// `seance_correspondante` — est l'editeur, qui ecrit dans
-// `programmes_personnalises.json`. Le meme arbitrage que pour les seances
-// s'applique : **le fichier fait autorite**, il s'edite sur le poste fixe et
-// un deploiement le propage. Porter l'editeur creerait une seconde source de
-// verite que rien ne reconcilierait, sur des donnees qu'un appareil hors ligne
-// ne peut pas renvoyer.
-//
-// Une divergence d'API assumee, la meme que pour les ancrages : le Python lit
-// le fichier dans chaque fonction (`tous_les_programmes()`), le JavaScript
-// recoit le programme en argument — il n'a pas de disque a relire, les
-// programmes lui arrivent par `donnees/programmes.json`.
+// **Il n'y a pas d'editeur de programme, et c'est une decision.**
+// `donnees/programmes.json` fait autorite : il s'edite a la main et un
+// deploiement le propage (`verifier_donnees.mjs` le valide). Un editeur dans
+// l'application creerait une seconde source de verite que rien ne
+// reconcilierait, sur des donnees qu'un appareil hors ligne ne peut pas
+// renvoyer. Chaque fonction recoit donc le programme en argument.
 
 import { UNITE_SECONDES } from "./paliers.js";
 import { arrondi_python } from "./calibration.js";

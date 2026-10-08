@@ -1,4 +1,4 @@
-// Jumeau de progression/variantes.py — jouer une variante plus facile a la
+// Jouer une variante plus facile a la
 // place d'un mouvement, et en revenir.
 //
 // Meme convention que le reste du portage : noms du Python, en snake_case, et

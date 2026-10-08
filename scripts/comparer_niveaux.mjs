@@ -1,26 +1,16 @@
-// Rejoue en JavaScript les historiques releves par `generer_niveaux.py`.
+// Rejoue les historiques figes dans le calcul des niveaux.
 //
-// Un niveau se deduit d'un historique : le harnais lui en jette des dizaines
-// tires au hasard, volontairement tordus — series inegales et inachevees,
-// modes qui ne correspondent pas au bareme, exercices repetes dans une meme
-// seance, ancrages poses au milieu.
+// Un niveau se deduit d'un historique : le jeu en contient des dizaines tires
+// au hasard, volontairement tordus — series inegales et inachevees, modes qui
+// ne correspondent pas au bareme, exercices repetes dans une meme seance,
+// ancrages poses au milieu (a la fin ils ne feraient table rase de rien, au
+// debut ils ne serviraient jamais de plancher).
 //
-// Usage : node scripts/comparer_niveaux.mjs
-// Prealable : python -m scripts.generer_niveaux
-
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+// Usage : node scripts/comparer_niveaux.mjs [--mettre-a-jour]
 
 import { Baremes } from "../web/static/js/paliers.js";
 import { Niveaux } from "../web/static/js/niveaux.js";
-
-const ICI = dirname(fileURLToPath(import.meta.url));
-const RACINE = join(ICI, "..");
-const FIXTURES = join(ICI, "fixtures_niveaux.jsonl");
-const BAREMES = join(RACINE, "web", "static", "donnees", "baremes.json");
-
-const ECARTS_DETAILLES = 4;
+import { Releve, lire_json, lire_lignes } from "./fixtures.mjs";
 
 const INVENTAIRES = (tables) => {
   const complet = {};
@@ -33,20 +23,14 @@ const INVENTAIRES = (tables) => {
 };
 
 function main() {
-  const tables = JSON.parse(readFileSync(BAREMES, "utf-8"));
-  const stocks = INVENTAIRES(tables);
+  const tables = lire_json("donnees/baremes.json");
   const moteurs = {};
-  for (const [nom, brut] of Object.entries(stocks)) {
+  for (const [nom, brut] of Object.entries(INVENTAIRES(tables))) {
     moteurs[nom] = new Niveaux(new Baremes(tables, brut));
   }
 
-  const lignes = readFileSync(FIXTURES, "utf-8")
-    .split("\n")
-    .filter((l) => l.trim())
-    .map((l) => JSON.parse(l));
-
-  const echecs = [];
-  let comparaisons = 0;
+  const lignes = lire_lignes("niveaux");
+  const releve = new Releve();
   let seances = 0;
 
   for (const ligne of lignes) {
@@ -64,33 +48,22 @@ function main() {
     };
 
     for (const champ of Object.keys(obtenu)) {
-      comparaisons += 1;
-      const attendu = JSON.stringify(ligne[champ]);
-      const rendu = JSON.stringify(obtenu[champ]);
-      if (attendu !== rendu) {
-        echecs.push({ ligne, champ, attendu, rendu });
-      }
+      releve.verifier(
+        `historique ${ligne.numero} / ${ligne.inventaire} / ${champ}`,
+        ligne, champ, obtenu[champ]
+      );
     }
   }
 
   console.log(
     `${lignes.length} historiques rejoues (${seances} seances), ` +
-      `${comparaisons} reponses comparees`
+      `${releve.comparaisons} reponses comparees`
   );
-
-  if (!echecs.length) {
-    console.log("\nAucun ecart : le portage des niveaux est fidele.");
-    return;
-  }
-
-  console.log(`\n${echecs.length} reponses divergent. Les ${ECARTS_DETAILLES} premieres :\n`);
-  for (const { ligne, champ, attendu, rendu } of echecs.slice(0, ECARTS_DETAILLES)) {
-    console.log(`  historique ${ligne.numero} / ${ligne.inventaire} / ${champ}`);
-    console.log(`    python = ${attendu.slice(0, 300)}`);
-    console.log(`    js     = ${rendu.slice(0, 300)}`);
-    console.log();
-  }
-  process.exitCode = 1;
+  releve.conclure({
+    fichier: "niveaux",
+    lignes,
+    succes: "Aucun ecart : les niveaux rendent les reponses figees.",
+  });
 }
 
 main();

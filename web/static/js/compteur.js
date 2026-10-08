@@ -1,7 +1,6 @@
-// Jumeau de mouvements/compteur.py.
+// Le comptage des repetitions, a partir des positions detectees.
 //
-// La convention est celle du Python et ne doit pas etre inversee : le
-// compteur s'arme sur "debut" et incremente sur "fin", ou "fin" designe la
+// La convention ne doit pas etre inversee : le compteur s'arme sur "debut" et incremente sur "fin", ou "fin" designe la
 // position qui *valide* une repetition, c'est-a-dire la fin de la phase
 // concentrique — le haut d'un curl, mais aussi le retour debout d'un squat.
 

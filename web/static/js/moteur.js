@@ -1,4 +1,4 @@
-// Jumeau de session/moteur.py — ce qui fait avancer une serie, image par image.
+// Ce qui fait avancer une serie, image par image.
 //
 // Meme convention que les autres jumeaux : les noms sont ceux du Python, en
 // snake_case. Le Python fait autorite ; `scripts/comparer_seances.mjs` rejoue

@@ -1595,6 +1595,7 @@ import { Camera, POSES_SEUL, dessiner_squelette } from "../js/camera.js";
 import { construire_corps } from "../js/landmarks.js";
 import { DETECTIONS } from "../js/detections.js";
 import {
+  avec_fiches,
   catalogue_effectif,
   circuit_pour,
   exercice_pour,
@@ -1632,7 +1633,7 @@ import * as historique from "../js/historique.js";
 import { Tutoriel, etapes_de_seance } from "../js/tutoriel.js";
 import * as stockage from "../js/stockage.js";
 import { Lecteur } from "../js/lecteur.js";
-import { Baremes } from "../js/paliers.js";
+import { Baremes, composer_baremes } from "../js/paliers.js";
 import { Niveaux } from "../js/niveaux.js";
 import { Ligues } from "../js/ligues.js";
 import { badge_ligue, classe_ligue, jalon_ligue, jauge_ligue, style_ligue } from "../js/ligues_ui.js";
@@ -1792,16 +1793,21 @@ let seances_du_fichier = {};
 let moteur = null;
 
 async function charger_donnees() {
-  const [m, s, sons, baremes, progs] = await Promise.all([
+  const [m, fiches, s, sons, socle, reglages, progs] = await Promise.all([
     fetch("../donnees/mouvements.json").then((r) => r.json()),
+    fetch("../donnees/fiches.json").then((r) => r.json()),
     fetch("../donnees/seances.json").then((r) => r.json()),
     fetch("../donnees/sons.json").then((r) => r.json()),
     fetch("../donnees/baremes.json").then((r) => r.json()),
+    fetch("../donnees/reglages.json").then((r) => r.json()),
     fetch("../donnees/programmes.json").then((r) => r.json()),
   ]);
-  mouvements = m;
+  // Chaque fait n'a qu'une source : le texte des fiches et les nombres
+  // reglables vivent dans leurs propres fichiers, edites sur les pages
+  // `dev/`, et sont assembles ici plutot que recopies a l'avance.
+  mouvements = avec_fiches(m, fiches);
   seances_du_fichier = s;
-  tables_baremes = baremes;
+  tables_baremes = composer_baremes(socle, reglages);
   programmes_declares = progs;
   tables_sons = sons;
   lecteur = new Lecteur("../sons", sons);

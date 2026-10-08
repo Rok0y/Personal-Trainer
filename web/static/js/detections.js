@@ -1,4 +1,4 @@
-// Jumeau de mouvements/exercices.py — uniquement les fonctions de detection
+// Uniquement les fonctions de detection
 // et d'erreur de forme, dans le meme ordre que le Python et sous les memes
 // noms, pour qu'un diff cote a cote reste lisible.
 //

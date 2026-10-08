@@ -1,4 +1,4 @@
-// Jumeau de progression/ressenti.py — **de combien l'objectif bouge**.
+// **de combien l'objectif bouge**.
 //
 // Toute la regle de progression tient dans la table `AJUSTEMENT`, indexee par
 // le couple (reussi, ressenti). La changer, c'est changer cette table, et

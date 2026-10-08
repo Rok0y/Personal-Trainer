@@ -1,35 +1,20 @@
-// Rejoue en JavaScript les questions relevees par `generer_paliers.py`.
+// Rejoue les questions figees sur le bareme.
 //
 // Un bareme est une fonction pure de (spec, echelle) : on peut donc lui jeter
 // des entrees au hasard, comme aux detections, sans avoir a lui construire une
-// histoire comme au circuit.
+// histoire comme au circuit. Les questions montent jusqu'au niveau 200, bien
+// au-dela du dernier palier borne : la tranche ouverte est une autre regle.
 //
-// Usage : node scripts/comparer_paliers.mjs
-// Prealable : python -m scripts.generer_paliers
-
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+// Usage : node scripts/comparer_paliers.mjs [--mettre-a-jour]
 
 import { Baremes } from "../web/static/js/paliers.js";
+import { Releve, lire_json, lire_lignes } from "./fixtures.mjs";
 
-const ICI = dirname(fileURLToPath(import.meta.url));
-const RACINE = join(ICI, "..");
-const FIXTURES = join(ICI, "fixtures_paliers.jsonl");
-const BAREMES = join(RACINE, "web", "static", "donnees", "baremes.json");
-// Specs fictives ecrites par l'oracle : elles couvrent les surcharges de
-// palier et le bareme sans fin, deux branches qu'aucun exercice reel
-// n'exerce. Elles ne figurent pas dans `baremes.json`, qui decrit le vrai
-// catalogue.
-const SPECS_HARNAIS = join(ICI, "fixtures_paliers_specs.json");
-
-const ECARTS_DETAILLES = 6;
-
-// Les inventaires ne sont **pas** redeclares ici : ils arrivent avec l'oracle
-// (`fixtures_paliers_specs.json`), comme les specs fictives. Ils l'ont ete, et
-// c'est un piege qui s'est referme — deux inventaires ajoutes cote Python ont
-// rendu ce fichier muet sur eux, `baremes[nom]` valant `undefined`. Un jeu
-// d'entrees duplique a le meme defaut que le code qu'il surveille.
+// `paliers_specs.json` porte deux exercices fictifs — ils couvrent les
+// surcharges de palier et le bareme sans fin, deux branches qu'aucun exercice
+// reel n'exerce — et les inventaires balayes. Les inventaires voyagent avec
+// les questions plutot que d'etre redeclares ici : un jeu d'entrees duplique a
+// le meme defaut que le code qu'il surveille.
 
 function repondre(bareme, ligne) {
   const nom = ligne.exercice;
@@ -59,10 +44,8 @@ function repondre(bareme, ligne) {
 }
 
 /**
- * Jumeau de `Palier.resume()`.
- *
- * `%g` cote Python retire le zero decimal inutile : 5.0 devient « 5 ». Sans
- * cette traduction, chaque palier charge divergerait sur un caractere.
+ * Le resume fige d'un palier (« 4x12 à 5 kg »), sans zero decimal inutile :
+ * 5.0 s'ecrit « 5 ».
  */
 function resume(p) {
   const suffixe = p.unite === "secondes" ? " s" : "";
@@ -71,23 +54,19 @@ function resume(p) {
 }
 
 function main() {
-  const tables = JSON.parse(readFileSync(BAREMES, "utf-8"));
-  const extra = JSON.parse(readFileSync(SPECS_HARNAIS, "utf-8"));
+  const tables = lire_json("donnees/baremes.json");
+  const extra = lire_json("paliers_specs.json");
   tables.specs = { ...tables.specs, ...extra.specs };
   tables.materiel = { ...tables.materiel, ...extra.materiel };
-  const stocks = extra.inventaires;
-  const lignes = readFileSync(FIXTURES, "utf-8")
-    .split("\n")
-    .filter((l) => l.trim())
-    .map((l) => JSON.parse(l));
+  const lignes = lire_lignes("paliers");
 
   const baremes = {};
-  for (const [nom, brut] of Object.entries(stocks)) {
+  for (const [nom, brut] of Object.entries(extra.inventaires)) {
     // `Baremes` normalise lui-meme : on lui passe le brut, null compris.
     baremes[nom] = new Baremes(tables, brut);
   }
 
-  const echecs = [];
+  const releve = new Releve();
   for (const ligne of lignes) {
     let obtenu;
     try {
@@ -95,9 +74,14 @@ function main() {
     } catch (erreur) {
       obtenu = `EXCEPTION ${erreur.message}`;
     }
-    if (JSON.stringify(ligne.reponse) !== JSON.stringify(obtenu)) {
-      echecs.push({ ligne, obtenu });
-    }
+    const contexte = Object.entries(ligne)
+      .filter(([c]) => !["reponse", "question", "inventaire", "exercice"].includes(c))
+      .map(([c, v]) => `${c}=${v}`)
+      .join(" ");
+    releve.verifier(
+      `${ligne.exercice} / ${ligne.inventaire} / ${ligne.question} ${contexte}`,
+      ligne, "reponse", obtenu
+    );
   }
 
   const par_question = {};
@@ -106,23 +90,12 @@ function main() {
     `${lignes.length} questions rejouees ` +
       `(${Object.entries(par_question).map(([q, n]) => `${q} ${n}`).join(", ")})`
   );
-
-  if (!echecs.length) {
-    console.log("\nAucun ecart : le portage du bareme est fidele.");
-    return;
-  }
-
-  console.log(`\n${echecs.length} reponses divergent. Les ${ECARTS_DETAILLES} premieres :\n`);
-  for (const { ligne, obtenu } of echecs.slice(0, ECARTS_DETAILLES)) {
-    const contexte = Object.entries(ligne)
-      .filter(([c]) => !["reponse", "question", "inventaire", "exercice"].includes(c))
-      .map(([c, v]) => `${c}=${v}`)
-      .join(" ");
-    console.log(`  ${ligne.exercice} / ${ligne.inventaire} / ${ligne.question} ${contexte}`);
-    console.log(`    python = ${JSON.stringify(ligne.reponse)}`);
-    console.log(`    js     = ${JSON.stringify(obtenu)}`);
-  }
-  process.exitCode = 1;
+  releve.conclure({
+    fichier: "paliers",
+    lignes,
+    succes: "Aucun ecart : le bareme rend les reponses figees.",
+    detail: 6,
+  });
 }
 
 main();

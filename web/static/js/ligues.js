@@ -1,4 +1,4 @@
-// Jumeau de progression/ligues.py — ligues, divisions et XP.
+// Ligues, divisions et XP.
 //
 // **La ligue vient du volume, pas du numero de niveau.** Le rang se lit sur le
 // *volume* du palier atteint (series x cible x poids), rapporte au volume du

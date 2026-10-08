@@ -1,4 +1,4 @@
-// Jumeau de vision/landmarks.py — les 33 points MediaPipe et leur nom francais.
+// Les 33 points MediaPipe et leur nom francais.
 //
 // Les noms de ce module et ceux des fonctions de detections.js reprennent
 // exactement ceux du Python, en snake_case, contrairement a l'usage

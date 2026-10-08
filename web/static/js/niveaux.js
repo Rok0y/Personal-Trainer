@@ -1,4 +1,4 @@
-// Jumeau de progression/niveaux.py — le niveau deduit de l'historique.
+// Le niveau deduit de l'historique.
 //
 // **Le niveau est le plus haut palier jamais valide**, et il ne se stocke
 // nulle part : il est recalcule a chaque lecture depuis l'historique. La

@@ -1,5 +1,5 @@
 {
- "_lisez_moi": "Tous les nombres reglables du moteur de progression. Python et JavaScript le lisent tous les deux : c'est la seule source. Il s'edite a la main, ou depuis dev/baremes.html qui le rend pret a coller. Le POURQUOI de chaque reglage vit dans progression/paliers.py et dans CLAUDE.md, pas ici — JSON ne prend pas de commentaires.",
+ "_lisez_moi": "Tous les nombres reglables du moteur de progression : c'est la seule source. Il s'edite a la main, ou depuis dev/baremes.html qui le rend pret a coller. L'application le compose avec baremes.json (composer_baremes, js/paliers.js). Le POURQUOI de chaque reglage vit dans docs/reglages.md, pas ici — JSON ne prend pas de commentaires.",
  "specs": {
   "Developpé couché altères": {
    "series": 4,

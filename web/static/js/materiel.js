@@ -1,4 +1,4 @@
-// Jumeau de core/materiel.py — l'inventaire d'halteres et d'accessoires.
+// L'inventaire d'halteres et d'accessoires.
 //
 // C'est **un inventaire, pas deux echelles**. `paliers.js` raisonne sur une
 // gamme « un haltere » et une gamme « une paire », mais ce sont deux *vues*

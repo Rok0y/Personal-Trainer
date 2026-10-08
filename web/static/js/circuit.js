@@ -1,4 +1,4 @@
-// Jumeau de session/circuit.py — la machine a etats d'une seance.
+// La machine a etats d'une seance.
 //
 // Meme convention que landmarks.js, compteur.js et detections.js : les noms
 // sont ceux du Python, en snake_case, contrairement a l'usage JavaScript.

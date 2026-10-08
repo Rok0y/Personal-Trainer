@@ -1,4 +1,4 @@
-// Jumeau de progression/paliers.py — le bareme d'un exercice.
+// Le bareme d'un exercice.
 //
 // Un palier est un triplet (poids, series, cible) et un *niveau* en est
 // l'index, a partir de 1. **L'invariant est le volume** (series x cible x
@@ -14,13 +14,67 @@
 // montent alors sans plafond. C'est la *tranche ouverte* (`longueur` a null),
 // et elle garantit qu'aucun objectif n'est jamais hors d'atteinte.
 //
-// Les specs viennent de `donnees/baremes.json`, exporte du Python : aucune
-// valeur de bareme n'est ecrite ici.
+// Aucune valeur de bareme n'est ecrite ici : les nombres reglables viennent de
+// `donnees/reglages.json`, le reste (echelles, materiel) de
+// `donnees/baremes.json`, et `composer_baremes` les assemble au chargement.
 
 import { echelle_disponible, normaliser } from "./materiel.js";
 
 export const UNITE_REPETITIONS = "repetitions";
 export const UNITE_SECONDES = "secondes";
+
+//: Les champs facultatifs d'une spec, et ce qu'ils valent quand le fichier les
+//: tait. `series_max` manquant vaut `series_max_par_defaut`, lu a part.
+const SPEC_PAR_DEFAUT = {
+  cible_max: null,
+  pas: 1,
+  unite: UNITE_REPETITIONS,
+  poids_min: null,
+  poids_max: null,
+  surcharges: {},
+  charge_corps: 0,
+  premiere_charge: null,
+};
+
+/**
+ * Les tables completes du moteur, depuis leurs deux sources.
+ *
+ * `reglages` est `donnees/reglages.json` : tout ce qui se **regle** (baremes,
+ * bornes de ligue, XP, note d'athlete, retour des variantes), edite sur
+ * `dev/baremes.html`. `socle` est `donnees/baremes.json` : ce qui ne se regle
+ * pas (echelles d'halteres, materiel par exercice, accessoires, reperes ecrits
+ * de la note). Chaque fait n'a ainsi qu'une source — l'application relisant
+ * une copie des reglages, editer `reglages.json` n'aurait rien change.
+ *
+ * Toute page qui construit un `Baremes` passe par ici, et la forme rendue est
+ * celle que les tests figes ont recue.
+ */
+export function composer_baremes(socle, reglages) {
+  const series_max_par_defaut = reglages.series_max_par_defaut ?? 6;
+  const specs = {};
+  for (const [nom, champs] of Object.entries(reglages.specs)) {
+    specs[nom] = { series_max: series_max_par_defaut, ...SPEC_PAR_DEFAUT, ...champs };
+  }
+  return {
+    ligues: {
+      ligues: reglages.ligues.ligues,
+      divisions: reglages.ligues.divisions,
+      seuils_volume: reglages.ligues.seuils_volume,
+      seuils_par_exercice: reglages.ligues.seuils_par_exercice ?? {},
+      paliers_xp: reglages.xp.paliers_xp,
+      xp_base_niveau_general: reglages.xp.base_niveau_general,
+      xp_increment_niveau_general: reglages.xp.increment_niveau_general,
+    },
+    note_athlete: { ...reglages.note_athlete, reperes: socle.note_athlete?.reperes ?? {} },
+    variantes: { retour: reglages.variantes?.retour ?? {} },
+    specs,
+    echelles: socle.echelles,
+    materiel: socle.materiel,
+    accessoires: socle.accessoires,
+    materiel_par_defaut: socle.materiel_par_defaut,
+    series_max_par_defaut,
+  };
+}
 
 //: Seules ces cles peuvent etre surchargees sur un palier. Une surcharge
 //: corrige un palier existant, elle n'en insere ni n'en supprime jamais :

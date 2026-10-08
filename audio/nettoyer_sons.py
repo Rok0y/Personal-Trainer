@@ -1,10 +1,21 @@
+"""Rogne les silences et pose un fondu sur les prises de son brutes.
+
+    python audio/nettoyer_sons.py      (depuis la racine du depot)
+
+Lit `audio/a_traiter/` (non versionne) et ecrit dans `web/static/sons/`, le
+dossier que l'application et la demo servent directement. Le nom du fichier
+est le texte prononce, normalise (voir `normaliser_nom` dans
+`web/static/js/annonces.js`) : `node scripts/lister_annonces.mjs` dit quels
+noms sont attendus. Demande pydub et ffmpeg.
+"""
+
 import os
 
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
 SOURCE = "audio/a_traiter"
-DESTINATION = "audio/fichiers"
+DESTINATION = "web/static/sons"
 
 
 os.makedirs(DESTINATION, exist_ok=True)

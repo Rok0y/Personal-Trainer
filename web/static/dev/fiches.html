@@ -19,8 +19,9 @@
 
     **Le circuit est celui de `baremes.html`** : on relit et on corrige ici, on
     copie le `fiches.json` rendu en bas de page, on le colle dans
-    `mouvements/fiches.json`, on pousse. Les deux applications lisent ce
-    fichier, donc elles changent ensemble.
+    `web/static/donnees/fiches.json`, on pousse. L'application et la demo
+    lisent ce fichier et l'assemblent aux mouvements (`avec_fiches`), donc
+    elles changent avec lui.
 
     **Ce que la page montre a cote du texte n'est pas recopie** : l'orientation
     et les changements que le coach prononcera viennent de `mouvements.json` et
@@ -116,7 +117,7 @@
         Relis chaque fiche comme si tu découvrais le sport. Corrige le texte à
         gauche, l'aperçu à droite montre ce qu'on verra dans l'application.
         Quand tout te convient, copie le <code>fiches.json</code> du bas de page,
-        colle-le dans <code>mouvements/fiches.json</code>, commit, push.
+        colle-le dans <code>web/static/donnees/fiches.json</code>, commit, push.
     </p>
     <div class="barre">
         <span class="etat" id="etat"></span>
@@ -145,7 +146,7 @@
 
     <h2 class="titre">Le fichier à coller</h2>
     <p class="hint">
-        Contenu exact de <code>mouvements/fiches.json</code>. Sur l'iPad : copie,
+        Contenu exact de <code>web/static/donnees/fiches.json</code>. Sur l'iPad : copie,
         ouvre le fichier dans GitHub, remplace tout, commit.
     </p>
     <div class="barre">
@@ -161,8 +162,8 @@ import { INSTRUMENTS, formater_zone } from "../js/instruments.js";
 const $ = (id) => document.getElementById(id);
 const CLE_BROUILLON = "dev.fiches";
 
-//: Les champs d'une fiche, dans l'ordre ou on les lit — le meme que
-//: `mouvements/fiches.py`. Une liste s'edite une ligne par consigne.
+//: Les champs d'une fiche, dans l'ordre ou on les lit — ceux que verifie
+//: `scripts/verifier_donnees.mjs`. Une liste s'edite une ligne par consigne.
 const CHAMPS = [
   ["description", "Ce que c'est", "une phrase"],
   ["mise_en_place", "Se mettre en place", "une ligne par consigne"],

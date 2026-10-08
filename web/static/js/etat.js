@@ -1,4 +1,4 @@
-// Jumeau de core/state.py — l'etat d'une seance en cours.
+// L'etat d'une seance en cours.
 //
 // Une fabrique et non une classe : cote Python c'est une `dataclass`, dont
 // l'interet est d'interdire un defaut mutable partage entre deux seances. En

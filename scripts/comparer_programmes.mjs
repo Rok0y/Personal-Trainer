@@ -1,11 +1,12 @@
-// Rejoue en JavaScript ce que `generer_programmes.py` a releve.
+// Rejoue les programmes figes et compare aux reponses figees.
 //
-// Usage : node scripts/comparer_programmes.mjs
-// Prealable : python -m scripts.generer_programmes
-
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+// La moitie des programmes exige des charges hors du materiel declare : seul
+// moyen d'eprouver la traduction par le volume, regle centrale du module. Les
+// historiques sont allonges et redates (ecarts de sept jours pile, « maintenant »
+// pose a sept ou quatorze jours pile) parce que le hasard ne visite pas les
+// frontieres de la semaine.
+//
+// Usage : node scripts/comparer_programmes.mjs [--mettre-a-jour]
 
 import { Baremes } from "../web/static/js/paliers.js";
 import { Niveaux } from "../web/static/js/niveaux.js";
@@ -18,14 +19,9 @@ import {
   semaine_du_programme,
   volume_exige,
 } from "../web/static/js/programmes.js";
-
-const ICI = dirname(fileURLToPath(import.meta.url));
-const RACINE = join(ICI, "..");
-const FIXTURES = join(ICI, "fixtures_programmes.jsonl");
-const BAREMES = join(RACINE, "web", "static", "donnees", "baremes.json");
+import { Releve, lire_json, lire_lignes } from "./fixtures.mjs";
 
 const CATALOGUE = { bras: {}, upper_push: {}, jambes_abdos: {} };
-const ECARTS_DETAILLES = 4;
 
 function inventaires(tables) {
   const complet = {};
@@ -38,28 +34,16 @@ function inventaires(tables) {
 }
 
 function main() {
-  const tables = JSON.parse(readFileSync(BAREMES, "utf-8"));
+  const tables = lire_json("donnees/baremes.json");
   const moteurs = {};
   for (const [nom, brut] of Object.entries(inventaires(tables))) {
     const baremes = new Baremes(tables, brut);
     moteurs[nom] = { baremes, niveaux: new Niveaux(baremes) };
   }
 
-  const lignes = readFileSync(FIXTURES, "utf-8")
-    .split("\n")
-    .filter((l) => l.trim())
-    .map((l) => JSON.parse(l));
-
-  const echecs = [];
-  let comparaisons = 0;
+  const lignes = lire_lignes("programmes");
+  const releve = new Releve();
   let exigences = 0;
-
-  const verifier = (ou, attendu, obtenu) => {
-    comparaisons += 1;
-    const a = JSON.stringify(attendu);
-    const b = JSON.stringify(obtenu);
-    if (a !== b) echecs.push({ ou, attendu: a, rendu: b });
-  };
 
   for (const ligne of lignes) {
     const { baremes, niveaux } = moteurs[ligne.inventaire];
@@ -68,31 +52,21 @@ function main() {
 
     const etats = niveaux.etats_niveaux(seances, {});
 
-    verifier(
-      `${ou} / volumes`,
-      ligne.volumes,
+    releve.verifier(`${ou} / volumes`, ligne, "volumes",
       programme.exigences.map((e) => volume_exige(baremes, e))
     );
-    verifier(
-      `${ou} / prescriptions`,
-      ligne.prescriptions,
+    releve.verifier(`${ou} / prescriptions`, ligne, "prescriptions",
       programme.exigences.map((e) => prescription(baremes, e))
     );
-    verifier(
-      `${ou} / etats_exigences`,
-      ligne.etats_exigences,
+    releve.verifier(`${ou} / etats_exigences`, ligne, "etats_exigences",
       programme.exigences.map((e) => etat_exigence(baremes, e, etats))
     );
-    verifier(`${ou} / libelles`, ligne.libelles, libelles_seances(programme));
-    verifier(`${ou} / liaison`, ligne.liaison, liaison_seances(programme, CATALOGUE));
-    verifier(
-      `${ou} / semaine`,
-      ligne.semaine,
+    releve.verifier(`${ou} / libelles`, ligne, "libelles", libelles_seances(programme));
+    releve.verifier(`${ou} / liaison`, ligne, "liaison", liaison_seances(programme, CATALOGUE));
+    releve.verifier(`${ou} / semaine`, ligne, "semaine",
       semaine_du_programme(programme, seances, CATALOGUE, ligne.tours, ligne.maintenant)
     );
-    verifier(
-      `${ou} / etat_programme`,
-      ligne.etat_programme,
+    releve.verifier(`${ou} / etat_programme`, ligne, "etat_programme",
       etat_programme(baremes, cle, programme, etats)
     );
 
@@ -101,22 +75,13 @@ function main() {
 
   console.log(
     `${lignes.length} programmes rejoues, ${exigences} exigences, ` +
-      `${comparaisons} reponses comparees`
+      `${releve.comparaisons} reponses comparees`
   );
-
-  if (!echecs.length) {
-    console.log("\nAucun ecart : le portage des programmes est fidele.");
-    return;
-  }
-
-  console.log(`\n${echecs.length} reponses divergent. Les ${ECARTS_DETAILLES} premieres :\n`);
-  for (const { ou, attendu, rendu } of echecs.slice(0, ECARTS_DETAILLES)) {
-    console.log(`  ${ou}`);
-    console.log(`    python = ${attendu.slice(0, 300)}`);
-    console.log(`    js     = ${rendu.slice(0, 300)}`);
-    console.log();
-  }
-  process.exitCode = 1;
+  releve.conclure({
+    fichier: "programmes",
+    lignes,
+    succes: "Aucun ecart : les programmes rendent les reponses figees.",
+  });
 }
 
 main();

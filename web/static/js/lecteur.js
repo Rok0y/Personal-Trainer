@@ -1,15 +1,11 @@
-// Jumeau d'`audio/lecteur.py` et de la fonction `coach` d'`audio/coach.py`.
+// Le lecteur du coach : la file des sons et la fonction `coach`.
 //
-// Ce module existe parce qu'il manquait : la premiere version du coach web
-// jouait chaque son des qu'il etait demande, tous en meme temps. « Le compte
-// se marche un peu dessus », a dit le premier testeur — ce n'etait pas un
-// raffinement a venir mais une piece non portee, et le desktop, lui, ne l'a
-// jamais eu ce defaut.
-//
-// Trois regles la composent, toutes venues du Python.
+// La premiere version jouait chaque son des qu'il etait demande, tous en meme
+// temps : « le compte se marche un peu dessus », a dit le premier testeur.
+// Cinq regles composent la file.
 //
 // (1) **Un son a la fois.** Le lecteur attend la fin du precedent avant de
-//     demarrer le suivant, comme le thread Python attend `mixer.get_busy()`.
+//     demarrer le suivant.
 // (2) **Une file a priorites.** Chaque cle en porte une — `compteur` vaut 1,
 //     `bip` 2, `fin_serie` 10 — et la file sert le plus urgent d'abord.
 // (3) **Un evenement important (>= 5) vide les petits sons en attente**
@@ -26,13 +22,11 @@
 //     celui de son espece qui attendait encore : un chiffre dit ou l'on en
 //     est, pas ou l'on en etait.
 //
-// Les tables viennent de `donnees/sons.json`, exporte du Python : ni les
-// fichiers, ni les priorites, ni les delais, ni les silences ne sont reecrits
-// ici.
+// Les tables viennent de `donnees/sons.json` : ni les fichiers, ni les
+// priorites, ni les delais, ni les silences ne sont reecrits ici.
 
 //: Priorite a partir de laquelle un son vide les petits sons en attente, et
-//: en dessous de laquelle il peut lui-meme etre vide. La meme valeur des deux
-//: cotes, comme en Python.
+//: en dessous de laquelle il peut lui-meme etre vide.
 const PRIORITE_IMPORTANTE = 5;
 
 //: Priorite par defaut d'une cle absente de la table.

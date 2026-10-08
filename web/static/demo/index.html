@@ -319,13 +319,14 @@ import {
   formater_valeur, formater_zone,
 } from "../js/instruments.js";
 import { texte } from "../js/messages.js";
+import { avec_fiches } from "../js/seance.js";
 
 const VERSION_WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const MODELE = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
 
 const CIBLE_REPETITIONS = 10;
 const CIBLE_SECONDES = 30;
-// Meme garde-fou que INTERVALLE_MAX cote Python : un onglet
+// Meme garde-fou que INTERVALLE_MAX de moteur.js : un onglet
 // suspendu par iOS ne doit pas crediter d'un coup tout le temps ecoule.
 const INTERVALLE_MAX = 0.5;
 const STOCKAGE = "demo-coach-resultats";
@@ -629,7 +630,7 @@ async function chargerSons() {
   await Promise.all(
     noms.map(async (nom) => {
       try {
-        const reponse = await fetch(`sons/${nom}.wav`);
+        const reponse = await fetch(`../sons/${nom}.wav`);
         const donnees = await reponse.arrayBuffer();
         sons.set(nom, await contexteAudio.decodeAudioData(donnees));
       } catch {
@@ -650,8 +651,20 @@ function jouer(nom) {
 
 // ----- catalogue -----
 
+/**
+ * Les exercices que la demo sait faire tourner seule : ceux du catalogue qui
+ * ont une detection (pas les echauffements), tries par nom, avec leur fiche.
+ * Les memes fichiers que l'application, pour qu'une fiche corrigee le soit
+ * partout.
+ */
 async function chargerCatalogue() {
-  catalogue = await (await fetch("catalogue.json")).json();
+  const [mouvements, fiches] = await Promise.all([
+    fetch("../donnees/mouvements.json").then((r) => r.json()),
+    fetch("../donnees/fiches.json").then((r) => r.json()),
+  ]);
+  catalogue = Object.values(avec_fiches(mouvements, fiches))
+    .filter((m) => !m.est_echauffement && m.detection)
+    .sort((a, b) => (a.nom < b.nom ? -1 : a.nom > b.nom ? 1 : 0));
   dessinerListe();
 }
 

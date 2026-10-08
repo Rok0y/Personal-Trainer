@@ -1,4 +1,4 @@
-// Jumeau de progression/calibration.py — de la note d'athlete d'un profil au
+// De la note d'athlete d'un profil au
 // palier de depart de ses exercices.
 //
 // **Une seule note, de 1 a 10, que la personne se donne a l'accueil.** Elle

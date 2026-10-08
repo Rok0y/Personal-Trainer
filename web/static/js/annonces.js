@@ -1,10 +1,14 @@
-// Jumeau d'`audio/annonces.py` : les briques dont le coach compose ses phrases.
+// Les briques dont le coach compose ses phrases.
 //
-// **Aucune valeur n'est ecrite ici.** La table des briques est exportee du
-// Python par `scripts/preparer_demo.py` dans `donnees/sons.json`, sous la cle
-// `briques` — a cote de `fichiers`, `priorites` et `delais`. Elle y arrive
-// **deja resolue** en noms de fichiers : le navigateur n'a jamais besoin du
-// texte prononce, seulement du `.wav` qui le porte.
+// **Une annonce se compose, elle ne s'enregistre pas en entier** : « prochain
+// exercice » + « curl biceps droit » + « prepare un haltere de 8 kilos », chaque
+// brique enregistree une fois et reutilisee partout.
+//
+// **Aucune valeur n'est ecrite ici.** La table des briques vit dans
+// `donnees/sons.json`, sous la cle `briques` — a cote de `fichiers`,
+// `priorites` et `delais`, et des `textes` dont chaque nom derive
+// (`scripts/verifier_annonces.mjs` controle l'accord). Le navigateur n'a jamais
+// besoin du texte prononce, seulement du `.wav` qui le porte.
 //
 // Elle est donc **injectee** en premier argument plutot que lue d'un import,
 // exactement comme `moteur.js` recoit son `coach`. Ca garde le module pur —
@@ -13,19 +17,14 @@
 //
 // Un seul texte transite encore en clair : le **nom de l'exercice**, qui vient
 // du catalogue local et qui **est** son propre texte. C'est ce que
-// `normaliser_nom` traduit, et c'est la seule fonction de ce fichier qui doive
-// rendre exactement la meme chose que son homologue Python sur n'importe
-// quelle entree.
+// `normaliser_nom` traduit : le nom du fichier est le texte prononce.
 //
-// **Divergence de chemin assumee, et c'est la seule du module.** Une phrase
-// s'enregistre d'un souffle plutot qu'en briques cousues a la lecture : la
-// charge (« prepare un haltere de 8 kilos »), parce que son decoupage tombait
-// au milieu d'un groupe nominal et s'entendait. Le Python en compose le
-// **texte**, puis le traduit en nom de fichier — « le nom du fichier est le
-// texte ». Ici, il n'y a pas de texte : on assemble les **noms**
-// (`fichier_assemble`). Les deux chemins doivent rendre le meme fichier, et
-// c'est `comparer_annonces.mjs` qui le prouve, pas un commentaire qui
-// l'affirmerait.
+// Une phrase s'enregistre d'un souffle plutot qu'en briques cousues a la
+// lecture : la charge (« prepare un haltere de 8 kilos »), parce que son
+// decoupage tombait au milieu d'un groupe nominal et s'entendait. La feuille
+// de prise de son en compose le **texte** puis le traduit en nom ; ici on
+// assemble les **noms** (`fichier_assemble`). Les deux chemins doivent rendre
+// le meme fichier, et `verifier_annonces.mjs` le controle sur toute la gamme.
 //
 // L'amorce et le nom du mouvement, eux, restent **deux prises** : trois
 // amorces se recombinent avec trente-neuf mouvements, et la couture tombe sur
@@ -33,11 +32,9 @@
 
 /**
  * Le nom de fichier d'un texte : sans accents, sans ponctuation, minuscules.
- * Jumeau strict de `normaliser_nom` dans `audio/annonces.py`.
  *
- * `\p{Mn}` est la categorie Unicode « Nonspacing_Mark », celle-la meme que le
- * Python teste par `unicodedata.category(c) != "Mn"`. Les deux retirent donc
- * exactement les memes signes apres decomposition NFD.
+ * `\p{Mn}` est la categorie Unicode « Nonspacing_Mark » : apres decomposition
+ * NFD, elle porte exactement les accents.
  */
 export function normaliser_nom(texte) {
   const sans_accents = String(texte).normalize("NFD").replace(/\p{Mn}/gu, "");
