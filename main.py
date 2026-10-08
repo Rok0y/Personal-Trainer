@@ -258,6 +258,13 @@ try:
                 compteur.reset()
                 etat.repetitions = 0
                 derniere_rep = 0
+            elif termine_x and seance.phase in ("recuperation_serie", "repos_exercice"):
+                # Pendant une pause, le même geste la passe — comme le bouton
+                # « Passer la pause », et par le même chemin. Le même
+                # `hold_bras_x` que la validation : il ne se réarme qu'après
+                # qu'on a relâché les bras, donc valider une série ne saute
+                # pas aussi la pause qui suit.
+                controleur.passer_pause()
 
             # ==================================
             # MACHINE DU CIRCUIT

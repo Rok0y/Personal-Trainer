@@ -201,6 +201,13 @@
   }
 
   .carte-titre { font-size: 1.06rem; font-weight: 600; }
+  /* Une seance modifiee sur cet appareil : un point discret a cote du nom,
+     explique sous le bouton une fois la carte selectionnee. */
+  .marque-locale {
+    display: inline-block; width: .5rem; height: .5rem; margin-left: .3rem;
+    border-radius: 50%; background: var(--texte-doux); vertical-align: middle;
+  }
+  .note-locale { margin: .5rem 0 0; font-size: .8rem; color: var(--texte-doux); }
   .carte-detail { color: var(--texte-doux); font-size: 0.85rem; }
 
   .puces { display: flex; flex-wrap: wrap; gap: 0.3rem; }
@@ -219,11 +226,13 @@
      Meme couleur que le badge de l'accueil du poste fixe. */
   .puce-manuelle { color: var(--orange); border-color: var(--orange); }
   /* Le choix de version, dans la zone de demarrage de la seance choisie. */
-  .carte-versions { display: grid; gap: .4rem; margin-bottom: .7rem; padding: .6rem .75rem; border: 1px dashed var(--orange); border-radius: 12px; }
-  .carte-versions .versions-titre { margin: 0; font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--orange); }
-  .carte-versions .versions-titre span { text-transform: none; letter-spacing: 0; color: var(--muted); }
-  .carte-versions .version-ligne { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .9rem; text-transform: none; letter-spacing: 0; }
-  .carte-versions select { max-width: 62%; }
+  /* Le choix de version, sur la ligne du mouvement : un menu qui a l'air
+     d'un nom, souligne en pointille pour dire qu'il se change. */
+  .contenu-version {
+    font: inherit; color: inherit; background: none; max-width: 70%;
+    border: 0; border-bottom: 1px dashed var(--orange); border-radius: 0;
+    padding: 0 .1rem; cursor: pointer;
+  }
   /* Une variante plus facile jouee a la place : un ecart au fichier, comme
      une cible figee, mais choisi pour soi — d'ou le pointille. */
   .puce-variante { color: var(--orange); border: 1px dashed var(--orange); }
@@ -1986,6 +1995,11 @@ let derniere_rep = 0;
 let points_requis = [];
 let geste_preparation = null;
 let geste_fin = null;
+//: Le geste qui passe une pause, et s'il est arme : il ne l'est qu'une fois
+//: les bras decroises, sans quoi des bras restes croises apres avoir valide
+//: la serie sauteraient aussi la pause, trois secondes plus tard.
+let geste_pause = null;
+let pause_armee = false;
 //: Deux bras leves remettent la serie a zero sans la valider. Tenu 3 s,
 //: comme sur le poste fixe : un geste destructeur ne doit pas partir au
 //: premier etirement.
@@ -2436,7 +2450,9 @@ function boucle(horodatage) {
     else if (guide_exercice) lire_guide(corps);
     else if (seance.phase === "preparation") preparer(corps, instant);
     else if (seance.phase === "exercice") jouer_exercice(corps, instant);
-    else etat.consigne = null;
+    else if (seance.phase === "recuperation_serie" || seance.phase === "repos_exercice") {
+      passer_la_pause_au_geste(corps);
+    } else etat.consigne = null;
   } else if (installation) {
     // Sans corps detecte, l'installation a quand meme quelque chose a dire —
     // c'est meme le cas ou elle sert le plus.
@@ -2495,7 +2511,9 @@ function observer_gestes(corps) {
     ? geste_guide
     : seance.phase === "preparation"
       ? geste_preparation
-      : geste_fin;
+      : seance.phase === "recuperation_serie" || seance.phase === "repos_exercice"
+        ? geste_pause
+        : geste_fin;
   // **Lecture seule** : `update` ne doit etre appele qu'une fois par image, et
   // c'est la phase qui s'en charge. L'appeler ici aussi consommerait la
   // transition « termine », que `HoldPosition` ne rend qu'une seule fois — la
@@ -2646,12 +2664,33 @@ function jouer_exercice(corps, instant) {
   if (terminee) apres_serie();
 }
 
+/**
+ * Bras en croix tenus pendant une pause : on la passe, comme le bouton.
+ *
+ * La tenue est celle de la validation d'une serie (3 s) — on croise souvent
+ * les bras en soufflant, et une tenue courte passerait la pause par
+ * accident. Le geste a sa propre tenue, **armee seulement une fois les bras
+ * decroises** : `apres_serie` repart d'un `geste_fin` neuf, si bien que des
+ * bras restes croises apres la validation auraient recommence a compter.
+ */
+function passer_la_pause_au_geste(corps) {
+  if (!geste_pause) return;
+  if (!pause_armee) {
+    pause_armee = !bras_en_x(corps);
+    return;
+  }
+  const [, passe] = geste_pause.update(corps);
+  if (passe) COMMANDES.passer_pause();
+}
+
 function apres_serie() {
   compteur.reset();
   derniere_rep = 0;
   // Un geste neuf : sans ca, `HoldPosition` reste « termine » et la serie
   // suivante s'arreterait a la premiere image ou les bras sont encore croises.
   geste_fin = new HoldPosition(bras_en_x, TENUE_VALIDATION);
+  geste_pause = new HoldPosition(bras_en_x, TENUE_VALIDATION);
+  pause_armee = false;
   // **Sans repos, le bloc change sans changer de phase** (`repos_apres` a 0 :
   // `terminer_serie` enchaine directement sur `passer_exercice_suivant`).
   // `annoncer_changement` ne voit donc rien passer et le prochain exercice
@@ -5754,13 +5793,17 @@ function dessiner_resume_programme() {
         `</p>`
       : "";
     const suite = semaine.prochaine;
+    // **On ne demarre pas d'ici.** La ligne mene a la carte de la seance, plus
+    // bas, ou se lisent son contenu, sa derniere fois et le choix de version
+    // — et c'est la que se trouve « Demarrer la seance ». Un second bouton de
+    // demarrage ici sautait tout ce qu'on doit pouvoir relire avant.
     const proposee = jouable(suite.seance)
-      ? `<div class="resume-prochaine">` +
-        `<div><span class="resume-etiquette">Séance proposée ` +
+      ? `<button type="button" class="resume-prochaine resume-vers-seance" id="versSeanceProgramme" ` +
+        `data-seance="${echapper(suite.seance)}">` +
+        `<span><span class="resume-etiquette">Séance proposée ` +
         `(<span id="positionProgramme">${suite.position}</span>/${semaine.total})</span>` +
-        `<strong id="libelleProgramme">${echapper(suite.seance)}</strong></div>` +
-        `<button type="button" class="resume-demarrer" id="demarrerProgramme" ` +
-        `data-seance="${echapper(suite.seance)}">Commencer</button></div>`
+        `<strong id="libelleProgramme">${echapper(suite.seance)}</strong></span>` +
+        `<span class="resume-fleche">Voir la séance ↓</span></button>`
       : `<p class="semaine-titre">Aucune séance de ce programme n'est liée à une séance jouable.</p>`;
     corps =
       `<div class="semaine-tete"><p class="semaine-titre">${titre}</p>${rythme}</div>` +
@@ -5792,28 +5835,30 @@ function dessiner_resume_programme() {
 
   conteneur.appendChild(carte);
 
-  carte.querySelector("#demarrerProgramme")?.addEventListener("click", (evenement) => {
-    verrou_ecran.tenir();
-    demarrer(evenement.currentTarget.dataset.seance);
+  carte.querySelector("#versSeanceProgramme")?.addEventListener("click", (evenement) => {
+    aller_a_la_seance(evenement.currentTarget.dataset.seance);
   });
   carte.querySelector("#versProgrammes").addEventListener("click", () => {
     dessiner_programmes();
     montrer("ecranProgrammes");
   });
 
-  // **Toucher une case la propose** : une bascule ponctuelle, qui ne stocke
-  // rien et ne fait que reecrire la cible du bouton. La proposition
-  // automatique — la premiere case vide — reprend la main au prochain
-  // affichage : c'est « pour aujourd'hui », pas « desormais ». Elle ne lance
-  // rien non plus : on touche une case pour lire ce qu'elle propose, la
-  // camera ne s'ouvre qu'au bouton.
+  // **Toucher une case mene a sa seance** : la carte plus bas est
+  // selectionnee et amenee sous les yeux, et c'est elle qui porte le bouton
+  // de demarrage. La case devient la proposee, ce qui ne stocke rien : la
+  // proposition automatique — la premiere case vide — reprend la main au
+  // prochain affichage, c'est « pour aujourd'hui », pas « desormais ».
   const cases = [...carte.querySelectorAll(".semaine-case[data-seance]")];
   for (const caseSemaine of cases) {
     caseSemaine.addEventListener("click", () => {
       cases.forEach((c) => c.classList.toggle("proposee", c === caseSemaine));
-      $("demarrerProgramme").dataset.seance = caseSemaine.dataset.seance;
-      $("libelleProgramme").textContent = caseSemaine.dataset.seance;
-      $("positionProgramme").textContent = caseSemaine.dataset.position;
+      const ligne = $("versSeanceProgramme");
+      if (ligne) {
+        ligne.dataset.seance = caseSemaine.dataset.seance;
+        $("libelleProgramme").textContent = caseSemaine.dataset.seance;
+        $("positionProgramme").textContent = caseSemaine.dataset.position;
+      }
+      aller_a_la_seance(caseSemaine.dataset.seance);
     });
   }
 
@@ -5886,7 +5931,7 @@ function cible_affichee(bloc, objectifs, sans_donnees) {
  * `accueil.html` cote poste fixe : ils ne comptent ni dans les statistiques ni
  * dans la progression, et les melanger aux exercices ferait croire l'inverse.
  */
-function contenu_seance(blocs, objectifs, sans_donnees) {
+function contenu_seance(nom_seance, blocs, objectifs, sans_donnees) {
   const exercices = blocs.filter((b) => b.mode !== "echauffement");
   const echauffements = blocs.filter((b) => b.mode === "echauffement");
 
@@ -5894,14 +5939,27 @@ function contenu_seance(blocs, objectifs, sans_donnees) {
   const catalogue = catalogue_des_variantes();
   const ligne = (bloc) => {
     // Ce qui sera joue, pas ce que le fichier ecrit : la variante du profil
-    // et **son** objectif, l'original en rappel. Une copie, jamais le bloc
-    // lui-meme, qui est celui que l'editeur reecrit.
+    // et **son** objectif. Une copie, jamais le bloc lui-meme, qui est celui
+    // que l'editeur reecrit.
     const joue = moteur.variantes.substitution(bloc.exercice, bloc.mode, variantes, catalogue);
     const b = joue ? { ...bloc, exercice: joue, cible_manuelle: null } : bloc;
     const figee = est_cible_manuelle(b, PROFIL);
+    // **Le choix de version se fait sur la ligne du mouvement**, la ou on le
+    // lit : un encart « Ta version » au-dessus du bouton prenait la moitie de
+    // la carte pour une question qui ne concerne qu'un exercice.
+    const noms = moteur.variantes.versions(bloc.exercice, bloc.mode, catalogue);
+    const nom = noms.length
+      ? `<select class="contenu-version" data-version-original="${echapper(bloc.exercice)}" ` +
+        `aria-label="Version de ${echapper(bloc.exercice)} (vaut pour toutes tes séances)">` +
+        noms.map((n, i) =>
+          `<option value="${echapper(n)}"${n === b.exercice ? " selected" : ""}>` +
+          `${echapper(n)}${i === 0 && noms.length > 1 ? " (complet)" : ""}</option>`
+        ).join("") +
+        `</select>`
+      : `<span>${echapper(b.exercice)}</span>`;
     return (
-      `<div class="contenu-ligne"><span>${echapper(b.exercice)}</span>` +
-      (joue ? `<span class="puce puce-variante">à la place de ${echapper(bloc.exercice)}</span>` : "") +
+      `<div class="contenu-ligne">${nom}` +
+      (joue && !noms.length ? `<span class="puce puce-variante">à la place de ${echapper(bloc.exercice)}</span>` : "") +
       `<b${figee ? ' class="contenu-cible-figee"' : ""}>` +
       `${echapper(cible_affichee(b, objectifs, sans_donnees))}</b>` +
       (b.entrelace_avec ? ` <em>⟷ alterné</em>` : "") +
@@ -5919,6 +5977,26 @@ function contenu_seance(blocs, objectifs, sans_donnees) {
         `${echauffements.length} échauffement${echauffements.length > 1 ? "s" : ""}` +
         `</summary>${echauffements.map(ligne).join("")}</details>`
       : "");
+
+  // C'est la table du profil qui s'ecrit (`retenir_variante`), donc le choix
+  // vaut pour toutes ses seances — l'etiquette accessible le dit, et la liste
+  // se redessine pour annoncer ce qui sera joue. Le circuit est construit au
+  // demarrage : il suit sans rien d'autre.
+  for (const liste of detail.querySelectorAll("select[data-version-original]")) {
+    liste.addEventListener("change", async () => {
+      const original = liste.dataset.versionOriginal;
+      liste.disabled = true;
+      if (await retenir_variante(original, liste.value === original ? null : liste.value)) {
+        dessiner_liste();
+        selectionner_seance(nom_seance);
+        // Le contenu se redessine replie : on le rouvre, puisque c'est la
+        // qu'on etait en train de choisir.
+        trouver_carte(nom_seance)?.querySelector(".carte-contenu")?.setAttribute("open", "");
+      } else {
+        liste.disabled = false;
+      }
+    });
+  }
   return detail;
 }
 
@@ -5929,6 +6007,23 @@ function contenu_seance(blocs, objectifs, sans_donnees) {
  * variable a resynchroniser : `dessiner_liste` reconstruit tout, et une
  * variable survivrait a un redessin en designant un noeud disparu.
  */
+/**
+ * Selectionne une seance et amene sa carte sous les yeux.
+ *
+ * La carte peut etre loin dans la liste, sous la carte du programme : sans
+ * le defilement, toucher une case semblait ne rien faire.
+ */
+function aller_a_la_seance(nom) {
+  selectionner_seance(nom);
+  trouver_carte(nom)?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+/** La carte d'une seance dans la liste, ou null. */
+function trouver_carte(nom) {
+  return [...$("listeSeances").querySelectorAll("article.carte")]
+    .find((carte) => carte.dataset.seance === nom) ?? null;
+}
+
 function selectionner_seance(nom) {
   for (const carte of $("listeSeances").querySelectorAll("article.carte")) {
     const choisie = carte.dataset.seance === nom;
@@ -5940,59 +6035,6 @@ function selectionner_seance(nom) {
   $("sousTitre").textContent = nom
     ? `${nom} — appuie sur « Démarrer la séance » quand tu es prêt.`
     : "Choisis ce que tu fais aujourd'hui.";
-}
-
-/**
- * Le choix de version des mouvements d'une seance, avant de la demarrer.
- *
- * Savoir qu'on ne fera pas une pompe n'oblige plus a echouer d'abord : on
- * choisit ici la version jouee. C'est la table du profil qui s'ecrit
- * (`retenir_variante`), donc le choix vaut pour toutes ses seances, et la
- * liste se redessine pour annoncer ce qui sera joue. Le circuit, lui, est
- * construit au demarrage : il suit sans rien d'autre. Rend null quand aucun
- * mouvement n'a plusieurs versions.
- */
-function choix_des_versions(nom_seance, exercices) {
-  const table = variantes_du_profil();
-  const catalogue = catalogue_des_variantes();
-  const vus = new Set();
-  const lignes = [];
-  for (const bloc of exercices) {
-    if (vus.has(bloc.exercice)) continue;
-    const noms = moteur.variantes.versions(bloc.exercice, bloc.mode, catalogue);
-    if (!noms.length) continue;
-    vus.add(bloc.exercice);
-    lignes.push({ original: bloc.exercice, noms, jouee: table[bloc.exercice] ?? bloc.exercice });
-  }
-  if (!lignes.length) return null;
-
-  const zone = document.createElement("div");
-  zone.className = "carte-versions";
-  zone.innerHTML =
-    `<p class="versions-titre">Ta version <span>· vaut pour toutes tes séances</span></p>` +
-    lignes.map(({ original, noms, jouee }) =>
-      `<label class="version-ligne"><span>${echapper(original)}</span>` +
-      `<select data-version-original="${echapper(original)}">` +
-      noms.map((n, i) =>
-        `<option value="${echapper(n)}"${n === jouee ? " selected" : ""}>` +
-        `${echapper(n)}${i === 0 ? " · version complète" : ""}</option>`
-      ).join("") +
-      `</select></label>`
-    ).join("");
-
-  for (const liste of zone.querySelectorAll("select")) {
-    liste.addEventListener("change", async () => {
-      const original = liste.dataset.versionOriginal;
-      liste.disabled = true;
-      if (await retenir_variante(original, liste.value === original ? null : liste.value)) {
-        dessiner_liste();
-        selectionner_seance(nom_seance);
-      } else {
-        liste.disabled = false;
-      }
-    });
-  }
-  return zone;
 }
 
 function dessiner_liste() {
@@ -6026,8 +6068,21 @@ function dessiner_liste() {
     // ailleurs sans deplier.
     const lancer = document.createElement("button");
     lancer.className = "carte-lancer";
+    // **Une seance modifiee ici se signale par un point, pas par un badge.**
+    // Le badge orange « modifiee sur cet appareil » s'affichait a chaque
+    // retouche et prenait la place d'un avertissement, pour une information
+    // qui ne sert qu'au moment de choisir entre cette version et celle du
+    // fichier. Le point dit qu'il y a quelque chose ; l'explication vient a
+    // la selection, sous le bouton de demarrage — un `title` ne s'affiche pas
+    // au doigt.
+    const locale = historique.est_seance_locale(base, nom);
     lancer.innerHTML =
-      `<div class="carte-titre">${echapper(nom)}</div>` +
+      `<div class="carte-titre">${echapper(nom)}` +
+      (locale
+        ? ` <span class="marque-locale" role="img" aria-label="modifiée sur cet appareil" ` +
+          `title="Modifiée sur cet appareil"></span>`
+        : "") +
+      `</div>` +
       `<div class="carte-detail">${exercices.length} exercice${exercices.length > 1 ? "s" : ""}` +
       (echauffements ? ` · ${echauffements} échauffement${echauffements > 1 ? "s" : ""}` : "") +
       `</div>`;
@@ -6042,8 +6097,6 @@ function dessiner_liste() {
     const demarrage = document.createElement("div");
     demarrage.className = "carte-demarrage";
     demarrage.hidden = true;
-    const versions = choix_des_versions(nom, exercices);
-    if (versions) demarrage.appendChild(versions);
     const bouton = document.createElement("button");
     bouton.type = "button";
     bouton.className = "bouton carte-demarrer";
@@ -6058,6 +6111,14 @@ function dessiner_liste() {
       demarrer(nom);
     });
     demarrage.appendChild(bouton);
+    if (locale) {
+      const note = document.createElement("p");
+      note.className = "note-locale";
+      note.textContent =
+        "Modifiée sur cet appareil : les changements faits sur l'ordinateur ne " +
+        "l'atteignent plus. Le crayon permet de revenir à leur version.";
+      demarrage.appendChild(note);
+    }
     carte.appendChild(demarrage);
     carte.dataset.seance = nom;
 
@@ -6078,12 +6139,6 @@ function dessiner_liste() {
     // precisement ce qu'on ne doit pas avoir a deplier pour voir.
     const barre = document.createElement("div");
     barre.className = "barre-carte";
-    if (historique.est_seance_locale(base, nom)) {
-      const marque = document.createElement("span");
-      marque.className = "puce puce-manuelle";
-      marque.textContent = "modifiée sur cet appareil";
-      barre.appendChild(marque);
-    }
     // Une variante jouee a la place est un ecart au fichier, comme une cible
     // figee : il se voit sans deplier.
     const remplaces = exercices.filter((b) =>
@@ -6104,7 +6159,7 @@ function dessiner_liste() {
     }
     if (barre.childElementCount) carte.appendChild(barre);
 
-    carte.appendChild(contenu_seance(blocs, objectifs, sans_donnees));
+    carte.appendChild(contenu_seance(nom, blocs, objectifs, sans_donnees));
 
     const detail = detail_seance(nom, blocs, dernieres);
     if (detail) carte.appendChild(detail);

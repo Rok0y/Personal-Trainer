@@ -136,13 +136,10 @@
            (`progression.variantes`) : orange comme une cible figée, parce que
            c'est aussi un écart à ce que la séance écrit. */
         .badge-variante { display: inline-flex; padding: 1px 7px; border-radius: 999px; border: 1px dashed var(--orange); color: var(--orange); font-size: 11px; letter-spacing: .02em; vertical-align: middle; }
-        /* Le choix de version, sur la séance sélectionnée seulement. */
-        .session-versions { display: grid; gap: 6px; margin: 10px 0 4px; padding: 10px 12px; border: 1px dashed var(--orange); border-radius: 12px; }
-        .session:not(.selected) .session-versions { display: none; }
-        .versions-titre { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--orange); }
-        .versions-titre span { text-transform: none; letter-spacing: 0; color: var(--muted); }
-        .version-ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
-        .version-ligne select { max-width: 60%; }
+        /* Le choix de version, sur la ligne du mouvement dans « Voir le
+           contenu » : un menu qui a l'air d'un nom, souligné en pointillé
+           pour dire qu'il se change. */
+        .contenu-version { font: inherit; color: inherit; background: none; border: 0; border-bottom: 1px dashed var(--orange); border-radius: 0; padding: 0 2px; cursor: pointer; }
         .badge-premiere { display: inline-flex; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--blue); color: var(--blue); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
         .badge-manuelle-retirer { border: none; background: none; padding: 0; color: inherit; font-size: 13px; line-height: 1; cursor: pointer; font-family: inherit; }
         .badge-manuelle-retirer:hover { color: var(--text); }
@@ -225,16 +222,18 @@
         </p>
         {% endif %}
         {% if semaine.prochaine.seance and semaine.prochaine.seance in seances %}
-        <div class="resume-prochaine">
-            <div>
+        {# **On ne démarre pas d'ici** : la ligne entière mène à la carte de la
+           séance, plus bas, qui porte son contenu et le bouton de démarrage. #}
+        <button type="button" class="resume-prochaine resume-vers-seance" id="demarrer-programme" data-seance="{{ semaine.prochaine.seance }}">
+            <span>
                 <span class="resume-etiquette">Séance proposée (<span id="prochaine-position">{{ semaine.prochaine.position }}</span>/{{ semaine.total }})</span>
                 {# Le nom de la séance, pas le libellé du programme : « Push » peut être
                    joué par `Upper Push`, et annoncer un nom que la liste ci-dessous
                    ne porte pas rendrait le bandeau invérifiable. #}
                 <strong id="prochaine-libelle">{{ semaine.prochaine.seance }}</strong>
-            </div>
-            <button type="button" class="resume-demarrer" id="demarrer-programme" data-seance="{{ semaine.prochaine.seance }}">Choisir cette séance</button>
-        </div>
+            </span>
+            <span class="resume-fleche">Voir la séance ↓</span>
+        </button>
         {% endif %}
         {% endif %}
         {# Les objectifs de fin passent au second rang : ce qu'on vient chercher
@@ -274,33 +273,6 @@
             </div>
             <p>{{ seance.nombre_exercices }} exercices{% if seance.nombre_echauffements %} · {{ seance.nombre_echauffements }} échauffements{% endif %}</p>
 
-            {#- Choisir sa version **avant** de commencer : savoir qu'on ne fera
-                pas une pompe n'oblige plus à échouer d'abord. Le choix est
-                celui de la table du profil (`progression.variantes`), donc il
-                vaut pour toutes ses séances — d'où la mention. Visible sur la
-                séance sélectionnée seulement. #}
-            {%- set a_choisir = seance.exercices|selectattr('versions')|list %}
-            {%- if a_choisir %}
-            <div class="session-versions">
-                <p class="versions-titre">Ta version <span>· vaut pour toutes tes séances</span></p>
-                {%- set vus = [] %}
-                {%- for exercice in a_choisir %}
-                {%- if exercice.nom not in vus %}
-                {%- set _ = vus.append(exercice.nom) %}
-                {%- set jouee = exercice.variante.nom if exercice.variante else exercice.nom %}
-                <label class="version-ligne">
-                    <span>{{ exercice.nom }}</span>
-                    <select data-version-original="{{ exercice.nom }}" data-version-seance="{{ identifiant }}">
-                        {%- for nom in exercice.versions %}
-                        <option value="{{ nom }}"{% if nom == jouee %} selected{% endif %}>{{ nom }}{% if loop.first %} · version complète{% endif %}</option>
-                        {%- endfor %}
-                    </select>
-                </label>
-                {%- endif %}
-                {%- endfor %}
-            </div>
-            {%- endif %}
-
             {% if identifiant == 'test' %}
             <div class="test-config">
                 <label for="test-exercice">Exercice</label>
@@ -334,11 +306,18 @@
                 {% endif %}
                 <ul>
                 {% for exercice in seance.exercices if exercice.mode != 'echauffement' %}
+                    {#- **Le choix de version se fait sur la ligne du mouvement**, là où on
+                        le lit : un encart « Ta version » au-dessus du bouton prenait la
+                        moitié de la carte pour une question qui ne concerne qu'un
+                        exercice. C'est la table du profil qui s'écrit, donc le choix
+                        vaut pour toutes ses séances. #}
+                    {%- set jouee = exercice.variante.nom if exercice.variante else (exercice.nom or exercice.exercice) %}
+                    {%- set nom_ou_choix %}{% if exercice.versions %}<select class="contenu-version" data-version-original="{{ exercice.nom or exercice.exercice }}" data-version-seance="{{ identifiant }}" aria-label="Version de {{ exercice.nom or exercice.exercice }} (vaut pour toutes tes séances)">{% for nom in exercice.versions %}<option value="{{ nom }}"{% if nom == jouee %} selected{% endif %}>{{ nom }}{% if loop.first %} (complet){% endif %}</option>{% endfor %}</select>{% else %}{{ jouee }}{% endif %}{% endset %}
                     {%- if exercice.variante %}
-                    {#- Ce qui sera joué, pas ce que le fichier écrit : la variante et son objectif, l'original en rappel. #}
-                    <li>{{ exercice.variante.nom }}{% if exercice.variante.resume %} · {{ exercice.variante.resume }}{% endif %} <span class="badge-variante" title="Tu joues cette variante plus facile à la place, dans toutes tes séances. Sa fiche permet d'y renoncer.">à la place de {{ exercice.nom or exercice.exercice }}</span>{% if exercice.variante.premiere_fois %} <span class="badge-premiere" title="Jamais fait : la cible vient de ta note d'athlète, et s'ajustera dès cette séance.">1re fois</span>{% endif %}</li>
+                    {#- Ce qui sera joué, pas ce que le fichier écrit : la variante et son objectif. #}
+                    <li>{{ nom_ou_choix }}{% if exercice.variante.resume %} · {{ exercice.variante.resume }}{% endif %}{% if not exercice.versions %} <span class="badge-variante" title="Tu joues cette variante plus facile à la place, dans toutes tes séances. Sa fiche permet d'y renoncer.">à la place de {{ exercice.nom or exercice.exercice }}</span>{% endif %}{% if exercice.variante.premiere_fois %} <span class="badge-premiere" title="Jamais fait : la cible vient de ta note d'athlète, et s'ajustera dès cette séance.">1re fois</span>{% endif %}</li>
                     {%- else %}
-                    <li>{{ exercice.nom or exercice.exercice }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}{% if exercice.cible_manuelle %} <span class="badge-manuelle" title="Cible saisie à la main : le moteur de progression ne la fait plus évoluer.">cible manuelle</span>{% endif %}{% if exercice.premiere_fois %} <span class="badge-premiere" title="Jamais fait : la cible vient de ta note d'athlète, et s'ajustera dès cette séance.">1re fois</span>{% endif %}</li>
+                    <li>{{ nom_ou_choix }} · {{ exercice.series }} séries · {{ exercice.repetitions or exercice.duree }} {% if exercice.mode in MODES_DUREE %}secondes{% else %}répétitions{% endif %}{% if exercice.entrelace_avec %} · entrelacé avec {{ exercice.entrelace_avec }}{% endif %}{% if exercice.materiel %} · Matériel : {{ exercice.materiel }}{% endif %}{% if exercice.cible_manuelle %} <span class="badge-manuelle" title="Cible saisie à la main : le moteur de progression ne la fait plus évoluer.">cible manuelle</span>{% endif %}{% if exercice.premiere_fois %} <span class="badge-premiere" title="Jamais fait : la cible vient de ta note d'athlète, et s'ajustera dès cette séance.">1re fois</span>{% endif %}</li>
                     {%- endif %}
                 {% endfor %}
                 </ul>
@@ -446,7 +425,7 @@
     });
     // Le choix de version vit dans la carte : sans ca, ouvrir la liste
     // reselectionnerait la seance a chaque clic.
-    document.querySelectorAll(".session-versions").forEach((zone) => {
+    document.querySelectorAll(".contenu-version").forEach((zone) => {
         ["click", "keydown"].forEach((type) =>
             zone.addEventListener(type, (evenement) => evenement.stopPropagation()));
     });
@@ -481,10 +460,11 @@
             }
         });
     });
-    // Le bouton du résumé de programme est déjà pris en charge par le
-    // gestionnaire [data-seance] ci-dessus : il ne reste qu'à amener la carte
-    // sélectionnée sous les yeux, elle peut être loin dans la liste.
-    document.querySelectorAll(".resume-demarrer").forEach((bouton) => {
+    // La ligne du résumé et les cases de la semaine sont déjà prises en
+    // charge par le gestionnaire [data-seance] ci-dessus : il ne reste qu'à
+    // amener la carte sélectionnée sous les yeux, elle peut être loin dans la
+    // liste — sans ça, toucher une case semblait ne rien faire.
+    document.querySelectorAll(".resume-vers-seance, .semaine-case[data-seance]").forEach((bouton) => {
         bouton.addEventListener("click", () => {
             const carte = document.querySelector(`.session[data-seance="${CSS.escape(bouton.dataset.seance)}"]`);
             if (carte) carte.scrollIntoView({ behavior: "smooth", block: "center" });
