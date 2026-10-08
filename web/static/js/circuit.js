@@ -95,6 +95,7 @@ export class Exercice {
     variante_difficile = null,
     orientation = null,
     amplitude = null,
+    changements = null,
   }) {
     this.nom = nom;
     this.detection = detection;
@@ -115,6 +116,10 @@ export class Exercice {
     // Couple [fonction, cle de message] : la profondeur a atteindre pendant
     // une repetition. Voir `suivre_amplitude` dans `moteur.js`.
     this.amplitude = amplitude;
+    // Ce que le coach annonce en cours de chrono : [[fraction, "sens"], ...].
+    // Meme piege que l'orientation — un champ oublie ici rendrait les
+    // echauffements muets sans que rien ne le signale.
+    this.changements = (changements ?? []).map((c) => [...c]);
   }
 
   fiche() {
@@ -127,6 +132,7 @@ export class Exercice {
       variante_facile: this.variante_facile,
       variante_difficile: this.variante_difficile,
       orientation: this.orientation,
+      changements: this.changements.map((c) => [...c]),
       analyse_la_pose: this.detection !== null,
     };
   }

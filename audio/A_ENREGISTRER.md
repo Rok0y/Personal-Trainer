@@ -40,7 +40,7 @@ le texte dans `audio/annonces.py` et relance ce script : le nom de fichier
 suivra. L'inverse — renommer un fichier — ne changerait rien, le code cherche
 le nom que la table produit.
 
-**22 prises restantes.**
+**24 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -111,6 +111,15 @@ Le guidage du debut de seance, dit camera ouverte pendant qu'on se place.
 | `bravo_tu_sais_tout_piloter_de_loin.wav` | « Bravo, tu sais tout piloter de loin » | deja fait |
 | `leve_le_bras_droit_pour_ajouter_une_repetition.wav` | « Lève le bras droit pour ajouter une répétition » | **a enregistrer** |
 | `leve_le_bras_gauche_pour_en_retirer_une.wav` | « Lève le bras gauche pour en retirer une » | **a enregistrer** |
+
+## Changements en cours d'echauffement
+
+Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus l'ecran. Un ordre bref, qui arrive seul.
+
+| Fichier | A prononcer | Etat |
+| --- | --- | --- |
+| `change_de_sens.wav` | « Change de sens » | **a enregistrer** |
+| `change_de_jambe.wav` | « Change de jambe » | **a enregistrer** |
 
 ## Accueil d'un nouveau profil
 

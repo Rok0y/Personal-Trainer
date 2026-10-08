@@ -64,6 +64,21 @@ export function annoncer_progression(coach, repetitions, cible) {
  * qui declenche, donc la premiere image d'une serie ne dit rien — elle ne fait
  * que poser le repere.
  */
+/**
+ * « Change de sens », « change de jambe » : jumeau d'`annoncer_changements`
+ * dans `audio/coach.py`. Un changement est annonce quand son instant tombe
+ * dans ]avant, apres] — la meme borne des deux cotes, et `comparer_seances`
+ * la voit. La cle se deduit du mot ; un mot inconnu est ignore par le
+ * lecteur, qui ne trouve aucun fichier.
+ */
+export function annoncer_changements(coach, bloc, avant, apres) {
+  for (const [fraction, quoi] of bloc.exercice.changements ?? []) {
+    if (avant < fraction * bloc.duree && fraction * bloc.duree <= apres) {
+      coach(`changement_${quoi}`);
+    }
+  }
+}
+
 export function annoncer_temps_restant(coach, bloc, secondes_restantes) {
   if (bloc.temps_restant_precedent === null || bloc.temps_restant_precedent === undefined) {
     bloc.temps_restant_precedent = secondes_restantes;
@@ -412,6 +427,7 @@ export function gerer_mode_echauffement({ corps, bloc, seance, etat, coach, mess
 
   const delta = maintenant - bloc.dernier_tick_echauffement;
   bloc.dernier_tick_echauffement = maintenant;
+  const avant = bloc.temps_echauffement;
   bloc.temps_echauffement += Math.min(delta, INTERVALLE_MAX);
 
   if (bloc.exercice.detection !== null && bloc.exercice.detection !== undefined) {
@@ -422,6 +438,7 @@ export function gerer_mode_echauffement({ corps, bloc, seance, etat, coach, mess
     poser_etape(etat, "echauffement", messages.libelle_etape);
   }
 
+  annoncer_changements(coach, bloc, avant, bloc.temps_echauffement);
   annoncer_temps_restant(coach, bloc, bloc.duree - bloc.temps_echauffement);
 
   etat.repetitions = 0;

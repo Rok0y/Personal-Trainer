@@ -151,7 +151,9 @@ function catalogue_pour(fiches) {
       erreurs: (fiche.erreurs ?? []).map((nom) => DETECTIONS[nom]),
       variante_facile: fiche.variante_facile,
       variante_difficile: fiche.variante_difficile,
+      orientation: fiche.orientation ?? null,
       amplitude: amplitude_pour(fiche.amplitude),
+      changements: fiche.changements ?? [],
     });
   }
   return table;
@@ -228,6 +230,19 @@ function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
     boucle.derniere_rep = 0;
     oublier_durees(boucle.etat);
     return [attendu, null];
+  }
+  if (nom === "aller_a_un_changement") {
+    // Commande du harnais, jumelle de celle du Python.
+    let meilleur = 0;
+    let plus = 0;
+    circuit.exercices.forEach((bloc, index) => {
+      if ((bloc.exercice.changements ?? []).length > plus) {
+        meilleur = index;
+        plus = bloc.exercice.changements.length;
+      }
+    });
+    for (let i = 0; i < meilleur; i++) circuit.passer_exercice_suivant();
+    return [null, null];
   }
   if (nom === "aller_a_une_variante") {
     for (let i = 0; i < circuit.exercices.length; i++) {

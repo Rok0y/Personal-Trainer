@@ -78,6 +78,12 @@
   ],
   "bip": [
    "bip.wav"
+  ],
+  "changement_sens": [
+   "change_de_sens.wav"
+  ],
+  "changement_jambe": [
+   "change_de_jambe.wav"
   ]
  },
  "priorites": {
@@ -101,7 +107,9 @@
   "repos_20": 5,
   "repos_10": 6,
   "repos_5": 8,
-  "bip": 2
+  "bip": 2,
+  "changement_sens": 7,
+  "changement_jambe": 7
  },
  "delais": {
   "correction_gainage": 8,
@@ -150,6 +158,8 @@
   "geste_bravo": "bravo_tu_sais_tout_piloter_de_loin.wav",
   "geste_bras_droit_ajoute": "leve_le_bras_droit_pour_ajouter_une_repetition.wav",
   "geste_bras_gauche_retire": "leve_le_bras_gauche_pour_en_retirer_une.wav",
+  "changement_sens": "change_de_sens.wav",
+  "changement_jambe": "change_de_jambe.wav",
   "bienvenue": "bienvenue_je_suis_ton_coach.wav",
   "bienvenue_pose_et_entraine": "tu_poses_ton_appareil_et_tu_t_entraines.wav",
   "bienvenue_camera_compte": "ma_camera_compte_tes_repetitions.wav",
@@ -204,6 +214,8 @@
   "geste_bravo": "Bravo, tu sais tout piloter de loin",
   "geste_bras_droit_ajoute": "Lève le bras droit pour ajouter une répétition",
   "geste_bras_gauche_retire": "Lève le bras gauche pour en retirer une",
+  "changement_sens": "Change de sens",
+  "changement_jambe": "Change de jambe",
   "bienvenue": "Bienvenue, je suis ton coach",
   "bienvenue_pose_et_entraine": "Tu poses ton appareil, et tu t'entraînes",
   "bienvenue_camera_compte": "Ma caméra compte tes répétitions",

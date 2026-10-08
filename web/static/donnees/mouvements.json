@@ -20,6 +20,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "curl_biceps_droit_detection",
   "erreurs": [
@@ -50,6 +51,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "curl_biceps_gauche_detection",
   "erreurs": [
@@ -79,6 +81,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "elevation_laterale_detection",
   "erreurs": [],
@@ -107,6 +110,7 @@
   "variante_facile": "Pompes sur les genoux",
   "variante_difficile": null,
   "orientation": "profil",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "pompe_detection",
   "erreurs": [],
@@ -139,6 +143,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "extension_triceps_au_dessus_de_la_tete_detection",
   "erreurs": [
@@ -169,6 +174,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "allonge_camera_de_cote",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "developpe_couche_sol_detection",
   "erreurs": [],
@@ -197,6 +203,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "developpe_epaule_detection",
   "erreurs": [],
@@ -224,6 +231,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "allonge_camera_de_cote",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "crunches_detection",
   "erreurs": [],
@@ -252,6 +260,7 @@
   "variante_facile": "Gainage sur les genoux",
   "variante_difficile": null,
   "orientation": "profil",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "detection_gainage",
   "erreurs": [],
@@ -282,6 +291,7 @@
   "variante_facile": "Squat sur chaise",
   "variante_difficile": null,
   "orientation": "face",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "squat_detection",
   "erreurs": [],
@@ -312,6 +322,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "profil_camera_gauche",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "fente_droite_detection",
   "erreurs": [
@@ -344,6 +355,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "profil_camera_droite",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "fente_gauche_detection",
   "erreurs": [
@@ -376,6 +388,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "souleve_de_terre_roumain_detection",
   "erreurs": [],
@@ -404,6 +417,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "detection_gainage_laterale_droite",
   "erreurs": [],
@@ -432,6 +446,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "detection_gainage_laterale_gauche",
   "erreurs": [],
@@ -462,6 +477,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "profil_camera_droite",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "rowing_unilateral_droit_detection",
   "erreurs": [
@@ -494,6 +510,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "profil_camera_gauche",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "rowing_unilateral_gauche_detection",
   "erreurs": [
@@ -528,6 +545,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "profil_camera_gauche",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "rowing_penche_detection",
   "erreurs": [
@@ -561,6 +579,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "oiseau_detection",
   "erreurs": [
@@ -591,6 +610,7 @@
   "variante_facile": null,
   "variante_difficile": "Pompes sur les genoux",
   "orientation": "profil",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "pompe_detection",
   "erreurs": [],
@@ -621,6 +641,7 @@
   "variante_facile": "Pompes inclinées",
   "variante_difficile": "Pompes",
   "orientation": "profil",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "pompe_detection",
   "erreurs": [],
@@ -651,6 +672,7 @@
   "variante_facile": null,
   "variante_difficile": "Gainage planche",
   "orientation": "profil",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "detection_gainage",
   "erreurs": [],
@@ -679,6 +701,7 @@
   "variante_facile": null,
   "variante_difficile": "Squat",
   "orientation": "face",
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "squat_sur_chaise_detection",
   "erreurs": [],
@@ -698,6 +721,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
@@ -711,12 +735,18 @@
   "mise_en_place": [],
   "instructions": [
    "Cherche l'amplitude maximale.",
-   "Cinq tours vers l'arrière, puis cinq vers l'avant."
+   "Vers l'arrière d'abord, puis vers l'avant quand le coach te le dit."
   ],
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [
+   [
+    0.5,
+    "sens"
+   ]
+  ],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
@@ -730,12 +760,18 @@
   "mise_en_place": [],
   "instructions": [
    "Garde les bras à l'horizontale.",
-   "Change de sens à mi-parcours."
+   "Le coach te dira quand changer de sens."
   ],
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [
+   [
+    0.5,
+    "sens"
+   ]
+  ],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
@@ -749,12 +785,18 @@
   "mise_en_place": [],
   "instructions": [
    "Amplitude complète, sans forcer.",
-   "Change de sens à mi-parcours."
+   "Le coach te dira quand changer de sens."
   ],
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [
+   [
+    0.5,
+    "sens"
+   ]
+  ],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
@@ -774,6 +816,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "elevation_laterale_detection",
   "erreurs": [],
@@ -793,6 +836,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "pompe_detection",
   "erreurs": [],
@@ -813,6 +857,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
@@ -832,6 +877,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "squat_detection",
   "erreurs": [],
@@ -851,6 +897,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [],
   "analyse_la_pose": true,
   "detection": "squat_detection",
   "erreurs": [],
@@ -864,12 +911,18 @@
   "mise_en_place": [],
   "instructions": [
    "Amplitude modérée, sans forcer.",
-   "Change de sens à mi-parcours."
+   "Le coach te dira quand changer de sens."
   ],
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [
+   [
+    0.5,
+    "sens"
+   ]
+  ],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
@@ -883,12 +936,26 @@
   "mise_en_place": [],
   "instructions": [
    "Amplitude complète, sans forcer.",
-   "Change de sens et de jambe à mi-parcours."
+   "Le coach te dira quand changer de sens, puis de jambe."
   ],
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [
+   [
+    0.25,
+    "sens"
+   ],
+   [
+    0.5,
+    "jambe"
+   ],
+   [
+    0.75,
+    "sens"
+   ]
+  ],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
@@ -908,6 +975,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
@@ -921,12 +989,18 @@
   "mise_en_place": [],
   "instructions": [
    "Monte la jambe sur le côté, sans pencher le buste.",
-   "Change de jambe à mi-parcours."
+   "Le coach te dira quand changer de jambe."
   ],
   "erreurs_frequentes": [],
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [
+   [
+    0.5,
+    "jambe"
+   ]
+  ],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
@@ -946,6 +1020,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
@@ -965,6 +1040,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
@@ -984,6 +1060,7 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
+  "changements": [],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],

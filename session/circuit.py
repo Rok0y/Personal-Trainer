@@ -102,6 +102,15 @@ class Exercice:
     tromperait alors en silence. `None` veut dire « rien de sûr à dire », pas
     « face à la caméra » : c'est le cas des échauffements, et un défaut ferait
     affirmer une consigne que personne n'a vérifiée.
+
+    `changements` dit ce que le coach annonce **en cours de chrono** : une
+    liste de couples `(fraction, quoi)`, `quoi` valant `"sens"` ou `"jambe"`.
+    Les rotations d'échauffement demandent de changer de sens ou de jambe à
+    mi-parcours, et seul l'écrit le disait — on le lit avant de commencer, puis
+    on ne regarde plus l'écran. Une liste et non un booléen, parce que les
+    chevilles en demandent trois (sens, jambe, sens). La clé du coach se
+    déduit du mot (`changement_sens`), et `verifier_annonces.py` refuse un mot
+    hors vocabulaire.
     """
 
     def __init__(
@@ -117,6 +126,7 @@ class Exercice:
         variante_difficile=None,
         orientation=None,
         amplitude=None,
+        changements=None,
     ):
         """`detection` à None décrit un mouvement guidé sans analyse de pose
         (échauffement) : seuls les modes de `MODES_AVEC_DETECTION_OBLIGATOIRE`
@@ -139,6 +149,7 @@ class Exercice:
         self.variante_difficile = variante_difficile
         self.orientation = orientation
         self.amplitude = amplitude
+        self.changements = [tuple(changement) for changement in changements or []]
 
     def fiche(self):
         """Ce que l'exercice a à dire, sous une forme sérialisable.
@@ -157,6 +168,7 @@ class Exercice:
             "variante_facile": self.variante_facile,
             "variante_difficile": self.variante_difficile,
             "orientation": self.orientation,
+            "changements": [list(changement) for changement in self.changements],
             "analyse_la_pose": self.detection is not None,
         }
 

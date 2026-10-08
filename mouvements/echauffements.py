@@ -33,8 +33,9 @@ rotation_epaules = Exercice(
     description="Grands cercles d'épaules, bras relâchés le long du corps.",
     instructions=[
         "Cherche l'amplitude maximale.",
-        "Cinq tours vers l'arrière, puis cinq vers l'avant.",
+        "Vers l'arrière d'abord, puis vers l'avant quand le coach te le dit.",
     ],
+    changements=[(0.5, "sens")],
 )
 
 rotation_coudes = Exercice(
@@ -42,8 +43,9 @@ rotation_coudes = Exercice(
     description="Bras écartés, avant-bras qui décrivent des cercles.",
     instructions=[
         "Garde les bras à l'horizontale.",
-        "Change de sens à mi-parcours.",
+        "Le coach te dira quand changer de sens.",
     ],
+    changements=[(0.5, "sens")],
 )
 
 rotation_poignets = Exercice(
@@ -51,8 +53,9 @@ rotation_poignets = Exercice(
     description="Doigts entrelacés, rotations des poignets dans les deux sens.",
     instructions=[
         "Amplitude complète, sans forcer.",
-        "Change de sens à mi-parcours.",
+        "Le coach te dira quand changer de sens.",
     ],
+    changements=[(0.5, "sens")],
 )
 
 elevations_laterales_a_vide = Exercice(
@@ -122,8 +125,9 @@ rotation_genoux = Exercice(
     description="Pieds joints, mains sur les genoux, rotations en cercle.",
     instructions=[
         "Amplitude modérée, sans forcer.",
-        "Change de sens à mi-parcours.",
+        "Le coach te dira quand changer de sens.",
     ],
+    changements=[(0.5, "sens")],
 )
 
 rotation_chevilles = Exercice(
@@ -131,8 +135,10 @@ rotation_chevilles = Exercice(
     description="En appui sur une jambe, rotations de la cheville libre.",
     instructions=[
         "Amplitude complète, sans forcer.",
-        "Change de sens et de jambe à mi-parcours.",
+        "Le coach te dira quand changer de sens, puis de jambe.",
     ],
+    # Sens, jambe, sens : chaque cheville tourne dans les deux sens.
+    changements=[(0.25, "sens"), (0.5, "jambe"), (0.75, "sens")],
 )
 
 hanches_avant_arriere = Exercice(
@@ -149,8 +155,9 @@ abducteurs = Exercice(
     description="Écartement latéral de la jambe, en appui sur l'autre.",
     instructions=[
         "Monte la jambe sur le côté, sans pencher le buste.",
-        "Change de jambe à mi-parcours.",
+        "Le coach te dira quand changer de jambe.",
     ],
+    changements=[(0.5, "jambe")],
 )
 
 hip_thrust = Exercice(

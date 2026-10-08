@@ -1,4 +1,4 @@
-from audio.coach import annoncer_progression, annoncer_temps_restant
+from audio.coach import annoncer_changements, annoncer_progression, annoncer_temps_restant
 from core.messages import libelle_etape, texte
 from session.circuit import (
     MODE_AMRAP,
@@ -380,6 +380,7 @@ def gerer_mode_echauffement(corps, bloc, seance, etat):
 
     delta = maintenant - bloc.dernier_tick_echauffement
     bloc.dernier_tick_echauffement = maintenant
+    avant = bloc.temps_echauffement
     bloc.temps_echauffement += min(delta, INTERVALLE_MAX)
 
     if bloc.exercice.detection is not None:
@@ -389,6 +390,7 @@ def gerer_mode_echauffement(corps, bloc, seance, etat):
         etat.erreur = None
         poser_etape(etat, "echauffement")
 
+    annoncer_changements(bloc, avant, bloc.temps_echauffement)
     annoncer_temps_restant(bloc, bloc.duree - bloc.temps_echauffement)
 
     # affichage web

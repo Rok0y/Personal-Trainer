@@ -2119,6 +2119,9 @@ async function demarrer(nom) {
       // Le decompte de repos : demande 20, 10 puis 5 secondes avant la fin
       // d'une pause, donc trop tard pour un telechargement.
       "repos_20", "repos_10", "repos_5", "changement_exercice",
+      // Dits en pleine rotation d'echauffement, a l'instant precis du
+      // changement : un telechargement a ce moment-la les ferait arriver tard.
+      "changement_sens", "changement_jambe",
     ]));
   $("sousTitre").textContent = "Préparation de la caméra…";
 

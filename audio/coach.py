@@ -80,6 +80,13 @@ messages = {
         "repos_20.wav",
     ],
     "bip": ["bip.wav"],
+    # Les changements en cours d'echauffement (`Exercice.changements`). La cle
+    # se deduit du mot — `changement_` + `sens` —, si bien qu'aucune table ne
+    # les relie a cote. Le fichier est aussi une brique d'`annonces.BRIQUES`,
+    # c'est-a-dire le texte prononce normalise : c'est ce qui la fait figurer
+    # sur la feuille de prise de son, que cette table-ci n'alimente pas.
+    "changement_sens": ["change_de_sens.wav"],
+    "changement_jambe": ["change_de_jambe.wav"],
 }
 
 
@@ -116,6 +123,11 @@ priorites = {
     "repos_10": 6,
     "repos_5": 8,
     "bip": 2,
+    # Au-dessus de 5 : le bip de la seconde en cours cede la place a la
+    # consigne, qui demande d'agir tout de suite. Sous les trois dernieres
+    # secondes (8), qui ne se croisent jamais avec un changement.
+    "changement_sens": 7,
+    "changement_jambe": 7,
 }
 
 DELAIS_ENTRE_ANNONCES = {
@@ -253,6 +265,21 @@ def annoncer_temps_restant(bloc, secondes_restantes):
             break
 
     bloc.temps_restant_precedent = secondes_restantes
+
+
+def annoncer_changements(bloc, avant, apres):
+    """Dit « change de sens » ou « change de jambe » au moment voulu.
+
+    `avant` et `apres` encadrent le temps d'echauffement de cette image : un
+    changement est annonce quand son instant tombe entre les deux, borne de
+    droite comprise. Aucun etat n'est garde sur le bloc — le temps cumule
+    suffit, et il est deja remis a zero a chaque serie. Un mot hors
+    vocabulaire donne une cle inconnue, que `coach()` tait comme toute autre
+    — c'est `verifier_annonces.py` qui le signale, a froid.
+    """
+    for fraction, quoi in getattr(bloc.exercice, "changements", ()):
+        if avant < fraction * bloc.duree <= apres:
+            coach(f"changement_{quoi}")
 
 
 def annoncer_temps_repos(seance, state, annoncer_exercice=False):

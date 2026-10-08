@@ -357,6 +357,17 @@ def jouer(circuit, horloge, nom, arguments, contexte=None,
         contexte["derniere_rep"] = 0
         oublier_durees(etat)
         return attendu, None
+    if nom == "aller_a_un_changement":
+        # Commande du harnais : amene au bloc dont l'echauffement annonce le
+        # plus de changements (les chevilles, quand la seance en a). Pilotee
+        # par les donnees, comme `aller_au_superset`.
+        meilleur, plus = 0, 0
+        for index, bloc in enumerate(circuit.exercices):
+            if len(bloc.exercice.changements) > plus:
+                meilleur, plus = index, len(bloc.exercice.changements)
+        for _ in range(meilleur):
+            circuit.passer_exercice_suivant()
+        return None, None
     if nom == "aller_a_une_variante":
         # Commande du harnais : premier bloc dont le mouvement a une variante
         # plus facile. Pilotée par les données, comme `aller_au_superset`.
@@ -423,6 +434,21 @@ SCENARIOS_NOMMES = {
     # `INTERVALLE_MAX`, soit une demi-seconde : soixante-deux paires couvrent
     # les trente secondes du bloc et franchissent les six seuils.
     "decompte_final": [
+        ("commencer_exercice", None),
+        ("image", {"pose": 0}),
+        *[
+            pas
+            for _ in range(62)
+            for pas in (("avancer", {"secondes": 1}), ("image", {"pose": 0}))
+        ],
+    ],
+    # Les annonces « change de sens » / « change de jambe » d'un echauffement.
+    # Meme construction que `decompte_final`, et pour la meme raison : la
+    # marche aleatoire fait sauter l'horloge de plusieurs secondes sur des
+    # poses au hasard, si bien qu'aucun changement n'y est jamais croise
+    # proprement. Soixante-deux paires couvrent les trente secondes du bloc.
+    "changement_en_cours": [
+        ("aller_a_un_changement", None),
         ("commencer_exercice", None),
         ("image", {"pose": 0}),
         *[
@@ -648,6 +674,7 @@ def main():
                 None if exercice.amplitude is None
                 else [exercice.amplitude[0].__name__, exercice.amplitude[1]]
             ),
+            "changements": [list(c) for c in exercice.changements],
         }
         for nom, exercice in mouvements.items()
     }, ensure_ascii=False, indent=1), encoding="utf-8")

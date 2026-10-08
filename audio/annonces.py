@@ -214,6 +214,14 @@ BRIQUES = {
     # le demande : c'est l'usage qu'on doit retrouver en seance.
     "geste_bras_droit_ajoute": "Lève le bras droit pour ajouter une répétition",
     "geste_bras_gauche_retire": "Lève le bras gauche pour en retirer une",
+    # --- Changements en cours d'echauffement ------------------------------
+    # Dites au milieu d'une rotation (`Exercice.changements`), donc a
+    # quelqu'un qui ne regarde plus l'ecran. Jouees par `coach()` sous les cles
+    # `changement_sens` / `changement_jambe` d'`audio/coach.py`, qui doivent
+    # rester alignees sur ces noms de fichier. Prononce-les franches : c'est
+    # un ordre, et il arrive seul.
+    "changement_sens": "Change de sens",
+    "changement_jambe": "Change de jambe",
     # --- Accueil d'un nouveau profil --------------------------------------
     # **Dormantes elles aussi, et pour la meme raison que le cadrage.** Le
     # tunnel d'accueil prononcait sa phrase pendant qu'on la lisait ; il est

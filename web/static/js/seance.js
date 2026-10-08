@@ -48,6 +48,7 @@ export function exercice_pour(mouvements, nom) {
     // que le harnais compare.
     orientation: fiche.orientation ?? null,
     amplitude: amplitude_pour(fiche.amplitude),
+    changements: fiche.changements ?? [],
   });
 }
 
