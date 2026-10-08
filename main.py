@@ -22,8 +22,11 @@ from mouvements.positions import (
     bras_en_x,
     bras_gauche_leve,
     deux_bras_leves,
+    seul_bras_droit_leve,
+    seul_bras_gauche_leve,
 )
 from session.moteur import (
+    ajuster_repetitions,
     duree_realisee,
     executer_mode,
     mettre_a_jour_prochain_exercice,
@@ -48,6 +51,11 @@ etat = controleur.etat_seance
 compteur = CompteurMouvement()
 hold_bras_x = HoldPosition(bras_en_x, 3)
 hold_deux_bras_leves = HoldPosition(deux_bras_leves, 3)
+# Un bras seul leve corrige le compte : +1 a droite, -1 a gauche. Meme tenue
+# que les deux autres gestes, pour qu'un bras monte un peu haut pendant un
+# exercice ne compte rien.
+hold_bras_droit = HoldPosition(seul_bras_droit_leve, 3)
+hold_bras_gauche = HoldPosition(seul_bras_gauche_leve, 3)
 preparation = HoldPosition(bras_en_x, 1.5)
 detection = PoseDetector()
 ancienne_phase = None
@@ -87,7 +95,6 @@ def publier_fin_de_seance(seance):
     etat.exercice_actuel = "Séance terminée"
     poser_etape(etat, "termine")
     etat.consigne = None
-    etat.test_max = False
     etat.fiche = None
     etat.fiche_suivante = None
 
@@ -111,7 +118,20 @@ def publier_fin_de_seance(seance):
     seance.historique_enregistre = True
 
 
-controleur.definir_reset_progression(lambda: compteur.reset())
+def reinitialiser_progression():
+    """Remet le compte de la série à zéro, depuis une commande web.
+
+    Le compteur **et** `derniere_rep`, le repère des annonces : sans le
+    second, les premières répétitions après un « reset », un « recommencer »
+    ou un passage à la variante étaient comptées en silence, `executer_mode`
+    n'annonçant que ce qui dépasse le dernier nombre déjà dit.
+    """
+    global derniere_rep
+    compteur.reset()
+    derniere_rep = 0
+
+
+controleur.definir_reset_progression(reinitialiser_progression)
 
 seance = None
 """La séance active est partagée avec l'API web.
@@ -199,15 +219,35 @@ try:
 
             # Bras en X valide une série uniquement pendant l'exercice.
             progression_x, termine_x = hold_bras_x.update(corps)
-            etat.progression_maintien = progression_x
-            etat.maintien_termine = termine_x
 
             # Deux bras levés réinitialisent la série sans valider le résultat.
-            _, reset = hold_deux_bras_leves.update(corps)
+            progression_reset, reset = hold_deux_bras_leves.update(corps)
             if reset and seance.phase == "exercice":
                 compteur.reset()
                 etat.repetitions = 0
                 derniere_rep = 0
+
+            # Un bras seul corrige le compte d'une répétition.
+            progression_plus, plus = hold_bras_droit.update(corps)
+            progression_moins, moins = hold_bras_gauche.update(corps)
+            for fait, delta in ((plus, 1), (moins, -1)):
+                if fait and seance is not None:
+                    derniere_rep = ajuster_repetitions(
+                        seance, compteur, etat, coach, delta, derniere_rep
+                    )
+
+            # L'anneau montre la tenue la plus avancée, quel que soit le geste :
+            # un geste tenu trois secondes sans retour est indistinguable d'un
+            # geste qui ne marche pas. Les trois gestes de compte n'agissent
+            # qu'en exercice, donc ne remplissent l'anneau que là.
+            if seance is not None and seance.phase == "exercice":
+                etat.progression_maintien = max(
+                    progression_x, progression_reset, progression_plus, progression_moins
+                )
+                etat.maintien_termine = termine_x or reset or plus or moins
+            else:
+                etat.progression_maintien = progression_x
+                etat.maintien_termine = termine_x
 
             if termine_x and seance.phase == "exercice":
                 seance.terminer_serie_manuellement(
@@ -218,6 +258,13 @@ try:
                 compteur.reset()
                 etat.repetitions = 0
                 derniere_rep = 0
+            elif termine_x and seance.phase in ("recuperation_serie", "repos_exercice"):
+                # Pendant une pause, le même geste la passe — comme le bouton
+                # « Passer la pause », et par le même chemin. Le même
+                # `hold_bras_x` que la validation : il ne se réarme qu'après
+                # qu'on a relâché les bras, donc valider une série ne saute
+                # pas aussi la pause qui suit.
+                controleur.passer_pause()
 
             # ==================================
             # MACHINE DU CIRCUIT
@@ -400,10 +447,6 @@ try:
                 # ----------------------------------
                 # EXERCICE EN COURS
                 # ----------------------------------
-                # Ne vaut que pour la phase exercice : sans cette remise à
-                # zéro le drapeau survivrait aux repos et à l'exercice suivant.
-                etat.test_max = False
-
                 if seance.phase == "exercice":
                     exercice = seance.exercice_actuel
 
@@ -415,16 +458,6 @@ try:
                         # dans le catalogue ; c'est ici qu'elles atteignent
                         # enfin l'écran.
                         etat.fiche = exercice.fiche()
-
-                        # Sur un test de calibration la cible affichée est un
-                        # plafond hors d'atteinte : sans cette consigne, l'écran
-                        # demanderait 999 répétitions sans expliquer pourquoi.
-                        bloc = seance.bloc_actuel
-                        etat.test_max = bool(
-                            bloc is not None and getattr(bloc, "test_max", False)
-                        )
-                        if etat.test_max:
-                            etat.consigne = texte("test_calibration")
 
                         # Execution du moteur d'exo
                         derniere_rep, repetitions, serie_terminee = executer_mode(

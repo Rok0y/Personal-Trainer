@@ -39,6 +39,7 @@ export function exercice_pour(mouvements, nom) {
     instructions: fiche.instructions,
     mise_en_place: fiche.mise_en_place,
     erreurs_frequentes: fiche.erreurs_frequentes,
+    sensations: fiche.sensations ?? [],
     erreurs: (fiche.erreurs ?? []).map((n) => DETECTIONS[n]).filter(Boolean),
     variante_facile: fiche.variante_facile,
     variante_difficile: fiche.variante_difficile,
@@ -48,6 +49,7 @@ export function exercice_pour(mouvements, nom) {
     // que le harnais compare.
     orientation: fiche.orientation ?? null,
     amplitude: amplitude_pour(fiche.amplitude),
+    changements: fiche.changements ?? [],
   });
 }
 
@@ -78,6 +80,10 @@ export function circuit_pour(mouvements, blocs) {
           repos_apres: bloc.repos_apres ?? 0,
           commentaire: bloc.commentaire ?? "",
           entrelace_avec: bloc.entrelace_avec ?? null,
+          // Comme `construire_circuit` : sans elle, une cible figee a l'ecran
+          // etait reecrite par le moteur au moment de jouer, la marque n'etant
+          // jamais arrivee jusqu'au circuit.
+          cible_manuelle: bloc.cible_manuelle ?? false,
         })
     )
   );
@@ -94,40 +100,66 @@ export function circuit_pour(mouvements, blocs) {
  * d'arrivee.
  */
 export function resultats_par_exercice(seance) {
-  const par_index = new Map();
+  // La cle est le bloc **et** le mouvement : un bloc passe a sa variante en
+  // cours de seance donne deux lignes, celle du mouvement quitte (incomplete,
+  // donc jugee en echec, ce qui est la verite) puis celle de la variante.
+  // L'ordre d'arrivee des resultats les range d'eux-memes dans cet ordre.
+  const par_ligne = new Map();
   for (const resultat of seance.resultats_series) {
     const bloc = seance.exercices[resultat.index_exercice];
     if (!bloc || est_echauffement(bloc)) continue;
-    if (!par_index.has(resultat.index_exercice)) {
-      par_index.set(resultat.index_exercice, { bloc, series: [] });
+    const nom = resultat.exercice ?? bloc.exercice.nom;
+    const cle = `${resultat.index_exercice}|${nom}`;
+    if (!par_ligne.has(cle)) {
+      // Un mouvement quitte **sans aucune serie** a quand meme sa ligne, juste
+      // avant celle-ci : on bascule le plus souvent des la premiere tentative,
+      // et sans elle l'historique ne saurait pas qu'il y a eu bascule — la fin
+      // de seance ne proposerait jamais de garder la variante. Meme regle que
+      // `Circuit.exporter_resultats`.
+      for (const abandon of bloc.abandons ?? []) {
+        const vide = `${resultat.index_exercice}|${abandon.nom}`;
+        if (abandon.nom !== nom && !par_ligne.has(vide)) {
+          par_ligne.set(vide, { bloc, nom: abandon.nom, series: [] });
+        }
+      }
+      par_ligne.set(cle, { bloc, nom, series: [] });
     }
-    par_index.get(resultat.index_exercice).series.push(resultat);
+    par_ligne.get(cle).series.push(resultat);
   }
 
-  return [...par_index.values()].map(({ bloc, series }) => ({
-    nom: bloc.exercice.nom,
-    series: series.length,
-    repetitions: series.reduce((s, r) => s + (r.repetitions ?? 0), 0),
-    poids: bloc.poids,
-    mode: bloc.mode,
-    duree: series.reduce((s, r) => s + (r.duree ?? 0), 0),
-    commentaire: bloc.commentaire,
-    // Les cibles sont celles du bloc, pas du realise : c'est ce qui permet de
-    // relire plus tard « demande 4x12, fait 4x10 ».
-    series_cibles: bloc.nombre_series,
-    repetitions_cibles: bloc.repetitions_par_serie,
-    duree_cible: bloc.duree,
-    entrelace_avec: bloc.entrelace_avec,
-    repos_entre_series: bloc.repos_entre_series,
-    repos_apres: bloc.repos_apres,
-    series_detaillees: series.map((r) => ({
-      serie: r.serie,
-      repetitions: r.repetitions,
-      poids: bloc.poids,
-      duree: r.duree,
-      completee: r.completee,
-    })),
-  }));
+  return [...par_ligne.values()].map(({ bloc, nom, series }) => {
+    // Un mouvement quitte garde ce qu'il demandait au moment ou on l'a quitte :
+    // le bloc, lui, porte deja la cible de la variante.
+    const abandon =
+      nom === bloc.exercice.nom
+        ? null
+        : [...(bloc.abandons ?? [])].reverse().find((a) => a.nom === nom) ?? null;
+    const poids = abandon ? abandon.poids : bloc.poids;
+    return {
+      nom,
+      series: series.length,
+      repetitions: series.reduce((s, r) => s + (r.repetitions ?? 0), 0),
+      poids,
+      mode: bloc.mode,
+      duree: series.reduce((s, r) => s + (r.duree ?? 0), 0),
+      commentaire: bloc.commentaire,
+      // Les cibles sont celles du bloc, pas du realise : c'est ce qui permet
+      // de relire plus tard « demande 4x12, fait 4x10 ».
+      series_cibles: abandon ? abandon.series : bloc.nombre_series,
+      repetitions_cibles: abandon ? abandon.repetitions : bloc.repetitions_par_serie,
+      duree_cible: abandon ? abandon.duree : bloc.duree,
+      entrelace_avec: bloc.entrelace_avec,
+      repos_entre_series: bloc.repos_entre_series,
+      repos_apres: bloc.repos_apres,
+      series_detaillees: series.map((r) => ({
+        serie: r.serie,
+        repetitions: r.repetitions,
+        poids,
+        duree: r.duree,
+        completee: r.completee,
+      })),
+    };
+  });
 }
 
 //: Les phases pendant lesquelles le nom affiche n'est pas celui d'un
@@ -196,6 +228,8 @@ export function payload_etat(seance, etat, statut = "running", utilisateur_id = 
       : [],
     echauffements_termines: active ? seance.series_echauffement_terminees : 0,
     dans_echauffement: active ? seance.dans_echauffement : false,
+    // Le nom que le bouton « Plus facile » annonce, ou null : il se cache.
+    variante_facile: active ? seance.variante_possible() : null,
     commandes_autorisees: {
       reset: en_marche,
       recommencer: en_marche,
@@ -211,6 +245,7 @@ export function payload_etat(seance, etat, statut = "running", utilisateur_id = 
         ["recuperation_serie", "repos_exercice"].includes(seance.phase),
       terminer_seance: en_marche,
       abandonner: en_marche,
+      variante_facile: en_marche && active && seance.variante_possible() !== null,
     },
   };
 }

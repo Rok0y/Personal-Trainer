@@ -37,3 +37,18 @@
 .feedback button.actif { border-color: var(--teal); color: var(--teal); background: var(--glass); }
 .feedback button.actif[data-valeur="trop_dur"] { border-color: var(--orange); color: var(--orange); }
 .feedback button:disabled { opacity: .4; cursor: default; }
+
+/* La proposition de variante : un mouvement plus facile après un échec au
+   palier 1. Elle se distingue des
+   ressentis — ce n'est pas une réponse à la séance mais un changement des
+   séances à venir. */
+.feedback button.variante { border-style: dashed; }
+.feedback button.variante.facile { color: var(--orange); border-color: var(--orange); }
+.feedback .variante-retenue { font: 600 12px 'Space Grotesk', sans-serif; color: var(--muted); }
+/* Une montee le long de la chaine : deja faite, donc une annonce et non un
+   bouton — et a cote, de quoi la defaire. */
+.feedback .variante-montee {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  font: 600 12px 'Space Grotesk', sans-serif; color: var(--teal);
+}
+.feedback button.variante.rester { color: var(--muted); border-color: var(--muted); }

@@ -5,6 +5,7 @@ import sqlite3
 import time
 import unicodedata
 import webbrowser
+from datetime import datetime
 
 from flask import (
     Flask,
@@ -20,6 +21,7 @@ from core.flux import FluxVideo
 from core.utilisateur import (
     connecter,
     deconnecter,
+    note_a_demander,
     onboarding_a_faire,
     rafraichir,
     utilisateur_connecte,
@@ -29,8 +31,11 @@ from historique.database import (
     creer_utilisateur,
     definir_materiel,
     definir_mesures,
+    definir_note_athlete,
     definir_onboarding,
     definir_programme_choisi,
+    definir_programme_tours,
+    definir_variantes,
     derniere_performance,
     enregistrer_ancrage,
     enregistrer_ressentis,
@@ -51,8 +56,14 @@ from core.materiel import ACCESSOIRES, POIDS_REFERENCE, materiel_du_profil, norm
 # Le format d'une sauvegarde n'a qu'une definition : celle du script qui
 # l'ecrit en ligne de commande. La route d'export ne fait que la servir.
 from scripts.exporter_profil import exporter as exporter_profil
-from progression.niveaux import etat_niveau, etats_niveaux, montees_de_niveau
+from progression.niveaux import (
+    etat_niveau,
+    etats_niveaux,
+    montees_de_niveau,
+)
+from progression.objectifs import objectifs_par_exercice
 from progression import ligues as moteur_ligues
+from progression.calibration import NOTE_MAX, NOTE_MIN, REPERES_NOTE, etat_note, note_du_profil, note_valide
 from progression.paliers import (
     est_suivi_par_le_moteur,
     exercices_suivis,
@@ -65,14 +76,15 @@ from progression.programmes import (
     est_personnalise,
     etat_programme,
     etats_programmes,
-    liaison_seances,
+    FORMAT_DATE,
     LIBELLE_CHARGE,
-    libelles_seances,
-    prochaine_seance,
+    semaine_du_programme,
     supprimer_programme,
+    TOURS_MAX,
     tous_les_programmes,
 )
-from progression.ressenti import ECHELLE, evaluation_seance, jugements_par_seance
+from progression.ressenti import ECHELLE, jugements_par_seance
+from progression import variantes as moteur_variantes
 from session.controleur import SessionManager
 from session.moteur import duree_realisee
 from session.seances import (
@@ -138,11 +150,12 @@ def _exiger_un_profil():
 #: Points d'entree accessibles pendant le tunnel d'accueil. Meme piege que
 #: `ROUTES_SANS_PROFIL` : une route oubliee ici renvoie l'utilisateur sur
 #: /bienvenue en boucle au lieu de le laisser avancer. Y figurent la page du
-#: tunnel, ses API, le flux video et /etat (le test de calibration s'en sert),
+#: tunnel, ses API, le flux video et /etat,
 #: les fiches d'exercice (le tunnel y renvoie) et la selection de seance test.
 ROUTES_ONBOARDING = {
     "page_bienvenue",
     "enregistrer_materiel",
+    "enregistrer_note",
     "page_exercice",
     "page_exercices",
 }
@@ -166,10 +179,49 @@ def _exiger_onboarding():
     return redirect("/bienvenue")
 
 
+#: Les jours de la semaine, du lundi au dimanche, tels que `weekday()` les
+#: numérote. Écrits ici plutôt que tirés de la locale du système : celle d'un
+#: poste Windows n'est pas garantie française, et une carte qui dirait « Mon. »
+#: un jour sur deux ne se lit pas.
+JOURS_COURTS = ("lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim.")
+
+
+@app.template_filter("jour_court")
+def jour_court(texte):
+    """« lun. 06/10 » depuis une date de séance, ou le texte tel quel s'il est illisible."""
+    try:
+        instant = datetime.strptime(texte, FORMAT_DATE)
+    except (TypeError, ValueError):
+        return texte or ""
+    return f"{JOURS_COURTS[instant.weekday()]} {instant:%d/%m}"
+
+
 @app.context_processor
 def _profil_dans_les_templates():
     """Rend le profil connecté disponible partout, sans le passer route par route."""
     return {"profil": utilisateur_connecte(), "LIBELLES_SEXE": LIBELLES_SEXE}
+
+
+def jugements_avec_variantes(donnees):
+    """Les jugements des séances, chacun avec sa proposition de variante.
+
+    La proposition voyage **dans** le jugement (`variante`) : c'est déjà lui
+    que `ressentis_ui.js` reçoit, et elle s'affiche au même endroit, sous le
+    verdict. Une ligne sans jugement — un test — n'a rien à proposer.
+    """
+    jugements = jugements_par_seance(donnees)
+    propositions = moteur_variantes.propositions(
+        donnees,
+        jugements,
+        moteur_variantes.variantes_du_profil(),
+        moteur_variantes.catalogue_des_variantes(),
+    )
+    for seance_id, par_nom in propositions.items():
+        lignes = jugements.get(seance_id, {})
+        for nom, proposition in par_nom.items():
+            if nom in lignes:
+                lignes[nom] = {**lignes[nom], "variante": proposition}
+    return jugements
 
 
 def programme_de_l_accueil():
@@ -191,32 +243,10 @@ def programme_de_l_accueil():
     cle = profil.get("programme_choisi")
     if cle not in disponibles:
         return None, disponibles
-    return etat_programme(cle), disponibles
-
-
-def seances_du_programme(cle, catalogue_seances):
-    """Les séances du programme jouables dans l'app, dans l'ordre du programme.
-
-    Sert au sélecteur qui permet de démarrer une autre séance que celle
-    proposée. Les libellés sans séance correspondante sont écartés :
-    `liaison_seances` rend None quand aucune séance ne partage d'exercice avec
-    eux, et il n'y aurait donc rien à lancer.
-    """
-    liaisons = liaison_seances(cle, catalogue_seances)
-    libelles = libelles_seances(tous_les_programmes().get(cle, {}))
-    # `position` compte sur l'ordre complet du programme, pas sur la liste
-    # filtrée : c'est le rang que l'utilisateur lit dans « séance 2/3 », et il
-    # ne doit pas se décaler parce qu'un libellé n'a pas de séance jouable.
-    return [
-        {
-            "libelle": libelle,
-            "seance": liaisons.get(libelle),
-            "position": rang,
-            "total": len(libelles),
-        }
-        for rang, libelle in enumerate(libelles, start=1)
-        if liaisons.get(libelle) in catalogue_seances
-    ]
+    return (
+        etat_programme(cle, variantes=moteur_variantes.variantes_du_profil()),
+        disponibles,
+    )
 
 
 def noms_exercices_individuels():
@@ -454,25 +484,36 @@ def index():
         # enchaîner maintenant. Un seul, parce qu'on n'en fait qu'un à la fois.
         programme, programmes_disponibles = programme_de_l_accueil()
         if programme is not None:
-            programme["prochaine"] = prochaine_seance(
-                programme["cle"], historique, seances
-            )
-            programme["seances_liees"] = seances_du_programme(
-                programme["cle"], seances
+            # La semaine du programme : une case par séance à faire, cochée
+            # quand elle l'est. Elle porte aussi la séance proposée — la
+            # première case vide — et c'est elle qui remplace l'ancienne
+            # proposition « en boucle », qui contredisait les cases.
+            semaine = semaine_du_programme(
+                programme["cle"],
+                historique,
+                (utilisateur_connecte() or {}).get("programme_tours"),
+                catalogue_seances=seances,
             )
             # Une séance déjà choisie prime sur la proposition automatique : le
             # bandeau annonçait sinon « Jambes et abdos » après un clic sur
             # « Push », et le choix de l'utilisateur n'apparaissait nulle part.
-            choisie = next(
-                (
-                    lien
-                    for lien in programme["seances_liees"]
-                    if lien["seance"] == controleur.nom_selectionne
-                ),
-                None,
-            )
-            if choisie is not None:
-                programme["prochaine"] = dict(choisie)
+            # Elle désigne sa première case vide, à défaut sa première case.
+            if semaine is not None:
+                cases = [
+                    case
+                    for case in semaine["cases"]
+                    if case["seance"] == controleur.nom_selectionne
+                    and case["seance"] in seances
+                ]
+                if cases:
+                    case = next((c for c in cases if not c["faite"]), cases[0])
+                    semaine["prochaine"] = {
+                        "libelle": case["libelle"],
+                        "seance": case["seance"],
+                        "position": case["position"],
+                        "total": semaine["total"],
+                    }
+            programme["semaine"] = semaine
         dernieres_series = {}
         for seance in historique:
             nom = seance.get("nom")
@@ -544,7 +585,6 @@ def etat():
         "fiche_suivante": etat.fiche_suivante,
             "repetitions": etat.repetitions,
             "repetitions_cibles": etat.repetitions_cibles,
-            "test_max": etat.test_max,
             "serie_actuelle": etat.serie_actuelle,
             "nombre_series": etat.nombre_series,
             "phase": etat.phase,
@@ -571,6 +611,7 @@ def etat():
             "dans_echauffement": etat_session["dans_echauffement"],
             "nombre_series_total": etat_session["nombre_series_total"],
             "commandes_autorisees": etat_session["commandes_autorisees"],
+            "variante_facile": etat_session["variante_facile"],
         }
     )
 
@@ -708,6 +749,9 @@ def commander_serie(commande):
         "suivante": controleur.serie_suivante,
         "refaire": controleur.refaire_derniere_serie,
         "terminer": controleur.terminer_serie,
+        # Pour cette séance seulement : la garder pour les prochaines se
+        # propose en fin de séance (`/api/variantes`).
+        "variante_facile": controleur.passer_a_la_variante,
     }
     if commande not in commandes:
         return jsonify({"ok": False, "erreur": "Commande inconnue"}), 404
@@ -819,19 +863,20 @@ def historique():
         seances=seances_entrainement(donnees),
         montees=montees,
         montees_ligue=moteur_ligues.montees_de_ligue(montees),
-        jugements=jugements_par_seance(donnees),
+        jugements=jugements_avec_variantes(donnees),
         detail=False,
     )
 
 
 @app.route("/bienvenue")
 def page_bienvenue():
-    """Questionnaire de materiel : la seule etape avant la premiere seance.
+    """Le materiel et la note d'athlete : les deux questions avant la premiere seance.
 
-    Le tunnel de calibration exercice par exercice a disparu : un exercice sans
-    donnees se teste desormais **en seance** (`progression.objectifs.a_calibrer`),
-    au moment ou on le rencontre. Ne restait donc a demander que ce qu'aucune
-    camera ne peut deviner : le materiel.
+    La note remplace le test au maximum qu'une seance jouait autrefois sur
+    chaque exercice inconnu : elle fixe d'un coup le palier de depart de tout
+    ce qui n'a jamais ete fait (`progression.calibration`). Un profil d'avant
+    la note, dont l'accueil est fini depuis longtemps, ne revoit que cette
+    question-la (`note_seule`).
     """
     return _page_materiel(premiere_fois=True)
 
@@ -843,10 +888,21 @@ def page_materiel():
 
 
 def _page_materiel(premiere_fois):
+    profil = utilisateur_connecte()
+    note_seule = premiere_fois and bool(profil.get("onboarding_termine"))
+    if premiere_fois and not onboarding_a_faire():
+        # Rien a demander : une adresse gardee en favori ne doit pas rouvrir
+        # le tunnel d'un profil qui l'a fini.
+        return redirect("/")
     return render_template(
         "bienvenue.html",
-        premiere_fois=premiere_fois,
-        seances=catalogue() if premiere_fois else {},
+        premiere_fois=premiere_fois and not note_seule,
+        note_seule=note_seule,
+        demander_note=premiere_fois and note_a_demander(),
+        note_min=NOTE_MIN,
+        note_max=NOTE_MAX,
+        reperes_note=REPERES_NOTE,
+        seances=catalogue() if premiere_fois and not note_seule else {},
         poids_reference=list(POIDS_REFERENCE),
         accessoires=ACCESSOIRES,
         materiel=materiel_du_profil(),
@@ -879,6 +935,10 @@ def page_profil():
     etats = etats_niveaux(donnees)
     return render_template(
         "profil.html",
+        note=etat_note(note_du_profil(profil), donnees, recuperer_ancrages()),
+        note_min=NOTE_MIN,
+        note_max=NOTE_MAX,
+        reperes_note=REPERES_NOTE,
         nombre_seances=len(donnees),
         # Le nombre d'exercices dont l'historique prouve un niveau : c'est ce
         # que le moteur sait de cette personne, pas ce qu'elle a essayé.
@@ -910,6 +970,25 @@ def enregistrer_profil():
     return jsonify({"ok": True})
 
 
+@app.route("/api/profil/note", methods=["POST"])
+def enregistrer_note():
+    """La note d'athlete, depuis le profil ou l'accueil d'un profil d'avant elle.
+
+    Une hausse pose un plancher sur la prochaine seance des exercices deja
+    faits, une baisse ne touche que ceux qui ne l'ont jamais ete :
+    `definir_note_athlete` porte cette regle, cette route ne fait que la
+    transmettre. Dans `ROUTES_ONBOARDING`, puisque c'est elle que l'accueil
+    d'un profil sans note appelle.
+    """
+    donnees = request.get_json(silent=True) or {}
+    note = donnees.get("note")
+    if not note_valide(note):
+        return jsonify({"ok": False, "erreur": "Choisis une note de 1 a 10."}), 400
+    definir_note_athlete(note, utilisateur_connecte()["id"])
+    rafraichir()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/materiel", methods=["POST"])
 def enregistrer_materiel():
     """Enregistre l'inventaire, et referme le tunnel d'accueil au passage.
@@ -926,6 +1005,12 @@ def enregistrer_materiel():
     definir_materiel(profil["id"], materiel)
 
     seance = donnees.get("seance")
+    # La note arrive avec le materiel au premier passage : un seul bouton,
+    # donc une seule requete, et le tunnel ne se referme pas sans elle.
+    if "note" in donnees:
+        if not note_valide(donnees["note"]):
+            return jsonify({"ok": False, "erreur": "Choisis une note de 1 a 10."}), 400
+        definir_note_athlete(donnees["note"], profil["id"])
     if not profil.get("onboarding_termine"):
         definir_onboarding(
             profil["id"],
@@ -944,13 +1029,18 @@ def page_exercices():
     partout ailleurs : ils ne se lisent pas de la même façon (les premiers ont
     un niveau, les seconds non).
     """
-    etats = etats_niveaux(recuperer_historique())
+    historique = recuperer_historique()
+    etats = etats_niveaux(historique)
     return render_template(
         "exercices.html",
         onglet="exercices",
         exercices=catalogue_exercices(),
         echauffements=catalogue_echauffements(),
         niveaux=etats,
+        # La cible d'un exercice jamais fait est celle que la séance proposera
+        # (le départ de la note d'athlète), pas le palier 1 : même fonction que
+        # l'accueil, sinon deux écrans annoncent deux objectifs.
+        objectifs=objectifs_par_exercice(historique),
         ligues=moteur_ligues.ligues_par_exercice(etats),
     )
 
@@ -968,13 +1058,21 @@ def page_exercice(nom):
     if fiche is None:
         abort(404)
     etat = etat_niveau(nom)
+    historique = recuperer_historique()
+    variantes = moteur_variantes.variantes_du_profil()
     return render_template(
         "exercice.html",
         onglet="exercices",
         fiche=fiche,
+        # Le filet manuel : ce que ce profil joue à la place de ce mouvement,
+        # et ce que ce mouvement remplace pour lui. Une proposition refusée en
+        # fin de séance doit rester rattrapable ici.
+        joue_a_la_place=variantes.get(nom),
+        remplace=moteur_variantes.original_de(nom, variantes),
         etat=etat,
+        objectif=objectifs_par_exercice(historique).get(nom) if etat else None,
         ligue=moteur_ligues.ligue_exercice(nom, (etat or {}).get("niveau")),
-        statistique=statistiques_exercices(recuperer_historique()).get(nom),
+        statistique=statistiques_exercices(historique).get(nom),
     )
 
 
@@ -994,7 +1092,9 @@ def programmes():
     profil = utilisateur_connecte() or {}
     return render_template(
         "programmes.html",
-        programmes=etats_programmes(recuperer_historique()),
+        programmes=etats_programmes(
+            recuperer_historique(), variantes=moteur_variantes.variantes_du_profil()
+        ),
         # La page liste tout ; l'accueil n'en montre qu'un. Le marquer ici, c'est
         # rendre visible lequel des deux rôles chaque programme joue.
         programme_suivi=profil.get("programme_choisi"),
@@ -1042,6 +1142,25 @@ def choisir_programme():
     # afficherait encore le programme précédent.
     rafraichir()
     return jsonify({"ok": True, "cle": cle})
+
+
+@app.route("/api/programme-tours", methods=["POST"])
+def choisir_rythme_programme():
+    """Combien de fois par semaine je parcours mon programme : 1, 2 ou 3 tours.
+
+    La borne de ce que le programme permet (« 3 ou 6 », jamais 9) n'est pas
+    posée ici mais à la lecture, par `semaine_du_programme` : la préférence
+    survit ainsi à un changement de programme au lieu d'être réécrite.
+    """
+    donnees = request.get_json(silent=True) or {}
+    tours = donnees.get("tours")
+    if not isinstance(tours, int) or isinstance(tours, bool) or not 1 <= tours <= TOURS_MAX:
+        return jsonify({"erreur": f"Le rythme est un nombre de tours de 1 à {TOURS_MAX}"}), 400
+
+    profil = utilisateur_connecte()
+    definir_programme_tours(profil["id"], tours)
+    rafraichir()
+    return jsonify({"ok": True, "tours": tours})
 
 
 @app.route("/creer-programme")
@@ -1178,11 +1297,15 @@ def detail_historique(seance_id):
     )
     if seance is None:
         return "Seance introuvable", 404
+    montees = montees_de_niveau(donnees)
     return render_template(
         "historique.html",
         seances=[seance],
-        montees=montees_de_niveau(donnees),
-        jugements=jugements_par_seance(donnees),
+        montees=montees,
+        # Sans elle, la page levait sur le premier exercice : le gabarit lit
+        # les médailles de ligue que la liste complète, elle, transmettait.
+        montees_ligue=moteur_ligues.montees_de_ligue(montees),
+        jugements=jugements_avec_variantes(donnees),
         detail=True,
     )
 
@@ -1215,8 +1338,49 @@ def lire_ressentis_api(seance_id):
     l'écran de fin interroge cette route pendant que la séance est peut-être
     encore en cours d'écriture par le thread caméra.
     """
-    return jsonify({"ok": True, "echelle": list(ECHELLE),
-                    "exercices": evaluation_seance(seance_id)})
+    jugements = jugements_avec_variantes(recuperer_historique()).get(seance_id, {})
+    # Une montée de variante faite par cette séance s'annonce sous la ligne
+    # de la variante maîtrisée — même forme que dans le navigateur
+    # (`ressentis_ui.proposition_de_montee`).
+    for montee in controleur.montees_de_la_seance(seance_id):
+        if montee["depuis"] in jugements:
+            jugements[montee["depuis"]] = {
+                **jugements[montee["depuis"]],
+                "variante": {
+                    "sens": "montee",
+                    "original": montee["original"],
+                    "vers": montee["depuis"],
+                    "nouveau": montee["vers"],
+                },
+            }
+    return jsonify({"ok": True, "echelle": list(ECHELLE), "exercices": jugements})
+
+
+@app.route("/api/variantes", methods=["POST"])
+def enregistrer_variante():
+    """« Pour ce mouvement, je joue celui-là » — ou `joue` à null pour revenir.
+
+    `progression.variantes.definir` décide de ce qui est acceptable (une
+    variante de la chaîne de l'original, jouable, dans la même unité) ; cette
+    route ne fait que transmettre. La table appartient au profil : elle vaut
+    pour toutes les séances, et n'écrit rien dans le fichier des séances.
+    """
+    donnees = request.get_json(silent=True) or {}
+    original = donnees.get("original")
+    if not original:
+        return jsonify({"ok": False, "erreur": "Mouvement manquant"}), 400
+    try:
+        variantes = moteur_variantes.definir(
+            moteur_variantes.variantes_du_profil(),
+            original,
+            donnees.get("joue"),
+            moteur_variantes.catalogue_des_variantes(),
+        )
+    except ValueError as erreur:
+        return jsonify({"ok": False, "erreur": str(erreur)}), 400
+    definir_variantes(variantes, utilisateur_connecte()["id"])
+    rafraichir()
+    return jsonify({"ok": True, "variantes": variantes})
 
 
 @app.route("/api/historique/<int:seance_id>/jalons")

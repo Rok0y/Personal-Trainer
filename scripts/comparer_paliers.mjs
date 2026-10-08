@@ -45,7 +45,7 @@ function repondre(bareme, ligne) {
       if (p === null) return null;
       return {
         ...p,
-        volume: bareme.volume(p.series, p.cible, p.poids),
+        volume: bareme.volume_exercice(nom, p.series, p.cible, p.poids),
         resume: resume(p),
       };
     }

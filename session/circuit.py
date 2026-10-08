@@ -82,13 +82,15 @@ class Exercice:
       ce qu'aucune détection ne saura jamais dire ;
     - `instructions` — l'exécution, geste par geste ;
     - `erreurs_frequentes` — de la pédagogie écrite, lue au calme avant l'effort ;
+    - `sensations` — ce qu'on doit sentir, et ce qui ne doit pas arriver : la
+      seule façon, pour quelqu'un qui découvre, de savoir s'il s'y prend bien ;
     - `erreurs` — des **fonctions** de vérification temps réel, qui retournent
       une clé de `core.messages`. Rien à voir avec la liste précédente : l'une
       se lit, l'autre s'exécute trente fois par seconde.
 
     `variante_facile` / `variante_difficile` nomment un autre exercice du
-    catalogue. C'est ce qui permet au test de calibration de rediriger quelqu'un
-    qui ne tient pas le premier palier, au lieu de le laisser « hors barème ».
+    catalogue, que la fiche propose à qui ne tient pas le premier palier
+    plutôt que de le laisser « hors barème ».
 
     `orientation` est la **seule ligne de `mise_en_place` que le coach
     prononce**, et c'est pour cela qu'elle est sortie du texte. Les vingt-trois
@@ -102,6 +104,15 @@ class Exercice:
     tromperait alors en silence. `None` veut dire « rien de sûr à dire », pas
     « face à la caméra » : c'est le cas des échauffements, et un défaut ferait
     affirmer une consigne que personne n'a vérifiée.
+
+    `changements` dit ce que le coach annonce **en cours de chrono** : une
+    liste de couples `(fraction, quoi)`, `quoi` valant `"sens"` ou `"jambe"`.
+    Les rotations d'échauffement demandent de changer de sens ou de jambe à
+    mi-parcours, et seul l'écrit le disait — on le lit avant de commencer, puis
+    on ne regarde plus l'écran. Une liste et non un booléen, parce que les
+    chevilles en demandent trois (sens, jambe, sens). La clé du coach se
+    déduit du mot (`changement_sens`), et `verifier_annonces.py` refuse un mot
+    hors vocabulaire.
     """
 
     def __init__(
@@ -117,6 +128,8 @@ class Exercice:
         variante_difficile=None,
         orientation=None,
         amplitude=None,
+        changements=None,
+        sensations=None,
     ):
         """`detection` à None décrit un mouvement guidé sans analyse de pose
         (échauffement) : seuls les modes de `MODES_AVEC_DETECTION_OBLIGATOIRE`
@@ -139,6 +152,8 @@ class Exercice:
         self.variante_difficile = variante_difficile
         self.orientation = orientation
         self.amplitude = amplitude
+        self.changements = [tuple(changement) for changement in changements or []]
+        self.sensations = sensations or []
 
     def fiche(self):
         """Ce que l'exercice a à dire, sous une forme sérialisable.
@@ -154,9 +169,11 @@ class Exercice:
             "mise_en_place": list(self.mise_en_place),
             "instructions": list(self.instructions),
             "erreurs_frequentes": list(self.erreurs_frequentes),
+            "sensations": list(self.sensations),
             "variante_facile": self.variante_facile,
             "variante_difficile": self.variante_difficile,
             "orientation": self.orientation,
+            "changements": [list(changement) for changement in self.changements],
             "analyse_la_pose": self.detection is not None,
         }
 
@@ -195,12 +212,19 @@ class BlocExercice:
         self.repos_apres = repos_apres
         self.commentaire = commentaire or ""
         self.entrelace_avec = entrelace_avec
-
-        #: Série de calibration : cet exercice n'a encore aucune donnée, donc
-        #: la séance demande un maximum au lieu d'une cible. Posé par
-        #: `progression.objectifs.appliquer_a_circuit`, qui est déjà le seul
-        #: endroit à savoir si le moteur a un objectif à proposer.
-        self.test_max = False
+        #: Le mouvement écrit dans la séance, quand ce bloc en joue un autre —
+        #: une variante plus facile retenue par le profil
+        #: (`progression.variantes`) ou choisie en pleine séance. None sinon.
+        #: Ne sert qu'à l'affichage (« à la place de Pompes ») : l'historique
+        #: enregistre ce qui a été **joué**.
+        self.remplace = None
+        #: Les mouvements quittés en cours de séance, du plus ancien au plus
+        #: récent, avec ce qu'ils demandaient : `{"nom", "poids", "series",
+        #: "repetitions", "duree"}`.
+        #: Leurs séries déjà faites restent enregistrées sous leur nom, et
+        #: `Circuit.exporter_resultats` a besoin de leurs cibles pour les
+        #: écrire en base comme une ligne à part.
+        self.abandons = []
 
         self.temps_maintien = 0
         self.temps_restant_precedent = None
@@ -211,6 +235,12 @@ class BlocExercice:
 #: verifie l'inclusion — plutot que d'importer le module ici. `circuit.py` n'a
 #: rien a faire du vocabulaire du coach : il sait seulement ou en est la
 #: seance, et c'est deja par des chaines qu'il dit ses phases.
+#: Phases où l'on peut passer à la variante plus facile du bloc courant :
+#: avant la première série, pendant l'effort, et pendant la récupération qui
+#: suit une série — le moment où l'on se rend compte que c'était trop dur.
+#: Pas pendant le repos entre deux exercices : le bloc courant y est déjà fini.
+PHASES_VARIANTE = ("preparation", "exercice", "recuperation_serie")
+
 AMORCES_PAR_POSITION = {
     "premier": "premier_exercice",
     "dernier": "dernier_exercice",
@@ -527,52 +557,92 @@ class Circuit:
             # exclure de leur côté.
             if est_echauffement(bloc):
                 continue
-            resultats = [
-                resultat
-                for resultat in self.resultats_series
-                if resultat["index_exercice"] == index
-            ]
+            # Un mouvement quitté en cours de séance (`passer_a_la_variante`)
+            # devient une ligne à part, **avant** celle du mouvement joué
+            # ensuite : c'est ce qui a réellement été fait, sous son nom, et
+            # c'est incomplet — donc jugé en échec, ce qui est la vérité.
+            # **Même sans aucune série** : on bascule le plus souvent dès la
+            # première tentative, et sans cette ligne l'historique ne saurait
+            # pas qu'il y a eu bascule — la fin de séance ne proposerait
+            # jamais de garder la variante. Zéro série est déjà la forme d'un
+            # bloc non joué.
+            for abandon in bloc.abandons:
+                exercices.append(
+                    self._ligne_exportee(
+                        bloc,
+                        abandon["nom"],
+                        abandon["poids"],
+                        abandon["series"],
+                        self._resultats_du_bloc(index, abandon["nom"]),
+                        repetitions=abandon["repetitions"],
+                        duree=abandon["duree"],
+                    )
+                )
             exercices.append(
-                {
-                    "nom": bloc.exercice.nom,
-                    "series": len(resultats),
-                    "repetitions": sum(
-                        resultat.get("repetitions", 0) for resultat in resultats
-                    ),
-                    "poids": bloc.poids,
-                    "mode": bloc.mode,
-                    "duree": (
-                        resultats[0].get("objectif_duree", bloc.duree)
-                        if resultats
-                        else bloc.duree
-                    ),
-                    "series_cibles": bloc.nombre_series,
-                    "repetitions_cibles": (
-                        resultats[0].get(
-                            "objectif_repetitions", bloc.repetitions_par_serie
-                        )
-                        if resultats
-                        else bloc.repetitions_par_serie
-                    ),
-                    "duree_cible": (
-                        resultats[0].get("objectif_duree", bloc.duree)
-                        if resultats
-                        else bloc.duree
-                    ),
-                    "commentaire": bloc.commentaire,
-                    "entrelace_avec": bloc.entrelace_avec,
-                    "repos_entre_series": bloc.repos_entre_series,
-                    "repos_apres": bloc.repos_apres,
-                    "series_detaillees": [
-                        {
-                            **resultat,
-                            "poids": bloc.poids,
-                        }
-                        for resultat in resultats
-                    ],
-                }
+                self._ligne_exportee(
+                    bloc,
+                    bloc.exercice.nom,
+                    bloc.poids,
+                    bloc.nombre_series,
+                    self._resultats_du_bloc(index, bloc.exercice.nom),
+                )
             )
         return exercices
+
+    def _resultats_du_bloc(self, index, nom_exercice):
+        """Les séries d'un bloc faites sur un mouvement donné.
+
+        Un résultat sans nom appartient au mouvement courant du bloc, le seul
+        qu'il ait pu jouer.
+        """
+        bloc = self.exercices[index]
+        return [
+            resultat
+            for resultat in self.resultats_series
+            if resultat["index_exercice"] == index
+            and resultat.get("exercice", bloc.exercice.nom) == nom_exercice
+        ]
+
+    @staticmethod
+    def _ligne_exportee(
+        bloc, nom, poids, series_cibles, resultats, repetitions=None, duree=None
+    ):
+        """Une ligne d'historique. Les cibles sont celles du bloc, sauf pour un
+        mouvement quitté, qui garde celles qu'il demandait."""
+        repetitions = bloc.repetitions_par_serie if repetitions is None else repetitions
+        duree = bloc.duree if duree is None else duree
+        return {
+            "nom": nom,
+            "series": len(resultats),
+            "repetitions": sum(
+                resultat.get("repetitions", 0) for resultat in resultats
+            ),
+            "poids": poids,
+            "mode": bloc.mode,
+            "duree": (
+                resultats[0].get("objectif_duree", duree) if resultats else duree
+            ),
+            "series_cibles": series_cibles,
+            "repetitions_cibles": (
+                resultats[0].get("objectif_repetitions", repetitions)
+                if resultats
+                else repetitions
+            ),
+            "duree_cible": (
+                resultats[0].get("objectif_duree", duree) if resultats else duree
+            ),
+            "commentaire": bloc.commentaire,
+            "entrelace_avec": bloc.entrelace_avec,
+            "repos_entre_series": bloc.repos_entre_series,
+            "repos_apres": bloc.repos_apres,
+            "series_detaillees": [
+                {
+                    **resultat,
+                    "poids": poids,
+                }
+                for resultat in resultats
+            ],
+        }
 
     def a_des_resultats(self):
         """Un échauffement seul ne fait pas une séance : sans ce filtre, un
@@ -595,10 +665,12 @@ class Circuit:
                 if index is None:
                     continue
                 return False
+            # Le mouvement **courant** seul : les séries d'un mouvement quitté
+            # pour sa variante ne remplissent pas l'objectif de celle-ci.
             series = [
                 resultat
-                for resultat in self.resultats_series
-                if resultat["index_exercice"] == i and resultat.get("completee")
+                for resultat in self._resultats_du_bloc(i, bloc.exercice.nom)
+                if resultat.get("completee")
             ]
             if len(series) != bloc.nombre_series:
                 return False
@@ -656,6 +728,10 @@ class Circuit:
         resultat = {
             "index_exercice": self.index_exercice,
             "serie": self.serie_actuelle,
+            # Le mouvement fait, et pas seulement le bloc : après un passage à
+            # la variante, la série 1 de celle-ci ne doit ni écraser la série 1
+            # du mouvement quitté, ni s'exporter sous son nom.
+            "exercice": self.bloc_actuel.exercice.nom,
             "repetitions": repetitions,
             "duree": duree,
             "completee": completee,
@@ -666,36 +742,11 @@ class Circuit:
             if (
                 precedent["index_exercice"] == self.index_exercice
                 and precedent["serie"] == self.serie_actuelle
+                and precedent.get("exercice") == resultat["exercice"]
             ):
                 self.resultats_series[index] = resultat
-                self._cloturer_test(resultat)
                 return
         self.resultats_series.append(resultat)
-        self._cloturer_test(resultat)
-
-    def _cloturer_test(self, resultat):
-        """Pose l'ancrage de niveau quand la série qui s'achève était un test.
-
-        Ici et pas à la fin de la séance : la performance vient d'être mesurée,
-        et l'ancrage doit exister avant que le moteur ne recalcule quoi que ce
-        soit. Refaire la série repose un ancrage — sans dommage, le journal des
-        ancrages ne retient que le dernier de chaque exercice.
-        """
-        bloc = self.bloc_actuel
-        if bloc is None or not getattr(bloc, "test_max", False):
-            return
-
-        from progression.calibration import cloturer_test
-        from progression.paliers import UNITE_SECONDES, unite
-
-        nom = bloc.exercice.nom
-        if unite(nom) == UNITE_SECONDES:
-            maximum = resultat["duree"]
-        else:
-            maximum = resultat["repetitions"]
-        if not maximum:
-            return
-        cloturer_test(nom, bloc.poids, maximum)
 
     def reinitialiser_etat_serie(self, bloc=None):
         """Remet à zéro les champs temporels d'un bloc (par défaut le bloc courant).
@@ -753,7 +804,7 @@ class Circuit:
         self.debut_repos = None
         return True
 
-    def oublier_resultat_serie(self, index_exercice, serie):
+    def oublier_resultat_serie(self, index_exercice, serie, exercice=None):
         """Retire la performance enregistrée pour une série donnée.
 
         Symétrique d'`enregistrer_resultat_serie`, qui déduplique à l'écriture :
@@ -767,6 +818,7 @@ class Circuit:
             if not (
                 resultat["index_exercice"] == index_exercice
                 and resultat["serie"] == serie
+                and (exercice is None or resultat.get("exercice") == exercice)
             )
         ]
 
@@ -813,7 +865,9 @@ class Circuit:
         # d'`enregistrer_resultat_serie` laisserait une fenêtre pendant laquelle
         # un abandon exporte la tentative qu'on vient précisément de désavouer
         # — et c'est là le sens du bouton : cette série ne comptait pas.
-        self.oublier_resultat_serie(repere["index_exercice"], repere["serie"])
+        self.oublier_resultat_serie(
+            repere["index_exercice"], repere["serie"], repere["exercice"]
+        )
 
         # Le repère est conservé : rappeler cette méthode restaure le même état
         # plutôt que de reculer encore d'un cran. La prochaine fin de série le
@@ -830,6 +884,72 @@ class Circuit:
         self.reinitialiser_etat_serie()
         self.phase = "exercice"
         self.debut_repos = None
+        return True
+
+    def variante_possible(self):
+        """Le mouvement plus facile proposable maintenant, ou None.
+
+        Le nom seulement : le `Circuit` ne connaît pas le catalogue, c'est
+        l'appelant qui résout l'`Exercice` et son objectif. Refusé sur un bloc
+        entrelacé — les supersets du catalogue sont des paires gauche/droite
+        sans variante, et faire repartir un seul des deux à la série 1
+        casserait l'aller-retour.
+        """
+        bloc = self.bloc_actuel
+        if bloc is None or self.phase not in PHASES_VARIANTE:
+            return None
+        if est_echauffement(bloc):
+            return None
+        if self._est_entrelace(self.index_exercice) or (
+            self.index_exercice in self.paires_entrelacees.values()
+        ):
+            return None
+        return bloc.exercice.variante_facile or None
+
+    def passer_a_la_variante(self, exercice, poids, series, repetitions, duree):
+        """Joue le bloc courant sur un mouvement plus facile, dès maintenant.
+
+        **Le bloc repart à la série 1**, avec la cible de la variante : ses
+        séries se jugent sur elle seule, et reprendre le compte là où
+        l'original s'était arrêté donnerait une ligne toujours incomplète,
+        donc toujours en échec. Les séries déjà faites restent enregistrées
+        sous le nom de l'original (`abandons`).
+
+        Le mouvement et sa cible viennent de l'appelant — `exercice` doit être
+        celui que `variante_possible` nomme. Lève sinon, pour que le refus se
+        relève comme un comportement, des deux côtés.
+        """
+        attendu = self.variante_possible()
+        if attendu is None or exercice is None or exercice.nom != attendu:
+            raise ValueError("Pas de variante plus facile à jouer maintenant")
+
+        bloc = self.bloc_actuel
+        bloc.abandons.append(
+            {
+                "nom": bloc.exercice.nom,
+                "poids": bloc.poids,
+                "series": bloc.nombre_series,
+                "repetitions": bloc.repetitions_par_serie,
+                "duree": bloc.duree,
+            }
+        )
+        if bloc.remplace is None:
+            bloc.remplace = bloc.exercice.nom
+        bloc.exercice = exercice
+        bloc.poids = poids
+        bloc.nombre_series = series
+        bloc.repetitions_par_serie = repetitions
+        bloc.duree = duree
+        # Une cible figée l'était pour l'original, pas pour sa variante.
+        bloc.cible_manuelle = None
+
+        self.serie_actuelle = 1
+        # On ne « refait » pas une série d'un autre mouvement.
+        self._derniere_serie_terminee = None
+        self.reinitialiser_etat_serie()
+        if self.phase != "preparation":
+            self.phase = "exercice"
+            self.debut_repos = None
         return True
 
     def objectif_serie_atteint(self, repetitions=0, duree=0):
@@ -886,6 +1006,7 @@ class Circuit:
         self._derniere_serie_terminee = {
             "index_exercice": self.index_exercice,
             "serie": self.serie_actuelle,
+            "exercice": self.bloc_actuel.exercice.nom,
             "entrelace": (
                 dict(self._exercice_precedent_entrelace)
                 if self._exercice_precedent_entrelace is not None

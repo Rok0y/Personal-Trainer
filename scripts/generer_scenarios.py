@@ -43,7 +43,7 @@ import audio.coach
 from mouvements.compteur import CompteurMouvement
 from scripts.generer_fixtures import pose_au_hasard, serialiser
 from vision.body import Body, LandmarkPoint
-from session.moteur import executer_mode
+from session.moteur import ajuster_repetitions, executer_mode, oublier_durees
 from session.seances import catalogue_mouvements, construire_circuit
 from core.state import EtatSeance
 
@@ -190,11 +190,23 @@ def observer(circuit):
             else {
                 "index_exercice": circuit._derniere_serie_terminee["index_exercice"],
                 "serie": circuit._derniere_serie_terminee["serie"],
+                "exercice": circuit._derniere_serie_terminee["exercice"],
                 "entrelace": circuit._derniere_serie_terminee["entrelace"],
             }
         ),
         "resultats": len(circuit.resultats_series),
         "a_des_resultats": circuit.a_des_resultats(),
+        # Le passage à la variante. Les séries sont relevées **avec leur
+        # mouvement** : c'est ce qui les range dans la bonne ligne en base, et
+        # un oubli du nom ne se verrait nulle part ailleurs — la série 1 de la
+        # variante écraserait en silence la série 1 de l'original.
+        "variante_possible": circuit.variante_possible(),
+        "remplace": None if bloc is None else bloc.remplace,
+        "abandons": None if bloc is None else [dict(a) for a in bloc.abandons],
+        "resultats_detail": [
+            [r["index_exercice"], r["serie"], r.get("exercice"), r["completee"]]
+            for r in circuit.resultats_series
+        ],
     }
 
 
@@ -227,6 +239,10 @@ def _commandes(circuit, tirage):
     return [
         ("update", {}),
         ("image", {"secondes": 0}),
+        # Les gestes bras droit / bras gauche : un compte corrige a la main
+        # doit etre annonce, borne a zero et clore la serie a l'image
+        # suivante exactement de la meme facon des deux cotes.
+        ("ajuster", {"delta": tirage.choice([1, -1])}),
         # Faire avancer l'horloge est une commande comme une autre : c'est elle
         # qui fait expirer un repos, et donc qui déclenche les transitions que
         # `update` se contente de constater.
@@ -241,6 +257,7 @@ def _commandes(circuit, tirage):
         ("recommencer_serie", {}),
         ("remettre_serie_a_zero", {}),
         ("refaire_derniere_serie", {}),
+        ("variante", dict(CIBLE_VARIANTE)),
     ]
 
 
@@ -249,6 +266,7 @@ def _commandes(circuit, tirage):
 #: navigation restent rares, comme dans l'usage, mais jamais absentes.
 POIDS = {
     "image": 30,
+    "ajuster": 3,
     "update": 5,
     "avancer": 6,
     "commencer_exercice": 2,
@@ -261,7 +279,13 @@ POIDS = {
     "recommencer_serie": 1,
     "remettre_serie_a_zero": 1,
     "refaire_derniere_serie": 2,
+    "variante": 1,
 }
+
+#: La cible donnée à une variante par le harnais. Fixe et relevée dans le
+#: scénario : le moteur de progression n'entre pas ici (il lirait
+#: l'historique), et c'est la machine à états qu'on compare, pas l'objectif.
+CIBLE_VARIANTE = {"poids": 0, "series": 2, "repetitions": 5, "duree": 20}
 
 
 def jouer(circuit, horloge, nom, arguments, contexte=None,
@@ -300,6 +324,14 @@ def jouer(circuit, horloge, nom, arguments, contexte=None,
             contexte["derniere_rep"] = 0
         return list(triplet), None
 
+    if nom == "ajuster":
+        # Comme `main.py` : la fonction porte elle-meme son garde de phase et
+        # de mode, donc aucun ici — c'est justement lui qu'on compare.
+        contexte["derniere_rep"] = ajuster_repetitions(
+            circuit, compteur, etat, coach, arguments["delta"], contexte["derniere_rep"]
+        )
+        return contexte["derniere_rep"], None
+
     if nom == "aller_a_l_amplitude":
         # Commande du harnais : amene au premier bloc dont l'exercice verifie
         # une amplitude (les pompes). Pilotee par les donnees, comme
@@ -307,6 +339,41 @@ def jouer(circuit, horloge, nom, arguments, contexte=None,
         for _ in range(len(circuit.exercices)):
             bloc = circuit.bloc_actuel
             if bloc is None or bloc.exercice.amplitude is not None:
+                break
+            circuit.passer_exercice_suivant()
+        return None, None
+    if nom == "variante":
+        # Commande du harnais, jumelle de `SessionManager.passer_a_la_variante`
+        # : le mouvement se résout par le catalogue, la cible est fixe. Un
+        # refus est rendu sous un nom commun aux deux langages, dont les
+        # classes d'exception ne se ressemblent pas.
+        attendu = circuit.variante_possible()
+        exercice = catalogue_mouvements().get(attendu) if attendu else None
+        try:
+            circuit.passer_a_la_variante(exercice, **arguments)
+        except ValueError:
+            return "refus", None
+        compteur.reset()
+        contexte["derniere_rep"] = 0
+        oublier_durees(etat)
+        return attendu, None
+    if nom == "aller_a_un_changement":
+        # Commande du harnais : amene au bloc dont l'echauffement annonce le
+        # plus de changements (les chevilles, quand la seance en a). Pilotee
+        # par les donnees, comme `aller_au_superset`.
+        meilleur, plus = 0, 0
+        for index, bloc in enumerate(circuit.exercices):
+            if len(bloc.exercice.changements) > plus:
+                meilleur, plus = index, len(bloc.exercice.changements)
+        for _ in range(meilleur):
+            circuit.passer_exercice_suivant()
+        return None, None
+    if nom == "aller_a_une_variante":
+        # Commande du harnais : premier bloc dont le mouvement a une variante
+        # plus facile. Pilotée par les données, comme `aller_au_superset`.
+        for _ in range(len(circuit.exercices)):
+            bloc = circuit.bloc_actuel
+            if bloc is None or bloc.exercice.variante_facile:
                 break
             circuit.passer_exercice_suivant()
         return None, None
@@ -375,6 +442,21 @@ SCENARIOS_NOMMES = {
             for pas in (("avancer", {"secondes": 1}), ("image", {"pose": 0}))
         ],
     ],
+    # Les annonces « change de sens » / « change de jambe » d'un echauffement.
+    # Meme construction que `decompte_final`, et pour la meme raison : la
+    # marche aleatoire fait sauter l'horloge de plusieurs secondes sur des
+    # poses au hasard, si bien qu'aucun changement n'y est jamais croise
+    # proprement. Soixante-deux paires couvrent les trente secondes du bloc.
+    "changement_en_cours": [
+        ("aller_a_un_changement", None),
+        ("commencer_exercice", None),
+        ("image", {"pose": 0}),
+        *[
+            pas
+            for _ in range(62)
+            for pas in (("avancer", {"secondes": 1}), ("image", {"pose": 0}))
+        ],
+    ],
     "navigation": [
         ("commencer_exercice", None),
         ("terminer_serie_manuellement", None),
@@ -427,6 +509,27 @@ SCENARIOS_NOMMES = {
                 ("image", {"pose": POSE_POMPE[pose]}),
             )
         ],
+    ],
+    # Passer à la variante en cours de bloc, puis refaire, puis recommencer :
+    # aucun tirage au hasard ne fait deux séries sur l'original avant de
+    # basculer. Les séances sans variante y rendent un refus à chaque fois,
+    # ce qui est aussi un comportement à comparer.
+    "variante_en_cours": [
+        ("aller_a_une_variante", None),
+        ("commencer_exercice", None),
+        ("terminer_serie_manuellement", None),
+        ("avancer", None), ("update", None),
+        ("terminer_serie_manuellement", None),
+        ("variante", dict(CIBLE_VARIANTE)),       # pendant la récupération
+        ("terminer_serie_manuellement", None),   # série 1 de la variante
+        ("refaire_derniere_serie", None),
+        ("terminer_serie_manuellement", None),
+        ("avancer", None), ("update", None),
+        ("variante", dict(CIBLE_VARIANTE)),       # un cran plus bas encore
+        ("terminer_serie_manuellement", None),
+        ("avancer", None), ("update", None),
+        ("terminer_serie_manuellement", None),
+        ("variante", dict(CIBLE_VARIANTE)),       # bloc fini : refusé
     ],
     "sauter_les_repos": [
         ("commencer_exercice", None),
@@ -512,8 +615,12 @@ def _arguments(commande, circuit, tirage):
         return {"secondes": 40}
     if commande == "image":
         return {"pose": tirage.randrange(NOMBRE_DE_POSES)}
+    if commande == "ajuster":
+        return {"delta": tirage.choice([1, -1])}
     if commande == "terminer_serie_manuellement":
         return _performance(circuit, tirage)
+    if commande == "variante":
+        return dict(CIBLE_VARIANTE)
     return {}
 
 
@@ -556,6 +663,7 @@ def main():
             "instructions": list(exercice.instructions),
             "mise_en_place": list(exercice.mise_en_place),
             "erreurs_frequentes": list(exercice.erreurs_frequentes),
+            "sensations": list(exercice.sensations),
             "variante_facile": exercice.variante_facile,
             "variante_difficile": exercice.variante_difficile,
             # Sans elle, le JavaScript construit ses exercices sans
@@ -567,6 +675,7 @@ def main():
                 None if exercice.amplitude is None
                 else [exercice.amplitude[0].__name__, exercice.amplitude[1]]
             ),
+            "changements": [list(c) for c in exercice.changements],
         }
         for nom, exercice in mouvements.items()
     }, ensure_ascii=False, indent=1), encoding="utf-8")

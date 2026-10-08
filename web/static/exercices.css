@@ -72,6 +72,9 @@ li { margin-bottom:4px; }
 
 .variantes { display:flex; flex-wrap:wrap; gap:10px; }
 
-.variantes a.btn { text-transform:none; letter-spacing:0; }
+.variantes a.btn, .variantes button.btn { text-transform:none; letter-spacing:0; }
+/* Ce que le profil joue à la place, sous « Adapter la difficulté ». */
+.variantes + .aide, .bloc > .aide { margin:12px 0 8px; color:var(--muted); font-size:13px; }
+.bloc > .aide a { color:var(--orange); }
 
 .meta { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }

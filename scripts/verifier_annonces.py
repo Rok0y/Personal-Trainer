@@ -176,6 +176,33 @@ def _orientations_invalides():
     return invalides
 
 
+def _changements_invalides(tables):
+    """Un changement d'echauffement que le coach ne saurait pas dire.
+
+    La cle se deduit du mot (`changement_` + `sens`) et `coach()` tait une cle
+    inconnue : un mot mal orthographie dans `echauffements.py` rendrait donc la
+    rotation muette sans rien dire. On verifie aussi que la cle joue bien le
+    fichier de sa brique — les deux tables vivent dans deux modules, et seule
+    la brique alimente la feuille de prise de son.
+    """
+    messages = tables.get("messages", {})
+    problemes = []
+    for nom, mouvement in catalogue_mouvements().items():
+        for fraction, quoi in getattr(mouvement, "changements", ()):
+            cle = f"changement_{quoi}"
+            if cle not in messages:
+                problemes.append(f"« {nom} » : changement « {quoi} » hors vocabulaire")
+            if not 0 < fraction < 1:
+                problemes.append(f"« {nom} » : changement a {fraction}, hors de ]0, 1[")
+    for cle, texte in annonces.BRIQUES.items():
+        if cle.startswith("changement_") and messages.get(cle) != [annonces.fichier(texte)]:
+            problemes.append(
+                f"cle « {cle} » : `messages` doit jouer {annonces.fichier(texte)}, "
+                "le fichier de sa brique"
+            )
+    return problemes
+
+
 def _fonctions_manquantes_en_js():
     """Le jumeau porte-t-il les memes fonctions, sous les memes noms ?
 
@@ -256,6 +283,7 @@ def main():
             f"({', '.join(annonces.ORIENTATIONS)})"
         )
 
+    problemes.extend(_changements_invalides(tables))
     problemes.extend(_fonctions_manquantes_en_js())
 
     if problemes:

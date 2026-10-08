@@ -67,6 +67,12 @@ FAMILLES = [
         "place.",
     ),
     (
+        ("changement_",),
+        "Changements en cours d'echauffement",
+        "Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus "
+        "l'ecran. Un ordre bref, qui arrive seul.",
+    ),
+    (
         ("bienvenue",),
         "Accueil d'un nouveau profil",
         "Joue une seule fois dans la vie d'un profil. A enregistrer en "

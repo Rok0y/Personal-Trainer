@@ -28,16 +28,18 @@ dire qu'il faut du matériel en plus, et c'est une information, pas une erreur.
 """
 
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from progression.niveaux import etats_niveaux
+from progression.variantes import via_variante
 from progression.paliers import (
     UNITE_SECONDES,
     est_suivi_par_le_moteur,
     niveau_pour_volume,
     palier,
     unite,
-    volume,
+    volume_exercice,
 )
 
 #: Intitulé du champ de charge, défini une fois : écrit en dur dans le
@@ -383,7 +385,9 @@ def supprimer_programme(cle):
 
 def volume_exige(exigence):
     """Volume que la prescription représente, dans l'unité du barème."""
-    return volume(exigence["series"], exigence["cible"], exigence["poids"])
+    return volume_exercice(
+        exigence["exercice"], exigence["series"], exigence["cible"], exigence["poids"]
+    )
 
 
 def prescription(exigence):
@@ -394,8 +398,16 @@ def prescription(exigence):
     return f"{exigence['series']}x{exigence['cible']:g}{suffixe}{charge}"
 
 
-def etat_exigence(exigence, niveaux):
-    """Confronte une exigence au niveau acquis."""
+def etat_exigence(exigence, niveaux, variantes=None):
+    """Confronte une exigence au niveau acquis.
+
+    `variantes` est la table du profil (`progression.variantes`) : une
+    exigence dont le mouvement est joué sous une variante le dit
+    (`via_variante`), sans que son avancement change — le volume d'une
+    variante ne se compare pas à celui du mouvement complet. Passée
+    explicitement, jamais lue sur le profil ici : le harnais rend ainsi deux
+    fois le même verdict.
+    """
     nom = exigence["exercice"]
     etat = niveaux.get(nom)
     acquis = etat["niveau"] if etat else None
@@ -426,10 +438,11 @@ def etat_exigence(exigence, niveaux):
             min(100, round(100 * (acquis or 0) / requis)) if requis else 0
         ),
         "restant": max(0, requis - (acquis or 0)) if requis else None,
+        "via_variante": via_variante(nom, variantes or {}, niveaux),
     }
 
 
-def etat_programme(cle, seances=None, niveaux=None):
+def etat_programme(cle, seances=None, niveaux=None, variantes=None):
     """Avancement d'un programme, entièrement recalculé à la lecture."""
     programme = tous_les_programmes().get(cle)
     if programme is None:
@@ -442,7 +455,7 @@ def etat_programme(cle, seances=None, niveaux=None):
     for ligne in programme.get("exigences", []):
         if not est_suivi_par_le_moteur(ligne.get("exercice")):
             continue
-        etat = etat_exigence(ligne, niveaux)
+        etat = etat_exigence(ligne, niveaux, variantes)
         # Regroupement à l'affichage seulement : l'ordre des séances suit
         # l'ordre d'apparition des exigences, donc celui de l'éditeur.
         par_seance.setdefault(etat["seance"], []).append(etat)
@@ -515,48 +528,204 @@ def liaison_seances(cle, catalogue_seances=None):
     }
 
 
-def prochaine_seance(cle, historique, catalogue_seances=None):
-    """Séance du programme à enchaîner maintenant.
+#: Un programme se vit à la semaine : on a sept jours pour faire toutes ses
+#: séances. Sept jours **glissants depuis la première séance du cycle**, et non
+#: une semaine du calendrier — décidé avec Arthur. Une fenêtre purement
+#: glissante (« les sept derniers jours ») décocherait une case d'elle-même au
+#: bout d'une semaine et ne donnerait aucune semaine nette à compter ; un cycle
+#: qui démarre à la première séance garde la souplesse et se compte.
+DUREE_CYCLE = timedelta(days=7)
 
-    Le programme se parcourt en boucle : la prochaine est celle qui suit la
-    dernière effectivement réalisée. Une séance abandonnée ne compte pas — on
-    la repropose plutôt que de la considérer faite.
+#: Combien de fois au plus on parcourt le programme dans un cycle. « Pas
+#: d'entre-deux » : le rythme est un multiple du nombre de séances (3 ou 6 pour
+#: un programme de trois), jamais une valeur intermédiaire.
+TOURS_MAX = 3
+
+#: Une séance par jour au plus : au-delà, le rythme n'est plus tenable et on
+#: ne le propose pas.
+JOURS_PAR_CYCLE = 7
+
+#: Combien de cycles passés le rappel montre (✓ / ✗).
+CYCLES_RECENTS = 6
+
+#: Le format des dates de séance en base, des deux côtés du portage. Une
+#: comparaison de chaînes y est fausse (`31/08` > `02/09`) : on compare donc
+#: toujours des instants lus, jamais du texte.
+FORMAT_DATE = "%d/%m/%Y %H:%M"
+
+
+def tours_possibles(nombre_seances):
+    """Les rythmes proposables : 1, 2 ou 3 tours, tant qu'ils tiennent en sept jours."""
+    possibles = [
+        tours
+        for tours in range(1, TOURS_MAX + 1)
+        if tours * nombre_seances <= JOURS_PAR_CYCLE
+    ]
+    return possibles or [1]
+
+
+def _lire_date(texte):
+    """Un instant naïf depuis une date de séance, ou None si elle est illisible.
+
+    Naïf à dessein : la base stocke l'heure murale sans fuseau, et « sept
+    jours » doit valoir sept jours d'horloge murale, changement d'heure
+    compris. Le JavaScript compte pour la même raison en `Date.UTC`.
+    """
+    try:
+        return datetime.strptime(texte, FORMAT_DATE)
+    except (TypeError, ValueError):
+        return None
+
+
+def _nouveau_cycle(debut, modele):
+    return {
+        "debut": debut,
+        "fin": debut + DUREE_CYCLE,
+        "cases": [dict(case) for case in modele],
+        "complet": False,
+    }
+
+
+def semaine_du_programme(
+    cle, historique, tours=1, maintenant=None, catalogue_seances=None
+):
+    """Où en est la semaine du programme : ses cases, la suivante, la série.
+
+    **Les cases** sont les libellés du programme dans leur ordre, répétés
+    `tours` fois (Push, Pull, Jambes, Push, Pull, Jambes). On les remplit en
+    rejouant l'historique **dans l'ordre chronologique** — par identifiant, les
+    dates en `JJ/MM/AAAA` ne se triant pas :
+
+    - une séance abandonnée ne compte pas, une séance hors programme non plus ;
+    - la première séance ouvre un cycle de sept jours ; une séance qui tombe
+      **à sept jours pile ou après** le clôt comme raté et en ouvre un autre ;
+    - une séance coche **la première case vide de son libellé**, pas la case
+      attendue : faire Jambes avant Pull ne doit rien coûter, l'ordre ne sert
+      qu'à ranger les cases et à proposer la suivante. Une séance de plus que
+      ce que le cycle demande pour son libellé est ignorée — elle n'ouvre rien ;
+    - un cycle complet se clôt comme réussi, et la séance d'après en ouvre un.
+
+    **Le cycle montré** est le dernier, tant que ses sept jours courent —
+    complet ou non. Passé ce délai, la semaine « démarre à ta prochaine
+    séance » : cases vides, `debut` à None.
+
+    **La série** compte les cycles réussis d'affilée. Le cycle en cours, s'il
+    est incomplet, ne compte pas et ne casse rien ; un cycle raté la casse, et
+    une semaine entière sans aucune séance aussi — un cycle doit commencer
+    moins de sept jours après la fin du précédent pour s'y enchaîner.
+
+    Rien n'est stocké : tout se relit dans l'historique, ce qui rend le calcul
+    **rétroactif** — passer de 3 à 6 séances relit les cycles passés avec six
+    cases. `maintenant` est une date au format de la base (None : l'heure
+    courante), pour que le harnais rende deux fois le même verdict.
+
+    Remplace `prochaine_seance`, qui proposait « la séance après la dernière
+    faite » : avec des cases à l'écran, elle aurait contredit la première case
+    vide.
     """
     programme = tous_les_programmes().get(cle)
     if programme is None:
         return None
-
     ordre = libelles_seances(programme)
     if not ordre:
         return None
 
-    liaison = liaison_seances(cle, catalogue_seances)
-    par_seance = {nom: libelle for libelle, nom in liaison.items() if nom}
+    possibles = tours_possibles(len(ordre))
+    # Borné à la lecture et non à l'écriture : changer de programme ne doit
+    # pas réécrire la préférence, seulement la contraindre.
+    tours = min(max(int(tours or 1), 1), possibles[-1])
+    instant = (
+        _lire_date(maintenant)
+        if maintenant
+        else datetime.now().replace(second=0, microsecond=0)
+    )
 
-    # `recuperer_historique` rend les séances de la plus récente à la plus
-    # ancienne : la première qui appartient au programme est donc la dernière
-    # faite.
-    index = 0
-    for seance in historique:
+    liaison = liaison_seances(cle, catalogue_seances)
+    par_nom = {nom: libelle for libelle, nom in liaison.items() if nom}
+    modele = [
+        {
+            "libelle": libelle,
+            "seance": liaison.get(libelle),
+            "position": position,
+            "faite": False,
+            "seance_id": None,
+            "date": None,
+        }
+        for position, libelle in enumerate(ordre * tours, start=1)
+    ]
+
+    cycles = []
+    courant = None
+    for seance in sorted(historique, key=lambda s: s.get("id") or 0):
         if seance.get("statut") == "abandoned":
             continue
-        libelle = par_seance.get(seance.get("nom"))
-        if libelle in ordre:
-            index = (ordre.index(libelle) + 1) % len(ordre)
-            break
+        libelle = par_nom.get(seance.get("nom"))
+        quand = _lire_date(seance.get("date"))
+        if libelle is None or quand is None:
+            continue
+        if courant is not None and quand >= courant["fin"]:
+            courant = None
+        if courant is None:
+            courant = _nouveau_cycle(quand, modele)
+            cycles.append(courant)
+        case = next(
+            (c for c in courant["cases"] if c["libelle"] == libelle and not c["faite"]),
+            None,
+        )
+        if case is None:
+            continue
+        case["faite"] = True
+        case["seance_id"] = seance.get("id")
+        case["date"] = seance.get("date")
+        if all(c["faite"] for c in courant["cases"]):
+            courant["complet"] = True
+            courant = None
 
-    libelle = ordre[index]
+    dernier = cycles[-1] if cycles else None
+    montre = dernier if dernier is not None and instant < dernier["fin"] else None
+    en_cours = montre is not None and not montre["complet"]
+    clos = cycles[:-1] if en_cours else cycles
+
+    serie = 0
+    reference = montre["debut"] if en_cours else instant
+    for cycle in reversed(clos):
+        if not cycle["complet"] or reference - cycle["fin"] >= DUREE_CYCLE:
+            break
+        serie += 1
+        reference = cycle["debut"]
+
+    cases = montre["cases"] if montre is not None else [dict(c) for c in modele]
+    a_faire = None if montre is not None and montre["complet"] else next(
+        (c for c in cases if not c["faite"]), None
+    )
+    proposee = a_faire or cases[0]
     return {
-        "libelle": libelle,
-        "seance": liaison.get(libelle),
-        "position": index + 1,
-        "total": len(ordre),
+        "tours": tours,
+        "tours_possibles": possibles,
+        "debut": montre["debut"].strftime(FORMAT_DATE) if montre else None,
+        "fin": montre["fin"].strftime(FORMAT_DATE) if montre else None,
+        "cases": cases,
+        "faites": sum(1 for c in cases if c["faite"]),
+        "total": len(cases),
+        "reussie": bool(montre and montre["complet"]),
+        "prochaine": {
+            "libelle": proposee["libelle"],
+            "seance": proposee["seance"],
+            "position": proposee["position"],
+            "total": len(cases),
+        },
+        "serie": serie,
+        "recents": [
+            {"debut": cycle["debut"].strftime(FORMAT_DATE), "reussi": cycle["complet"]}
+            for cycle in clos[-CYCLES_RECENTS:]
+        ],
     }
 
 
-def etats_programmes(seances=None):
+def etats_programmes(seances=None, variantes=None):
     """Tous les programmes, en une seule lecture de l'historique."""
     niveaux = etats_niveaux(seances)
     return {
-        cle: etat_programme(cle, niveaux=niveaux) for cle in tous_les_programmes()
+        cle: etat_programme(cle, niveaux=niveaux, variantes=variantes)
+        for cle in tous_les_programmes()
     }

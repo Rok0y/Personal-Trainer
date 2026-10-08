@@ -107,6 +107,10 @@ scripts/fixtures_ligues.jsonl
 # `python -m scripts.generer_annonces` (graine fixe).
 scripts/fixtures_annonces.jsonl
 
+# Oracle du harnais des variantes : derive, regenere en une seconde par
+# `python -m scripts.generer_variantes` (graine fixe).
+scripts/fixtures_variantes.jsonl
+
 # =========================
 # Prises de son brutes
 # =========================

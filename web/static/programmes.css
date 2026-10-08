@@ -32,6 +32,9 @@
 .exigence.faite .exigence-barre span { background:var(--orange); }
 .exigence-detail { margin:0; color:var(--muted); font-size:12.5px; }
 .exigence-detail strong { color:var(--text); }
+/* Exigence jouée sous une variante plus facile (`progression.variantes`). */
+.exigence-variante { margin:4px 0 0; color:var(--orange); font-size:12.5px; }
+.exigence-variante strong { color:inherit; }
 .etat { font-weight:700; white-space:nowrap; font-size:13px; }
 .etat.ok { color:var(--teal); }
 .etat.attente { color:var(--muted); }

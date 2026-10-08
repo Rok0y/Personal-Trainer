@@ -30,7 +30,6 @@ export function creer_etat() {
     // relire ; pendant un repos d'exercice on prepare le suivant, et le
     // materiel comme le cadrage se decident avant la premiere repetition.
     fiche_suivante: null,
-    test_max: false,
 
     repetitions: 0,
     repetitions_cibles: 10,

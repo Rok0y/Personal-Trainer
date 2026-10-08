@@ -21,7 +21,7 @@ import { amplitude_pour } from "../web/static/js/seance.js";
 import { construire_corps } from "../web/static/js/landmarks.js";
 import { CompteurMouvement } from "../web/static/js/compteur.js";
 import { creer_etat } from "../web/static/js/etat.js";
-import { executer_mode } from "../web/static/js/moteur.js";
+import { ajuster_repetitions, executer_mode, oublier_durees } from "../web/static/js/moteur.js";
 import { texte, libelle_etape } from "../web/static/js/messages.js";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
@@ -87,10 +87,19 @@ function observer(circuit) {
         : {
             index_exercice: circuit._derniere_serie_terminee.index_exercice,
             serie: circuit._derniere_serie_terminee.serie,
+            exercice: circuit._derniere_serie_terminee.exercice,
             entrelace: circuit._derniere_serie_terminee.entrelace,
           },
     resultats: circuit.resultats_series.length,
     a_des_resultats: circuit.a_des_resultats(),
+    // Voir le commentaire jumeau cote Python : sans le nom par serie, la
+    // serie 1 de la variante ecraserait en silence celle de l'original.
+    variante_possible: circuit.variante_possible(),
+    remplace: bloc === null ? null : bloc.remplace,
+    abandons: bloc === null ? null : bloc.abandons.map((a) => ({ ...a })),
+    resultats_detail: circuit.resultats_series.map((r) => [
+      r.index_exercice, r.serie, r.exercice ?? null, r.completee,
+    ]),
   };
 }
 
@@ -139,10 +148,13 @@ function catalogue_pour(fiches) {
       instructions: fiche.instructions,
       mise_en_place: fiche.mise_en_place,
       erreurs_frequentes: fiche.erreurs_frequentes,
+      sensations: fiche.sensations ?? [],
       erreurs: (fiche.erreurs ?? []).map((nom) => DETECTIONS[nom]),
       variante_facile: fiche.variante_facile,
       variante_difficile: fiche.variante_difficile,
+      orientation: fiche.orientation ?? null,
       amplitude: amplitude_pour(fiche.amplitude),
+      changements: fiche.changements ?? [],
     });
   }
   return table;
@@ -183,11 +195,60 @@ function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
     return [triplet, null];
   }
 
+  if (nom === "ajuster") {
+    // Jumelle de la commande Python : le garde est dans la fonction.
+    boucle.derniere_rep = ajuster_repetitions({
+      seance: circuit,
+      compteur: boucle.compteur,
+      etat: boucle.etat,
+      coach: boucle.coach,
+      delta: arguments_.delta,
+      derniere_rep: boucle.derniere_rep,
+    });
+    return [boucle.derniere_rep, null];
+  }
+
   if (nom === "aller_a_l_amplitude") {
     // Jumelle de la commande Python : premier bloc qui verifie une amplitude.
     for (let i = 0; i < circuit.exercices.length; i++) {
       const bloc = circuit.bloc_actuel;
       if (bloc === null || bloc.exercice.amplitude !== null) break;
+      circuit.passer_exercice_suivant();
+    }
+    return [null, null];
+  }
+  if (nom === "variante") {
+    // Jumelle de la commande Python : un refus a un nom commun aux deux
+    // langages, leurs classes d'exception ne se ressemblant pas.
+    const attendu = circuit.variante_possible();
+    const exercice = attendu ? boucle.catalogue[attendu] ?? null : null;
+    try {
+      circuit.passer_a_la_variante(exercice, arguments_);
+    } catch {
+      return ["refus", null];
+    }
+    boucle.compteur.reset();
+    boucle.derniere_rep = 0;
+    oublier_durees(boucle.etat);
+    return [attendu, null];
+  }
+  if (nom === "aller_a_un_changement") {
+    // Commande du harnais, jumelle de celle du Python.
+    let meilleur = 0;
+    let plus = 0;
+    circuit.exercices.forEach((bloc, index) => {
+      if ((bloc.exercice.changements ?? []).length > plus) {
+        meilleur = index;
+        plus = bloc.exercice.changements.length;
+      }
+    });
+    for (let i = 0; i < meilleur; i++) circuit.passer_exercice_suivant();
+    return [null, null];
+  }
+  if (nom === "aller_a_une_variante") {
+    for (let i = 0; i < circuit.exercices.length; i++) {
+      const bloc = circuit.bloc_actuel;
+      if (bloc === null || bloc.exercice.variante_facile) break;
       circuit.passer_exercice_suivant();
     }
     return [null, null];
@@ -309,6 +370,7 @@ function main() {
         annonces,
         coach: (cle_son, valeur = null) => annonces.push([cle_son, valeur]),
         derniere_rep: 0,
+        catalogue,
       };
       cle_courante = cle;
     }

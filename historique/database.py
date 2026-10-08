@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from datetime import datetime
 
@@ -204,6 +205,14 @@ def initialiser():
     if "programme_choisi" not in colonnes_utilisateurs:
         curseur.execute("ALTER TABLE utilisateurs ADD COLUMN programme_choisi TEXT")
 
+    # Combien de fois par semaine on parcourt son programme (1 tour : chaque
+    # séance une fois, 2 : deux fois). Pas de DEFAULT : NULL vaut un tour, et
+    # c'est `progression.programmes.semaine_du_programme` qui le borne à ce
+    # que le programme permet — à la lecture, pour qu'un changement de
+    # programme n'ait pas à réécrire la préférence.
+    if "programme_tours" not in colonnes_utilisateurs:
+        curseur.execute("ALTER TABLE utilisateurs ADD COLUMN programme_tours INTEGER")
+
     # Matériel du profil (JSON). Pas de DEFAULT : NULL veut dire « rien de
     # déclaré », et `core.materiel.normaliser` en fait le matériel complet
     # d'avant cette colonne — un profil existant ne change donc pas de barème.
@@ -230,6 +239,26 @@ def initialiser():
             curseur.execute(
                 f"ALTER TABLE utilisateurs ADD COLUMN {colonne} {type_sql}"
             )
+
+    # La note d'athlète (1 à 10) et le repère de sa dernière hausse. Pas de
+    # DEFAULT : NULL veut dire « pas encore demandée », et c'est ce NULL que
+    # les deux accueils lisent pour la demander une fois — y mettre une valeur
+    # d'office répondrait à la place de la personne. Le repère est un
+    # identifiant de séance, comme `apres_seance_id` des ancrages, et non une
+    # date (voir `progression.calibration.niveau_plancher`).
+    for colonne in ("note_athlete", "note_relevee_apres"):
+        if colonne not in colonnes_utilisateurs:
+            curseur.execute(
+                f"ALTER TABLE utilisateurs ADD COLUMN {colonne} INTEGER"
+            )
+
+    # Les variantes jouées à la place d'un mouvement (JSON `{original: joué}`,
+    # voir `progression/variantes.py`). Une préférence du **profil** et non de
+    # la séance : les séances sont partagées, et « je ne sais pas encore faire
+    # une pompe » ne vaut que pour une personne. Pas de DEFAULT : NULL veut
+    # dire « aucune », exactement comme un dictionnaire vide.
+    if "variantes" not in colonnes_utilisateurs:
+        curseur.execute("ALTER TABLE utilisateurs ADD COLUMN variantes TEXT")
 
     # À l'échelle visée, toute requête filtre par profil : ces index ne sont
     # pas optionnels.
@@ -286,6 +315,29 @@ def _profil_depuis_ligne(ligne):
         "date_naissance": ligne[8],
         "taille_cm": ligne[9],
         "poids_corps_kg": ligne[10],
+        "note_athlete": ligne[11],
+        "note_relevee_apres": ligne[12],
+        "programme_tours": ligne[13],
+        # Décodé ici, et pas par chaque lecteur : un JSON illisible vaut
+        # « aucune variante » plutôt qu'une exception dans la boucle caméra.
+        "variantes": _variantes_depuis_json(ligne[14]),
+    }
+
+
+def _variantes_depuis_json(brut):
+    """`{original: joué}` depuis la colonne, `{}` pour NULL ou illisible."""
+    if not brut:
+        return {}
+    try:
+        valeur = json.loads(brut)
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(valeur, dict):
+        return {}
+    return {
+        str(original): str(joue)
+        for original, joue in valeur.items()
+        if original and joue and original != joue
     }
 
 
@@ -297,7 +349,8 @@ def lister_utilisateurs():
     curseur.execute(
         "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
         "programme_choisi, materiel, sexe, date_naissance, taille_cm, "
-        "poids_corps_kg "
+        "poids_corps_kg, note_athlete, note_relevee_apres, programme_tours, "
+        "variantes "
         "FROM utilisateurs ORDER BY id"
     )
     profils = [_profil_depuis_ligne(ligne) for ligne in curseur.fetchall()]
@@ -313,7 +366,8 @@ def recuperer_utilisateur(utilisateur_id):
     curseur.execute(
         "SELECT id, nom, cree_le, onboarding_termine, seance_initiale, "
         "programme_choisi, materiel, sexe, date_naissance, taille_cm, "
-        "poids_corps_kg "
+        "poids_corps_kg, note_athlete, note_relevee_apres, programme_tours, "
+        "variantes "
         "FROM utilisateurs WHERE id = ?",
         (utilisateur_id,),
     )
@@ -355,7 +409,106 @@ def creer_utilisateur(nom):
     utilisateur_id = curseur.lastrowid
     conn.commit()
     conn.close()
-    return {"id": utilisateur_id, "nom": nom, "onboarding_termine": False}
+    return {
+        "id": utilisateur_id,
+        "nom": nom,
+        "onboarding_termine": False,
+        "note_athlete": None,
+        "note_relevee_apres": None,
+        "variantes": {},
+    }
+
+
+def definir_note_athlete(note, utilisateur_id=None):
+    """Enregistre la note d'athlète d'un profil, et ce qu'elle déclenche.
+
+    Une **hausse** pose le repère `note_relevee_apres` sur la dernière séance
+    du profil : la prochaine séance de chaque exercice déjà fait ne descendra
+    pas sous le départ de la nouvelle note (`calibration.niveau_plancher`).
+    Une **baisse** efface ce repère — elle ne touche que les exercices jamais
+    faits, et annule une hausse qui n'a pas encore été jouée. Un premier
+    réglage (note jusque-là absente) ne pose rien : il n'y a pas de hausse
+    sans note de départ.
+
+    L'appelant doit enchaîner sur `core.utilisateur.rafraichir()`.
+    """
+    from progression.calibration import note_valide
+
+    if not note_valide(note):
+        raise ValueError("La note d'athlète est un entier de 1 à 10.")
+    utilisateur_id = _profil_courant(utilisateur_id)
+
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "SELECT note_athlete, note_relevee_apres FROM utilisateurs WHERE id = ?",
+        (utilisateur_id,),
+    )
+    ligne = curseur.fetchone()
+    if ligne is None:
+        conn.close()
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
+    ancienne, repere = ligne
+    if ancienne is not None and note > ancienne:
+        curseur.execute(
+            "SELECT COALESCE(MAX(id), 0) FROM seances WHERE utilisateur_id = ?",
+            (utilisateur_id,),
+        )
+        repere = curseur.fetchone()[0]
+    elif ancienne is not None and note < ancienne:
+        repere = None
+    curseur.execute(
+        "UPDATE utilisateurs SET note_athlete = ?, note_relevee_apres = ? "
+        "WHERE id = ?",
+        (note, repere, utilisateur_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def definir_variantes(variantes, utilisateur_id=None):
+    """Enregistre les variantes jouées par un profil (`{original: joué}`).
+
+    Le calcul de la nouvelle table — descendre d'un cran, remonter, refuser une
+    variante incompatible — appartient à `progression.variantes` ; ici on ne
+    fait qu'écrire. Une table vide s'écrit NULL. L'appelant doit enchaîner sur
+    `core.utilisateur.rafraichir()`.
+    """
+    utilisateur_id = _profil_courant(utilisateur_id)
+    propres = _variantes_depuis_json(json.dumps(variantes or {}))
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "UPDATE utilisateurs SET variantes = ? WHERE id = ?",
+        (json.dumps(propres, ensure_ascii=False) if propres else None, utilisateur_id),
+    )
+    if curseur.rowcount == 0:
+        conn.close()
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
+    conn.commit()
+    conn.close()
+
+
+def definir_programme_tours(utilisateur_id, tours):
+    """Enregistre le rythme du programme : combien de tours par semaine.
+
+    Même chemin que `definir_programme_choisi`, et même obligation pour
+    l'appelant d'enchaîner sur `core.utilisateur.rafraichir()`.
+    """
+    initialiser()
+    conn = connexion()
+    curseur = conn.cursor()
+    curseur.execute(
+        "UPDATE utilisateurs SET programme_tours = ? WHERE id = ?",
+        (tours, utilisateur_id),
+    )
+    if curseur.rowcount == 0:
+        conn.close()
+        raise KeyError(f"Profil {utilisateur_id} introuvable")
+    conn.commit()
+    conn.close()
 
 
 def definir_programme_choisi(utilisateur_id, cle):
@@ -425,7 +578,6 @@ def definir_materiel(utilisateur_id, materiel):
     connecté transporte cette colonne, et le garde de `web/app.py` la relit à
     chaque requête sans repasser par la base.
     """
-    import json
 
     initialiser()
     conn = connexion()

@@ -36,6 +36,7 @@ from mouvements.exercices import (
     planche_laterale_droite,
     planche_laterale_gauche,
     pompe,
+    pompes_contre_le_mur,
     pompes_inclinees,
     pompes_sur_les_genoux,
     rowing_penche,
@@ -52,7 +53,15 @@ from progression.objectifs import (
     est_cible_manuelle,
     exercices_sans_donnees,
     fusionner_cible_manuelle,
+    objectif_pour,
     objectifs_par_exercice,
+)
+from progression.variantes import (
+    appliquer_au_circuit,
+    catalogue_depuis,
+    substitution,
+    variantes_du_profil,
+    versions,
 )
 from session.circuit import (
     MODE_AMRAP,
@@ -94,6 +103,7 @@ CATALOGUE_EXERCICES = {
         # des exercices comptabilisés à part entière (records, progression),
         # pas des échauffements.
         pompes_inclinees,
+        pompes_contre_le_mur,
         pompes_sur_les_genoux,
         gainage_sur_les_genoux,
         squat_sur_chaise,
@@ -121,6 +131,8 @@ MATERIEL_EXERCICES = {
     "Rowing penche": "Deux haltères",
     "Oiseau": "Deux haltères",
     "Pompes inclinées": "Une chaise",
+    # Pas d'accessoire a cocher : tout le monde a un mur.
+    "Pompes contre le mur": "",
     "Pompes sur les genoux": "Un tapis",
     "Gainage sur les genoux": "Un tapis",
     "Squat sur chaise": "Une chaise",
@@ -674,17 +686,14 @@ def _fusionner_cibles_manuelles(blocs, blocs_stockes):
 
 
 def exporter_blocs(circuit):
-    """Produit une définition JSON indépendante des objets Python du catalogue.
-
-    Un bloc joué en test de calibration ressort avec sa définition **d'avant le
-    test** : la fin de séance réécrit le fichier depuis ces blocs, et y graver
-    la série unique au maximum remplacerait l'exercice par son test pour de
-    bon.
-    """
+    """Produit une définition JSON indépendante des objets Python du catalogue."""
     return [
         {
             "exercice": bloc.exercice.nom,
-            **_cible_persistee(bloc),
+            "poids": bloc.poids,
+            "series": bloc.nombre_series,
+            "repetitions": bloc.repetitions_par_serie,
+            "duree": bloc.duree,
             "mode": bloc.mode,
             "repos_entre_series": bloc.repos_entre_series,
             "repos_apres": bloc.repos_apres,
@@ -694,22 +703,6 @@ def exporter_blocs(circuit):
         }
         for bloc in circuit.exercices
     ]
-
-
-def _cible_persistee(bloc):
-    """Poids, séries et cible tels qu'ils doivent retourner sur le disque."""
-    avant = getattr(bloc, "avant_test", None) or {
-        "nombre_series": bloc.nombre_series,
-        "poids": bloc.poids,
-        "repetitions_par_serie": bloc.repetitions_par_serie,
-        "duree": bloc.duree,
-    }
-    return {
-        "poids": avant["poids"],
-        "series": avant["nombre_series"],
-        "repetitions": avant["repetitions_par_serie"],
-        "duree": avant["duree"],
-    }
 
 
 def enregistrer_configuration_seance(nom, circuit):
@@ -823,7 +816,7 @@ def creer_seance_personnalisee(nom):
     return construire_circuit(blocs)
 
 
-def creer_seance(nom):
+def creer_seance(nom, variantes=None):
     """Retourne un circuit neuf, indépendant des séances déjà utilisées.
 
     Les cibles des exercices dotés d'un barème sont posées ici par le moteur de
@@ -831,17 +824,29 @@ def creer_seance(nom):
     passage par `appliquer_a_circuit` couvre les deux origines possibles d'un
     circuit — le JSON des séances personnalisées et le catalogue Python, dont
     les `Circuit` écrits à la main ne passent jamais par `construire_circuit`.
+
+    C'est aussi **le** chemin de jeu où les variantes du profil remplacent
+    leurs originaux (`progression.variantes`), avant le moteur pour que
+    l'objectif soit celui de la variante. Nulle part ailleurs : un circuit
+    construit ici ne repart jamais sur le disque.
     """
     if nom not in CATALOGUE_SEANCES or nom in _lire_seances_personnalisees():
         circuit = creer_seance_personnalisee(nom)
     else:
         circuit = deepcopy(CATALOGUE_SEANCES[nom])
+    mouvements = catalogue_mouvements()
+    appliquer_au_circuit(
+        circuit,
+        variantes_du_profil() if variantes is None else variantes,
+        catalogue_depuis(mouvements),
+        mouvements.__getitem__,
+    )
     return appliquer_a_circuit(circuit)
 
 
-#: Cible qu'aucun effort n'atteindra. Sert au test de calibration : la série
-#: ne se termine alors que par le geste bras en X ou le bouton, ce qui est
-#: exactement ce qu'on veut mesurer — un maximum, pas l'atteinte d'un objectif.
+#: Cible qu'aucun effort n'atteindra. Sert au mode test d'un exercice isolé : la
+#: série ne se termine alors que par le geste bras en X ou le bouton — un
+#: maximum, pas l'atteinte d'un objectif.
 #: Un mode « série illimitée » dans le moteur ferait la même chose au prix d'un
 #: cinquième mode à maintenir partout.
 CIBLE_SANS_LIMITE = 9999
@@ -850,8 +855,7 @@ CIBLE_SANS_LIMITE = 9999
 def creer_seance_test(nom_exercice, mode, cible=None):
     """Circuit d'un seul exercice, d'une seule série.
 
-    `cible` à None demande une série **sans limite** : c'est la forme du test de
-    calibration. Sinon la valeur est la cible de la série, en répétitions ou en
+    `cible` à None demande une série **sans limite**, terminée à la main. Sinon la valeur est la cible de la série, en répétitions ou en
     secondes selon le mode.
     """
     mouvements = catalogue_mouvements()
@@ -881,8 +885,10 @@ def creer_seance_test(nom_exercice, mode, cible=None):
 
 def catalogue():
     objectifs = objectifs_par_exercice()
+    variantes = variantes_du_profil()
+    catalogue_variantes = catalogue_depuis(catalogue_mouvements())
     # Les deux calculs relisent l'historique : une fois pour tout le catalogue,
-    # pas une fois par séance.
+    # pas une fois par séance. Le second ne sert qu'au badge « 1re fois ».
     sans_donnees = exercices_sans_donnees()
     resultats = {
         nom: {
@@ -918,7 +924,7 @@ def catalogue():
         # Les cibles affichées doivent être celles que la séance jouera :
         # sans ce passage, l'accueil annoncerait les valeurs du disque pendant
         # que `creer_seance` en applique d'autres.
-        appliquer_a_blocs(seance["exercices"], objectifs, sans_donnees)
+        appliquer_a_blocs(seance["exercices"], objectifs)
         # Recalculé ici plutôt que gardé depuis les deux constructions
         # ci-dessus : un seul endroit qui distingue échauffement et exercice,
         # sur la liste finale (celle affichée), pas sur le nombre de blocs bruts.
@@ -931,6 +937,38 @@ def catalogue():
             exercice["materiel"] = materiel_exercice(
                 exercice["nom"],
                 exercice.get("poids", 0),
+            )
+            # Posé ici et pas dans `appliquer_a_blocs` : ce drapeau n'a de sens
+            # qu'à l'écran, et une fonction partagée avec l'écriture finirait
+            # par le graver dans le fichier — leçon du `test_max` d'antan.
+            exercice["premiere_fois"] = (
+                exercice.get("mode") != MODE_ECHAUFFEMENT
+                and exercice["nom"] in sans_donnees
+            )
+            # La variante que ce profil joue à la place, **à côté** du bloc et
+            # jamais dedans : le formulaire « Objectifs » réécrit ces blocs sur
+            # le disque, et y remplacer le nom ou les cibles graverait la
+            # variante d'un seul profil dans une séance partagée.
+            joue = substitution(
+                exercice["nom"], exercice.get("mode"), variantes, catalogue_variantes
+            )
+            palier_joue = (
+                objectif_pour(joue, exercice.get("mode"), objectifs) if joue else None
+            )
+            exercice["variante"] = (
+                {
+                    "nom": joue,
+                    "resume": palier_joue.resume() if palier_joue else None,
+                    "premiere_fois": joue in sans_donnees,
+                }
+                if joue
+                else None
+            )
+            # Les versions entre lesquelles choisir avant de démarrer : la
+            # même règle que `definir`, pour qu'aucun choix proposé ne soit
+            # refusé à l'écriture.
+            exercice["versions"] = versions(
+                exercice["nom"], exercice.get("mode"), catalogue_variantes
             )
         seance["materiel"] = formater_materiel(
             seance["exercices"]

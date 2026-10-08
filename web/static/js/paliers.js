@@ -46,12 +46,31 @@ export class Baremes {
   /**
    * Charge totale deplacee sur l'ensemble des series.
    *
-   * Le poids du corps compte pour 1 kg : seules les repetitions font alors la
-   * difference, et le bareme n'a pas besoin d'un cas particulier pour eviter
-   * de tout multiplier par zero.
+   * Sans `charge_corps`, le poids du corps compte pour 1 kg : seules les
+   * repetitions font alors la difference. Avec, il compte pour sa part reelle,
+   * ajoutee a la charge — voir la note de `charge_corps` dans
+   * `progression/paliers.py`.
    */
-  volume(series, cible, poids) {
+  volume(series, cible, poids, charge_corps = 0) {
+    if (charge_corps) return series * cible * (poids + charge_corps);
     return series * cible * (poids || 1);
+  }
+
+  /**
+   * Le volume d'une performance dans l'unite du bareme de cet exercice.
+   *
+   * Point d'entree de quiconque calcule un volume a comparer aux paliers :
+   * `volume` seul ignore la charge du corps, et un palier JavaScript est un
+   * objet simple qui ne la porte pas — c'est le nom de l'exercice qui la
+   * retrouve.
+   */
+  volume_exercice(nom, series, cible, poids) {
+    return this.volume(series, cible, poids, this.specs[nom]?.charge_corps ?? 0);
+  }
+
+  /** Le volume d'apres une spec : la forme des calculs internes du bareme. */
+  _volume(spec, series, cible, poids) {
+    return this.volume(series, cible, poids, spec.charge_corps ?? 0);
   }
 
   /** Point d'entree unique de « cet exercice a-t-il des paliers ? ». */
@@ -118,7 +137,10 @@ export class Baremes {
     return echelle.filter(
       (poids) =>
         (spec.poids_min === null || poids >= spec.poids_min) &&
-        (spec.poids_max === null || poids <= spec.poids_max)
+        (spec.poids_max === null || poids <= spec.poids_max) &&
+        // Le poids du corps reste un cran : seuls les halteres trop legers
+        // pour peser quelque chose sont ecartes (`premiere_charge`).
+        (!spec.premiere_charge || poids === 0 || poids >= spec.premiere_charge)
     );
   }
 
@@ -158,7 +180,7 @@ export class Baremes {
    */
   _premiere_cible(spec, volume_a_egaler, series, poids, plafonnee = true) {
     let cible = spec.cible_min;
-    while (this.volume(series, cible, poids) < volume_a_egaler) {
+    while (this._volume(spec, series, cible, poids) < volume_a_egaler) {
       cible += spec.pas;
       if (plafonnee && cible > spec.cible_max) return null;
     }
@@ -174,6 +196,9 @@ export class Baremes {
    */
   *_iterer_tranches(spec, echelle) {
     let volume_atteint = 0;
+    // La derniere tranche bornee, [series, poids] : la tranche ouverte la
+    // prolonge souvent, et doit alors repartir *au-dessus* de sa fin.
+    let derniere = null;
 
     // Le poids monte, les series ne bougent pas.
     for (const poids of echelle) {
@@ -181,7 +206,8 @@ export class Baremes {
       if (depart === null) continue;
       const longueur = Math.floor((spec.cible_max - depart) / spec.pas) + 1;
       yield [spec.series, poids, depart, longueur];
-      volume_atteint = this.volume(spec.series, spec.cible_max, poids);
+      derniere = [spec.series, poids];
+      volume_atteint = this._volume(spec, spec.series, spec.cible_max, poids);
     }
 
     // Le poids est epuise : on reste sur l'haltere le plus lourd et c'est le
@@ -195,17 +221,19 @@ export class Baremes {
       if (depart === null) break;
       const longueur = Math.floor((spec.cible_max - depart) / spec.pas) + 1;
       yield [series, poids, depart, longueur];
-      volume_atteint = this.volume(series, spec.cible_max, poids);
+      derniere = [series, poids];
+      volume_atteint = this._volume(spec, series, spec.cible_max, poids);
     }
 
     // Tout est epuise : le plafond de repetitions saute. C'est ce qui garantit
-    // qu'aucun objectif n'est jamais hors d'atteinte.
-    yield [
-      series,
-      poids,
-      this._premiere_cible(spec, volume_atteint, series, poids, false),
-      null,
-    ];
+    // qu'aucun objectif n'est jamais hors d'atteinte. Quand elle prolonge la
+    // derniere tranche bornee (memes series, meme poids), elle repart un pas
+    // au-dessus de sa fin : sinon le meme palier sortait deux fois.
+    let depart_ouvert = this._premiere_cible(spec, volume_atteint, series, poids, false);
+    if (derniere && derniere[0] === series && derniere[1] === poids) {
+      depart_ouvert = Math.max(depart_ouvert, spec.cible_max + spec.pas);
+    }
+    yield [series, poids, depart_ouvert, null];
   }
 
   /**
@@ -238,7 +266,7 @@ export class Baremes {
         series, poids, cible_min: depart, cible_max: spec.cible_max,
         niveau_min: premier_niveau,
         niveau_max: premier_niveau + longueur - 1,
-        volume_max: this.volume(series, spec.cible_max, poids),
+        volume_max: this._volume(spec, series, spec.cible_max, poids),
       });
       premier_niveau += longueur;
     }
@@ -270,7 +298,7 @@ export class Baremes {
       // Bareme deja lineaire et sans fin : pas de tranches a parcourir.
       const echelle = this.echelle_exercice(nom);
       let cible = spec.cible_min;
-      while (this.volume(spec.series, cible, echelle[0]) < volume_cible) {
+      while (this._volume(spec, spec.series, cible, echelle[0]) < volume_cible) {
         cible += spec.pas;
       }
       return Math.floor((cible - spec.cible_min) / spec.pas) + 1;
@@ -284,9 +312,9 @@ export class Baremes {
       const dernier = longueur === null ? null : depart + (longueur - 1) * spec.pas;
       // Le volume croit le long du bareme : la bonne tranche est la premiere
       // dont la cible haute suffit — et la tranche ouverte suffit toujours.
-      if (dernier === null || this.volume(series, dernier, poids) >= volume_cible) {
+      if (dernier === null || this._volume(spec, series, dernier, poids) >= volume_cible) {
         let cible = depart;
-        while (this.volume(series, cible, poids) < volume_cible) cible += spec.pas;
+        while (this._volume(spec, series, cible, poids) < volume_cible) cible += spec.pas;
         return premier_niveau + Math.floor((cible - depart) / spec.pas);
       }
       premier_niveau += longueur;
@@ -359,12 +387,12 @@ export class Baremes {
    * la repartition series/repetitions est libre — c'est ce qui permet a un
    * travail lourd et court de valider un palier plus leger et plus long.
    */
-  _valide(palier_teste, poids, series, cible) {
+  _valide(spec, palier_teste, poids, series, cible) {
     if (palier_teste === null) return false;
     return (
       poids >= palier_teste.poids &&
-      this.volume(series, cible, poids) >=
-        this.volume(palier_teste.series, palier_teste.cible, palier_teste.poids)
+      this._volume(spec, series, cible, poids) >=
+        this._volume(spec, palier_teste.series, palier_teste.cible, palier_teste.poids)
     );
   }
 
@@ -385,7 +413,7 @@ export class Baremes {
       return [Math.floor((cible - spec.cible_min) / spec.pas) + 1];
     }
 
-    const volume_realise = this.volume(series, cible, poids);
+    const volume_realise = this._volume(spec, series, cible, poids);
     const candidats = [];
     let premier_niveau = 1;
 
@@ -395,13 +423,13 @@ export class Baremes {
       // depasse la performance, aucune tranche suivante ne pourra etre
       // validee. C'est aussi ce qui fait terminer la boucle sur un generateur
       // infini.
-      if (this.volume(series_tranche, depart, poids_tranche) > volume_realise) break;
+      if (this._volume(spec, series_tranche, depart, poids_tranche) > volume_realise) break;
 
       if (poids_tranche <= poids) {
         let atteinte = depart;
         while (
           (longueur === null || atteinte + spec.pas <= spec.cible_max) &&
-          this.volume(series_tranche, atteinte + spec.pas, poids_tranche) <=
+          this._volume(spec, series_tranche, atteinte + spec.pas, poids_tranche) <=
             volume_realise
         ) {
           atteinte += spec.pas;
@@ -433,7 +461,7 @@ export class Baremes {
     for (const cle of Object.keys(spec.surcharges ?? {})) candidats.push(Number(cle));
 
     const valides = candidats.filter((niveau) =>
-      this._valide(this.palier(nom, niveau), poids, series, cible)
+      this._valide(spec, this.palier(nom, niveau), poids, series, cible)
     );
     return valides.length ? Math.max(...valides) : null;
   }

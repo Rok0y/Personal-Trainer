@@ -35,7 +35,7 @@ export function classe_ligue(ligue) {
 /**
  * Le badge « Or II ».
  *
- * Sans ligue il rend « a tester » plutot que rien : l'absence de badge se
+ * Sans ligue il rend « pas encore classe » plutot que rien : l'absence de badge se
  * confondrait avec un oubli d'affichage, alors que « pas encore classe » est
  * une information — c'est la meme distinction en trois situations que porte
  * `etat_niveau`.
@@ -43,7 +43,7 @@ export function classe_ligue(ligue) {
 export function badge_ligue(ligue, { grand = false } = {}) {
   const taille = grand ? " grand" : "";
   if (!ligue) {
-    return `<span class="badge-ligue sans-ligue${taille}">A tester</span>`;
+    return `<span class="badge-ligue sans-ligue${taille}">Pas encore classé</span>`;
   }
   return (
     `<span class="badge-ligue${taille}" style="${style_ligue(ligue)}">` +

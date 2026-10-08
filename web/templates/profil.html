@@ -34,6 +34,9 @@
     .actions .principal { border-color:var(--teal); color:var(--teal); }
     .retour { color:var(--muted); font-size:13px; min-height:18px; margin:10px 0 0; }
     .retour.erreur { color:var(--orange); }
+    .notes { display:grid; grid-template-columns:repeat(10,minmax(0,1fr)); gap:6px; margin-top:12px; }
+    .notes button { padding:10px 0; font-size:17px; text-transform:none; letter-spacing:0; }
+    .notes button.choisie { border-color:var(--teal); color:var(--teal); background:rgba(0,0,0,.3); }
 </style>
 </head>
 <body>
@@ -115,6 +118,34 @@
     </div>
 
     <div class="bloc">
+        <h2>Ma note d'athlète</h2>
+        <p class="hint">Elle fixe le point de départ des exercices que tu n'as jamais faits. La relever fait aussi monter, une fois, la prochaine séance des exercices déjà faits qui sont en dessous ; la baisser ne touche que les exercices jamais faits. Elle ne valide jamais un niveau.</p>
+        <div class="chiffres" id="resume-note">
+            <div><span>Note retenue</span><strong>{{ note.effective or '—' }}</strong></div>
+            <div><span>Déclarée</span><strong id="note-declaree">{{ note.declaree or '—' }}</strong></div>
+            {%- if note.effective and note.declaree and note.effective > note.declaree %}
+            <div><span>Montée avec tes séances</span><strong>{{ note.mesuree }}</strong></div>
+            {%- endif %}
+        </div>
+        <div class="actions" id="note-lecture">
+            <button type="button" class="btn" id="modifier-note">Modifier ma note</button>
+        </div>
+        <div id="note-edition" hidden>
+            <div class="notes" id="notes">
+                {%- for n in range(note_min, note_max + 1) %}
+                <button type="button" data-note="{{ n }}"{% if n == note.declaree %} class="choisie"{% endif %}>{{ n }}</button>
+                {%- endfor %}
+            </div>
+            <p class="hint">{% for n, texte in reperes_note.items() %}<strong>{{ n }}</strong> {{ texte }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+            <div class="actions">
+                <button type="button" class="principal" id="enregistrer-note">Enregistrer</button>
+                <button type="button" class="btn" id="annuler-note">Annuler</button>
+            </div>
+        </div>
+        <p class="retour" id="retour-note"></p>
+    </div>
+
+    <div class="bloc">
         <h2>Mon matériel</h2>
         <p class="hint">Ce que tu possèdes décide des charges que le barème peut te proposer. Le modifier ne touche pas à tes niveaux acquis : il change ce que les prochaines séances peuvent demander.</p>
         <p class="sous-titre" style="margin-top:12px">Déclaré</p>
@@ -190,6 +221,44 @@ document.getElementById("enregistrer").addEventListener("click", async () => {
         retour.textContent = "Enregistré.";
         rafraichir_resume();
         editer(false);
+    } catch (erreur) {
+        retour.classList.add("erreur");
+        retour.textContent = "Erreur réseau";
+    }
+});
+
+// La note : même geste que les mesures, lire d'abord, modifier sur demande.
+let note_choisie = {{ note.declaree|tojson }};
+function editer_note(ouvert) {
+    document.getElementById("note-lecture").hidden = ouvert;
+    document.getElementById("note-edition").hidden = !ouvert;
+}
+document.getElementById("modifier-note").addEventListener("click", () => editer_note(true));
+document.getElementById("annuler-note").addEventListener("click", () => editer_note(false));
+document.getElementById("notes").addEventListener("click", (evenement) => {
+    const bouton = evenement.target.closest("button[data-note]");
+    if (!bouton) return;
+    note_choisie = Number(bouton.dataset.note);
+    document.querySelectorAll("#notes button").forEach((b) => b.classList.toggle("choisie", b === bouton));
+});
+document.getElementById("enregistrer-note").addEventListener("click", async () => {
+    const retour = document.getElementById("retour-note");
+    retour.classList.remove("erreur");
+    try {
+        const reponse = await fetch("/api/profil/note", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ note: note_choisie }),
+        });
+        const donnees = await reponse.json();
+        if (!reponse.ok || !donnees.ok) {
+            retour.classList.add("erreur");
+            retour.textContent = donnees.erreur || "Échec de l'enregistrement";
+            return;
+        }
+        // Rechargée plutôt que recomposée : la note retenue dépend aussi de
+        // l'historique, que seul le serveur relit.
+        window.location.reload();
     } catch (erreur) {
         retour.classList.add("erreur");
         retour.textContent = "Erreur réseau";

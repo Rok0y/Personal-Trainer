@@ -12,6 +12,7 @@ réutilisent sa fonction de détection plutôt que d'en dupliquer une variante.
 """
 
 from mouvements.exercices import elevation_laterale_detection, pompe_detection, squat_detection
+from mouvements.fiches import textes
 from session.circuit import Exercice
 
 
@@ -21,58 +22,37 @@ from session.circuit import Exercice
 
 rotation_cou = Exercice(
     nom="Rotation du cou",
-    description="Rotations lentes de la tête, d'une épaule à l'autre.",
-    instructions=[
-        "Va lentement, sans à-coup.",
-        "Ne force jamais en arrière.",
-    ],
+    **textes("Rotation du cou"),
 )
 
 rotation_epaules = Exercice(
     nom="Rotation des épaules",
-    description="Grands cercles d'épaules, bras relâchés le long du corps.",
-    instructions=[
-        "Cherche l'amplitude maximale.",
-        "Cinq tours vers l'arrière, puis cinq vers l'avant.",
-    ],
+    **textes("Rotation des épaules"),
+    changements=[(0.5, "sens")],
 )
 
 rotation_coudes = Exercice(
     nom="Rotation des coudes",
-    description="Bras écartés, avant-bras qui décrivent des cercles.",
-    instructions=[
-        "Garde les bras à l'horizontale.",
-        "Change de sens à mi-parcours.",
-    ],
+    **textes("Rotation des coudes"),
+    changements=[(0.5, "sens")],
 )
 
 rotation_poignets = Exercice(
     nom="Rotation des poignets",
-    description="Doigts entrelacés, rotations des poignets dans les deux sens.",
-    instructions=[
-        "Amplitude complète, sans forcer.",
-        "Change de sens à mi-parcours.",
-    ],
+    **textes("Rotation des poignets"),
+    changements=[(0.5, "sens")],
 )
 
 elevations_laterales_a_vide = Exercice(
     nom="Élévations latérales à vide",
+    **textes("Élévations latérales à vide"),
     detection=elevation_laterale_detection,
-    description="Élévations latérales sans charge, pour ouvrir les épaules.",
-    instructions=[
-        "Monte jusqu'à l'horizontale, pas plus haut.",
-        "Descends lentement, sans relâcher d'un coup.",
-    ],
 )
 
 pompes_lentes = Exercice(
     nom="Pompes lentes",
+    **textes("Pompes lentes"),
     detection=pompe_detection,
-    description="Pompes très lentes, pour réveiller épaules et pectoraux.",
-    instructions=[
-        "Trois secondes à la descente.",
-        "Garde le corps gainé, sans creuser le dos.",
-    ],
 )
 
 # `detection=None`, comme les rotations articulaires : la fonction qui vivait
@@ -89,93 +69,56 @@ pompes_lentes = Exercice(
 # côtés à la fois, comme toute détection.
 jumping_jacks = Exercice(
     nom="Jumping jacks",
-    description="Sauts avec écart des bras et des jambes.",
-    instructions=[
-        "Bras au-dessus de la tête en haut du mouvement.",
-        "Amortis la réception, reste souple sur les genoux.",
-        "Recule assez pour rester dans le champ de la caméra.",
-    ],
+    **textes("Jumping jacks"),
 )
 
 squat_de_priere = Exercice(
     nom="Squat de prière",
+    **textes("Squat de prière"),
     detection=squat_detection,
-    description="Squat sans charge, mains jointes devant la poitrine.",
-    instructions=[
-        "Descends jusqu'à ce que les cuisses soient parallèles au sol.",
-        "Garde le dos droit et les talons au sol.",
-    ],
 )
 
 squat_lent = Exercice(
     nom="Squat lent",
+    **textes("Squat lent"),
     detection=squat_detection,
-    description="Squat sans charge, à vitesse très ralentie.",
-    instructions=[
-        "Trois secondes à la descente, trois à la remontée.",
-        "Garde le dos droit et les talons au sol.",
-    ],
 )
 
 rotation_genoux = Exercice(
     nom="Rotation des genoux",
-    description="Pieds joints, mains sur les genoux, rotations en cercle.",
-    instructions=[
-        "Amplitude modérée, sans forcer.",
-        "Change de sens à mi-parcours.",
-    ],
+    **textes("Rotation des genoux"),
+    changements=[(0.5, "sens")],
 )
 
 rotation_chevilles = Exercice(
     nom="Rotation des chevilles",
-    description="En appui sur une jambe, rotations de la cheville libre.",
-    instructions=[
-        "Amplitude complète, sans forcer.",
-        "Change de sens et de jambe à mi-parcours.",
-    ],
+    **textes("Rotation des chevilles"),
+    # Sens, jambe, sens : chaque cheville tourne dans les deux sens.
+    changements=[(0.25, "sens"), (0.5, "jambe"), (0.75, "sens")],
 )
 
 hanches_avant_arriere = Exercice(
     nom="Hanches en avant en arrière",
-    description="Bassin qui bascule d'avant en arrière, jambes légèrement fléchies.",
-    instructions=[
-        "Reste souple sur les genoux.",
-        "Va lentement, sans à-coup.",
-    ],
+    **textes("Hanches en avant en arrière"),
 )
 
 abducteurs = Exercice(
     nom="Abducteurs",
-    description="Écartement latéral de la jambe, en appui sur l'autre.",
-    instructions=[
-        "Monte la jambe sur le côté, sans pencher le buste.",
-        "Change de jambe à mi-parcours.",
-    ],
+    **textes("Abducteurs"),
+    changements=[(0.5, "jambe")],
 )
 
 hip_thrust = Exercice(
     nom="Hip thrust",
-    description="Allongé sur le dos, genoux fléchis, bascule du bassin vers le haut.",
-    instructions=[
-        "Serre les fessiers en haut du mouvement.",
-        "Descends sans reposer complètement le bassin au sol.",
-    ],
+    **textes("Hip thrust"),
 )
 
 extensions_mollets = Exercice(
     nom="Extensions de mollets",
-    description="Montées sur la pointe des pieds, sans charge.",
-    instructions=[
-        "Monte au maximum sur la pointe des pieds.",
-        "Descends lentement, sans relâcher d'un coup.",
-    ],
+    **textes("Extensions de mollets"),
 )
 
 montees_de_genou = Exercice(
     nom="Montées de genou",
-    description="Genoux montés alternativement à hauteur de hanche, sur place.",
-    instructions=[
-        "Monte le genou à hauteur de hanche.",
-        "Garde un rythme régulier, sans te pencher en arrière.",
-    ],
+    **textes("Montées de genou"),
 )

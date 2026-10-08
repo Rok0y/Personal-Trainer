@@ -35,8 +35,10 @@ couvre une bien plus grande amplitude qu'un exercice au poids du corps (les
 Pompes vont de 12 à 90 sur leurs paliers bornés, soit 7,5x ; le Curl biceps va
 de 48 à 1080, soit 22,5x). Les mouvements au poids du corps plafonnent donc plus
 bas en ligue. C'est la conséquence directe du `(poids or 1)` de `paliers.volume`,
-et le correctif éventuel se ferait **ici** — jamais dans `paliers.volume`, qui
-porte l'invariant du barème et dont dépend tout l'historique déjà interprété.
+et le correctif éventuel se ferait **ici** pour les mouvements sans charge. Les
+mouvements à charge facultative (squat, fentes) ont, eux, été corrigés dans le
+barème par `charge_corps` : le `or 1` y faisait du passage à 2 kg une chute de
+la cible, un défaut de la forme du barème et pas seulement de sa lecture.
 """
 
 from __future__ import annotations

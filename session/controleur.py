@@ -1,13 +1,20 @@
 import threading
 
 from core.state import EtatSeance
-from core.utilisateur import identifiant_connecte
+from core.utilisateur import identifiant_connecte, rafraichir
+from historique.database import definir_variantes, recuperer_utilisateur
+from progression import variantes as moteur_variantes
 from progression.objectifs import (
     enteriner_cibles_manuelles,
     marquer_cibles_manuelles,
+    objectif_pour,
+    objectifs_par_exercice,
 )
+from progression.paliers import UNITE_SECONDES
+from session.moteur import oublier_durees
 from session.seances import (
     catalogue,
+    catalogue_mouvements,
     construire_circuit,
     creer_seance,
     creer_seance_test,
@@ -16,6 +23,29 @@ from session.seances import (
     retirer_cible_manuelle,
     supprimer_seance_personnalisee,
 )
+
+
+def valeurs_du_palier(palier, bloc):
+    """Ce qu'un palier impose à un bloc, sous la forme de `passer_a_la_variante`.
+
+    La cible va dans le champ de l'unité du palier et nulle part ailleurs ;
+    l'autre garde la valeur du bloc. Sans palier — une variante que le moteur
+    ne pilote pas dans ce mode —, le bloc garde toutes les siennes.
+    """
+    if palier is None:
+        return {
+            "poids": bloc.poids,
+            "series": bloc.nombre_series,
+            "repetitions": bloc.repetitions_par_serie,
+            "duree": bloc.duree,
+        }
+    en_secondes = palier.unite == UNITE_SECONDES
+    return {
+        "poids": palier.poids,
+        "series": palier.series,
+        "repetitions": bloc.repetitions_par_serie if en_secondes else palier.cible,
+        "duree": palier.cible if en_secondes else bloc.duree,
+    }
 
 
 class SessionManager:
@@ -154,6 +184,30 @@ class SessionManager:
             self._preparer_commande_serie()
             return self.seance.passer_pause()
 
+    def passer_a_la_variante(self):
+        """Joue le bloc courant sur sa variante plus facile, pour cette séance.
+
+        Le `Circuit` ne connaît pas le catalogue : c'est ici que le mouvement
+        nommé par `variante_possible` devient un `Exercice`, et que le moteur
+        lui donne son objectif — celui de la **variante**, pas un reste de
+        celui de l'original. Ne touche pas à la table du profil : la garder
+        pour les prochaines fois se propose en fin de séance.
+        """
+        with self._verrou:
+            self._preparer_commande_serie()
+            nom = self.seance.variante_possible()
+            if nom is None:
+                raise RuntimeError("Pas de variante plus facile pour ce bloc")
+            bloc = self.seance.bloc_actuel
+            valeurs = valeurs_du_palier(
+                objectif_pour(nom, bloc.mode, objectifs_par_exercice()), bloc
+            )
+            self.seance.passer_a_la_variante(catalogue_mouvements()[nom], **valeurs)
+            # Les compteurs de durée partagés survivent au bloc : un maintien
+            # entamé sur l'original ne doit pas se reporter sur la variante.
+            oublier_durees(self.etat_seance)
+            return nom
+
     def terminer_seance(self):
         with self._verrou:
             if self.seance is None or self.statut not in ("running", "paused"):
@@ -190,7 +244,39 @@ class SessionManager:
                             self.nom_selectionne,
                             self.seance,
                         )
+                    self.seance.montees_de_variante = self._monter_les_variantes()
                     self.seance.progression_appliquee = True
+
+    def _monter_les_variantes(self):
+        """Remonte d'un cran les variantes que cette séance a maîtrisées.
+
+        Écrit la table **du profil qui a joué la séance** (`utilisateur_id`
+        figé à la sélection), jamais celle du profil connecté à cet instant,
+        pour la même raison que l'enregistrement de l'historique. Rend les
+        montées faites : l'écran de fin les annonce, avec de quoi les défaire.
+        """
+        utilisateur_id = getattr(self.seance, "utilisateur_id", None)
+        profil = recuperer_utilisateur(utilisateur_id) if utilisateur_id else None
+        if profil is None:
+            return []
+        table, faites = moteur_variantes.montees(
+            moteur_variantes.variantes_du_profil(profil),
+            {"statut": "finished", "exercices": self.seance.exporter_resultats()},
+            moteur_variantes.catalogue_des_variantes(),
+        )
+        if faites:
+            definir_variantes(table, utilisateur_id)
+            rafraichir()
+        return faites
+
+    def montees_de_la_seance(self, seance_id):
+        """Les montées de variante qu'a faites la séance `seance_id`, si c'est
+        la dernière jouée ici. Rien n'est stocké en base : c'est une annonce
+        de fin de séance, que l'historique n'a pas à répéter."""
+        with self._verrou:
+            if self.seance is None or getattr(self.seance, "seance_id", None) != seance_id:
+                return []
+            return list(getattr(self.seance, "montees_de_variante", []))
 
     def modifier_configuration(self, nom, blocs):
         with self._verrou:
@@ -242,6 +328,9 @@ class SessionManager:
                 # sinon la commande.
                 "abandonner": self.statut in ("running", "paused")
                 and seance_active,
+                "variante_facile": self.statut in ("running", "paused")
+                and seance_active
+                and self.seance.variante_possible() is not None,
             }
             return {
                 "statut": self.statut,
@@ -283,6 +372,11 @@ class SessionManager:
                 ),
                 "dans_echauffement": (
                     self.seance.dans_echauffement if seance_active else False
+                ),
+                # Le nom que le bouton « Plus facile » annonce, ou None : il
+                # n'y a rien à proposer, et le bouton se cache.
+                "variante_facile": (
+                    self.seance.variante_possible() if seance_active else None
                 ),
                 "commandes_autorisees": commandes,
             }

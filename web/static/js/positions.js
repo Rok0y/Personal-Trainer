@@ -49,3 +49,23 @@ export function _torse_vertical(corps) {
 export function deux_bras_leves(corps) {
   return bras_droit_leve(corps) && bras_gauche_leve(corps) && _torse_vertical(corps);
 }
+
+// Un seul bras leve, debout : +1 a droite, -1 a gauche. L'autre poignet doit
+// etre **sous son epaule** et non simplement « pas leve » : on passe par un
+// seul bras en levant les deux, et la tenue doit se couper des que le second
+// commence a monter. Voir la docstring Python.
+export function seul_bras_droit_leve(corps) {
+  return (
+    bras_droit_leve(corps) &&
+    corps.poignet_gauche.y > corps.epaule_gauche.y &&
+    _torse_vertical(corps)
+  );
+}
+
+export function seul_bras_gauche_leve(corps) {
+  return (
+    bras_gauche_leve(corps) &&
+    corps.poignet_droit.y > corps.epaule_droite.y &&
+    _torse_vertical(corps)
+  );
+}

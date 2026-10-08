@@ -42,6 +42,14 @@ const PRIORITE_PAR_DEFAUT = 5;
 //: qu'on sacrifie quand la serie se termine.
 const PRIORITE_COMPTEUR = 1;
 
+//: Duree maximale d'une tentative de relance du contexte audio, en secondes.
+//: Au-dela on renonce et on attend un contact avec l'ecran.
+const DELAI_REPRISE = 0.5;
+
+//: Temps de calme apres un changement de peripherique avant de recreer le
+//: contexte, en secondes.
+const DELAI_CHANGEMENT_SORTIE = 0.3;
+
 export class Lecteur {
   /**
    * @param {string} dossier  ou trouver les .wav
@@ -73,6 +81,12 @@ export class Lecteur {
     // se compte depuis lui, pour qu'un chiffre glisse entre deux phrases ne
     // repousse pas la suivante.
     this._fin_phrase = -Infinity;
+    // Survie du contexte (voir `_creer_contexte`).
+    this._precharges = [];
+    this._reprise_armee = false;
+    this._sorties_surveillees = false;
+    this._recreation_due = false;
+    this._micros = null;
   }
 
   /** Un chiffre ou un bip : un son qui suit le geste. */
@@ -86,10 +100,195 @@ export class Lecteur {
    * pendant un evenement tactile.
    */
   async preparer() {
-    this.contexte =
-      this.contexte ?? new (window.AudioContext ?? window.webkitAudioContext)();
-    await this.contexte.resume().catch(() => {});
-    return this.contexte.state === "running";
+    if (!this.contexte) this._creer_contexte();
+    this._surveiller_sorties();
+    return this._reprendre();
+  }
+
+  /**
+   * Le son peut-il sortir en ce moment ? Lu a chaque image par le voyant du
+   * HUD, pour qu'un son coupe se voie au lieu de se taire.
+   */
+  son_actif() {
+    return this.contexte?.state === "running";
+  }
+
+  // ------------------------------------------------------------------
+  // Survie du contexte audio
+  //
+  // **Brancher ou retirer des ecouteurs coupait le son pour le reste de la
+  // seance**, et rien ne le disait. Un changement de sortie fait passer le
+  // contexte d'iOS a `interrupted` ou `suspended`, et `resume()` n'etait
+  // appele qu'une fois, au clic sur la seance. Les sons suivants partaient
+  // donc sur un contexte arrete — et le filet de `_jouer_tampon`, qui empeche
+  // la file de se bloquer, rendait la panne parfaitement muette. Pire, apres
+  // un passage aux ecouteurs Bluetooth la frequence d'echantillonnage change,
+  // et WebKit garde parfois un contexte qui se dit `running` sans plus rien
+  // sortir : aucun etat a surveiller ne le revele. D'ou trois parades.
+  //
+  // (1) Un contexte qui sort de `running` est relance aussitot.
+  // (2) Un changement d'ecouteurs **recree** le contexte, seule reponse au cas
+  //     « running mais muet » — reconnu au nombre de micros, pas au seul
+  //     `devicechange`, que l'ouverture de la camera declenche aussi. Le
+  //     neuf ne remplace l'ancien que s'il joue ; sinon la recreation attend
+  //     un geste.
+  // (3) Une relance refusee — iOS en exige parfois un geste — s'arme sur le
+  //     prochain contact avec l'ecran, et `son_actif()` le fait savoir.
+  // La file, elle, joue **toujours** : elle ne se tait jamais sur la foi de
+  // l'etat rapporte par Safari.
+  // ------------------------------------------------------------------
+
+  _creer_contexte() {
+    this._adopter(this._nouveau_contexte());
+  }
+
+  _nouveau_contexte() {
+    const Classe = globalThis.AudioContext ?? globalThis.webkitAudioContext;
+    return new Classe();
+  }
+
+  _adopter(contexte) {
+    contexte.onstatechange = () => {
+      // Un ancien contexte, ferme par `_recreer`, n'a plus rien a dire.
+      if (contexte !== this.contexte) return;
+      if (contexte.state === "suspended" || contexte.state === "interrupted") {
+        this._reprendre();
+      }
+    };
+    this.contexte = contexte;
+  }
+
+  /**
+   * Relance le contexte, sans jamais attendre plus de `DELAI_REPRISE` : une
+   * promesse de `resume()` qui ne se resout pas (contexte interrompu par un
+   * appel) bloquerait sinon toute la file. Rend vrai si le son peut sortir.
+   */
+  async _reprendre() {
+    const contexte = this.contexte;
+    if (!contexte || contexte.state === "closed") return false;
+    if (contexte.state !== "running") {
+      await Promise.race([
+        contexte.resume().catch(() => {}),
+        this._attendre(DELAI_REPRISE),
+      ]);
+    }
+    const actif = contexte === this.contexte && contexte.state === "running";
+    if (!actif) this._reprendre_au_toucher();
+    return actif;
+  }
+
+  /**
+   * Arme une relance sur le prochain contact avec l'ecran.
+   *
+   * `resume()` est appele **dans le gestionnaire**, sans aucune attente
+   * avant : c'est la seule fenetre ou iOS l'accepte a coup sur. En phase de
+   * capture, pour passer avant un gestionnaire de page qui arreterait la
+   * propagation.
+   */
+  _reprendre_au_toucher() {
+    if (this._reprise_armee || !globalThis.document) return;
+    this._reprise_armee = true;
+    globalThis.document.addEventListener(
+      "pointerdown",
+      () => {
+        this._reprise_armee = false;
+        // Une sortie a change sans qu'on ait pu recreer le contexte : c'est
+        // le moment, iOS acceptant un contexte neuf pendant un geste.
+        if (this._recreation_due) {
+          this._recreation_due = false;
+          const neuf = this._nouveau_contexte();
+          neuf.resume().catch(() => {});
+          this._remplacer(neuf);
+          return;
+        }
+        this.contexte?.resume().catch(() => {});
+      },
+      { once: true, capture: true },
+    );
+  }
+
+  _surveiller_sorties() {
+    const peripheriques = globalThis.navigator?.mediaDevices;
+    if (this._sorties_surveillees || !peripheriques?.addEventListener) return;
+    this._sorties_surveillees = true;
+    // Un branchement declenche souvent plusieurs evenements d'affilee : on
+    // attend que ca se calme pour ne juger qu'une fois.
+    let attente = null;
+    this._compter_micros().then((n) => { this._micros = n; });
+    peripheriques.addEventListener("devicechange", () => {
+      clearTimeout(attente);
+      attente = setTimeout(() => this._sortie_peut_etre_changee(), DELAI_CHANGEMENT_SORTIE * 1000);
+    });
+  }
+
+  /**
+   * Le nombre de micros, ou null s'il ne se lit pas.
+   *
+   * C'est l'indice d'un changement d'ecouteurs : Safari n'enumere pas les
+   * sorties audio, mais des AirPods apportent leur micro. **Un `devicechange`
+   * seul ne suffit pas** — ouvrir la camera en declenche un sur iOS, et la
+   * premiere version recreait alors le contexte hors de tout geste, donc
+   * suspendu : la seance entiere est restee muette.
+   */
+  async _compter_micros() {
+    try {
+      const liste = await globalThis.navigator.mediaDevices.enumerateDevices();
+      return liste.filter((p) => p.kind === "audioinput").length;
+    } catch {
+      return null;
+    }
+  }
+
+  async _sortie_peut_etre_changee() {
+    const avant = this._micros;
+    const apres = await this._compter_micros();
+    this._micros = apres;
+    if (avant === null || apres === null || avant === apres) {
+      // Rien ne dit qu'une sortie a change : une simple relance suffit.
+      this._reprendre();
+      return;
+    }
+    await this._recreer();
+  }
+
+  /**
+   * Remplace le contexte par un neuf, sur la nouvelle sortie.
+   *
+   * Les tampons decodes sont oublies : ils l'ont ete a la frequence de
+   * l'ancienne sortie. Les sons precharges le sont de nouveau, sans quoi la
+   * premiere repetition apres le changement s'annoncerait en retard.
+   */
+  async _recreer() {
+    if (!this.contexte) return;
+    let neuf;
+    try {
+      neuf = this._nouveau_contexte();
+    } catch {
+      return;
+    }
+    await Promise.race([neuf.resume().catch(() => {}), this._attendre(DELAI_REPRISE)]);
+    if (neuf.state !== "running") {
+      // iOS refuse souvent un contexte neuf hors d'un geste. **On garde
+      // l'ancien**, qui joue peut-etre encore, et la recreation attendra le
+      // prochain contact avec l'ecran : remplacer un contexte qui marche par
+      // un contexte suspendu, c'est ce qui rendait la seance muette.
+      neuf.close?.().catch(() => {});
+      this._recreation_due = true;
+      this._reprise_armee = false;
+      this._reprendre_au_toucher();
+      this._reprendre();
+      return;
+    }
+    this._remplacer(neuf);
+  }
+
+  /** Bascule sur `neuf` et ferme l'ancien, tampons redecodes. */
+  _remplacer(neuf) {
+    const ancien = this.contexte;
+    this._adopter(neuf);
+    this._tampons.clear();
+    ancien?.close?.().catch(() => {});
+    this.precharger(this._precharges);
   }
 
   async _tampon(fichier) {
@@ -114,6 +313,8 @@ export class Lecteur {
    */
   async precharger(cles) {
     if (!this.contexte) return;
+    // Retenus pour `_recreer`, qui doit les recharger sur la nouvelle sortie.
+    this._precharges = [...new Set([...(this._precharges ?? []), ...cles])];
     const fichiers = new Set();
     for (const cle of cles) {
       if (/^\d+$/.test(cle)) fichiers.add(`${cle}.wav`);
@@ -217,6 +418,13 @@ export class Lecteur {
     try {
       while (this._file.length) {
         const { fichiers, priorite, silence_avant } = this._file.shift();
+        // Relancer d'abord, puis jouer **quoi qu'il arrive**. La premiere
+        // version jetait l'entree quand le contexte ne se disait pas
+        // `running`, pour eviter une rafale a la relance : sur l'iPad, une
+        // seance entiere est restee muette. L'etat rapporte par Safari n'est
+        // pas assez fiable pour decider de se taire — une rafale tardive vaut
+        // mieux qu'un coach qui ne dit plus rien.
+        if (!this.son_actif()) await this._reprendre();
         const rythme = this.est_rythme(priorite);
         if (!rythme) {
           // La respiration se prend **avant une phrase**, comptee depuis la

@@ -107,6 +107,20 @@ def _exercice_au_hasard(tirage):
     }
 
 
+def _note_relue(profil):
+    """La note d'un profil, son repere et ses variantes, ou None s'il est supprime.
+
+    Les variantes voyagent avec la note : ce sont les deux preferences de
+    progression que porte le profil, et la table relue est **normalisee** des
+    deux cotes — une entree qui se designe elle-meme ne doit survivre nulle
+    part.
+    """
+    ligne = base_de_donnees.recuperer_utilisateur(profil)
+    if ligne is None:
+        return None
+    return [ligne["note_athlete"], ligne["note_relevee_apres"], ligne["variantes"]]
+
+
 def main():
     tirage = random.Random(GRAINE)
     horloge = _HorlogeFigee()
@@ -163,6 +177,19 @@ def main():
                         )
                         for profil in profils
                     },
+                    # La note d'athlete et son repere de hausse : c'est
+                    # `definir_note_athlete` qui decide quand le repere se pose
+                    # ou s'efface, et une erreur la n'apparait qu'au calcul des
+                    # objectifs, des semaines plus tard.
+                    #
+                    # `profils[: pas + 1]` : les trois profils sont crees avant
+                    # le premier releve, alors que le JavaScript rejoue leur
+                    # creation pas a pas. Au pas 0, seul le premier existe
+                    # des deux cotes ; l'historique n'en souffre pas (vide
+                    # pour un profil inconnu), une ligne de profil si.
+                    "notes": {
+                        str(profil): _note_relue(profil) for profil in profils[: pas + 1]
+                    },
                 }, ensure_ascii=False) + "\n")
 
             for pas, (commande, arguments) in enumerate(ecritures):
@@ -199,6 +226,36 @@ def main():
                     relever(pas, "enregistrer_ressentis",
                             {"seance_id": identifiant, "ressentis": ressentis,
                              "utilisateur_id": profil}, modifies)
+                    pas += 1
+
+                # La note d'athlete, de temps en temps : hausses, baisses,
+                # premier reglage, et des valeurs hors echelle que les deux
+                # cotes doivent refuser. Le refus est un comportement releve,
+                # pas un incident.
+                if tirage.random() < 0.3:
+                    note = tirage.choice([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+                    try:
+                        base_de_donnees.definir_note_athlete(note, utilisateur_id=profil)
+                        refus = None
+                    except ValueError:
+                        refus = "refus"
+                    relever(pas, "definir_note_athlete",
+                            {"note": note, "utilisateur_id": profil}, refus)
+                    pas += 1
+
+                # Les variantes du profil, de temps en temps : une table propre,
+                # une table vide (qui s'ecrit NULL), et des entrees que la
+                # normalisation doit retirer.
+                if tirage.random() < 0.15:
+                    table = tirage.choice([
+                        {},
+                        {"Pompes": "Pompes sur les genoux"},
+                        {"Pompes": "Pompes inclinées", "Squat": "Squat sur chaise"},
+                        {"Gainage planche": "Gainage planche", "": "Squat"},
+                    ])
+                    base_de_donnees.definir_variantes(table, utilisateur_id=profil)
+                    relever(pas, "definir_variantes",
+                            {"variantes": table, "utilisateur_id": profil}, None)
                     pas += 1
 
                 # Un ancrage de temps en temps, posé après la séance courante.

@@ -76,6 +76,19 @@ def specs_du_harnais():
         "SansFin": paliers.SpecProgression(
             series=3, cible_min=10, cible_max=None, unite=paliers.UNITE_SECONDES
         ),
+        # La charge du corps ajoutée au volume : le squat et les fentes
+        # l'exercent déjà, mais ni avec une valeur fractionnaire — là où un
+        # arrondi glisserait — ni avec une surcharge, seul chemin par lequel
+        # `_valide` compare une performance à un palier qu'il n'a pas généré.
+        "ChargeCorps": paliers.SpecProgression(
+            series=3,
+            cible_min=4,
+            cible_max=12,
+            poids_min=0,
+            charge_corps=7.5,
+            premiere_charge=4,
+            surcharges={5: {"poids": 6}},
+        ),
     }
 
 
@@ -162,6 +175,7 @@ def preparer_le_harnais():
 
     MATERIEL_EXERCICES["Surcharge"] = "Deux haltères"
     MATERIEL_EXERCICES["SansFin"] = ""
+    MATERIEL_EXERCICES["ChargeCorps"] = "Deux haltères"
     SPECS_DU_HARNAIS.write_text(
         json.dumps(
             {
@@ -171,6 +185,7 @@ def preparer_le_harnais():
                 "materiel": {
                     "Surcharge": {"halteres": 2, "brut": "Deux haltères"},
                     "SansFin": {"halteres": 0, "brut": ""},
+                    "ChargeCorps": {"halteres": 2, "brut": "Deux haltères"},
                 },
                 # Les inventaires voyagent **avec l'oracle** et ne sont plus
                 # redéclarés en JavaScript. Ils l'étaient, et le comparateur

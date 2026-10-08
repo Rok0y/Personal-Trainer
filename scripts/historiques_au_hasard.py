@@ -73,12 +73,12 @@ def exercice(tirage, noms):
         mode = tirage.choice(MODES)
     maintien = mode in ("maintien", "chrono")
 
-    # **Une ligne sur dix est un test de calibration.** Un historique ordinaire
-    # n'en contient aucun, et la règle qui les écarte — un test n'est ni réussi
-    # ni échoué — ne serait alors comparée par rien. C'est pourtant celle qui
-    # décide de ce que l'écran affiche après la toute première séance de
-    # quelqu'un, c'est-à-dire au moment où l'on a le moins envie de lire
-    # « Non atteint ». Une série unique, comme en séance.
+    # **Une ligne sur dix est un ancien test de calibration.** Plus aucune
+    # séance n'en joue — la note d'athlète l'a remplacé —, mais les bases
+    # réelles en contiennent, et la règle qui les écarte — un test n'est ni
+    # réussi ni échoué — doit continuer d'être comparée : relue comme un
+    # objectif ordinaire, une cible de 999 ferait proposer un palier démesuré.
+    # Une série unique, comme en séance.
     est_un_test = tirage.random() < 0.1
     sur_le_bareme = (
         not est_un_test

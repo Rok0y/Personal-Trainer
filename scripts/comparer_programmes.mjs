@@ -15,7 +15,7 @@ import {
   liaison_seances,
   libelles_seances,
   prescription,
-  prochaine_seance,
+  semaine_du_programme,
   volume_exige,
 } from "../web/static/js/programmes.js";
 
@@ -86,9 +86,9 @@ function main() {
     verifier(`${ou} / libelles`, ligne.libelles, libelles_seances(programme));
     verifier(`${ou} / liaison`, ligne.liaison, liaison_seances(programme, CATALOGUE));
     verifier(
-      `${ou} / prochaine`,
-      ligne.prochaine,
-      prochaine_seance(programme, seances, CATALOGUE)
+      `${ou} / semaine`,
+      ligne.semaine,
+      semaine_du_programme(programme, seances, CATALOGUE, ligne.tours, ligne.maintenant)
     );
     verifier(
       `${ou} / etat_programme`,

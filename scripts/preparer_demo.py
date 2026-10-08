@@ -147,7 +147,7 @@ def exporter_baremes():
         POIDS_REFERENCE,
         POIDS_SUPPOSES,
     )
-    from progression import ligues, paliers
+    from progression import calibration, ligues, paliers, variantes
     from progression.reglages import CHEMIN as CHEMIN_REGLAGES
 
     # Le fichier de reglages voyage **tel quel** jusqu'au site : c'est lui que
@@ -156,6 +156,14 @@ def exporter_baremes():
     # finirait par deriver de la source qu'elle pretend reproduire.
     (DONNEES / "reglages.json").write_text(
         CHEMIN_REGLAGES.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    # Meme regle pour les fiches d'exercice, que `dev/fiches.html` edite : le
+    # fichier source part tel quel, pour que la page rende exactement ce
+    # qu'il faut recoller dans `mouvements/fiches.json`.
+    from mouvements.fiches import FICHIER as CHEMIN_FICHES
+
+    (DONNEES / "fiches.json").write_text(
+        CHEMIN_FICHES.read_text(encoding="utf-8"), encoding="utf-8"
     )
     from session.seances import MATERIEL_EXERCICES, nombre_halteres
 
@@ -174,6 +182,25 @@ def exporter_baremes():
             "paliers_xp": [list(tranche) for tranche in ligues.PALIERS_XP],
             "xp_base_niveau_general": ligues.XP_BASE_NIVEAU_GENERAL,
             "xp_increment_niveau_general": ligues.XP_INCREMENT_NIVEAU_GENERAL,
+        },
+        # La note d'athlete : la table des rangs et ses seuils, plus les
+        # reperes ecrits de l'echelle, pour que les deux accueils posent la
+        # meme question avec les memes mots.
+        "note_athlete": {
+            "rangs": list(calibration.RANGS_PAR_NOTE),
+            "part_exercices": calibration.PART_EXERCICES,
+            "marge": calibration.MARGE,
+            "exercices_min": calibration.EXERCICES_MIN,
+            "reperes": {str(n): texte for n, texte in calibration.REPERES_NOTE.items()},
+        },
+        # Ce qu'une variante plus facile doit prouver avant qu'on propose le
+        # retour au mouvement complet : une performance, que `variantes.js`
+        # traduit par le bareme comme le Python.
+        "variantes": {
+            "retour": {
+                nom: list(performance)
+                for nom, performance in variantes.SEUILS_RETOUR.items()
+            },
         },
         "specs": {nom: asdict(spec) for nom, spec in paliers.SPECS.items()},
         "echelles": {

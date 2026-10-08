@@ -4,18 +4,23 @@ Dernière pièce de l'étape 4, et la seule qui **écrit** : `appliquer_a_blocs`
 et `appliquer_a_circuit` modifient les blocs sur place. Le harnais relève donc
 les blocs *avant* et *après*, et compare l'état final.
 
-Quatre choses doivent être visitées, et aucune ne l'est par un historique
+Six choses doivent être visitées, et aucune ne l'est par un historique
 ordinaire :
 
-- **les exercices sans données**, qui déclenchent un test de calibration
-  plutôt qu'un objectif. Ils n'existent que si l'historique ne les mentionne
-  pas du tout, donc les séances ne couvrent volontairement qu'une partie du
-  catalogue ;
+- **les exercices jamais faits**, qui partent du palier de la note d'athlète.
+  Ils n'existent que si l'historique ne les mentionne pas du tout, donc les
+  séances ne couvrent volontairement qu'une partie du catalogue ;
+- **la note relevée**, dont le repère est posé *au milieu* de l'historique,
+  comme les ancrages : au bout il ne s'appliquerait à rien de joué, au début
+  il serait toujours consommé — c'est entre les deux que le plancher se voit ;
+- **la frontière de la note mesurée** (deux tiers des exercices, cinq au
+  moins), que des historiques au hasard n'effleurent jamais exactement : des
+  historiques construits la visitent des deux côtés ;
 - **les cibles manuelles**, dans leurs trois formats stockables (booléen
   d'avant les profils, entier, liste) — un format mal lu fige une cible pour
   toujours, en silence ;
-- **les modes incompatibles**, qui font sortir le bloc du pilotage sans le
-  marquer à tester ;
+- **les modes incompatibles**, qui font sortir le bloc du pilotage : il garde
+  la cible de son fichier ;
 - **les deux formes de bloc**, dictionnaire et `BlocExercice`, qui ont chacune
   leur fonction et ne doivent pas diverger.
 
@@ -28,7 +33,9 @@ import json
 import random
 from pathlib import Path
 
-from progression import calibration, niveaux, objectifs, paliers, ressenti
+import math
+
+from progression import calibration, niveaux, objectifs, paliers, ressenti, variantes
 from scripts.historiques_au_hasard import (
     INVENTAIRES,
     ancrages as tirer_ancrages,
@@ -37,6 +44,7 @@ from scripts.historiques_au_hasard import (
     palier_serialisable,
 )
 from session.circuit import BlocExercice, Circuit, Exercice
+from session.seances import catalogue_mouvements
 
 RACINE = Path(__file__).resolve().parent.parent
 DESTINATION = Path(__file__).parent / "fixtures_objectifs.jsonl"
@@ -49,6 +57,18 @@ HISTORIQUES = 90
 #: comparerait un Python qui ignore les marques à un JavaScript qui les
 #: applique.
 PROFIL = 1
+
+#: Le catalogue réel des variantes, pour la règle du palier 1 (voir
+#: `objectifs._monte_d_une_variante`), et ses deux extrémités : le bas de
+#: chaque chaîne, et tout ce qui a une variante plus facile sous soi.
+CATALOGUE_VARIANTES = variantes.catalogue_depuis(catalogue_mouvements())
+BAS_DES_CHAINES = sorted(
+    nom for nom, fiche in CATALOGUE_VARIANTES.items()
+    if fiche["variante_difficile"] and not fiche["variante_facile"]
+)
+AU_DESSUS_D_UNE_VARIANTE = {
+    nom for nom, fiche in CATALOGUE_VARIANTES.items() if fiche["variante_facile"]
+}
 
 MODES = ("repetitions", "maintien", "chrono", "amrap", "echauffement")
 
@@ -114,8 +134,6 @@ def _decrire_circuit(circuit):
             "nombre_series": bloc.nombre_series,
             "repetitions_par_serie": bloc.repetitions_par_serie,
             "duree": bloc.duree,
-            "test_max": getattr(bloc, "test_max", False),
-            "avant_test": getattr(bloc, "avant_test", None),
         }
         for bloc in circuit.exercices
     ]
@@ -127,6 +145,93 @@ def _serialiser(objet):
     if isinstance(objet, set):
         return sorted(objet)
     raise TypeError(f"Non serialisable : {type(objet)}")
+
+
+#: Notes balayées par `niveau_de_depart` : l'échelle entière, plus ce qu'une
+#: note n'est pas — absente, hors bornes — et qui doit rendre le palier 1 des
+#: deux côtés.
+NOTES_BALAYEES = (None, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+
+
+def _note_au_hasard(tirage, seances):
+    """Une note de profil, avec son repère de hausse posé au milieu de l'historique."""
+    ids = sorted(s["id"] for s in seances)
+    milieu = ids[len(ids) // 2] if ids else 0
+    return {
+        "declaree": tirage.choice([None, *range(1, 11)]),
+        "relevee_apres": tirage.choice([None, None, 0, milieu, max(ids, default=0)]),
+    }
+
+
+def _ligne_prouvant(nom, niveau, tirage):
+    """Une ligne d'historique qui prouve exactement `niveau`, toutes séries menées."""
+    palier = paliers.palier(nom, niveau)
+    maintien = palier.unite == paliers.UNITE_SECONDES
+    series = [
+        {
+            "serie": numero,
+            "repetitions": 0 if maintien else palier.cible,
+            "poids": palier.poids,
+            "duree": palier.cible if maintien else 0,
+            "completee": True,
+        }
+        for numero in range(1, palier.series + 1)
+    ]
+    return {
+        "nom": nom,
+        "mode": "maintien" if maintien else "repetitions",
+        "poids": palier.poids,
+        "series": palier.series,
+        "repetitions": sum(x["repetitions"] for x in series),
+        "duree": sum(x["duree"] for x in series),
+        "series_cibles": palier.series,
+        "repetitions_cibles": 0 if maintien else palier.cible,
+        "duree_cible": palier.cible if maintien else 0,
+        "commentaire": "",
+        "entrelace_avec": None,
+        "repos_entre_series": 45,
+        "repos_apres": 60,
+        "ressenti": tirage.choice(["", "facile"]),
+        "series_detaillees": series,
+    }
+
+
+def _historique_frontiere(tirage, noms):
+    """Un historique dont la note mesurée tombe pile sur la frontière.
+
+    `total` exercices récents, dont `atteints` au départ exact d'une note et
+    les autres un cran dessous : selon le tirage, on est juste à deux tiers,
+    juste en dessous, ou sous le minimum d'exercices. Le hasard seul n'y tombe
+    jamais exactement, et c'est là qu'un `>=` devenu `>` se cache.
+    """
+    note = tirage.randint(2, 10)
+    total = tirage.choice([calibration.EXERCICES_MIN - 1, calibration.EXERCICES_MIN, 6, 9])
+    total = min(total, len(noms))
+    juste = math.ceil(calibration.PART_EXERCICES * total)
+    atteints = max(0, min(total, juste + tirage.choice([-1, 0, 0, 1])))
+    choisis = tirage.sample(noms, k=total)
+    exercices = []
+    for index, nom in enumerate(choisis):
+        depart = calibration.niveau_de_depart(nom, note)
+        niveau = depart if index < atteints else max(1, depart - 1)
+        exercices.append(_ligne_prouvant(nom, niveau, tirage))
+    return [{
+        "id": 1,
+        "date": "01/03/2026 08:00",
+        "duree": 1800,
+        "statut": "finished",
+        "nom": None,
+        "exercices": exercices,
+    }]
+
+
+def _table_des_notes():
+    """`note_effective` sur toute la grille, hors de tout historique."""
+    return [
+        {"declaree": d, "mesuree": m, "reponse": calibration.note_effective(d, m)}
+        for d in (None, *range(1, 11))
+        for m in (None, *range(1, 11))
+    ]
 
 
 def _table_des_cibles_manuelles():
@@ -212,23 +317,62 @@ def main():
     objectifs.identifiant_connecte = lambda: PROFIL
 
     with DESTINATION.open("w", encoding="utf-8") as fichier:
+        # Les inventaires **voyagent avec l'oracle** au lieu d'être redéclarés
+        # côté JavaScript : la leçon des paliers, où deux copies ont divergé
+        # au premier inventaire ajouté d'un seul côté.
+        fichier.write(json.dumps({
+            "genre": "entete",
+            "inventaires": INVENTAIRES,
+            "notes_effectives": _table_des_notes(),
+            # Le catalogue des variantes voyage avec l'oracle, pour la règle du
+            # palier 1 : redéclaré côté JavaScript, il dériverait.
+            "catalogue_variantes": CATALOGUE_VARIANTES,
+        }, ensure_ascii=False) + "\n")
         fichier.write(json.dumps(_table_des_cibles_manuelles(), ensure_ascii=False) + "\n")
-        lignes += 1
+        lignes += 2
 
         for nom_inventaire, inventaire in INVENTAIRES.items():
             injecter_inventaire(inventaire)
 
+            fichier.write(json.dumps({
+                "genre": "departs",
+                "inventaire": nom_inventaire,
+                "departs": {
+                    nom: [calibration.niveau_de_depart(nom, n) for n in NOTES_BALAYEES]
+                    for nom in noms
+                },
+                "notes": list(NOTES_BALAYEES),
+            }, ensure_ascii=False) + "\n")
+            lignes += 1
+
             for numero in range(HISTORIQUES):
                 # L'historique ne couvre volontairement qu'une partie du
-                # catalogue : les exercices absents sont « sans données », donc
-                # à calibrer, et c'est le seul moyen de visiter ce chemin.
-                connus = tirage.sample(noms, k=tirage.randint(2, max(2, len(noms) // 2)))
-                seances = tirer_historique(tirage, connus)
-                ancrages = tirer_ancrages(tirage, connus, seances)
+                # catalogue : les exercices absents n'ont jamais été faits, et
+                # c'est le seul moyen de visiter le départ par la note. Un
+                # historique sur cinq est construit sur la frontière de la
+                # note mesurée plutôt que tiré au hasard.
+                if numero % 5 == 4:
+                    seances = _historique_frontiere(tirage, noms)
+                    ancrages = {}
+                elif numero % 5 == 3:
+                    # Seul le bas des chaînes a été joué : le cran du dessus
+                    # n'a jamais été fait, et doit partir du palier 1 plutôt
+                    # que de la note. Le hasard le visite trop rarement.
+                    connus = [n for n in noms if n not in AU_DESSUS_D_UNE_VARIANTE]
+                    connus = tirage.sample(connus, k=tirage.randint(2, max(2, len(connus) // 2)))
+                    connus += [n for n in BAS_DES_CHAINES if n in noms]
+                    seances = tirer_historique(tirage, connus)
+                    ancrages = tirer_ancrages(tirage, connus, seances)
+                else:
+                    connus = tirage.sample(noms, k=tirage.randint(2, max(2, len(noms) // 2)))
+                    seances = tirer_historique(tirage, connus)
+                    ancrages = tirer_ancrages(tirage, connus, seances)
                 niveaux.recuperer_ancrages = lambda *_, **__: ancrages
                 ressenti.recuperer_ancrages = lambda *_, **__: ancrages
+                objectifs.recuperer_ancrages = lambda *_, **__: ancrages
+                note = _note_au_hasard(tirage, seances)
 
-                objs = objectifs.objectifs_par_exercice(seances)
+                objs = objectifs.objectifs_par_exercice(seances, note, CATALOGUE_VARIANTES)
                 sans = objectifs.exercices_sans_donnees(seances)
 
                 blocs_avant = [_bloc(tirage, noms) for _ in range(tirage.randint(2, 6))]
@@ -241,36 +385,25 @@ def main():
                     "seances": seances,
                     "ancrages": ancrages,
                     "blocs_avant": blocs_avant,
+                    "note": note,
+                    "niveaux_recents": calibration.niveaux_recents(seances, ancrages),
+                    "note_mesuree": calibration.note_mesuree(seances, ancrages),
                     "objectifs": objs,
                     "sans_donnees": sorted(sans),
-                    "charges_de_test": {
-                        nom: calibration.charge_de_test(nom) for nom in noms
-                    },
-                    "niveaux_estimes": [
-                        {
-                            "exercice": nom,
-                            "poids": poids,
-                            "maximum": maximum,
-                            "reponse": calibration.niveau_estime(nom, poids, maximum),
-                        }
-                        for nom in tirage.sample(noms, k=4)
-                        for poids, maximum in ((0, tirage.randint(0, 40)),
-                                               (8, tirage.randint(0, 40)))
-                    ],
                     "blocs_apres": objectifs.appliquer_a_blocs(
-                        copy.deepcopy(blocs_avant), objs, sans
+                        copy.deepcopy(blocs_avant), objs
                     ),
                     "circuit_apres": _decrire_circuit(
-                        objectifs.appliquer_a_circuit(circuit, objs, sans)
+                        objectifs.appliquer_a_circuit(circuit, objs)
                     ),
                     # `marquer_cibles_manuelles` n'etait compare par rien, et
                     # c'est exactement la ou un defaut s'est cache : un
-                    # exercice a calibrer y etait declare « cible manuelle »,
-                    # ce qui le figeait pour toujours et empechait son test de
-                    # se declencher. Une fonction qui ecrit une marque
-                    # **collante** merite d'etre verifiee comme les autres.
+                    # exercice du temps des tests y etait declare « cible
+                    # manuelle », ce qui le figeait pour toujours. Une fonction
+                    # qui ecrit une marque **collante** merite d'etre verifiee
+                    # comme les autres.
                     "marques": objectifs.marquer_cibles_manuelles(
-                        copy.deepcopy(blocs_avant), objs, sans
+                        copy.deepcopy(blocs_avant), objs
                     ),
                 }, ensure_ascii=False, default=_serialiser) + "\n")
                 lignes += 1

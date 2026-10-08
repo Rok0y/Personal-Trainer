@@ -79,10 +79,14 @@ class Palier:
     series: int
     cible: int  # répétitions ou secondes, selon `unite`
     unite: str
+    #: Copie de `SpecProgression.charge_corps`, portée par le palier pour que
+    #: `volume` reste juste chez tous ses lecteurs — ligues, programmes,
+    #: validation — sans qu'aucun ait à retrouver la spec.
+    charge_corps: float = 0
 
     @property
     def volume(self):
-        return volume(self.series, self.cible, self.poids)
+        return volume(self.series, self.cible, self.poids, self.charge_corps)
 
     def resume(self):
         suffixe = " s" if self.unite == UNITE_SECONDES else ""
@@ -115,6 +119,12 @@ class SpecProgression:
     poids_min: float | None = None
     poids_max: float | None = None
     surcharges: Mapping[int, Mapping[str, float]] = field(default_factory=dict)
+    #: Part du corps comptée dans le volume, en kg « par haltère ». Voir la
+    #: note de `charge_corps` plus bas : 0 garde l'ancienne règle.
+    charge_corps: float = 0
+    #: Premier haltère qui compte, quand la charge est facultative : sous lui,
+    #: on reste au poids du corps. Voir la note de `premiere_charge`.
+    premiere_charge: float | None = None
 
 
 #: Un barème par exercice, calé sur ce qui s'y pratique réellement. Les trois
@@ -181,6 +191,39 @@ class SpecProgression:
 #   la **première borne de ligue** de l'exercice, qui vaut souvent le volume
 #   de l'ancien palier 1 et se retrouve deux crans trop haut.
 #
+# `charge_corps` — **ce que pèse le corps dans le volume d'un mouvement à
+#   charge facultative**, en kg « par haltère » (la convention de `poids`).
+#   Sans lui, le poids du corps compte pour 1 kg (`poids or 1`) : prendre deux
+#   haltères de 2 kg *doublait* le volume d'un squat, et le barème passait de
+#   4x15 au poids du corps à 4x8 à 2 kg en appelant ça une progression. La
+#   note d'athlète en héritait — note 2 à 4x14 au corps, note 3 à 4x11 à 2 kg,
+#   c'est-à-dire plus facile. Or au squat on déplace surtout son corps, et
+#   2 kg dans chaque main n'y ajoutent que quelques pourcents.
+#   Le volume devient `séries x cible x (poids + charge_corps)`. **10 est un
+#   compromis et non une mesure** : la physique dirait plutôt 30 à 35, mais
+#   chaque cran d'haltère se jouerait alors à la cible maximale et les
+#   répétitions ne bougeraient plus ; à 10, un cran coûte une ou deux
+#   répétitions. Réservé aux mouvements dont `poids_min` vaut 0 : ailleurs le
+#   barème n'a qu'un cran de poids (pompes, gainage) ou n'en a aucun au poids
+#   du corps (curl), et le réglage ne servirait à rien.
+#   Le toucher **rebat tout le barème de l'exercice**, comme `poids_min`, et
+#   change l'échelle de ses volumes : ses bornes de ligue, posées en volume
+#   absolu, sont à recaler avec.
+#
+# `premiere_charge` — **le premier haltère qui vaut un cran**, sur un mouvement
+#   à charge facultative. Un squat ou une fente à 2 ou 3 kg par main ne se
+#   distingue pas du poids du corps : testé, 4x13 à 2 kg était *plus facile*
+#   que 4x15 sans rien, si bien que le barème faisait passer pour une
+#   progression un palier qui n'en était pas un. On saute donc ces haltères :
+#   l'échelle garde le cran au poids du corps (0) puis repart à
+#   `premiere_charge`. `poids_min` ne pouvait pas le dire — il vaut déjà 0, et
+#   c'est ce 0 qui déclare la charge facultative.
+#   Il va avec `charge_corps` : c'est la part du corps qui décide combien de
+#   répétitions coûte l'entrée au premier haltère (4x15 au corps puis 4x12 à
+#   5 kg à 15, mais 4x10 à 5 kg à 10, ce qui redevenait plus facile).
+#   Sans haltère au moins aussi lourd, l'échelle se réduit au poids du corps,
+#   qui est alors la vraie réponse et non un repli.
+#
 # `poids_max` — le plafond de charge n'est pas celui du matériel. Sans lui, le
 #   barème proposait des paliers jusqu'à l'haltère de 18 kg au curl unilatéral,
 #   une charge qu'on ne curle pas d'un bras — et une exigence de programme s'y
@@ -195,8 +238,11 @@ class SpecProgression:
 #     charge, la fourchette de répétitions est allongée, sinon le barème est
 #     épuisé en une poignée de paliers ;
 #   - **variantes assistées** (pompes inclinées, sur les genoux) : mêmes
-#     fourchettes, départ encore plus bas — elles existent pour que quelqu'un
-#     qui ne fait pas une pompe complète ait quand même une progression ;
+#     fourchettes, départ plus bas *en effort* — elles existent pour que
+#     quelqu'un qui ne fait pas une pompe complète ait quand même une
+#     progression. Les pompes complètes partent pourtant d'une seule
+#     répétition (4x1) et les variantes de trois : une répétition à genoux
+#     coûte bien moins qu'une pompe, et c'est l'effort qu'on compare ;
 #   - **isolation légère** (élévations latérales, oiseau) : beaucoup de
 #     répétitions, jamais très lourd ;
 #   - **lourd et court** (extension triceps) : fourchette basse des deux côtés,
@@ -239,14 +285,28 @@ SPECS = {
 }
 
 
-def volume(series, cible, poids):
+def volume(series, cible, poids, charge_corps=0):
     """Charge totale déplacée sur l'ensemble des séries.
 
-    Le poids du corps compte pour 1 kg : seules les répétitions font alors la
-    différence, et le barème n'a pas besoin d'un cas particulier pour éviter
-    de tout multiplier par zéro.
+    Sans `charge_corps`, le poids du corps compte pour 1 kg : seules les
+    répétitions font alors la différence, et le barème n'a pas besoin d'un cas
+    particulier pour éviter de tout multiplier par zéro. Avec, il compte pour
+    sa part réelle, ajoutée à la charge — voir la note de `charge_corps`.
     """
+    if charge_corps:
+        return series * cible * (poids + charge_corps)
     return series * cible * (poids or 1)
+
+
+def volume_exercice(nom_exercice, series, cible, poids):
+    """Le volume d'une performance, **dans l'unité du barème de cet exercice**.
+
+    Point d'entrée de quiconque calcule un volume sans avoir de palier en main
+    (une prescription de programme, une performance) : `volume` seul ignore la
+    charge du corps et rendrait une valeur incomparable aux paliers.
+    """
+    spec = SPECS.get(nom_exercice)
+    return volume(series, cible, poids, spec.charge_corps if spec else 0)
 
 
 def est_suivi_par_le_moteur(nom_exercice):
@@ -333,6 +393,9 @@ def _dans_la_fourchette(echelle, spec):
         for poids in echelle
         if (spec.poids_min is None or poids >= spec.poids_min)
         and (spec.poids_max is None or poids <= spec.poids_max)
+        # Le poids du corps reste un cran : seuls les haltères trop légers
+        # pour peser quelque chose sont écartés.
+        and (not spec.premiere_charge or poids == 0 or poids >= spec.premiere_charge)
     )
 
 
@@ -391,7 +454,7 @@ def _premiere_cible(spec, volume_a_egaler, series, poids, plafonnee=True):
     plus bornées.
     """
     cible = spec.cible_min
-    while volume(series, cible, poids) < volume_a_egaler:
+    while volume(series, cible, poids, spec.charge_corps) < volume_a_egaler:
         cible += spec.pas
         if plafonnee and cible > spec.cible_max:
             return None
@@ -408,6 +471,9 @@ def _iterer_tranches(spec, echelle):
     laquelle tout appelant doit s'arrêter par lui-même.
     """
     volume_atteint = 0
+    # La dernière tranche bornée, (séries, poids) : la tranche ouverte la
+    # prolonge souvent, et doit alors repartir *au-dessus* de sa fin.
+    derniere = None
 
     # Le poids monte, les séries ne bougent pas.
     for poids in echelle:
@@ -416,7 +482,8 @@ def _iterer_tranches(spec, echelle):
             continue
         longueur = (spec.cible_max - depart) // spec.pas + 1
         yield spec.series, poids, depart, longueur
-        volume_atteint = volume(spec.series, spec.cible_max, poids)
+        derniere = (spec.series, poids)
+        volume_atteint = volume(spec.series, spec.cible_max, poids, spec.charge_corps)
 
     # Le poids est épuisé : on reste sur l'haltère le plus lourd et c'est le
     # nombre de séries qui augmente. Repartir du poids le plus léger serait un
@@ -430,12 +497,20 @@ def _iterer_tranches(spec, echelle):
             break
         longueur = (spec.cible_max - depart) // spec.pas + 1
         yield series, poids, depart, longueur
-        volume_atteint = volume(series, spec.cible_max, poids)
+        derniere = (series, poids)
+        volume_atteint = volume(series, spec.cible_max, poids, spec.charge_corps)
 
     # Tout est épuisé : le plafond de répétitions saute, et elles montent
     # indéfiniment. C'est ce qui garantit qu'aucun objectif n'est jamais hors
     # d'atteinte — il demandera beaucoup de répétitions, mais il existe.
     depart = _premiere_cible(spec, volume_atteint, series, poids, plafonnee=False)
+    # Quand elle prolonge la dernière tranche bornée — mêmes séries, même
+    # poids —, la plus petite cible qui tient le volume atteint *est* la fin
+    # de cette tranche : le même palier sortait deux fois (6x15 à 10 kg aux
+    # niveaux 34 et 35 du squat), et l'on montait d'un niveau sans rien faire
+    # de plus. On repart donc un pas au-dessus.
+    if (series, poids) == derniere:
+        depart = max(depart, spec.cible_max + spec.pas)
     yield series, poids, depart, None
 
 
@@ -482,7 +557,7 @@ def tranches(nom_exercice, series_max=None):
                 "cible_max": spec.cible_max,
                 "niveau_min": premier_niveau,
                 "niveau_max": premier_niveau + longueur - 1,
-                "volume_max": volume(series, spec.cible_max, poids),
+                "volume_max": volume(series, spec.cible_max, poids, spec.charge_corps),
             }
         )
         premier_niveau += longueur
@@ -525,7 +600,7 @@ def niveau_pour_volume(nom_exercice, volume_cible):
         # `_iterer_tranches` planterait sur son `cible_max` absent.
         echelle = echelle_exercice(nom_exercice)
         cible = spec.cible_min
-        while volume(spec.series, cible, echelle[0]) < volume_cible:
+        while volume(spec.series, cible, echelle[0], spec.charge_corps) < volume_cible:
             cible += spec.pas
         return (cible - spec.cible_min) // spec.pas + 1
 
@@ -538,9 +613,12 @@ def niveau_pour_volume(nom_exercice, volume_cible):
         )
         # Le volume croît le long du barème : la bonne tranche est la première
         # dont la cible haute suffit — et la tranche ouverte suffit toujours.
-        if dernier is None or volume(series, dernier, poids) >= volume_cible:
+        if (
+            dernier is None
+            or volume(series, dernier, poids, spec.charge_corps) >= volume_cible
+        ):
             cible = depart
-            while volume(series, cible, poids) < volume_cible:
+            while volume(series, cible, poids, spec.charge_corps) < volume_cible:
                 cible += spec.pas
             return premier_niveau + (cible - depart) // spec.pas
         premier_niveau += longueur
@@ -555,6 +633,7 @@ def _palier_genere(spec, echelle, niveau):
             series=spec.series,
             cible=spec.cible_min + (niveau - 1) * spec.pas,
             unite=spec.unite,
+            charge_corps=spec.charge_corps,
         )
 
     restant = niveau
@@ -568,6 +647,7 @@ def _palier_genere(spec, echelle, niveau):
                 series=series,
                 cible=depart + (restant - 1) * spec.pas,
                 unite=spec.unite,
+                charge_corps=spec.charge_corps,
             )
         restant -= longueur
     return None
@@ -609,7 +689,8 @@ def _valide(palier_teste, poids, series, cible):
         return False
     return (
         poids >= palier_teste.poids
-        and volume(series, cible, poids) >= palier_teste.volume
+        and volume(series, cible, poids, palier_teste.charge_corps)
+        >= palier_teste.volume
     )
 
 
@@ -631,7 +712,7 @@ def _niveaux_candidats(spec, echelle, poids, series, cible):
         # conversion le niveau lui-même sortirait en flottant.
         return [int((cible - spec.cible_min) // spec.pas) + 1]
 
-    volume_realise = volume(series, cible, poids)
+    volume_realise = volume(series, cible, poids, spec.charge_corps)
     candidats = []
     premier_niveau = 1
     for series_tranche, poids_tranche, depart, longueur in _iterer_tranches(
@@ -641,7 +722,10 @@ def _niveaux_candidats(spec, echelle, poids, series, cible):
         # l'invariant du barème) : dès qu'il dépasse la performance, aucune
         # tranche suivante ne pourra être validée. C'est aussi ce qui fait
         # terminer la boucle sur un générateur infini.
-        if volume(series_tranche, depart, poids_tranche) > volume_realise:
+        if (
+            volume(series_tranche, depart, poids_tranche, spec.charge_corps)
+            > volume_realise
+        ):
             break
 
         if poids_tranche <= poids:
@@ -652,7 +736,7 @@ def _niveaux_candidats(spec, echelle, poids, series, cible):
             while (
                 longueur is None or atteinte + spec.pas <= spec.cible_max
             ) and volume(
-                series_tranche, atteinte + spec.pas, poids_tranche
+                series_tranche, atteinte + spec.pas, poids_tranche, spec.charge_corps
             ) <= volume_realise:
                 atteinte += spec.pas
             candidats.append(premier_niveau + (atteinte - depart) // spec.pas)
@@ -706,6 +790,8 @@ def signature(nom_exercice):
             "pas": spec.pas,
             "unite": spec.unite,
             "series_max": spec.series_max,
+            "charge_corps": spec.charge_corps,
+            "premiere_charge": spec.premiere_charge,
             "surcharges": {
                 str(niveau): dict(sorted(valeurs.items()))
                 for niveau, valeurs in sorted(spec.surcharges.items())

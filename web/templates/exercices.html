@@ -54,7 +54,8 @@
                 {%- if etat and etat.niveau %}
                 <span class="etiquette niveau">Niveau {{ etat.niveau }} · {{ etat.actuel.resume() }}</span>
                 {%- else %}
-                <span class="etiquette debut">À découvrir · {{ etat.premier.resume() if etat else '' }}</span>
+                {%- set objectif = objectifs.get(nom) or (etat.premier if etat else none) %}
+                <span class="etiquette debut">À découvrir · {{ objectif.resume() if objectif else '' }}</span>
                 {%- endif %}
                 {%- if exercice.materiel %}
                 <span class="etiquette">{{ exercice.materiel }}</span>

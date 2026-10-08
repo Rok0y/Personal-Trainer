@@ -13,7 +13,7 @@
   },
   "Pompes": {
    "series": 4,
-   "cible_min": 3,
+   "cible_min": 1,
    "cible_max": 15,
    "pas": 1,
    "unite": "repetitions",
@@ -22,6 +22,16 @@
    "poids_max": null
   },
   "Pompes inclinées": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null
+  },
+  "Pompes contre le mur": {
    "series": 3,
    "cible_min": 3,
    "cible_max": 15,
@@ -139,7 +149,9 @@
    "unite": "repetitions",
    "series_max": 6,
    "poids_min": 0,
-   "poids_max": null
+   "poids_max": null,
+   "charge_corps": 15,
+   "premiere_charge": 5
   },
   "Squat sur chaise": {
    "series": 3,
@@ -159,7 +171,9 @@
    "unite": "repetitions",
    "series_max": 6,
    "poids_min": 0,
-   "poids_max": null
+   "poids_max": null,
+   "charge_corps": 15,
+   "premiere_charge": 5
   },
   "Fente gauche": {
    "series": 4,
@@ -169,7 +183,9 @@
    "unite": "repetitions",
    "series_max": 6,
    "poids_min": 0,
-   "poids_max": null
+   "poids_max": null,
+   "charge_corps": 15,
+   "premiere_charge": 5
   },
   "Souleve de terre roumain": {
    "series": 4,
@@ -408,44 +424,44 @@
     3240
    ],
    "Fente droite": [
-    12,
-    48,
-    72,
-    96,
-    128,
-    160,
-    216,
-    288,
-    360,
-    450,
+    180,
+    300,
+    480,
     600,
     720,
-    900,
-    1080,
-    1260,
-    1440,
-    1620,
-    1800
+    800,
+    840,
+    920,
+    1000,
+    1125,
+    1500,
+    1800,
+    2250,
+    2700,
+    3150,
+    3600,
+    4050,
+    4500
    ],
    "Fente gauche": [
-    12,
-    48,
-    72,
-    96,
-    128,
-    160,
-    216,
-    288,
-    360,
-    450,
+    180,
+    300,
+    480,
     600,
     720,
-    900,
-    1080,
-    1260,
-    1440,
-    1620,
-    1800
+    800,
+    840,
+    920,
+    1000,
+    1125,
+    1500,
+    1800,
+    2250,
+    2700,
+    3150,
+    3600,
+    4050,
+    4500
    ],
    "Gainage planche": [
     18,
@@ -548,24 +564,44 @@
     1920
    ],
    "Pompes": [
+    4,
+    8,
     12,
     20,
+    24,
     28,
+    32,
     36,
-    44,
+    40,
+    48,
     52,
     60,
-    65,
     75,
+    90,
+    108,
+    132,
+    156,
+    180
+   ],
+   "Pompes contre le mur": [
+    9,
+    15,
+    21,
+    27,
+    33,
+    39,
+    45,
+    52,
+    60,
+    70,
+    78,
     90,
     96,
     108,
     120,
     132,
     144,
-    156,
-    168,
-    180
+    156
    ],
    "Pompes inclinées": [
     9,
@@ -688,24 +724,24 @@
     2400
    ],
    "Squat": [
-    12,
-    56,
-    88,
-    120,
-    156,
-    224,
-    280,
+    180,
     360,
-    480,
     600,
-    750,
     900,
-    1140,
-    1440,
-    1680,
-    1920,
-    2160,
-    2400
+    1040,
+    1120,
+    1200,
+    1260,
+    1380,
+    1500,
+    1875,
+    2250,
+    2850,
+    3600,
+    4200,
+    4800,
+    5400,
+    6000
    ],
    "Squat sur chaise": [
     9,
@@ -759,5 +795,31 @@
   "base_niveau_general": 500,
   "increment_niveau_general": 600
  },
- "series_max_par_defaut": 6
+ "series_max_par_defaut": 6,
+ "note_athlete": {
+  "rangs": [
+   1,
+   2,
+   3,
+   4,
+   6,
+   7,
+   9,
+   10,
+   12,
+   13
+  ],
+  "part_exercices": 0.66,
+  "marge": 2,
+  "exercices_min": 5
+ },
+ "variantes": {
+  "retour": {
+   "Pompes sur les genoux": [3, 12],
+   "Pompes inclinées": [3, 12],
+   "Pompes contre le mur": [3, 15],
+   "Gainage sur les genoux": [2, 30],
+   "Squat sur chaise": [3, 12]
+  }
+ }
 }

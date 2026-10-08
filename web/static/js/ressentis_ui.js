@@ -37,8 +37,21 @@ export const OPTIONS_ECHEC = [{ valeur: "trop_dur", libelle: "C'était trop dur"
  *
  * Recliquer sur son propre choix l'annule : « je prefere ne rien dire » doit
  * rester atteignable sans recharger la page.
+ *
+ * `jugement.variante`, quand il existe, est une proposition de
+ * `variantes.propositions` — `{sens, original, vers}` : jouer une variante plus
+ * facile la prochaine fois. Elle n'apparait que si l'appelant fournit
+ * `au_variante(original, vers)`, qui ecrit la table du profil et rend vrai si
+ * c'est fait. Comme pour le ressenti, ce module ne decide rien : la
+ * proposition arrive toute faite.
+ *
+ * `sens: "montee"` n'est pas une proposition mais une **annonce** : la
+ * seance vient de faire remonter la chaine (`variantes.montees`), la table
+ * est deja ecrite, et `nouveau` dit ce qui sera joue. Le bouton propose le
+ * contraire — rester sur `vers`, la variante qu'on vient de maitriser —, par
+ * le meme `au_variante`.
  */
-export function construire_ligne(zone, nom, jugement, au_choix) {
+export function construire_ligne(zone, nom, jugement, au_choix, au_variante = null) {
   zone.replaceChildren();
 
   const verdict = document.createElement("span");
@@ -62,5 +75,77 @@ export function construire_ligne(zone, nom, jugement, au_choix) {
 
     zone.appendChild(bouton);
   }
+
+  const proposition = jugement.variante;
+  if (proposition?.sens === "montee") {
+    zone.appendChild(annonce_de_montee(proposition, au_variante));
+  } else if (proposition && au_variante) {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = `variante ${proposition.sens}`;
+    bouton.textContent =
+      proposition.sens === "facile"
+        ? `La prochaine fois : ${proposition.vers}`
+        : `Prochaine séance : essaie ${proposition.vers}`;
+    bouton.addEventListener("click", async () => {
+      bouton.disabled = true;
+      const fait = await au_variante(proposition.original, proposition.vers);
+      if (!fait) {
+        bouton.disabled = false;
+        return;
+      }
+      // Une confirmation qui dit la portee du geste : toutes les seances, et
+      // pas seulement celle-ci.
+      const note = document.createElement("span");
+      note.className = "variante-retenue";
+      note.textContent =
+        proposition.vers === proposition.original
+          ? `${proposition.original} revient dans tes séances.`
+          : `${proposition.vers} remplace ${proposition.original} dans tes séances.`;
+      bouton.replaceWith(note);
+    });
+    zone.appendChild(bouton);
+  }
   zone.classList.add("visible");
+}
+
+/**
+ * « Cap franchi : la prochaine fois, pompes inclinees », et de quoi rester.
+ *
+ * La montee est faite avant que l'ecran ne s'affiche : rien a accepter, donc
+ * pas de bouton pour l'accepter. Ne garder que le moyen de la defaire, et le
+ * dire, est ce qui rend une decision automatique acceptable.
+ */
+function annonce_de_montee(montee, au_variante) {
+  const bloc = document.createElement("span");
+  bloc.className = "variante-montee";
+  const texte = document.createElement("span");
+  texte.textContent = `Cap franchi : la prochaine fois, ${montee.nouveau}.`;
+  bloc.appendChild(texte);
+  if (!au_variante) return bloc;
+
+  const bouton = document.createElement("button");
+  bouton.type = "button";
+  bouton.className = "variante rester";
+  bouton.textContent = `Rester sur ${montee.vers}`;
+  bouton.addEventListener("click", async () => {
+    bouton.disabled = true;
+    if (!(await au_variante(montee.original, montee.vers))) {
+      bouton.disabled = false;
+      return;
+    }
+    texte.textContent = `${montee.vers} reste dans tes séances.`;
+    bouton.remove();
+  });
+  bloc.appendChild(bouton);
+  return bloc;
+}
+
+/**
+ * Une montee (`{original, depuis, vers}`, rendue par `variantes.montees`)
+ * sous la forme que `construire_ligne` affiche. Partagee par les deux
+ * applications, pour que le poste fixe et le navigateur disent la meme chose.
+ */
+export function proposition_de_montee(montee) {
+  return { sens: "montee", original: montee.original, vers: montee.depuis, nouveau: montee.vers };
 }
