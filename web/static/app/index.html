@@ -1625,8 +1625,10 @@ import { normaliser, poids_declarable } from "../js/materiel.js";
 import { VerrouEcran } from "../js/veille.js";
 import { cle_de_progression, graphique_progression } from "../js/graphique.js";
 import {
+  deplacer_seance,
   etat_programme,
   etats_programmes,
+  ordre_des_seances,
   resume_palier,
   semaine_du_programme,
 } from "../js/programmes.js";
@@ -5177,6 +5179,30 @@ function dessiner_programmes() {
   for (const bouton of $("listeProgrammes").querySelectorAll("[data-suivre]")) {
     bouton.addEventListener("click", () => definir_programme_suivi(bouton.dataset.suivre));
   }
+
+  // Le jour de debut et l'ordre **persistent** sur le profil, comme le
+  // rythme : ce sont des preferences, pas une bascule pour aujourd'hui.
+  $("listeProgrammes").querySelector("[data-jour-debut]")?.addEventListener("change", (evenement) => {
+    const jour = Number(evenement.currentTarget.value);
+    regler_semaine((utilisateur) => { utilisateur.programme_jour_debut = jour; });
+  });
+  for (const bouton of $("listeProgrammes").querySelectorAll("[data-deplacer]")) {
+    bouton.addEventListener("click", () => {
+      regler_semaine((utilisateur) => {
+        const ordres = { ...(utilisateur.programmes_ordre ?? {}) };
+        const actuel = ordre_des_seances(programmes_declares[choisi], ordres[choisi]);
+        ordres[choisi] = deplacer_seance(actuel, bouton.dataset.libelle, Number(bouton.dataset.deplacer));
+        utilisateur.programmes_ordre = ordres;
+      });
+    });
+  }
+  $("listeProgrammes").querySelector("[data-ordre-fichier]")?.addEventListener("click", () => {
+    regler_semaine((utilisateur) => {
+      const ordres = { ...(utilisateur.programmes_ordre ?? {}) };
+      delete ordres[choisi];
+      utilisateur.programmes_ordre = ordres;
+    });
+  });
   // `null` remet dans l'etat « aucun choix » : les autres programmes
   // reapparaissent, et l'accueil cesse d'en proposer un.
   $("listeProgrammes")
@@ -5204,16 +5230,78 @@ async function definir_programme_suivi(cle) {
   dessiner_liste();
 }
 
-/** La semaine du programme pour le profil courant (voir `semaine_du_programme`). */
-function semaine_du_profil(declare, histoire) {
+/**
+ * La semaine du programme pour le profil courant (voir `semaine_du_programme`).
+ *
+ * Le jour de debut et l'ordre sont des preferences du profil ; l'ordre est
+ * range **par programme**, d'ou la cle.
+ */
+function semaine_du_profil(cle, declare, histoire) {
   const profil = base.utilisateurs.find((u) => u.id === PROFIL);
   return semaine_du_programme(
-    declare, histoire, seances, profil?.programme_tours ?? 1, historique.horodatage()
+    declare, histoire, seances, profil?.programme_tours ?? 1, historique.horodatage(),
+    { jour_debut: profil?.programme_jour_debut, ordre: profil?.programmes_ordre?.[cle] },
+  );
+}
+
+/** Ecrit un reglage de la semaine sur le profil, puis redessine les deux ecrans qui la montrent. */
+async function regler_semaine(modifier) {
+  const utilisateur = base.utilisateurs.find((u) => u.id === PROFIL);
+  if (!utilisateur) return;
+  modifier(utilisateur);
+  await stockage.sauver(base);
+  dessiner_programmes();
+  dessiner_resume_programme();
+}
+
+//: Les jours dans l'ordre d'une semaine francaise, numerotes comme
+//: `getUTCDay` (0 = dimanche), qui est la numerotation de `jour_debut`.
+const JOURS_DE_SEMAINE = [
+  [1, "lundi"], [2, "mardi"], [3, "mercredi"], [4, "jeudi"],
+  [5, "vendredi"], [6, "samedi"], [0, "dimanche"],
+];
+
+/**
+ * Les reglages de la semaine du programme suivi : jour de debut et ordre.
+ *
+ * Tout se lit dans `semaine` — ce que le calcul a **retenu** —, et non sur le
+ * profil : un ordre enregistre avant un changement de `programmes.json` y est
+ * deja recale (`ordre_des_seances`).
+ */
+function dessiner_reglages_semaine(semaine, ordre_enregistre) {
+  const jours = JOURS_DE_SEMAINE
+    .map(([numero, nom]) =>
+      `<option value="${numero}"${numero === semaine.jour_debut ? " selected" : ""}>${nom}</option>`)
+    .join("");
+  const dernier = semaine.ordre.length - 1;
+  const lignes = semaine.ordre
+    .map((libelle, i) => {
+      const nom = echapper(libelle);
+      return (
+        `<li><span>${nom}</span>` +
+        `<button type="button" data-deplacer="-1" data-libelle="${nom}" ` +
+        `aria-label="Avancer ${nom}"${i === 0 ? " disabled" : ""}>↑</button>` +
+        `<button type="button" data-deplacer="1" data-libelle="${nom}" ` +
+        `aria-label="Reculer ${nom}"${i === dernier ? " disabled" : ""}>↓</button></li>`
+      );
+    })
+    .join("");
+  return (
+    `<div class="ma-semaine">` +
+    `<h3>Ma semaine</h3>` +
+    `<label class="ma-semaine-jour">Elle commence le <select data-jour-debut>${jours}</select></label>` +
+    `<p class="ma-semaine-titre">Ordre des séances</p>` +
+    `<ol class="ma-semaine-ordre">${lignes}</ol>` +
+    (ordre_enregistre
+      ? `<button type="button" class="resume-lien" data-ordre-fichier>Revenir à l'ordre du programme</button>`
+      : "") +
+    `</div>`
   );
 }
 
 function dessiner_programme(etat, declare, histoire, options = {}) {
-  const suite = semaine_du_profil(declare, histoire)?.prochaine;
+  const semaine = semaine_du_profil(options.cle, declare, histoire);
+  const suite = semaine?.prochaine;
   const prochaine = suite
     ? `<p class="programme-suite">À enchaîner : <b>${echapper(suite.libelle)}</b>` +
       (suite.seance ? ` · séance <b>${echapper(suite.seance)}</b>` : " · aucune séance liée") +
@@ -5235,6 +5323,13 @@ function dessiner_programme(etat, declare, histoire, options = {}) {
       groupes + `</details>`
     : groupes;
 
+  // Les reglages de la semaine n'ont de sens que pour le programme suivi :
+  // c'est sa semaine que montre l'accueil.
+  const profil = base.utilisateurs.find((u) => u.id === PROFIL);
+  const reglages = options.actif && semaine
+    ? dessiner_reglages_semaine(semaine, Boolean(profil?.programmes_ordre?.[options.cle]))
+    : "";
+
   const action = options.actif
     ? ""
     : `<div class="actions" style="justify-content:flex-start">` +
@@ -5252,6 +5347,7 @@ function dessiner_programme(etat, declare, histoire, options = {}) {
     `<p class="description">Moyenne de l'avancement sur les ${etat.total} exigences · ` +
     `<b>${etat.atteintes}</b> entièrement atteinte${etat.atteintes > 1 ? "s" : ""}.</p>` +
     prochaine +
+    reglages +
     exigences +
     action +
     `</section>`
@@ -5676,7 +5772,7 @@ function dessiner_resume_programme() {
   const { seances: histoire, ancrages } = lecture_du_profil();
   const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
   const etat = etat_programme(moteur.baremes, cle, declare, niveaux, variantes_du_profil());
-  const semaine = semaine_du_profil(declare, histoire);
+  const semaine = semaine_du_profil(cle, declare, histoire);
 
   // Le balisage suit les classes de `programme_resume.css`, qui l'habille.
   const colonnes = semaine ? semaine.total / semaine.tours : 0;
@@ -5684,11 +5780,13 @@ function dessiner_resume_programme() {
   const pluriel = (n) => (n > 1 ? "s" : "");
   let corps = "";
   if (semaine) {
-    const titre = semaine.reussie
-      ? "Semaine réussie ! La suivante démarre à ta prochaine séance."
-      : semaine.debut
-        ? `Cette semaine : ${semaine.faites}/${semaine.total} · jusqu'au ${jour_court(semaine.fin)}`
-        : "Ta semaine démarre à ta prochaine séance.";
+    // `debut` n'est nul que si l'horloge est illisible : la semaine montree
+    // est toujours celle du jour, vide ou non.
+    const titre = !semaine.debut
+      ? `Cette semaine : ${semaine.faites}/${semaine.total}`
+      : semaine.reussie
+        ? `Semaine réussie ! La suivante démarre ${jour_court(semaine.suivante)}.`
+        : `Cette semaine : ${semaine.faites}/${semaine.total} · jusqu'au ${jour_court(semaine.fin)}`;
     const rythme = semaine.tours_possibles.length > 1
       ? `<div class="semaine-rythme" role="group" aria-label="Séances par semaine">` +
         semaine.tours_possibles
@@ -5717,14 +5815,20 @@ function dessiner_resume_programme() {
         );
       })
       .join("");
+    // Une semaine passee dit **combien** elle a rempli et quand elle
+    // commencait, sans toucher : une simple croix ne disait pas si la
+    // semaine etait vide, a moitie faite ou reglee sur un rythme trop haut.
     const recents = semaine.recents.length
-      ? `<p class="semaine-recents">Semaines passées ` +
+      ? `<div class="semaine-recents"><span class="semaine-recents-titre">Semaines passées</span>` +
         semaine.recents
-          .map((cycle) =>
-            `<span class="${cycle.reussi ? "ok" : "ko"}" title="Semaine du ${jour_court(cycle.debut)} : ` +
-            `${cycle.reussi ? "réussie" : "incomplète"}">${cycle.reussi ? "✓" : "✗"}</span>`)
+          .map((passee) =>
+            `<span class="semaine-passee ${passee.reussi ? "ok" : "ko"}" ` +
+            `title="Semaine du ${jour_court(passee.debut)} : ${passee.faites} séance${pluriel(passee.faites)} sur ${passee.total}">` +
+            `<b>${passee.reussi ? "✓" : `${passee.faites}/${passee.total}`}</b>` +
+            // « JJ/MM » : `debut` sort de `_ecrire_date`, toujours sur deux chiffres.
+            `<small>${passee.debut.slice(0, 5)}</small></span>`)
           .join("") +
-        `</p>`
+        `</div>`
       : "";
     const suite = semaine.prochaine;
     // **On ne demarre pas d'ici.** La ligne mene a la carte de la seance, plus

@@ -106,6 +106,13 @@ export function creer_utilisateur(base, nom, maintenant) {
     // Le rythme du programme, en tours par semaine. `null` vaut un tour, et
     // `semaine_du_programme` le borne a ce que le programme permet.
     programme_tours: null,
+    // Le jour ou commence la semaine du programme (0 = dimanche, comme
+    // `getUTCDay`). `null` vaut lundi : `jour_debut_retenu` borne la valeur.
+    programme_jour_debut: null,
+    // L'ordre des seances choisi, **par programme** (`{cle: [libelles]}`) :
+    // changer de programme ne laisse pas d'ordre perime. Absent = ordre du
+    // fichier ; `ordre_des_seances` le recale sur le programme courant.
+    programmes_ordre: {},
     materiel: null,
     // Les mesures du corps. `null` veut dire « non renseigne » et non zero :
     // personne n'est oblige de les donner, rien ne les lit encore.

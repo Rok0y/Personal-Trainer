@@ -5,13 +5,15 @@
    delibere : on n'en suit qu'un a la fois, l'ecran des programmes reste celui
    qui les liste tous.
 
-   Elle montre d'abord **la semaine** : une case par seance a faire, dans
-   l'ordre du programme et une rangee par tour, cochee quand elle est faite
-   (`semaine_du_programme`). Les objectifs de fin passent au second rang.
+   Elle montre d'abord **la semaine** du calendrier en cours : une case par
+   seance a faire, dans l'ordre choisi par le profil et une rangee par tour,
+   cochee quand elle est faite (`semaine_du_programme`), puis le compte des
+   semaines passees. Les objectifs de fin passent au second rang.
 
-   Trois reglages y cohabitent et ne se confondent pas. « Changer de
-   programme » et le **rythme** (3 ou 6 seances par semaine) **persistent** —
-   ce sont des preferences du profil —, alors que toucher une case est une
+   Plusieurs reglages y aboutissent et ne se confondent pas. Le programme
+   suivi, le **rythme** (3 ou 6 seances par semaine), le **jour de debut** et
+   l'**ordre** des seances **persistent** — ce sont des preferences du profil,
+   les deux derniers reglees depuis l'ecran des programmes —, alors que toucher une case est une
    **bascule ponctuelle** qui ne stocke rien : elle reecrit seulement la cible
    du bouton de demarrage, et la proposition automatique (la premiere case
    vide) reprend la main au prochain chargement.
@@ -125,12 +127,17 @@ button.semaine-case:hover { border-color: var(--teal); }
 .semaine-case.orpheline { cursor: default; opacity: .55; }
 
 .semaine-recents { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; color: var(--muted); font-size: 12px; }
-.semaine-recents span {
-    width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center;
-    font-size: 12px; font-weight: 700;
+.semaine-recents-titre { margin-right: 4px; }
+/* Une pastille par semaine passee : le compte (« 2/3 ») au-dessus, le jour de
+   debut dessous. Lisible sans toucher : `title` ne dit rien au doigt. */
+.semaine-passee {
+    min-width: 40px; padding: 3px 6px; border-radius: 6px;
+    display: grid; justify-items: center; line-height: 1.15;
 }
-.semaine-recents .ok { background: rgba(27, 232, 196, .18); color: var(--teal); }
-.semaine-recents .ko { background: rgba(255, 138, 76, .14); color: var(--orange); }
+.semaine-passee b { font-size: 12px; }
+.semaine-passee small { font-size: 10px; opacity: .8; }
+.semaine-passee.ok { background: rgba(27, 232, 196, .18); color: var(--teal); }
+.semaine-passee.ko { background: rgba(255, 138, 76, .14); color: var(--orange); }
 .semaine-objectifs { margin: 16px 0 0; color: var(--muted); font-size: 12px; }
 .semaine-objectifs + .resume-jauge { height: 5px; margin: 6px 0 12px; }
 

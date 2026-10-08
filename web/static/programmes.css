@@ -37,3 +37,27 @@
 .etat.attente { color:var(--muted); }
 .etat.bloque { color:var(--orange); }
 .ecart { color:var(--text); }
+
+/* Les reglages de la semaine du programme suivi (`dessiner_reglages_semaine`) :
+   jour de debut et ordre des seances. Ce sont des preferences du profil, qui
+   recalculent la carte de l'accueil. */
+.ma-semaine { margin:16px 0; padding:14px 16px; border:1px solid var(--border-strong); border-radius:10px; }
+.ma-semaine h3 { margin:0 0 10px; }
+/* Une phrase, pas une etiquette de formulaire : sans capitales. */
+.ma-semaine-jour { display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:13px; text-transform:none; letter-spacing:normal; }
+.ma-semaine-jour select { border:1px solid var(--border-strong); border-radius:8px; padding:6px 10px; background:var(--glass-strong); color:var(--text); font:inherit; cursor:pointer; }
+.ma-semaine-titre { margin:14px 0 6px; color:var(--muted); font-size:13px; }
+/* Une ligne en flex perd sa puce numerotee : le rang vient d'un compteur. Le
+   nom prend la place restante, si bien que les fleches ne passent jamais a la
+   ligne sur un telephone. */
+.ma-semaine-ordre { margin:0; padding:0; list-style:none; counter-reset:rang; max-width:28em; }
+.ma-semaine-ordre li { display:flex; align-items:center; gap:4px; padding:4px 0; counter-increment:rang; }
+.ma-semaine-ordre li span { flex:1; min-width:0; overflow-wrap:anywhere; font-weight:600; font-size:14px; }
+.ma-semaine-ordre li span::before { content:counter(rang) ". "; color:var(--muted); }
+/* Pas de capitales ni de grande marge : une fleche n'est pas un bouton d'action. */
+.ma-semaine-ordre button {
+    min-width:36px; min-height:32px; margin-left:4px; border-radius:8px; cursor:pointer;
+    border:1px solid var(--border-strong); background:transparent; color:var(--text); font:inherit; font-weight:700;
+    text-transform:none; letter-spacing:normal;
+}
+.ma-semaine-ordre button:disabled { opacity:.3; cursor:default; }

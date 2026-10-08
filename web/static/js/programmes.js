@@ -169,13 +169,72 @@ export function liaison_seances(programme, catalogue_seances) {
   return resultat;
 }
 
-//: Sept jours **depuis la premiere seance du cycle**, et non une semaine du
-//: calendrier — voir `semaine_du_programme`. En minutes : les
-//: instants sont comptes en minutes d'horloge murale (voir `_lire_date`).
-const DUREE_CYCLE = 7 * 24 * 60;
+/**
+ * L'ordre des seances choisi par le profil, rendu toujours exploitable.
+ *
+ * **Point d'entree unique de l'ordre.** Le choix est stocke sur le profil, le
+ * programme vit dans `programmes.json` : les deux evoluent separement. On garde
+ * donc les libelles choisis qui existent encore (sans doublon) et on ajoute a
+ * la fin, dans l'ordre du fichier, ceux que le choix ne cite pas — un libelle
+ * ajoute au programme apparait, un libelle retire disparait, sans migration.
+ */
+export function ordre_des_seances(programme, ordre_choisi) {
+  const declares = libelles_seances(programme ?? {});
+  const ordre = [];
+  for (const libelle of Array.isArray(ordre_choisi) ? ordre_choisi : []) {
+    if (declares.includes(libelle) && !ordre.includes(libelle)) ordre.push(libelle);
+  }
+  for (const libelle of declares) {
+    if (!ordre.includes(libelle)) ordre.push(libelle);
+  }
+  return ordre;
+}
+
+/** Un nouvel ordre ou `libelle` a avance (-1) ou recule (+1) d'un cran, borne aux extremites. */
+export function deplacer_seance(ordre, libelle, sens) {
+  const resultat = [...ordre];
+  const depart = resultat.indexOf(libelle);
+  const arrivee = depart + Math.sign(sens);
+  if (depart < 0 || arrivee < 0 || arrivee >= resultat.length) return resultat;
+  [resultat[depart], resultat[arrivee]] = [resultat[arrivee], resultat[depart]];
+  return resultat;
+}
+
+//: Une semaine du **calendrier**, commencant a 0 h le jour choisi par le
+//: profil — voir `semaine_du_programme`. En minutes : les instants sont
+//: comptes en minutes d'horloge murale (voir `_lire_date`).
+const MINUTES_PAR_JOUR = 24 * 60;
+const DUREE_SEMAINE = 7 * MINUTES_PAR_JOUR;
 const TOURS_MAX = 3;
 const JOURS_PAR_CYCLE = 7;
 const CYCLES_RECENTS = 6;
+//: Numerotation de `getUTCDay` : 0 = dimanche, 1 = lundi.
+export const JOUR_DEBUT_DEFAUT = 1;
+
+/**
+ * Le jour de debut retenu : un entier de 0 a 6, lundi pour tout le reste.
+ *
+ * Un **nombre** seulement : `Number("")` et `Number(null)` valent 0, si bien
+ * qu'une conversion ferait d'un champ vide un dimanche au lieu du defaut.
+ */
+export function jour_debut_retenu(jour_debut) {
+  return Number.isInteger(jour_debut) && jour_debut >= 0 && jour_debut <= 6
+    ? jour_debut
+    : JOUR_DEBUT_DEFAUT;
+}
+
+/**
+ * Le debut (0 h) de la semaine qui contient `minutes`.
+ *
+ * Le 01/01/1970, origine des minutes, etait un jeudi (4). Tout reste en heure
+ * murale `Date.UTC` : une semaine qui traverse le changement d'heure dure
+ * toujours sept fois vingt-quatre heures.
+ */
+function _debut_de_semaine(minutes, jour_debut) {
+  const jour = Math.floor(minutes / MINUTES_PAR_JOUR);
+  const jour_de_semaine = (((jour + 4) % 7) + 7) % 7;
+  return (jour - ((jour_de_semaine - jour_debut + 7) % 7)) * MINUTES_PAR_JOUR;
+}
 
 /** Les rythmes proposables : 1, 2 ou 3 tours, tant qu'ils tiennent en sept jours. */
 export function tours_possibles(nombre_seances) {
@@ -226,42 +285,52 @@ function _ecrire_date(minutes) {
 /**
  * Ou en est la semaine du programme : ses cases, la suivante, la serie.
  *
- * **Les cases** sont les libelles du programme dans leur ordre, repetes
- * `tours` fois (Push, Pull, Jambes, Push, Pull, Jambes). On les remplit en
- * rejouant l'historique **dans l'ordre chronologique** — par identifiant, les
- * dates en `JJ/MM/AAAA` ne se triant pas :
+ * **Une semaine est un bloc du calendrier** qui commence a 0 h le jour choisi
+ * par le profil (`reglage.jour_debut`, lundi par defaut) et dure sept jours.
+ * Ce n'est plus un cycle ouvert par la premiere seance : un tel cycle
+ * glissait au premier retard, se fermait comme rate et se rouvrait decale, si
+ * bien que le decoupage ne correspondait a aucune semaine que l'on a en tete.
+ *
+ * **Les cases** sont les libelles du programme dans l'ordre choisi par le
+ * profil (`ordre_des_seances`), repetes `tours` fois (Push, Pull, Jambes,
+ * Push, Pull, Jambes). On les remplit en rejouant l'historique **dans l'ordre
+ * chronologique** — par identifiant, les dates en `JJ/MM/AAAA` ne se triant
+ * pas :
  *
  * - une seance abandonnee ne compte pas, une seance hors programme non plus ;
- * - la premiere seance ouvre un cycle de sept jours ; une seance qui tombe
- *   **a sept jours pile ou apres** le clot comme rate et en ouvre un autre ;
- * - une seance coche **la premiere case vide de son libelle**, pas la case
+ * - une seance tombe dans la semaine qui contient sa date ;
+ * - elle y coche **la premiere case vide de son libelle**, pas la case
  *   attendue : faire Jambes avant Pull ne doit rien couter, l'ordre ne sert
  *   qu'a ranger les cases et a proposer la suivante. Une seance de plus que
- *   ce que le cycle demande pour son libelle est ignoree — elle n'ouvre rien ;
- * - un cycle complet se clot comme reussi, et la seance d'apres en ouvre un.
+ *   ce que la semaine demande pour son libelle est ignoree.
  *
- * **Le cycle montre** est le dernier, tant que ses sept jours courent —
- * complet ou non. Passe ce delai, la semaine « demarre a ta prochaine
- * seance » : cases vides, `debut` a null.
+ * **La semaine montree** est toujours celle qui contient `maintenant`, vide
+ * si rien n'y est fait encore.
  *
- * **La serie** compte les cycles reussis d'affilee. Le cycle en cours, s'il
- * est incomplet, ne compte pas et ne casse rien ; un cycle rate la casse, et
- * une semaine entiere sans aucune seance aussi — un cycle doit commencer
- * moins de sept jours apres la fin du precedent pour s'y enchainer.
+ * **Les semaines passees** (`recents`) vont de la premiere semaine jouee a
+ * celle d'avant, **vides comprises** : une semaine sans seance est une
+ * semaine manquee, et chacune dit combien de cases elle a remplies.
+ *
+ * **La serie** compte les semaines reussies d'affilee en remontant depuis la
+ * precedente. La semaine en cours compte si elle est complete, et ne casse
+ * rien sinon ; une semaine incomplete ou vide la casse.
  *
  * Rien n'est stocke : tout se relit dans l'historique, ce qui rend le calcul
- * **retroactif** — passer de 3 a 6 seances relit les cycles passes avec six
- * cases. Le programme arrive en argument, et `maintenant` est
+ * **retroactif** — changer de jour de debut ou passer de 3 a 6 seances relit
+ * les semaines passees. Le programme arrive en argument, et `maintenant` est
  * **obligatoire** — une date au format de la base, que l'appelant fabrique
  * avec `horodatage()` —, pour que deux appels rendent le meme verdict.
  *
- * Remplace `prochaine_seance` : avec des cases a l'ecran, « la seance apres la
- * derniere faite » aurait contredit la premiere case vide.
+ * Le rendu redit le `jour_debut` et l'`ordre` retenus : l'ecran relit ce que
+ * le calcul a reellement applique, bornage compris, et non le profil brut.
  */
-export function semaine_du_programme(programme, historique, catalogue_seances, tours, maintenant) {
+export function semaine_du_programme(
+  programme, historique, catalogue_seances, tours, maintenant, reglage = {}
+) {
   if (!programme) return null;
-  const ordre = libelles_seances(programme);
+  const ordre = ordre_des_seances(programme, reglage?.ordre);
   if (!ordre.length) return null;
+  const jour_debut = jour_debut_retenu(reglage?.jour_debut);
 
   const possibles = tours_possibles(ordre.length);
   const tours_retenus = Math.min(
@@ -288,15 +357,13 @@ export function semaine_du_programme(programme, historique, catalogue_seances, t
       });
     }
   }
-  const nouveau_cycle = (debut) => ({
+  const nouvelle_semaine = (debut) => ({
     debut,
-    fin: debut + DUREE_CYCLE,
     cases: modele.map((c) => ({ ...c })),
     complet: false,
   });
 
-  const cycles = [];
-  let courant = null;
+  const semaines = new Map();
   // Par identifiant, dans l'ordre chronologique : les dates en JJ/MM/AAAA ne
   // se trient pas, et l'historique arrive du plus recent au plus ancien.
   const chronologique = [...historique].sort((a, b) => (a.id || 0) - (b.id || 0));
@@ -305,44 +372,48 @@ export function semaine_du_programme(programme, historique, catalogue_seances, t
     const libelle = par_nom[seance.nom];
     const quand = _lire_date(seance.date);
     if (libelle === undefined || quand === null) continue;
-    if (courant !== null && quand >= courant.fin) courant = null;
-    if (courant === null) {
-      courant = nouveau_cycle(quand);
-      cycles.push(courant);
-    }
-    const c = courant.cases.find((x) => x.libelle === libelle && !x.faite);
+    const debut = _debut_de_semaine(quand, jour_debut);
+    if (!semaines.has(debut)) semaines.set(debut, nouvelle_semaine(debut));
+    const semaine = semaines.get(debut);
+    const c = semaine.cases.find((x) => x.libelle === libelle && !x.faite);
     if (!c) continue;
     c.faite = true;
     c.seance_id = seance.id ?? null;
     c.date = seance.date ?? null;
-    if (courant.cases.every((x) => x.faite)) {
-      courant.complet = true;
-      courant = null;
+    if (semaine.cases.every((x) => x.faite)) semaine.complet = true;
+  }
+
+  const courante = instant === null ? null : _debut_de_semaine(instant, jour_debut);
+  const montre = courante === null ? null : semaines.get(courante) ?? nouvelle_semaine(courante);
+
+  // Les semaines passees se suivent sans trou : une semaine sans seance est
+  // fabriquee vide, ce qui la fait compter comme manquee.
+  const passees = [];
+  const debuts = [...semaines.keys()].filter((d) => courante === null || d < courante);
+  if (debuts.length) {
+    const derniere = courante === null ? Math.max(...debuts) : courante - DUREE_SEMAINE;
+    for (let d = Math.min(...debuts); d <= derniere; d += DUREE_SEMAINE) {
+      passees.push(semaines.get(d) ?? nouvelle_semaine(d));
     }
   }
 
-  const dernier = cycles.length ? cycles[cycles.length - 1] : null;
-  const montre = dernier !== null && instant < dernier.fin ? dernier : null;
-  const en_cours = montre !== null && !montre.complet;
-  const clos = en_cours ? cycles.slice(0, -1) : cycles;
+  let serie = montre !== null && montre.complet ? 1 : 0;
+  for (let i = passees.length - 1; i >= 0 && passees[i].complet; i -= 1) serie += 1;
 
-  let serie = 0;
-  let reference = en_cours ? montre.debut : instant;
-  for (let i = clos.length - 1; i >= 0; i -= 1) {
-    const cycle = clos[i];
-    if (!cycle.complet || reference - cycle.fin >= DUREE_CYCLE) break;
-    serie += 1;
-    reference = cycle.debut;
-  }
-
+  const faites = (semaine) => semaine.cases.filter((c) => c.faite).length;
   const cases = montre !== null ? montre.cases : modele.map((c) => ({ ...c }));
   const a_faire = montre !== null && montre.complet ? null : cases.find((c) => !c.faite) ?? null;
   const proposee = a_faire ?? cases[0];
   return {
     tours: tours_retenus,
     tours_possibles: possibles,
+    jour_debut,
+    ordre,
     debut: montre ? _ecrire_date(montre.debut) : null,
-    fin: montre ? _ecrire_date(montre.fin) : null,
+    // Le dernier instant de la semaine, pour afficher « jusqu'au dimanche » ;
+    // `suivante` est le debut de la semaine d'apres.
+    fin: montre ? _ecrire_date(montre.debut + DUREE_SEMAINE - 1) : null,
+    suivante: montre ? _ecrire_date(montre.debut + DUREE_SEMAINE) : null,
     cases,
     faites: cases.filter((c) => c.faite).length,
     total: cases.length,
@@ -354,9 +425,11 @@ export function semaine_du_programme(programme, historique, catalogue_seances, t
       total: cases.length,
     },
     serie,
-    recents: clos.slice(-CYCLES_RECENTS).map((cycle) => ({
-      debut: _ecrire_date(cycle.debut),
-      reussi: cycle.complet,
+    recents: passees.slice(-CYCLES_RECENTS).map((semaine) => ({
+      debut: _ecrire_date(semaine.debut),
+      faites: faites(semaine),
+      total: semaine.cases.length,
+      reussi: semaine.complet,
     })),
   };
 }
