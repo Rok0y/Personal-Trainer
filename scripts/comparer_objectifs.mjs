@@ -95,7 +95,9 @@ function main() {
     );
     moteurs[nom] = {
       calibration,
-      objectifs: new Objectifs(baremes, niveaux, ressenti, calibration),
+      objectifs: new Objectifs(
+        baremes, niveaux, ressenti, calibration, entete.catalogue_variantes,
+      ),
     };
   }
 

@@ -1,7 +1,9 @@
 import threading
 
 from core.state import EtatSeance
-from core.utilisateur import identifiant_connecte
+from core.utilisateur import identifiant_connecte, rafraichir
+from historique.database import definir_variantes, recuperer_utilisateur
+from progression import variantes as moteur_variantes
 from progression.objectifs import (
     enteriner_cibles_manuelles,
     marquer_cibles_manuelles,
@@ -242,7 +244,39 @@ class SessionManager:
                             self.nom_selectionne,
                             self.seance,
                         )
+                    self.seance.montees_de_variante = self._monter_les_variantes()
                     self.seance.progression_appliquee = True
+
+    def _monter_les_variantes(self):
+        """Remonte d'un cran les variantes que cette séance a maîtrisées.
+
+        Écrit la table **du profil qui a joué la séance** (`utilisateur_id`
+        figé à la sélection), jamais celle du profil connecté à cet instant,
+        pour la même raison que l'enregistrement de l'historique. Rend les
+        montées faites : l'écran de fin les annonce, avec de quoi les défaire.
+        """
+        utilisateur_id = getattr(self.seance, "utilisateur_id", None)
+        profil = recuperer_utilisateur(utilisateur_id) if utilisateur_id else None
+        if profil is None:
+            return []
+        table, faites = moteur_variantes.montees(
+            moteur_variantes.variantes_du_profil(profil),
+            {"statut": "finished", "exercices": self.seance.exporter_resultats()},
+            moteur_variantes.catalogue_des_variantes(),
+        )
+        if faites:
+            definir_variantes(table, utilisateur_id)
+            rafraichir()
+        return faites
+
+    def montees_de_la_seance(self, seance_id):
+        """Les montées de variante qu'a faites la séance `seance_id`, si c'est
+        la dernière jouée ici. Rien n'est stocké en base : c'est une annonce
+        de fin de séance, que l'historique n'a pas à répéter."""
+        with self._verrou:
+            if self.seance is None or getattr(self.seance, "seance_id", None) != seance_id:
+                return []
+            return list(getattr(self.seance, "montees_de_variante", []))
 
     def modifier_configuration(self, nom, blocs):
         with self._verrou:

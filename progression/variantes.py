@@ -29,12 +29,16 @@ jeu** (`session.seances.creer_seance`, `demarrer()` dans l'application), et
 L'historique enregistre le nom **réellement joué** : la variante gagne d'elle-
 même son niveau, ses ligues et son XP, et rien dans `niveaux.py` ne change.
 
-Le retour au mouvement complet se propose quand la variante prouve une
-performance de référence, `variantes.retour` dans `reglages.json` —
-`{nom de la variante: [séries, cible]}`. **Une performance, jamais un numéro
-de niveau** (personne ne sait ce que vaut « niveau 12 ») : `niveau_pour` la
-traduit sur le barème de la variante. Une variante absente de cette table ne
-propose jamais de retour, qui reste possible à la main depuis sa fiche.
+**On remonte la chaîne tout seul** (`montees`), un cran à la fois : quand une
+séance menée à son terme prouve la performance de retour de la variante jouée
+— `variantes.retour` dans `reglages.json`, `{nom de la variante: [séries,
+cible]}` —, la table passe à la variante plus difficile, et l'entrée
+s'efface quand on retrouve le mouvement écrit. **Une performance, jamais un
+numéro de niveau** (personne ne sait ce que vaut « niveau 12 ») : `niveau_pour`
+la traduit sur le barème de la variante. Une variante absente de cette table
+ne monte jamais, ce qui reste possible à la main (« Ta version », la fiche).
+Le cran suivant part du palier 1 (`objectifs.objectifs_par_exercice`) : on
+vient de maîtriser le précédent, on est au bas de celui-ci.
 
 Toutes les fonctions sont pures, dépendances injectées : le catalogue est un
 dictionnaire `{nom: {"variante_facile", "variante_difficile",
@@ -205,22 +209,67 @@ def original_de(nom_joue, variantes):
     return None
 
 
-def retour_atteint(nom_joue, niveaux):
-    """La variante a-t-elle prouvé sa performance de retour ?
+def retour_prouve_par(ligne):
+    """Cette ligne d'historique prouve-t-elle la performance de retour ?
 
-    `niveaux` est `niveaux_par_exercice` : c'est le **record** qui compte, pas
-    la dernière séance — une performance prouvée une fois suffit à essayer le
-    mouvement plus dur, et un échec y renverrait de toute façon.
+    Lue sur **la séance**, jamais sur le record : un retour en arrière vers la
+    variante, alors que son record dépasse déjà le seuil, remonterait sinon de
+    lui-même à la séance suivante — « rester sur cette version » ne tiendrait
+    pas une séance. Mêmes règles que tout niveau : maillon faible, séries
+    menées au bout seulement (`niveaux.niveau_prouve_par`).
     """
-    seuil = SEUILS_RETOUR.get(nom_joue)
+    from progression.niveaux import niveau_prouve_par
+
+    nom = ligne.get("nom")
+    seuil = SEUILS_RETOUR.get(nom)
     if seuil is None:
         return False
-    requis = niveau_pour(nom_joue, 0, seuil[0], seuil[1])
-    acquis = (niveaux.get(nom_joue) or {}).get("niveau")
-    return requis is not None and acquis is not None and acquis >= requis
+    requis = niveau_pour(nom, 0, seuil[0], seuil[1])
+    prouve = niveau_prouve_par(ligne)
+    return requis is not None and prouve is not None and prouve >= requis
 
 
-def propositions(seances, jugements, variantes, catalogue, niveaux):
+def montees(variantes, seance, catalogue):
+    """La table après cette séance, et les crans qu'elle a fait monter.
+
+    `(table, [{"original", "depuis", "vers"}])`. Pour chaque mouvement joué
+    à la place d'un autre (`original_de`) dont la ligne prouve la performance
+    de retour, la clé passe à `variante_difficile` ; quand c'est l'original
+    lui-même, l'entrée disparaît. **Un cran par séance et par clé**, jamais
+    deux : on joue le nouveau cran avant d'en franchir un autre.
+
+    Une séance **abandonnée** ne fait rien monter — elle ne prouve rien, même
+    règle que l'entérinement des cibles figées. Une bascule vers une variante
+    plus facile en pleine séance non plus, et sans règle de plus : la variante
+    jouée n'est alors pas celle de la table, donc `original_de` ne la reconnaît
+    pas, et la ligne de la table, quittée en cours de route, est incomplète.
+
+    Pure, comme le reste du module : l'appelant écrit la table du profil.
+    """
+    table = normaliser(variantes)
+    seance = seance or {}
+    if seance.get("statut") == "abandoned":
+        return table, []
+    faites = []
+    vues = set()
+    for ligne in seance.get("exercices", []):
+        nom = ligne.get("nom")
+        cle = original_de(nom, table)
+        if cle is None or cle in vues:
+            continue
+        dur = (catalogue.get(nom) or {}).get("variante_difficile")
+        if not dur or not retour_prouve_par(ligne):
+            continue
+        try:
+            table = definir(table, cle, dur, catalogue)
+        except ValueError:
+            continue
+        vues.add(cle)
+        faites.append({"original": cle, "depuis": nom, "vers": dur})
+    return table, faites
+
+
+def propositions(seances, jugements, variantes, catalogue):
     """Ce qu'il faut proposer sous chaque ligne d'historique.
 
     `{seance_id: {nom: {"sens", "original", "vers"}}}`, où `sens` vaut
@@ -228,17 +277,18 @@ def propositions(seances, jugements, variantes, catalogue, niveaux):
     le mouvement proposé. `seances` est l'historique, le plus récent en tête ;
     `jugements` est `ressenti.jugements_par_seance(seances)`.
 
-    Deux règles, et une restriction.
+    Une règle, et une restriction. **Plus facile** sous un exercice raté,
+    quand c'était au palier 1 — le seul cas où « trop dur » n'a plus rien à
+    faire descendre — ou quand on est passé à sa variante pendant la séance
+    (la variante y a sa ligne). Le mouvement remplacé se retrouve par la
+    table, puis par la séance elle-même : après une bascule en séance, la
+    ligne de la variante doit proposer de descendre **la clé de l'original**,
+    pas d'en créer une sous son propre nom, qui ne remplacerait rien dans
+    aucune séance.
 
-    1. **Plus facile** sous un exercice raté, quand c'était au palier 1 — le
-       seul cas où « trop dur » n'a plus rien à faire descendre — ou quand on
-       est passé à sa variante pendant la séance (la variante y a sa ligne).
-       Le mouvement remplacé se retrouve par la table, puis par la séance
-       elle-même : après une bascule en séance, la ligne de la variante doit
-       proposer de descendre **la clé de l'original**, pas d'en créer une
-       sous son propre nom, qui ne remplacerait rien dans aucune séance.
-    2. **Plus dur** sous une variante jouée pour le profil, une fois sa
-       performance de retour prouvée (`retour_atteint`).
+    Il y avait une seconde règle, « plus dur » une fois la performance de
+    retour prouvée : `montees` la remplace, et la garder reproposerait la
+    montée juste après qu'on a choisi de rester sur la variante.
 
     On ne propose que sur la **dernière** séance où l'exercice apparaît : une
     vieille ligne ratée reproposerait sinon une variante qu'on a quittée
@@ -258,7 +308,7 @@ def propositions(seances, jugements, variantes, catalogue, niveaux):
                 continue
             proposition = _proposition(
                 nom, lignes, jugements.get(identifiant, {}).get(nom),
-                variantes, catalogue, niveaux,
+                variantes, catalogue,
             )
             if proposition is not None:
                 # La dernière ligne d'une même clé l'emporte : c'est la plus
@@ -281,27 +331,20 @@ def _racine(nom, lignes, variantes, catalogue):
     return nom
 
 
-def _proposition(nom, lignes, jugement, variantes, catalogue, niveaux):
-    fiche = catalogue.get(nom) or {}
-    cle = _racine(nom, lignes, variantes, catalogue)
-
-    if jugement is not None and not jugement.get("reussi"):
-        facile = fiche.get("variante_facile")
-        bascule = facile in lignes
-        if facile and (jugement.get("base") == 1 or bascule):
-            if variantes.get(cle) != facile:
-                try:
-                    definir(variantes, cle, facile, catalogue)
-                except ValueError:
-                    return None
-                return {"sens": "facile", "original": cle, "vers": facile}
+def _proposition(nom, lignes, jugement, variantes, catalogue):
+    if jugement is None or jugement.get("reussi"):
         return None
-
-    if variantes.get(cle) == nom and retour_atteint(nom, niveaux):
-        dur = fiche.get("variante_difficile")
-        if dur:
-            return {"sens": "difficile", "original": cle, "vers": dur}
-    return None
+    facile = (catalogue.get(nom) or {}).get("variante_facile")
+    if not facile or not (jugement.get("base") == 1 or facile in lignes):
+        return None
+    cle = _racine(nom, lignes, variantes, catalogue)
+    if variantes.get(cle) == facile:
+        return None
+    try:
+        definir(variantes, cle, facile, catalogue)
+    except ValueError:
+        return None
+    return {"sens": "facile", "original": cle, "vers": facile}
 
 
 def via_variante(nom, variantes, niveaux):

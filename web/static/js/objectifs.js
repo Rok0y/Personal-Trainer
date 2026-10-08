@@ -12,6 +12,7 @@
 import { UNITE_SECONDES } from "./paliers.js";
 import { UNITE_PAR_MODE } from "./niveaux.js";
 import { definir_cible_manuelle, est_cible_manuelle } from "./cible_manuelle.js";
+import { chaine } from "./variantes.js";
 
 export {
   profils_cible_manuelle,
@@ -27,11 +28,24 @@ function _nom_exercice(bloc) {
 }
 
 export class Objectifs {
-  constructor(baremes, niveaux, ressenti, calibration) {
+  /**
+   * `catalogue_variantes` est celui de `variantes.js` (`catalogue_depuis`) :
+   * il dit quel exercice vient d'une variante plus facile. Vide, la regle du
+   * palier 1 ne s'applique a rien — le Python, lui, lit le catalogue reel.
+   */
+  constructor(baremes, niveaux, ressenti, calibration, catalogue_variantes = {}) {
     this.baremes = baremes;
     this.niveaux = niveaux;
     this.ressenti = ressenti;
     this.calibration = calibration;
+    this.catalogue_variantes = catalogue_variantes ?? {};
+  }
+
+  /** Une variante plus facile de `nom` a-t-elle deja un niveau ? */
+  _monte_d_une_variante(nom, etats) {
+    return chaine(nom, this.catalogue_variantes)
+      .slice(1)
+      .some((facile) => (etats[facile]?.niveau ?? null) !== null);
   }
 
   /**
@@ -42,8 +56,8 @@ export class Objectifs {
    * 1. **Le repere de la derniere seance** : le palier alors demande, plus ou
    *    moins ce que la reussite et le ressenti lui valent.
    * 2. **Un exercice jamais fait** — aucun repere, aucun niveau prouve — part
-   *    du palier de la note d'athlete effective. Il n'y a plus de test au
-   *    maximum.
+   *    du palier de la note d'athlete effective, sauf s'il vient d'une
+   *    variante plus facile qui a deja un niveau : il part alors du palier 1.
    * 3. A defaut, `suivant` : le premier palier non valide, et si le bareme est
    *    epuise, le dernier palier atteint plutot que rien.
    *
@@ -67,9 +81,11 @@ export class Objectifs {
       const repere = reperes[nom];
       const vise = repere ? this.baremes.palier(nom, repere.vise) : null;
       if (vise === null && etat.niveau === null) {
-        objectifs[nom] = this.baremes.palier(
-          nom, this.calibration.niveau_de_depart(nom, depart),
-        );
+        // Venu d'une variante plus facile deja maitrisee : le bas du bareme,
+        // et non le depart de la note, pose pour le mouvement complet.
+        objectifs[nom] = this._monte_d_une_variante(nom, etats)
+          ? this.baremes.palier(nom, 1)
+          : this.baremes.palier(nom, this.calibration.niveau_de_depart(nom, depart));
         continue;
       }
       let objectif = vise ?? etat.suivant ?? etat.actuel;

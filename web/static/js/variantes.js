@@ -75,9 +75,14 @@ function _jouable(nom, catalogue) {
 }
 
 export class Variantes {
-  constructor(baremes, seuils_retour = {}) {
+  /**
+   * `niveaux` est une instance de `Niveaux` : `montees` en tire
+   * `niveau_prouve_par`, la lecture d'une ligne que le Python importe.
+   */
+  constructor(baremes, seuils_retour = {}, niveaux = null) {
     this.baremes = baremes;
     this.seuils_retour = seuils_retour ?? {};
+    this.niveaux = niveaux;
   }
 
   /** Une variante doit se mesurer dans la meme unite que l'original. */
@@ -161,23 +166,55 @@ export class Variantes {
     return nouvelles;
   }
 
-  /** La variante a-t-elle prouve sa performance de retour ? */
-  retour_atteint(nom_joue, niveaux) {
-    const seuil = this.seuils_retour[nom_joue];
+  /**
+   * Cette ligne d'historique prouve-t-elle la performance de retour ? Lue sur
+   * la seance et jamais sur le record, comme le Python — sinon un retour en
+   * arriere remonterait tout seul a la seance suivante.
+   */
+  retour_prouve_par(ligne) {
+    const seuil = this.seuils_retour[ligne.nom];
     if (!seuil) return false;
-    const requis = this.baremes.niveau_pour(nom_joue, 0, seuil[0], seuil[1]);
-    const acquis = niveaux[nom_joue]?.niveau ?? null;
-    return requis !== null && requis !== undefined && acquis !== null && acquis >= requis;
+    const requis = this.baremes.niveau_pour(ligne.nom, 0, seuil[0], seuil[1]);
+    const prouve = this.niveaux.niveau_prouve_par(ligne);
+    return requis !== null && requis !== undefined && prouve !== null && prouve >= requis;
+  }
+
+  /**
+   * La table apres cette seance, et les crans qu'elle a fait monter :
+   * `[table, [{original, depuis, vers}]]`. Un cran par seance et par cle ;
+   * rien sur une seance abandonnee. Jumelle de `montees` dans
+   * `progression/variantes.py`.
+   */
+  montees(variantes, seance, catalogue) {
+    let table = normaliser(variantes);
+    seance = seance ?? {};
+    if (seance.statut === "abandoned") return [table, []];
+    const faites = [];
+    const vues = new Set();
+    for (const ligne of seance.exercices ?? []) {
+      const cle = original_de(ligne.nom, table);
+      if (cle === null || vues.has(cle)) continue;
+      const dur = catalogue[ligne.nom]?.variante_difficile ?? null;
+      if (!dur || !this.retour_prouve_par(ligne)) continue;
+      try {
+        table = this.definir(table, cle, dur, catalogue);
+      } catch {
+        continue;
+      }
+      vues.add(cle);
+      faites.push({ original: cle, depuis: ligne.nom, vers: dur });
+    }
+    return [table, faites];
   }
 
   /**
    * Ce qu'il faut proposer sous chaque ligne d'historique :
    * `{seance_id: {nom: {sens, original, vers}}}`. Memes regles que le Python
    * — plus facile sous un echec au palier 1 ou apres une bascule en seance,
-   * plus dur sous une variante qui a prouve son retour, et seulement sur la
-   * derniere seance ou l'exercice apparait.
+   * et seulement sur la derniere seance ou l'exercice apparait. « Plus dur »
+   * n'est plus propose : `montees` le fait d'elle-meme.
    */
-  propositions(seances, jugements, variantes, catalogue, niveaux) {
+  propositions(seances, jugements, variantes, catalogue) {
     variantes = normaliser(variantes);
     const vues = new Set();
     const resultat = {};
@@ -189,7 +226,7 @@ export class Variantes {
         if (vues.has(nom)) continue;
         const proposition = this._proposition(
           nom, lignes, jugements[identifiant]?.[nom] ?? null,
-          variantes, catalogue, niveaux,
+          variantes, catalogue,
         );
         // La derniere ligne d'une meme cle l'emporte, sans changer de place :
         // un `Map` garde l'ordre de la premiere insertion, comme un `dict`.
@@ -214,31 +251,18 @@ export class Variantes {
     return nom;
   }
 
-  _proposition(nom, lignes, jugement, variantes, catalogue, niveaux) {
-    const fiche = catalogue[nom] ?? {};
+  _proposition(nom, lignes, jugement, variantes, catalogue) {
+    if (jugement === null || jugement.reussi) return null;
+    const facile = catalogue[nom]?.variante_facile ?? null;
+    if (!facile || !(jugement.base === 1 || lignes.includes(facile))) return null;
     const cle = this._racine(nom, lignes, variantes, catalogue);
-
-    if (jugement !== null && !jugement.reussi) {
-      const facile = fiche.variante_facile ?? null;
-      const bascule = facile !== null && lignes.includes(facile);
-      if (facile && (jugement.base === 1 || bascule)) {
-        if (variantes[cle] !== facile) {
-          try {
-            this.definir(variantes, cle, facile, catalogue);
-          } catch {
-            return null;
-          }
-          return { sens: "facile", original: cle, vers: facile };
-        }
-      }
+    if (variantes[cle] === facile) return null;
+    try {
+      this.definir(variantes, cle, facile, catalogue);
+    } catch {
       return null;
     }
-
-    if (variantes[cle] === nom && this.retour_atteint(nom, niveaux)) {
-      const dur = fiche.variante_difficile ?? null;
-      if (dur) return { sens: "difficile", original: cle, vers: dur };
-    }
-    return null;
+    return { sens: "facile", original: cle, vers: facile };
   }
 }
 

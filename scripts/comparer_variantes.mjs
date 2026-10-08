@@ -45,7 +45,7 @@ function main() {
   const baremes = new Baremes(tables, null);
   const niveaux = new Niveaux(baremes);
   const ressenti = new Ressenti(baremes, niveaux);
-  const moteur = new Variantes(baremes, tables.variantes?.retour ?? {});
+  const moteur = new Variantes(baremes, tables.variantes?.retour ?? {}, niveaux);
 
   const lignes = readFileSync(FIXTURES, "utf-8")
     .split("\n")
@@ -136,20 +136,29 @@ function main() {
         verifier(
           `${ligne.catalogue} / historique ${ligne.numero} / propositions`,
           ligne.propositions,
-          moteur.propositions(
-            ligne.seances, jugements, ligne.table, catalogue,
-            niveaux.niveaux_par_exercice(ligne.seances, {}),
-          )
+          moteur.propositions(ligne.seances, jugements, ligne.table, catalogue)
         );
+        break;
+      }
+
+      case "montees": {
+        const catalogue = catalogues[ligne.catalogue];
+        ligne.cas.forEach((cas, index) => {
+          verifier(
+            `${ligne.catalogue} / montees ${index} (${JSON.stringify(cas.table)})`,
+            cas.reponse,
+            moteur.montees(cas.table, cas.seance, catalogue)
+          );
+        });
         break;
       }
 
       case "retour":
         for (const q of ligne.questions) {
           verifier(
-            `retour_atteint(${q.nom}, ${JSON.stringify(q.niveaux)})`,
+            `retour_prouve_par(${q.ligne.nom}, ${q.ligne.series_cibles}x${q.ligne.repetitions_cibles || q.ligne.duree_cible})`,
             q.reponse,
-            moteur.retour_atteint(q.nom, q.niveaux)
+            moteur.retour_prouve_par(q.ligne)
           );
         }
         break;

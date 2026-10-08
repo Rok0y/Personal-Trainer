@@ -60,7 +60,6 @@ from progression.niveaux import (
     etat_niveau,
     etats_niveaux,
     montees_de_niveau,
-    niveaux_par_exercice,
 )
 from progression.objectifs import objectifs_par_exercice
 from progression import ligues as moteur_ligues
@@ -216,7 +215,6 @@ def jugements_avec_variantes(donnees):
         jugements,
         moteur_variantes.variantes_du_profil(),
         moteur_variantes.catalogue_des_variantes(),
-        niveaux_par_exercice(donnees),
     )
     for seance_id, par_nom in propositions.items():
         lignes = jugements.get(seance_id, {})
@@ -1340,10 +1338,22 @@ def lire_ressentis_api(seance_id):
     l'écran de fin interroge cette route pendant que la séance est peut-être
     encore en cours d'écriture par le thread caméra.
     """
-    return jsonify({"ok": True, "echelle": list(ECHELLE),
-                    "exercices": jugements_avec_variantes(
-                        recuperer_historique()
-                    ).get(seance_id, {})})
+    jugements = jugements_avec_variantes(recuperer_historique()).get(seance_id, {})
+    # Une montée de variante faite par cette séance s'annonce sous la ligne
+    # de la variante maîtrisée — même forme que dans le navigateur
+    # (`ressentis_ui.proposition_de_montee`).
+    for montee in controleur.montees_de_la_seance(seance_id):
+        if montee["depuis"] in jugements:
+            jugements[montee["depuis"]] = {
+                **jugements[montee["depuis"]],
+                "variante": {
+                    "sens": "montee",
+                    "original": montee["original"],
+                    "vers": montee["depuis"],
+                    "nouveau": montee["vers"],
+                },
+            }
+    return jsonify({"ok": True, "echelle": list(ECHELLE), "exercices": jugements})
 
 
 @app.route("/api/variantes", methods=["POST"])

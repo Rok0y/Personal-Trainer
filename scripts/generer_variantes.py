@@ -13,12 +13,15 @@ hasard ordinaire ne produit pas.
   **tordu** à côté du vrai — une boucle, une variante inconnue, une variante
   sans détection, une variante dans une autre unité. Le catalogue réel n'en a
   aucune, si bien qu'une garde retirée d'un seul côté passerait vert.
-- **Quoi proposer** (`propositions`, `retour_atteint`) : il faut des lignes
-  ratées **au palier 1** et des séances où l'on est passé à la variante en
-  cours de route, que les historiques au hasard ne visitent presque jamais.
-  Elles sont construites ici, palier par palier. Le seuil de retour est visé
-  au niveau près, des deux côtés : c'est exactement là où `>=` se distingue
-  de `>`.
+- **Quoi proposer** (`propositions`) : il faut des lignes ratées **au palier
+  1** et des séances où l'on est passé à la variante en cours de route, que
+  les historiques au hasard ne visitent presque jamais. Elles sont construites
+  ici, palier par palier.
+- **Quand remonter** (`montees`, `retour_prouve_par`) : des séances
+  construites **au seuil de retour**, au niveau près des deux côtés — c'est
+  exactement là où `>=` se distingue de `>` —, abandonnées ou non, avec ou
+  sans bascule en pleine séance, et jusqu'à la dernière marche, où l'entrée
+  de la table doit disparaître.
 
 L'inventaire est figé (non déclaré) : `niveau_pour` dépend des haltères, et un
 oracle qui lirait le profil ne rendrait pas deux fois le même verdict.
@@ -183,6 +186,76 @@ def ligne_au_palier(tirage, nom, niveau, reussi, mode=None):
     }
 
 
+def seances_de_montee(tirage, catalogue):
+    """Des séances jouées sous une variante, autour de son seuil de retour.
+
+    Chaque cas est une table et **une** séance : `montees` ne regarde que la
+    séance qui vient de se jouer, c'est toute sa règle. La table fait jouer la
+    variante une fois sur six seulement depuis une autre clé que la racine, et
+    manque une fois sur huit — la variante est alors jouée telle qu'écrite, et
+    rien ne doit monter.
+    """
+    cas = []
+    for racine in RACINES:
+        chaine = [
+            nom for nom in variantes.chaine(racine, catalogue)
+            if paliers.est_suivi_par_le_moteur(nom)
+        ]
+        for index, nom in enumerate(chaine[1:], start=1):
+            seuil = variantes.SEUILS_RETOUR.get(nom)
+            requis = paliers.niveau_pour(nom, 0, seuil[0], seuil[1]) if seuil else None
+            for decalage in (-1, 0, 1, 2):
+                niveau = max(1, (requis or 4) + decalage)
+                reussi = tirage.random() < 0.8
+                lignes = [ligne_au_palier(tirage, nom, niveau, reussi)]
+                if tirage.random() < 0.25 and index + 1 < len(chaine):
+                    # Une bascule en pleine séance : la variante de la table
+                    # quittée, une plus facile jouée et réussie ensuite.
+                    lignes = [
+                        ligne_au_palier(tirage, nom, niveau, False),
+                        ligne_au_palier(tirage, chaine[index + 1], max(1, niveau), True),
+                    ]
+                if tirage.random() < 0.3:
+                    lignes.append(ligne_au_palier(tirage, "Crunches", 2, True))
+                tirage_table = tirage.random()
+                if tirage_table < 0.125:
+                    table = {}
+                elif tirage_table < 0.3 and index > 1:
+                    table = {chaine[1]: nom}
+                else:
+                    table = {racine: nom}
+                seance = {
+                    "statut": "abandoned" if tirage.random() < 0.2 else "finished",
+                    "exercices": lignes,
+                }
+                cas.append({
+                    "table": table,
+                    "seance": seance,
+                    "reponse": list(variantes.montees(table, seance, catalogue)),
+                })
+            if requis is not None and index >= 2:
+                # Le cran du dessus, réussi lui aussi, plus loin dans la même
+                # séance — un second bloc qui l'écrit tel quel. Il ne doit pas
+                # monter à son tour : un cran par séance. Construit à coup sûr,
+                # le hasard ne le réunissant presque jamais.
+                dessus = chaine[index - 1]
+                seuil_dessus = variantes.SEUILS_RETOUR.get(dessus)
+                niveau_dessus = (
+                    paliers.niveau_pour(dessus, 0, *seuil_dessus) if seuil_dessus else None
+                ) or 3
+                table = {racine: nom}
+                seance = {"statut": "finished", "exercices": [
+                    ligne_au_palier(tirage, nom, requis, True),
+                    ligne_au_palier(tirage, dessus, niveau_dessus, True),
+                ]}
+                cas.append({
+                    "table": table,
+                    "seance": seance,
+                    "reponse": list(variantes.montees(table, seance, catalogue)),
+                })
+    return cas
+
+
 def historique_construit(tirage, catalogue, noms):
     """Un historique qui visite les propositions, le plus récent en tête."""
     nombre = tirage.randint(1, 6)
@@ -331,7 +404,6 @@ def main():
             for numero in range(HISTORIQUES // len(catalogues)):
                 seances = historique_construit(tirage, catalogue, noms_suivis)
                 table = table_au_hasard(tirage, catalogue)
-                niveaux_calcules = niveaux.niveaux_par_exercice(seances, {})
                 jugements = ressenti.jugements_par_seance(seances)
                 ecrire({
                     "genre": "historique", "catalogue": nom_catalogue, "numero": numero,
@@ -339,24 +411,29 @@ def main():
                     "propositions": {
                         str(cle): valeur
                         for cle, valeur in variantes.propositions(
-                            seances, jugements, table, catalogue, niveaux_calcules
+                            seances, jugements, table, catalogue
                         ).items()
                     },
                 })
 
-        # Le seuil de retour, au niveau près, de part et d'autre.
+            ecrire({"genre": "montees", "catalogue": nom_catalogue,
+                    "cas": seances_de_montee(tirage, catalogue)})
+
+        # Le seuil de retour, au niveau près, de part et d'autre, sur des
+        # lignes réussies et une ratée.
         bornes = []
         for nom, seuil in variantes.SEUILS_RETOUR.items():
             requis = paliers.niveau_pour(nom, 0, seuil[0], seuil[1])
-            for decalage in (-1, 0, 1, None):
-                niveau = None if decalage is None or requis is None else requis + decalage
-                table_niveaux = {nom: {"niveau": niveau}} if niveau is not None else {}
-                bornes.append({
-                    "nom": nom, "niveaux": table_niveaux,
-                    "reponse": variantes.retour_atteint(nom, table_niveaux),
-                })
-        bornes.append({"nom": "Pompes", "niveaux": {"Pompes": {"niveau": 99}},
-                       "reponse": variantes.retour_atteint("Pompes", {"Pompes": {"niveau": 99}})})
+            if requis is None:
+                continue
+            for niveau, reussi in ((requis - 1, True), (requis, True),
+                                   (requis + 1, True), (requis + 1, False)):
+                if niveau < 1:
+                    continue
+                ligne = ligne_au_palier(tirage, nom, niveau, reussi)
+                bornes.append({"ligne": ligne, "reponse": variantes.retour_prouve_par(ligne)})
+        ligne = ligne_au_palier(tirage, "Pompes", 30, True)
+        bornes.append({"ligne": ligne, "reponse": variantes.retour_prouve_par(ligne)})
         ecrire({"genre": "retour", "questions": bornes})
 
     print(f"{lignes} lignes, {len(catalogues)} catalogues")

@@ -1627,7 +1627,7 @@ import { Niveaux } from "../js/niveaux.js";
 import { Ligues } from "../js/ligues.js";
 import { badge_ligue, classe_ligue, jalon_ligue, jauge_ligue, style_ligue } from "../js/ligues_ui.js";
 import { ECHELLE, Ressenti } from "../js/ressenti.js";
-import { construire_ligne } from "../js/ressentis_ui.js";
+import { construire_ligne, proposition_de_montee } from "../js/ressentis_ui.js";
 import { Calibration, note_du_profil } from "../js/calibration.js";
 import { Objectifs } from "../js/objectifs.js";
 import { normaliser, poids_declarable } from "../js/materiel.js";
@@ -1845,10 +1845,15 @@ function construire_moteur() {
     calibration,
     ressenti,
     ligues,
-    objectifs: new Objectifs(baremes, niveaux, ressenti, calibration),
+    // Le catalogue des variantes y entre pour la regle du palier 1 : un
+    // exercice atteint en remontant la chaine part du bas de son bareme.
+    objectifs: new Objectifs(
+      baremes, niveaux, ressenti, calibration, catalogue_depuis(mouvements),
+    ),
     // Les variantes plus faciles jouees a la place d'un mouvement. Le bareme
-    // y entre pour l'unite et pour traduire la performance de retour.
-    variantes: new Variantes(baremes, tables_baremes.variantes?.retour ?? {}),
+    // y entre pour l'unite et pour traduire la performance de retour, les
+    // niveaux pour lire ce qu'une seance a prouve (`montees`).
+    variantes: new Variantes(baremes, tables_baremes.variantes?.retour ?? {}, niveaux),
   };
 }
 
@@ -2891,7 +2896,11 @@ async function terminer(abandonnee = false) {
     enregistree = await stockage.sauver(base);
   }
 
-  if (!abandonnee) await enteriner_cibles_figees();
+  let montees_faites = [];
+  if (!abandonnee) {
+    await enteriner_cibles_figees();
+    montees_faites = await monter_les_variantes(resultats);
+  }
 
   $("resumeDuree").textContent =
     `${nom_seance} · ${Math.round(seance.duree_totale / 60)} min` +
@@ -2918,7 +2927,7 @@ async function terminer(abandonnee = false) {
   // qu'on vient de faire —, et on le lisait deux fois moins bien juste apres
   // l'effort qu'une semaine plus tard. Une seule implementation, donc les deux
   // ecrans ne peuvent plus diverger.
-  dessiner_resume_de_fin(seance_id);
+  dessiner_resume_de_fin(seance_id, montees_faites);
 
   afficher_jalons(seance_id);
 
@@ -2944,7 +2953,26 @@ async function terminer(abandonnee = false) {
  * objet approchant a la main serait une deuxieme definition de ce qu'est une
  * seance.
  */
-function dessiner_resume_de_fin(seance_id) {
+/**
+ * Remonte d'un cran les variantes que cette seance a maitrisees.
+ *
+ * Jumelle de `SessionManager._monter_les_variantes` : la regle est dans
+ * `variantes.montees`, ici on ne fait qu'ecrire la table du profil. Rend les
+ * montees faites, que l'ecran de fin annonce avec de quoi les defaire.
+ */
+async function monter_les_variantes(resultats) {
+  const [table, faites] = moteur.variantes.montees(
+    variantes_du_profil(),
+    { statut: "finished", exercices: resultats },
+    catalogue_des_variantes(),
+  );
+  if (!faites.length) return [];
+  historique.definir_variantes(base, PROFIL, table);
+  await stockage.sauver(base);
+  return faites;
+}
+
+function dessiner_resume_de_fin(seance_id, montees_faites = []) {
   const zone = $("resume");
   zone.replaceChildren();
   if (!seance_id) return;
@@ -2971,7 +2999,10 @@ function dessiner_resume_de_fin(seance_id) {
 
   // L'aide n'apparait que s'il y a quelque chose a expliquer : une seance
   // faite d'echauffements, ou d'un seul test, ne propose aucun ressenti.
-  const proposees = brancher_fiches_de_seance(zone, histoire, { retour: "ecranFin" });
+  const proposees = brancher_fiches_de_seance(zone, histoire, {
+    retour: "ecranFin",
+    montees: { seance_id, faites: montees_faites },
+  });
   $("aideRessenti").hidden = proposees === 0;
 }
 
@@ -3319,13 +3350,23 @@ function brancher_fiches_de_seance(racine, histoire, options = {}) {
     jugements,
     variantes_du_profil(),
     catalogue_des_variantes(),
-    moteur.niveaux.niveaux_par_exercice(histoire, historique.recuperer_ancrages(base, PROFIL)),
   );
   for (const [seance_id, par_nom] of Object.entries(propositions)) {
     for (const [nom, proposition] of Object.entries(par_nom)) {
       if (jugements[seance_id]?.[nom]) {
         jugements[seance_id][nom] = { ...jugements[seance_id][nom], variante: proposition };
       }
+    }
+  }
+  // Les montees de variante, sur l'ecran de fin seulement : une annonce de
+  // ce que la seance vient de changer, que l'historique n'a pas a repeter.
+  const { seance_id: seance_montee, faites = [] } = options.montees ?? {};
+  for (const montee of faites) {
+    const ligne = jugements[seance_montee]?.[montee.depuis];
+    if (ligne) {
+      jugements[seance_montee][montee.depuis] = {
+        ...ligne, variante: proposition_de_montee(montee),
+      };
     }
   }
   let proposees = 0;

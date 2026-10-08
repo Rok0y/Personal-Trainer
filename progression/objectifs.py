@@ -124,7 +124,22 @@ def definir_cible_manuelle(valeur_actuelle, manuelle, utilisateur_id=None):
     return sorted(profils) or None
 
 
-def objectifs_par_exercice(seances=None, note=None):
+def _monte_d_une_variante(nom, etats, catalogue):
+    """Une variante plus facile de `nom` a-t-elle déjà un niveau ?
+
+    C'est la signature d'une montée le long de la chaîne (`variantes.montees`)
+    — mais lue dans l'historique, sans aucun état stocké : elle reste juste si
+    l'on supprime une séance, et le harnais la compare comme le reste.
+    """
+    from progression.variantes import chaine
+
+    return any(
+        (etats.get(facile) or {}).get("niveau") is not None
+        for facile in chaine(nom, catalogue)[1:]
+    )
+
+
+def objectifs_par_exercice(seances=None, note=None, catalogue=None):
     """Palier à viser pour chaque exercice suivi.
 
     Trois règles, dans cet ordre.
@@ -137,6 +152,10 @@ def objectifs_par_exercice(seances=None, note=None):
        du palier de la note d'athlète (`calibration.niveau_de_depart`, sur la
        note *effective* : la note déclarée, ou la note mesurée quand
        l'historique la dépasse nettement). Il n'y a plus de test au maximum.
+       **Sauf s'il vient d'une variante plus facile** qui a déjà un niveau :
+       il part alors du palier 1. On vient de maîtriser le cran du dessous,
+       on est au bas de celui-ci — et la note, posée pour le mouvement
+       complet, demanderait d'emblée ce qu'une débutante ne fait pas.
     3. À défaut — cible d'époque indéchiffrable, ou ancrage de niveau plus
        récent que la dernière séance —, `suivant` : le premier palier non
        validé. Et si le barème est épuisé, le dernier palier atteint plutôt
@@ -152,20 +171,29 @@ def objectifs_par_exercice(seances=None, note=None):
 
     `note` vaut `{"declaree", "relevee_apres"}` ; absente, elle est lue sur le
     profil connecté — lecture implicite que le harnais détourne, comme celle
-    des ancrages.
+    des ancrages. `catalogue` est celui de `progression.variantes`, le
+    catalogue réel par défaut.
     """
     seances = recuperer_historique() if seances is None else seances
     note = note_du_profil() if note is None else note
+    if catalogue is None:
+        from progression.variantes import catalogue_des_variantes
+
+        catalogue = catalogue_des_variantes()
     ancrages = recuperer_ancrages()
     reperes = evaluation(seances, ancrages)
     depart = note_effective(note.get("declaree"), note_mesuree(seances, ancrages))
 
     objectifs = {}
-    for nom, etat in etats_niveaux(seances).items():
+    etats = etats_niveaux(seances)
+    for nom, etat in etats.items():
         repere = reperes.get(nom)
         vise = palier(nom, repere["vise"]) if repere else None
         if vise is None and etat["niveau"] is None:
-            objectifs[nom] = palier(nom, niveau_de_depart(nom, depart))
+            if _monte_d_une_variante(nom, etats, catalogue):
+                objectifs[nom] = palier(nom, 1)
+            else:
+                objectifs[nom] = palier(nom, niveau_de_depart(nom, depart))
             continue
         objectif = vise or etat["suivant"] or etat["actuel"]
         plancher = niveau_plancher(nom, note, repere)

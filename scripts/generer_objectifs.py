@@ -35,7 +35,7 @@ from pathlib import Path
 
 import math
 
-from progression import calibration, niveaux, objectifs, paliers, ressenti
+from progression import calibration, niveaux, objectifs, paliers, ressenti, variantes
 from scripts.historiques_au_hasard import (
     INVENTAIRES,
     ancrages as tirer_ancrages,
@@ -44,6 +44,7 @@ from scripts.historiques_au_hasard import (
     palier_serialisable,
 )
 from session.circuit import BlocExercice, Circuit, Exercice
+from session.seances import catalogue_mouvements
 
 RACINE = Path(__file__).resolve().parent.parent
 DESTINATION = Path(__file__).parent / "fixtures_objectifs.jsonl"
@@ -56,6 +57,18 @@ HISTORIQUES = 90
 #: comparerait un Python qui ignore les marques à un JavaScript qui les
 #: applique.
 PROFIL = 1
+
+#: Le catalogue réel des variantes, pour la règle du palier 1 (voir
+#: `objectifs._monte_d_une_variante`), et ses deux extrémités : le bas de
+#: chaque chaîne, et tout ce qui a une variante plus facile sous soi.
+CATALOGUE_VARIANTES = variantes.catalogue_depuis(catalogue_mouvements())
+BAS_DES_CHAINES = sorted(
+    nom for nom, fiche in CATALOGUE_VARIANTES.items()
+    if fiche["variante_difficile"] and not fiche["variante_facile"]
+)
+AU_DESSUS_D_UNE_VARIANTE = {
+    nom for nom, fiche in CATALOGUE_VARIANTES.items() if fiche["variante_facile"]
+}
 
 MODES = ("repetitions", "maintien", "chrono", "amrap", "echauffement")
 
@@ -311,6 +324,9 @@ def main():
             "genre": "entete",
             "inventaires": INVENTAIRES,
             "notes_effectives": _table_des_notes(),
+            # Le catalogue des variantes voyage avec l'oracle, pour la règle du
+            # palier 1 : redéclaré côté JavaScript, il dériverait.
+            "catalogue_variantes": CATALOGUE_VARIANTES,
         }, ensure_ascii=False) + "\n")
         fichier.write(json.dumps(_table_des_cibles_manuelles(), ensure_ascii=False) + "\n")
         lignes += 2
@@ -338,6 +354,15 @@ def main():
                 if numero % 5 == 4:
                     seances = _historique_frontiere(tirage, noms)
                     ancrages = {}
+                elif numero % 5 == 3:
+                    # Seul le bas des chaînes a été joué : le cran du dessus
+                    # n'a jamais été fait, et doit partir du palier 1 plutôt
+                    # que de la note. Le hasard le visite trop rarement.
+                    connus = [n for n in noms if n not in AU_DESSUS_D_UNE_VARIANTE]
+                    connus = tirage.sample(connus, k=tirage.randint(2, max(2, len(connus) // 2)))
+                    connus += [n for n in BAS_DES_CHAINES if n in noms]
+                    seances = tirer_historique(tirage, connus)
+                    ancrages = tirer_ancrages(tirage, connus, seances)
                 else:
                     connus = tirage.sample(noms, k=tirage.randint(2, max(2, len(noms) // 2)))
                     seances = tirer_historique(tirage, connus)
@@ -347,7 +372,7 @@ def main():
                 objectifs.recuperer_ancrages = lambda *_, **__: ancrages
                 note = _note_au_hasard(tirage, seances)
 
-                objs = objectifs.objectifs_par_exercice(seances, note)
+                objs = objectifs.objectifs_par_exercice(seances, note, CATALOGUE_VARIANTES)
                 sans = objectifs.exercices_sans_donnees(seances)
 
                 blocs_avant = [_bloc(tirage, noms) for _ in range(tirage.randint(2, 6))]
