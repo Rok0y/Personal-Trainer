@@ -30,6 +30,15 @@ Desktop.ini
 *.log
 
 # =========================
+# Sommaire du site
+# =========================
+
+# Genere au deploiement par `node scripts/sommaire.mjs _site`. En local,
+# `node scripts/sommaire.mjs web/static` l'ecrit ici pour le voir : derive,
+# donc jamais versionne.
+web/static/index.html
+
+# =========================
 # Historiques
 # =========================
 

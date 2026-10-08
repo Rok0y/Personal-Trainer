@@ -50,18 +50,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      # La racine du site redirige vers la demo : un lien partage sans son
-      # `/demo/` final tomberait autrement sur une 404 sans explication.
+      # La racine du site est le sommaire : une carte par page (application,
+      # demo, outils de reglage), generee depuis les <title> et les
+      # <meta name="description">. Une page ajoutee y apparait d'elle-meme.
       - name: Preparer le dossier a publier
         run: |
           cp -r web/static _site
-          cat > _site/index.html <<'HTML'
-          <!doctype html>
-          <meta charset="utf-8">
-          <title>Coach - demo</title>
-          <meta http-equiv="refresh" content="0; url=demo/">
-          <p><a href="demo/">Ouvrir la demo</a></p>
-          HTML
+          node scripts/sommaire.mjs _site "${{ github.sha }}"
 
       # Chaque ressource locale recoit l'empreinte du commit deploye. Sans ca,
       # un navigateur qui tient encore l'ancien module en cache le combine avec

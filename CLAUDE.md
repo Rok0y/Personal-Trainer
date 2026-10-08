@@ -31,6 +31,7 @@ Les noms JS restent en **snake_case** (héritage du portage) : ne rien renommer,
 
 `scripts/tester.mjs` enchaîne :
 - **`verifier_methodes.mjs`** : chaque `this.methode()` appelée existe, et les `<script type="module">` inline n'ont pas de faute de syntaxe (`node --check` ne lit que les `.js`, or le module de l'application fait trois mille lignes dans `app/index.html` — une faute y donne un écran blanc).
+- **`sommaire.mjs`** (sans argument) : chaque page a un titre et une description pour le sommaire du site.
 - **`verifier_donnees.mjs`** : les JSON de `donnees/` se tiennent (voir *Données*). C'est l'ancien rôle des validations au chargement, qui n'existent plus nulle part ailleurs.
 - **`verifier_annonces.mjs`** : les tables du coach se tiennent (voir *Coach vocal*).
 - **`verifier_instruments.mjs`** : chaque instrument du banc d'essai redit exactement le jeton de sa détection, et toute détection a son instrument.
@@ -195,7 +196,7 @@ Un exercice isolé, comptage et voix, sans séance ni historique : le livrable p
 
 ### Déploiement et cache
 
-`scripts/empreinte_deploiement.py` (CI, copie `_site` seulement) marque chaque ressource locale de l'empreinte du commit (`camera.js?v=<sha>`, imports internes et `fetch("../donnees/*.json")` compris, adresses absolues jamais) : chaque fichier expire pour son compte, et un document neuf combiné à un module en cache échoue en accusant un code déjà corrigé. **Le document ne peut pas être marqué** : `version.js` relit `version.json` (seul fichier jamais marqué) en `no-store`, compare à sa propre empreinte (`import.meta.url`), et recharge sous `?maj=<empreinte>` en cas d'écart — sans toucher IndexedDB ni `localStorage`, et sans rien faire hors ligne. La racine du site est une redirection vers `demo/` écrite par le workflow.
+`scripts/empreinte_deploiement.py` (CI, copie `_site` seulement) marque chaque ressource locale de l'empreinte du commit (`camera.js?v=<sha>`, imports internes et `fetch("../donnees/*.json")` compris, adresses absolues jamais) : chaque fichier expire pour son compte, et un document neuf combiné à un module en cache échoue en accusant un code déjà corrigé. **Le document ne peut pas être marqué** : `version.js` relit `version.json` (seul fichier jamais marqué) en `no-store`, compare à sa propre empreinte (`import.meta.url`), et recharge sous `?maj=<empreinte>` en cas d'écart — sans toucher IndexedDB ni `localStorage`, et sans rien faire hors ligne. **La racine du site est le sommaire** (`scripts/sommaire.mjs`, joué par la CI sur `_site`) : une carte par page `.html`, tirée de son `<title>` et de sa `<meta name="description">`, rangée par dossier. Une page ajoutée y apparaît d'elle-même ; `tester.mjs` refuse une page sans titre ni description, sans quoi sa carte ne dirait rien.
 
 **En développement, utiliser `statique-dev`** (`Cache-Control: no-store`) : `python -m http.server` laisse le navigateur ressortir un module depuis son cache avec un statut 200, et *un import figé fait passer un code correct pour cassé*. L'entrée `statique` reproduit le déploiement.
 

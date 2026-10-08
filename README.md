@@ -88,6 +88,8 @@ Un fichier absent est un silence, jamais une panne : on peut enregistrer par lot
 
 ## Déploiement
 
+**Le point d'entrée est https://rok0y.github.io/Personal-Trainer/** : un sommaire de toutes les pages (application, banc d'essai, outils de réglage), généré au déploiement par `scripts/sommaire.mjs`. Une nouvelle page y apparaît d'elle-même, à condition d'avoir un `<title>` et une `<meta name="description">` — les tests refusent une page qui n'en a pas.
+
 `.github/workflows/demo.yml` publie `web/static` sur GitHub Pages à chaque push sur une des branches qu'il liste, après avoir lancé les tests. Chaque ressource est marquée de l'empreinte du commit (`camera.js?v=<sha>`), pour qu'un navigateur ne combine jamais un document neuf avec un module gardé en cache.
 
 ## Historique du projet

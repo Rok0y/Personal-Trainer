@@ -22,6 +22,7 @@ const ICI = dirname(fileURLToPath(import.meta.url));
 const TESTS = [
   "verifier_methodes",
   "verifier_donnees",
+  "sommaire",
   "verifier_annonces",
   "verifier_instruments",
   "comparer_detections",
