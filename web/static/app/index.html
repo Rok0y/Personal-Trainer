@@ -2759,13 +2759,26 @@ function signaler_veille() {
   // de statut du HUD, lui, est libre — il annonce « connexion perdue » sur le
   // poste fixe, et le navigateur n'a aucune connexion a perdre. Le detourner
   // ici lui rend un sens : « quelque chose ne va pas dans cette seance ».
+  //
+  // Le son passe devant l'ecran : un son coupe se repare d'un geste (le
+  // lecteur relance au prochain contact), alors qu'un ecran qui peut
+  // s'eteindre demande d'aller dans les reglages. Il arrive surtout en
+  // branchant ou en retirant des ecouteurs, et sans ce voyant on finissait
+  // la seance en silence sans savoir pourquoi.
   const tenu = verrou_ecran.tenu;
-  if (tenu === veille_annoncee) return;
-  veille_annoncee = tenu;
+  const son = lecteur?.son_actif() ?? true;
+  const cle = `${tenu}|${son}`;
+  if (cle === veille_annoncee) return;
+  veille_annoncee = cle;
 
   const point = $("statusDot");
   const texte = $("statusText");
-  point.classList.toggle("offline", !tenu);
+  point.classList.toggle("offline", !tenu || !son);
+  if (!son) {
+    texte.textContent = "Son coupé — touche l'écran";
+    texte.title = "";
+    return;
+  }
   texte.textContent = tenu ? "Écran gardé allumé" : "L'écran peut s'éteindre";
   texte.title = tenu ? "" : (verrou_ecran.raison ?? "");
 }

@@ -42,6 +42,14 @@ const PRIORITE_PAR_DEFAUT = 5;
 //: qu'on sacrifie quand la serie se termine.
 const PRIORITE_COMPTEUR = 1;
 
+//: Duree maximale d'une tentative de relance du contexte audio, en secondes.
+//: Au-dela on renonce et on attend un contact avec l'ecran.
+const DELAI_REPRISE = 0.5;
+
+//: Temps de calme apres un changement de peripherique avant de recreer le
+//: contexte, en secondes.
+const DELAI_CHANGEMENT_SORTIE = 0.3;
+
 export class Lecteur {
   /**
    * @param {string} dossier  ou trouver les .wav
@@ -73,6 +81,10 @@ export class Lecteur {
     // se compte depuis lui, pour qu'un chiffre glisse entre deux phrases ne
     // repousse pas la suivante.
     this._fin_phrase = -Infinity;
+    // Survie du contexte (voir `_creer_contexte`).
+    this._precharges = [];
+    this._reprise_armee = false;
+    this._sorties_surveillees = false;
   }
 
   /** Un chiffre ou un bip : un son qui suit le geste. */
@@ -86,10 +98,119 @@ export class Lecteur {
    * pendant un evenement tactile.
    */
   async preparer() {
-    this.contexte =
-      this.contexte ?? new (window.AudioContext ?? window.webkitAudioContext)();
-    await this.contexte.resume().catch(() => {});
-    return this.contexte.state === "running";
+    if (!this.contexte) this._creer_contexte();
+    this._surveiller_sorties();
+    return this._reprendre();
+  }
+
+  /**
+   * Le son peut-il sortir en ce moment ? Lu a chaque image par le voyant du
+   * HUD, pour qu'un son coupe se voie au lieu de se taire.
+   */
+  son_actif() {
+    return this.contexte?.state === "running";
+  }
+
+  // ------------------------------------------------------------------
+  // Survie du contexte audio
+  //
+  // **Brancher ou retirer des ecouteurs coupait le son pour le reste de la
+  // seance**, et rien ne le disait. Un changement de sortie fait passer le
+  // contexte d'iOS a `interrupted` ou `suspended`, et `resume()` n'etait
+  // appele qu'une fois, au clic sur la seance. Les sons suivants partaient
+  // donc sur un contexte arrete — et le filet de `_jouer_tampon`, qui empeche
+  // la file de se bloquer, rendait la panne parfaitement muette. Pire, apres
+  // un passage aux ecouteurs Bluetooth la frequence d'echantillonnage change,
+  // et WebKit garde parfois un contexte qui se dit `running` sans plus rien
+  // sortir : aucun etat a surveiller ne le revele. D'ou trois parades.
+  //
+  // (1) Un contexte qui sort de `running` est relance aussitot.
+  // (2) Un changement de peripherique **recree** le contexte, seule reponse
+  //     au cas « running mais muet ».
+  // (3) Une relance refusee — iOS en exige parfois un geste — s'arme sur le
+  //     prochain contact avec l'ecran, et `son_actif()` le fait savoir.
+  // ------------------------------------------------------------------
+
+  _creer_contexte() {
+    const Classe = globalThis.AudioContext ?? globalThis.webkitAudioContext;
+    const contexte = new Classe();
+    contexte.onstatechange = () => {
+      // Un ancien contexte, ferme par `_recreer`, n'a plus rien a dire.
+      if (contexte !== this.contexte) return;
+      if (contexte.state === "suspended" || contexte.state === "interrupted") {
+        this._reprendre();
+      }
+    };
+    this.contexte = contexte;
+  }
+
+  /**
+   * Relance le contexte, sans jamais attendre plus de `DELAI_REPRISE` : une
+   * promesse de `resume()` qui ne se resout pas (contexte interrompu par un
+   * appel) bloquerait sinon toute la file. Rend vrai si le son peut sortir.
+   */
+  async _reprendre() {
+    const contexte = this.contexte;
+    if (!contexte || contexte.state === "closed") return false;
+    if (contexte.state !== "running") {
+      await Promise.race([
+        contexte.resume().catch(() => {}),
+        this._attendre(DELAI_REPRISE),
+      ]);
+    }
+    const actif = contexte === this.contexte && contexte.state === "running";
+    if (!actif) this._reprendre_au_toucher();
+    return actif;
+  }
+
+  /**
+   * Arme une relance sur le prochain contact avec l'ecran.
+   *
+   * `resume()` est appele **dans le gestionnaire**, sans aucune attente
+   * avant : c'est la seule fenetre ou iOS l'accepte a coup sur. En phase de
+   * capture, pour passer avant un gestionnaire de page qui arreterait la
+   * propagation.
+   */
+  _reprendre_au_toucher() {
+    if (this._reprise_armee || !globalThis.document) return;
+    this._reprise_armee = true;
+    globalThis.document.addEventListener(
+      "pointerdown",
+      () => {
+        this._reprise_armee = false;
+        this.contexte?.resume().catch(() => {});
+      },
+      { once: true, capture: true },
+    );
+  }
+
+  _surveiller_sorties() {
+    const peripheriques = globalThis.navigator?.mediaDevices;
+    if (this._sorties_surveillees || !peripheriques?.addEventListener) return;
+    this._sorties_surveillees = true;
+    // Un branchement declenche souvent plusieurs evenements d'affilee : on
+    // attend que ca se calme pour ne recreer le contexte qu'une fois.
+    let attente = null;
+    peripheriques.addEventListener("devicechange", () => {
+      clearTimeout(attente);
+      attente = setTimeout(() => this._recreer(), DELAI_CHANGEMENT_SORTIE * 1000);
+    });
+  }
+
+  /**
+   * Remplace le contexte par un neuf, sur la nouvelle sortie.
+   *
+   * Les tampons decodes sont oublies : ils l'ont ete a la frequence de
+   * l'ancienne sortie. Les sons precharges le sont de nouveau, sans quoi la
+   * premiere repetition apres le changement s'annoncerait en retard.
+   */
+  async _recreer() {
+    if (!this.contexte) return;
+    const ancien = this.contexte;
+    this._creer_contexte();
+    this._tampons.clear();
+    ancien.close?.().catch(() => {});
+    if (await this._reprendre()) this.precharger(this._precharges);
   }
 
   async _tampon(fichier) {
@@ -114,6 +235,8 @@ export class Lecteur {
    */
   async precharger(cles) {
     if (!this.contexte) return;
+    // Retenus pour `_recreer`, qui doit les recharger sur la nouvelle sortie.
+    this._precharges = [...new Set([...(this._precharges ?? []), ...cles])];
     const fichiers = new Set();
     for (const cle of cles) {
       if (/^\d+$/.test(cle)) fichiers.add(`${cle}.wav`);
@@ -217,6 +340,12 @@ export class Lecteur {
     try {
       while (this._file.length) {
         const { fichiers, priorite, silence_avant } = this._file.shift();
+        // Un son parti sur un contexte arrete ne se perd pas : il attend la
+        // relance, puis sort d'un coup avec tous ceux qui se sont accumules
+        // — des chiffres et des consignes perimes, en rafale. On relance
+        // d'abord, et si le son ne peut toujours pas sortir, l'entree est
+        // jetee : un silence vaut mieux qu'une annonce a contretemps.
+        if (!this.son_actif() && !(await this._reprendre())) continue;
         const rythme = this.est_rythme(priorite);
         if (!rythme) {
           // La respiration se prend **avant une phrase**, comptee depuis la
