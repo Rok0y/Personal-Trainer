@@ -1,12 +1,12 @@
-// Monter une seance depuis les donnees exportees, et en ressortir des
+// Monter une seance depuis les donnees de `donnees/`, et en ressortir des
 // resultats enregistrables.
 //
-// Ces trois fonctions vivaient dans la page, ou elles etaient invisibles a
-// toute verification. Elles portent pourtant des regles, dont une que
-// `CLAUDE.md` designe comme un point d'entree unique : **les echauffements
-// sont exclus a la source**, comme le fait `Circuit.exporter_resultats` cote
-// Python. Aucune ligne d'echauffement ne doit atteindre l'historique, et le
-// filtre vit ici plutot que dans chaque ecran qui relit.
+// Ces fonctions vivaient dans la page, ou elles etaient invisibles a toute
+// verification. Elles portent pourtant des regles, dont une que `CLAUDE.md`
+// designe comme un point d'entree unique : **les echauffements sont exclus a
+// la source** (`resultats_par_exercice`). Aucune ligne d'echauffement ne doit
+// atteindre l'historique, et le filtre vit ici plutot que dans chaque ecran
+// qui relit.
 
 import {
   BlocExercice,
@@ -42,11 +42,11 @@ export function avec_fiches(mouvements, fiches) {
 }
 
 /**
- * Un `Exercice` depuis sa fiche exportee.
+ * Un `Exercice` depuis son entree de `mouvements.json` (fiche comprise).
  *
- * Les fonctions sont retrouvees par leur **nom** : `detections.js` porte les
- * memes que le Python, c'est ce qui dispense d'une table de correspondance qui
- * deriverait. `detection` peut valoir null — un echauffement guide sans
+ * Les fonctions sont retrouvees par leur **nom** dans `DETECTIONS`, ce qui
+ * dispense d'une table de correspondance qui deriverait. `detection` peut
+ * valoir null — un echauffement guide sans
  * analyse de pose, et `circuit.js` le sait.
  */
 export function exercice_pour(mouvements, nom) {
@@ -65,8 +65,8 @@ export function exercice_pour(mouvements, nom) {
     variante_difficile: fiche.variante_difficile,
     // `?? null` et non `?? undefined` : `sequence_orientation` refuse tout ce
     // qui n'est pas au vocabulaire, donc les deux se taisent — mais `null` est
-    // ce qu'ecrit le Python pour « rien de sur a dire », et c'est cette valeur
-    // que le harnais compare.
+    // la valeur qui dit « rien de sur a dire », et c'est celle que les
+    // reponses figees attendent.
     orientation: fiche.orientation ?? null,
     amplitude: amplitude_pour(fiche.amplitude),
     changements: fiche.changements ?? [],
@@ -74,7 +74,7 @@ export function exercice_pour(mouvements, nom) {
 }
 
 /**
- * `[nom de fonction, cle]` exporte par le Python, vers `[fonction, cle]`.
+ * `[nom de fonction, cle]` de `mouvements.json`, vers `[fonction, cle]`.
  * Une fonction inconnue de `detections.js` rend null plutot qu'un couple
  * dont l'appel leverait a chaque image.
  */
@@ -183,8 +183,7 @@ export function resultats_par_exercice(seance) {
 }
 
 //: Les phases pendant lesquelles le nom affiche n'est pas celui d'un
-//: exercice. `main.py` ecrit ces memes libelles dans l'etat ; ils vivent ici
-//: pour que les deux applications les prononcent pareil.
+//: exercice.
 const LIBELLES_DE_PHASE = {
   recuperation_serie: "Récupération",
   repos_exercice: "Repos",
@@ -193,23 +192,19 @@ const LIBELLES_DE_PHASE = {
 };
 
 /**
- * L'etat de seance sous la forme que `/etat` renvoie sur le poste fixe.
+ * L'etat de seance tel que l'ecran le lit.
  *
- * **C'est le contrat entre les deux applications**, et la raison pour laquelle
- * `hud.js` n'a pas besoin de savoir laquelle l'appelle : Flask serialise
- * `EtatSeance` et `SessionManager.etat()`, cette fonction fabrique le meme
- * objet depuis le `Circuit` local.
+ * **C'est le contrat de l'ecran** : `hud.js` ne lit que cet objet, fabrique
+ * depuis le `Circuit` local et l'`etat` de la boucle.
  *
  * Les champs derives du circuit sont **relus ici** plutot que recopies dans
- * `etat` au fil de la boucle, comme le fait `main.py`. Deux raisons : le
- * circuit fait autorite, donc une copie ne peut que se perimer ; et la boucle
- * du navigateur n'a alors rien a tenir a jour pour l'affichage, ce qui retire
- * une occasion d'oublier un champ.
+ * `etat` au fil de la boucle. Deux raisons : le circuit fait autorite, donc
+ * une copie ne peut que se perimer ; et la boucle n'a alors rien a tenir a
+ * jour pour l'affichage, ce qui retire une occasion d'oublier un champ.
  *
- * `commandes_autorisees` est le jumeau de `SessionManager.etat()` — le seul
- * morceau de ce fichier qui n'ait pas de source cote circuit, puisque le
- * controleur n'est pas porte : le navigateur n'a pas de facade thread-safe a
- * offrir a des requetes HTTP, il appelle le circuit directement.
+ * `commandes_autorisees` est le seul morceau de cet objet qui n'ait pas de
+ * source cote circuit : il depend aussi du `statut` du pilote (en marche, en
+ * pause).
  */
 export function payload_etat(seance, etat, statut = "running", utilisateur_id = null) {
   const bloc = seance.bloc_actuel;
@@ -221,9 +216,8 @@ export function payload_etat(seance, etat, statut = "running", utilisateur_id = 
 
     // --- Ce que le circuit sait mieux que l'etat ---
     // La pause n'est pas une phase du circuit mais un etat du *pilote* : le
-    // circuit continue d'exister tel quel, on cesse seulement de l'avancer.
-    // `main.py` fait exactement cela — `etat.phase = "pause"` sans rien
-    // toucher a la seance — et l'affichage n'a pas a connaitre la difference.
+    // circuit continue d'exister tel quel, on cesse seulement de l'avancer,
+    // et l'affichage n'a pas a connaitre la difference.
     phase: statut === "paused" ? "pause" : seance.phase,
     serie_actuelle: active ? seance.serie_actuelle : 0,
     nombre_series: active ? seance.nombre_series : 0,
@@ -236,7 +230,7 @@ export function payload_etat(seance, etat, statut = "running", utilisateur_id = 
       LIBELLES_DE_PHASE[seance.phase] ??
       (seance.exercice_actuel ? seance.exercice_actuel.nom : etat.exercice_actuel),
 
-    // --- Ce que le controleur fournit cote Flask ---
+    // --- Ce qui depend aussi du pilote ---
     statut_session: statut,
     series_terminees: active ? seance.series_terminees : 0,
     nombre_series_total: active ? seance.nombre_series_total : 0,
@@ -274,13 +268,11 @@ export function payload_etat(seance, etat, statut = "running", utilisateur_id = 
 /**
  * Le catalogue reellement joue : le fichier, puis ce que l'appareil a modifie.
  *
- * **L'appareil gagne**, et c'est un arbitrage. Le fichier exporte reste la
+ * **L'appareil gagne**, et c'est un arbitrage. Le fichier deploye reste la
  * source de depart, mais une seance modifiee ici ne doit pas etre reecrite au
  * prochain deploiement : l'edition a ete faite en connaissance de cause,
  * souvent loin de l'ordinateur, et la perdre sans prevenir serait le pire des
- * deux mondes. C'est la meme precedence que `seances_personnalisees.json` sur
- * le catalogue Python — le disque masque le code — appliquee un cran plus
- * loin.
+ * deux mondes.
  *
  * Corollaire a rendre visible a l'ecran : une correction faite sur
  * l'ordinateur n'atteindra plus cette seance tant qu'elle est locale. D'ou
@@ -293,11 +285,10 @@ export function catalogue_effectif(du_fichier, locales) {
 /**
  * Refuse une liste de blocs que la seance ne saurait pas jouer.
  *
- * Jumeau des verifications de `construire_circuit` : mieux vaut un refus a
- * l'enregistrement qu'une erreur en pleine seance, quand on est a deux metres
- * de l'ecran et deja echauffe. Les trois refus sont ceux du Python — un
- * exercice inconnu, un mode inconnu, et un mode qui exige une detection sur un
- * mouvement qui n'en a pas.
+ * Mieux vaut un refus a l'enregistrement qu'une erreur en pleine seance,
+ * quand on est a deux metres de l'ecran et deja echauffe. Les refus : un
+ * exercice inconnu, un mode inconnu, un mode qui exige une detection sur un
+ * mouvement qui n'en a pas, et une cible nulle dans l'unite jouee.
  *
  * Rend la liste des problemes plutot que de lever au premier : un formulaire
  * doit pouvoir tout signaler d'un coup.

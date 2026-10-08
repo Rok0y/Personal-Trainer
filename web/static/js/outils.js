@@ -16,7 +16,7 @@ export function calculer_angle(a, b, c) {
 
 export class HoldPosition {
   // L'horloge est injectable pour que la classe reste testable hors
-  // navigateur : le harnais de comparaison ne peut pas attendre 1,5 s reelle.
+  // navigateur : un test ne peut pas attendre 1,5 s reelle.
   constructor(position, duree, horloge = () => performance.now() / 1000) {
     this.position = position;
     this.duree = duree;

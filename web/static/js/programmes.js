@@ -16,18 +16,11 @@ import { UNITE_SECONDES } from "./paliers.js";
 import { arrondi_python } from "./calibration.js";
 import { via_variante } from "./variantes.js";
 
-// Deux `round()` de Python vivent dans ce module — l'avancement d'une exigence
-// et la moyenne du programme — et tous deux passent par `arrondi_python` :
-// Python arrondit 12,5 a 12 (au pair le plus proche), JavaScript a 13, et un
-// avancement tombe sur un demi exact des que le rapport est simple. Sabote,
-// `Math.round` sort huit divergences sur le harnais.
-//
-// Le `:g` de `prescription`, en revanche, **n'a pas de contrepartie a ecrire**,
-// et c'est mesure : une interpolation directe suffit. JSON ne distingue pas un
-// entier d'un flottant et les nombres JavaScript non plus, si bien que le
-// « 12.0 » du fichier arrive deja comme 12 et s'ecrit « 12 » de lui-meme. Une
-// fonction defensive vivait ici pour ce piege ; le sabotage qui l'a retiree
-// n'a produit aucune divergence, donc elle ne protegeait de rien.
+// Deux arrondis vivent dans ce module — l'avancement d'une exigence et la
+// moyenne du programme — et tous deux passent par `arrondi_python`, qui
+// arrondit au pair : 12,5 donne 12, la ou `Math.round` donne 13. Un avancement
+// tombe sur un demi exact des que le rapport est simple, et les reponses
+// figees des tests suivent l'arrondi au pair.
 
 /** Volume que la prescription represente, dans l'unite du bareme. */
 export function volume_exige(baremes, exigence) {
@@ -47,11 +40,10 @@ export function prescription(baremes, exigence) {
 }
 
 /**
- * Un palier sous sa forme lisible — jumeau de `Palier.resume()`.
+ * Un palier sous sa forme lisible.
  *
- * Cote Python c'est une methode de la dataclass ; les paliers JavaScript sont
- * des objets simples, d'ou une fonction. Elle vit ici plutot que recopiee dans
- * chaque ecran qui affiche un palier.
+ * Les paliers sont des objets simples, d'ou une fonction. Elle vit ici plutot
+ * que recopiee dans chaque ecran qui affiche un palier.
  */
 export function resume_palier(palier) {
   if (!palier) return null;
@@ -97,9 +89,7 @@ export function etat_exigence(baremes, exigence, niveaux, variantes = {}) {
     hors_atteinte: requis === null,
     atteint: Boolean(requis && acquis && acquis >= requis),
     // Borne a 100 % : depasser le niveau requis remplit l'exigence, ca ne fait
-    // pas deborder la barre. `arrondi_python` et non `Math.round` — Python
-    // arrondit 12,5 a 12, JavaScript a 13, et un avancement tombe exactement
-    // sur un demi des que le rapport est simple.
+    // pas deborder la barre. Arrondi au pair (voir en tete du module).
     avancement: requis ? Math.min(100, arrondi_python((100 * (acquis || 0)) / requis)) : 0,
     restant: requis ? Math.max(0, requis - (acquis || 0)) : null,
     // Joue sous une variante : dit, sans toucher a l'avancement.
@@ -163,8 +153,8 @@ export function etat_programme(baremes, cle, programme, niveaux, variantes = {})
 /**
  * Associe chaque libelle de seance du programme a une seance jouable.
  *
- * Simple lecture du lien que `synchroniser_seances` a ecrit dans le programme,
- * cote poste fixe. C'etait auparavant une heuristique par recouvrement
+ * Simple lecture du lien que le programme declare (`seances`, une donnee de
+ * `programmes.json`). C'etait auparavant une heuristique par recouvrement
  * d'exercices, rejouee a chaque affichage : elle pouvait changer d'avis en
  * silence, et rendait null des que le recouvrement etait nul.
  */
@@ -180,7 +170,7 @@ export function liaison_seances(programme, catalogue_seances) {
 }
 
 //: Sept jours **depuis la premiere seance du cycle**, et non une semaine du
-//: calendrier — voir `semaine_du_programme` cote Python. En minutes : les
+//: calendrier — voir `semaine_du_programme`. En minutes : les
 //: instants sont comptes en minutes d'horloge murale (voir `_lire_date`).
 const DUREE_CYCLE = 7 * 24 * 60;
 const TOURS_MAX = 3;
@@ -203,9 +193,9 @@ const MOTIF_DATE = /^(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{1,2})$/;
  * null si elle est illisible.
  *
  * **En `Date.UTC` et jamais en heure locale** : la base stocke l'heure murale
- * sans fuseau, et le Python compte en instants naifs. En heure locale, une
- * semaine qui traverse le changement d'heure durerait 167 ou 169 heures, et
- * le seuil des sept jours divergerait d'une heure entre les deux cotes.
+ * sans fuseau, et c'est en heure murale que se comptent les sept jours. En
+ * heure locale, une semaine qui traverse le changement d'heure durerait 167 ou
+ * 169 heures, et le seuil des sept jours se decalerait d'une heure.
  */
 function _lire_date(texte) {
   const m = MOTIF_DATE.exec(texte ?? "");
@@ -213,8 +203,8 @@ function _lire_date(texte) {
   const [annee, mois, jour, heure, minute] = [m[3], m[2], m[1], m[4], m[5]].map(Number);
   const ms = Date.UTC(annee, mois - 1, jour, heure, minute);
   const d = new Date(ms);
-  // `Date.UTC` reporte un 31/02 au 3 mars sans rien dire, la ou `strptime`
-  // refuse : on relit pour refuser aussi.
+  // `Date.UTC` reporte un 31/02 au 3 mars sans rien dire : on relit pour
+  // refuser une date impossible.
   if (
     d.getUTCFullYear() !== annee || d.getUTCMonth() !== mois - 1 ||
     d.getUTCDate() !== jour || d.getUTCHours() !== heure || d.getUTCMinutes() !== minute
@@ -236,10 +226,34 @@ function _ecrire_date(minutes) {
 /**
  * Ou en est la semaine du programme : ses cases, la suivante, la serie.
  *
- * Jumeau de `semaine_du_programme` (progression/programmes.py), dont la
- * docstring porte la regle. Meme divergence d'API que le reste du module : le
- * programme arrive en argument, et `maintenant` est **obligatoire** — une
- * date au format de la base, que l'appelant fabrique avec `horodatage()`.
+ * **Les cases** sont les libelles du programme dans leur ordre, repetes
+ * `tours` fois (Push, Pull, Jambes, Push, Pull, Jambes). On les remplit en
+ * rejouant l'historique **dans l'ordre chronologique** — par identifiant, les
+ * dates en `JJ/MM/AAAA` ne se triant pas :
+ *
+ * - une seance abandonnee ne compte pas, une seance hors programme non plus ;
+ * - la premiere seance ouvre un cycle de sept jours ; une seance qui tombe
+ *   **a sept jours pile ou apres** le clot comme rate et en ouvre un autre ;
+ * - une seance coche **la premiere case vide de son libelle**, pas la case
+ *   attendue : faire Jambes avant Pull ne doit rien couter, l'ordre ne sert
+ *   qu'a ranger les cases et a proposer la suivante. Une seance de plus que
+ *   ce que le cycle demande pour son libelle est ignoree — elle n'ouvre rien ;
+ * - un cycle complet se clot comme reussi, et la seance d'apres en ouvre un.
+ *
+ * **Le cycle montre** est le dernier, tant que ses sept jours courent —
+ * complet ou non. Passe ce delai, la semaine « demarre a ta prochaine
+ * seance » : cases vides, `debut` a null.
+ *
+ * **La serie** compte les cycles reussis d'affilee. Le cycle en cours, s'il
+ * est incomplet, ne compte pas et ne casse rien ; un cycle rate la casse, et
+ * une semaine entiere sans aucune seance aussi — un cycle doit commencer
+ * moins de sept jours apres la fin du precedent pour s'y enchainer.
+ *
+ * Rien n'est stocke : tout se relit dans l'historique, ce qui rend le calcul
+ * **retroactif** — passer de 3 a 6 seances relit les cycles passes avec six
+ * cases. Le programme arrive en argument, et `maintenant` est
+ * **obligatoire** — une date au format de la base, que l'appelant fabrique
+ * avec `horodatage()` —, pour que deux appels rendent le meme verdict.
  *
  * Remplace `prochaine_seance` : avec des cases a l'ecran, « la seance apres la
  * derniere faite » aurait contredit la premiere case vide.

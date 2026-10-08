@@ -1,21 +1,12 @@
 // La machine a etats d'une seance.
 //
 // Meme convention que landmarks.js, compteur.js et detections.js : les noms
-// sont ceux du Python, en snake_case, contrairement a l'usage JavaScript.
-// C'est ce qui permet de lire les deux implementations cote a cote et au
-// harnais d'apparier les methodes par leur nom, sans table de correspondance
-// qui pourrait deriver.
+// sont en snake_case, contrairement a l'usage JavaScript. Ne rien renommer :
+// les reponses figees des tests designent les methodes par leur nom.
 //
-// Le Python fait autorite : un ecart est un bug d'ici jusqu'a preuve du
-// contraire. `python -m scripts.generer_scenarios` joue des suites de
-// commandes horodatees sur les vraies seances et releve l'etat apres chaque
-// pas ; `node scripts/comparer_seances.mjs` rejoue les memes pas ici et diffe.
-//
-// Ce qui n'est PAS porte, volontairement : `exporter_configuration`,
-// `exporter_resultats`, `objectifs_reussis` et `appliquer_progression`. Toutes appellent `progression/`, qui
-// reste en Python jusqu'a l'etape 4 du portage. Les methodes correspondantes
-// sont absentes plutot que vides — une methode qui ment est pire qu'une
-// methode qui manque.
+// `node scripts/comparer_seances.mjs` rejoue des suites de commandes
+// horodatees sur les vraies seances, releve l'etat apres chaque pas et le
+// compare a des reponses figees.
 
 import { est_cible_manuelle } from "./cible_manuelle.js";
 
@@ -201,14 +192,14 @@ export class BlocExercice {
   }
 }
 
-//: Comment annoncer un bloc selon sa place dans la seance. Memes valeurs
-//: qu'en Python : ce sont des cles du vocabulaire ferme d'`annonces.js`.
 //: Phases ou l'on peut passer a la variante plus facile du bloc courant :
 //: avant la premiere serie, pendant l'effort, et pendant la recuperation qui
 //: suit une serie. Pas pendant le repos entre deux exercices : le bloc courant
 //: y est deja fini.
 export const PHASES_VARIANTE = ["preparation", "exercice", "recuperation_serie"];
 
+//: Comment annoncer un bloc selon sa place dans la seance. Ce sont des cles
+//: du vocabulaire ferme d'`annonces.js`.
 export const AMORCES_PAR_POSITION = {
   premier: "premier_exercice",
   dernier: "dernier_exercice",
@@ -232,8 +223,8 @@ export class Circuit {
     // pas y reintroduire de `Date.now()` direct, c'est la condition pour
     // qu'une seance de 45 minutes se rejoue en quelques millisecondes.
     //
-    // Secondes et non millisecondes, comme `time.monotonic()` : les durees des
-    // blocs (`repos_apres`, `duree`) sont en secondes des deux cotes.
+    // Secondes et non millisecondes : les durees des blocs (`repos_apres`,
+    // `duree`) sont en secondes.
     this.maintenant = () => performance.now() / 1000;
     this.debut = this.maintenant();
 
@@ -299,12 +290,12 @@ export class Circuit {
     return this.exercices[this.index_exercice];
   }
 
-  // Methode et non accesseur, comme en Python — la seule de cette famille de
-  // lectures a l'etre.
+  // Methode et non accesseur — la seule de cette famille de lectures a
+  // l'etre, parce qu'elle prend le bloc en argument.
   /**
    * Comment annoncer ce bloc, selon sa place dans la seance.
    *
-   * Jumeau d'`amorce_annonce` : « le premier exercice sera » a l'entree,
+   * « Le premier exercice sera » a l'entree,
    * « pour finir » sur le dernier bloc, « prochain exercice » ailleurs. La
    * comparaison est d'**identite** et non d'index, deux blocs pouvant porter
    * le meme exercice.
@@ -325,8 +316,8 @@ export class Circuit {
   }
 
   get poids() {
-    // Se protege de `bloc_actuel` nul comme ses voisines : `main.py` lit ce
-    // champ a chaque image, et une exception y gele le flux video.
+    // Se protege de `bloc_actuel` nul comme ses voisines : `payload_etat` lit
+    // ce champ a chaque image, et une exception y gele le flux video.
     if (this.bloc_actuel === null) return 0;
     return this.bloc_actuel.poids;
   }
@@ -361,9 +352,8 @@ export class Circuit {
   }
 
   get duree_totale() {
-    // `int()` en Python tronque vers zero, ce que fait `Math.trunc` et **pas**
-    // `Math.floor` : les deux ne different que pour un negatif, qu'une horloge
-    // qui recule produirait.
+    // Tronque vers zero : `Math.trunc` et **pas** `Math.floor`, les deux ne
+    // differant que pour un negatif, qu'une horloge qui recule produirait.
     return Math.trunc(this.maintenant() - this.debut);
   }
 
@@ -520,8 +510,8 @@ export class Circuit {
     cible.temps_maintien = 0;
     cible.temps_restant_precedent = null;
     for (const nom of CHAMPS_TEMPORELS) {
-      // `delattr` cote Python : l'attribut doit disparaitre, pas valoir
-      // undefined — `hasattr` et l'operateur `in` doivent repondre faux.
+      // L'attribut doit disparaitre, pas valoir undefined : l'operateur `in`
+      // doit repondre faux.
       if (nom in cible) delete cible[nom];
     }
   }
@@ -694,8 +684,7 @@ export class Circuit {
    *
    * **Le bloc repart a la serie 1**, avec la cible de la variante. Les series
    * deja faites restent enregistrees sous le nom de l'original (`abandons`).
-   * Leve si `exercice` n'est pas celui que `variante_possible` nomme, comme
-   * le Python.
+   * Leve si `exercice` n'est pas celui que `variante_possible` nomme.
    */
   passer_a_la_variante(exercice, { poids, series, repetitions, duree }) {
     const attendu = this.variante_possible();
@@ -892,11 +881,10 @@ export class Circuit {
 }
 
 /**
- * Construit un circuit depuis la meme definition JSON que le Python.
+ * Construit un circuit depuis la definition JSON d'une seance.
  *
- * Jumeau partiel de `session.seances.construire_circuit` : il valide les
- * memes choses, mais ne connait le catalogue que par la table qu'on lui
- * passe — c'est `preparer_demo` qui l'exporte, et la demo qui le charge.
+ * Ne connait le catalogue que par la table qu'on lui passe : le `Circuit` ne
+ * resout pas lui-meme les noms d'exercice.
  */
 export function construire_circuit(blocs, catalogue) {
   if (!blocs || !blocs.length) throw new Error("Au moins un exercice est requis");

@@ -364,9 +364,8 @@ export function enregistrer_seance(
       mode: exercice.mode ?? null,
       duree: exercice.duree ?? 0,
       commentaire: exercice.commentaire ?? "",
-      // Les cibles retombent sur le realise quand elles ne sont pas fournies,
-      // exactement comme cote Python : une seance jouee sans objectif ne doit
-      // pas se relire comme un echec.
+      // Les cibles retombent sur le realise quand elles ne sont pas fournies :
+      // une seance jouee sans objectif ne doit pas se relire comme un echec.
       series_cibles: exercice.series_cibles ?? exercice.series,
       repetitions_cibles: exercice.repetitions_cibles ?? 0,
       duree_cible: exercice.duree_cible ?? exercice.duree ?? 0,
@@ -384,8 +383,8 @@ export function enregistrer_seance(
         repetitions: serie.repetitions ?? 0,
         poids: serie.poids ?? 0,
         duree: serie.duree ?? 0,
-        // Stocke en 0/1 comme en SQLite, relu en booleen : c'est la forme
-        // qu'un export doit conserver pour rester relisable par le Python.
+        // Stocke en 0/1, relu en booleen : c'est la forme des sauvegardes
+        // existantes, qu'un import doit continuer de relire.
         completee: serie.completee ? 1 : 0,
       });
     }
@@ -539,7 +538,7 @@ export function recuperer_ancrages(base, utilisateur_id) {
       date: a.date,
       apres_seance_id: a.apres_seance_id || 0,
       raison: a.raison || "",
-      // L'identifiant fait partie du releve cote Python : c'est lui que
+      // L'identifiant fait partie du releve : c'est lui que
       // `supprimer_ancrage` prend en argument depuis l'ecran des records.
       id: a.id,
     };
@@ -594,10 +593,8 @@ export function supprimer_ancrages(base, nom_exercice, utilisateur_id) {
 /**
  * Enregistre une seance editee ici.
  *
- * Elle **masque** desormais celle du fichier exporte, exactement comme
- * `seances_personnalisees.json` masque le catalogue Python. La difference est
- * qu'on ne peut pas renvoyer le resultat au fichier : un site statique n'a
- * pas de serveur a qui ecrire. C'est le prix assume de pouvoir modifier une
+ * Elle **masque** desormais celle de `seances.json`. On ne peut pas renvoyer
+ * le resultat au fichier : un site statique n'a pas de serveur a qui ecrire. C'est le prix assume de pouvoir modifier une
  * seance depuis l'appareil, et l'ecran doit le rendre visible plutot que de
  * laisser croire que la modification remontera.
  */
@@ -671,7 +668,7 @@ export function importer(texte) {
 }
 
 /**
- * Records et progression de chaque exercice — jumeau de `statistiques_exercices`.
+ * Records et progression de chaque exercice.
  *
  * Dit **ce qui a ete fait** : toutes les series realisees comptent, objectif
  * atteint ou non. Le filtre `completee` qui vivait ici faisait disparaitre une

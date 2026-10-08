@@ -1,13 +1,10 @@
 // L'etat d'une seance en cours.
 //
-// Une fabrique et non une classe : cote Python c'est une `dataclass`, dont
-// l'interet est d'interdire un defaut mutable partage entre deux seances. En
-// JavaScript un objet neuf par appel donne la meme garantie sans ceremonie.
+// Une fabrique et non une classe : un objet neuf par appel interdit qu'un
+// defaut mutable soit partage entre deux seances, sans ceremonie.
 //
-// Le flux video n'est volontairement pas ici (cote Python : `core/flux.py`).
-// Il n'existe pas dans le navigateur, ou c'est la camera de l'appareil qui
-// affiche sa propre image — la frontiere du portage se lit dans ce qui est
-// absent.
+// Le flux video n'est volontairement pas ici : c'est la camera de l'appareil
+// qui affiche sa propre image (`camera.js`).
 
 export function creer_etat() {
   return {

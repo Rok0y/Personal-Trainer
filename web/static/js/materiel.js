@@ -22,9 +22,9 @@
  * reste vide — quelqu'un qui ne coche aucun haltere n'en a pas. Les deux ne
  * veulent pas dire la meme chose.
  */
-//: Bornes d'un poids saisi a la main, jumelles de `core/materiel.py`. Larges
-//: a dessein : il ne s'agit pas de juger ce que quelqu'un souleve, seulement
-//: d'ecarter une faute de frappe qui ferait sortir le bareme de tout sens.
+//: Bornes d'un poids saisi a la main. Larges a dessein : il ne s'agit pas de
+//: juger ce que quelqu'un souleve, seulement d'ecarter une faute de frappe qui
+//: ferait sortir le bareme de tout sens.
 const POIDS_MIN_DECLARABLE = 1;
 const POIDS_MAX_DECLARABLE = 60;
 
@@ -85,12 +85,8 @@ export function normaliser(tables, brut) {
  * rend plus la gamme supposee. La reponse honnete a « avec quoi peut-il charger
  * ce mouvement ? » est parfois « rien », et `normaliser` distingue deja un
  * inventaire non declare d'un inventaire declare vide — effacer la distinction
- * ici la perdait la ou elle compte.
- *
- * Mesure cote Python : avec le repli, qui coche « aucun haltere » recevait quand
- * meme l'echelle supposee, donc `charge_de_test` prenait son milieu — 8 kg au
- * squat. Le test se jouait forcement a vide, et l'ancrage creditait 15 squats au
- * poids du corps du niveau 36 au lieu de 8.
+ * ici la perdait la ou elle compte : qui coche « aucun haltere » recevrait
+ * quand meme l'echelle supposee.
  *
  * Le garde « le bareme reste calculable » a demenage dans
  * `Baremes.echelle_exercice` (paliers.js), seul endroit qui sache si l'exercice
@@ -98,9 +94,9 @@ export function normaliser(tables, brut) {
  */
 export function echelle_disponible(echelles, inventaire, nb_halteres) {
   if (nb_halteres <= 0) return null;
-  // `inventaire` est toujours **normalise** : cote Python, `echelle_disponible`
-  // passe par `materiel_du_profil`, qui appelle `normaliser` — il n'y a donc
-  // jamais de stock absent, seulement un stock par defaut. Court-circuiter ce
+  // `inventaire` est toujours **normalise** (`Baremes` appelle `normaliser`
+  // une fois pour toutes) — il n'y a donc jamais de stock absent, seulement
+  // un stock par defaut. Court-circuiter ce
   // filtre quand rien n'est declare rendait la gamme entiere, alors que le
   // materiel par defaut n'a **qu'un exemplaire** au-dela de 10 kg : un
   // exercice a deux halteres s'arretait a 18 au lieu de 10, et tout le bareme

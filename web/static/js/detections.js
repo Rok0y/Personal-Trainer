@@ -1,19 +1,17 @@
-// Uniquement les fonctions de detection
-// et d'erreur de forme, dans le meme ordre que le Python et sous les memes
-// noms, pour qu'un diff cote a cote reste lisible.
+// Uniquement les fonctions de detection et d'erreur de forme.
 //
-// Ce qui reste cote Python et n'a pas a etre porte : les objets `Exercice`
-// (fiches, consignes, variantes), le catalogue et toute la machine a etats.
-// Ici il n'y a que des fonctions pures `corps -> jeton`.
+// Les objets `Exercice` (fiches, consignes, variantes), le catalogue et la
+// machine a etats vivent ailleurs. Ici il n'y a que des fonctions pures
+// `corps -> jeton`.
 //
 // Les fonctions d'erreur retournent une **cle** de message ou null, jamais
-// une phrase : c'est la convention de core/messages.py, et c'est le serveur
-// qui resout la cle en francais.
+// une phrase : c'est la convention de `messages.js`, qui resout la cle en
+// francais.
 
 import { calculer_angle, calculer_distance } from "./outils.js";
 
-// Seuil de fin resserre de 30 a 20 degres, comme cote Python : « la
-// validation arrive trop tot ».
+// Seuil de fin resserre de 30 a 20 degres : « la validation arrive trop
+// tot ».
 const CURL_FIN = 20;
 
 export function curl_biceps_droit_detection(corps) {
@@ -123,8 +121,7 @@ export function elevation_laterale_detection(corps) {
 // que l'autre (de face, typiquement) : c'est alors la profondeur qui tranche.
 const MARGE_VISIBILITE = 0.1;
 
-// `visibility` est le nom du point MediaPipe brut ; le Python l'appelle
-// `visibilite`, d'ou la seule ligne qui differe entre les deux jumeaux.
+// `visibility` est le nom du champ du point MediaPipe brut.
 function visibilite_bras(coude, poignet) {
   return (coude.visibility + poignet.visibility) / 2;
 }
@@ -153,7 +150,7 @@ function angle_coude_proche(corps) {
 }
 
 // Deux seuils en bas : le premier decide si la pompe compte, le second si
-// elle etait assez profonde. Jumeaux des constantes Python.
+// elle etait assez profonde.
 export const SEUIL_COMPTAGE_POMPE = 120;
 export const SEUIL_PROFONDEUR_POMPE = 100;
 
@@ -167,8 +164,14 @@ export function pompe_detection(corps) {
   return "milieu";
 }
 
-// Les bornes de la position « mains au mur », jumelles des constantes Python
-// (le pourquoi de chaque valeur est la-bas).
+// Les bornes de la position « mains au mur », rapportees au buste. Le poignet
+// ne descend pas plus d'une demi-longueur de buste sous l'epaule (les mains se
+// posent a hauteur de poitrine), ne monte pas plus d'un tiers au-dessus — au-
+// dela, tenues trois secondes, deux mains en l'air ressembleraient au geste qui
+// remet le compteur a zero —, et s'avance d'au moins un cinquieme de buste
+// devant l'epaule : c'est ce qui ecarte un bras qu'on plie debout le long du
+// corps. L'avancee reste basse parce qu'en bas du mouvement, poitrine pres du
+// mur, l'epaule rejoint presque les mains.
 export const HAUTEUR_MUR_MAX = 0.5;
 export const HAUTEUR_MUR_MIN = -0.35;
 export const AVANCEE_MUR_MIN = 0.2;
@@ -198,7 +201,7 @@ export function pompe_mur_detection(corps) {
   return "milieu";
 }
 
-// Jumelle de `pompe_profondeur` : un jeton, pas une faute — le moteur retient
+// Un jeton, pas une faute — le moteur retient
 // s'il a ete vu pendant la descente.
 export function pompe_profondeur(corps) {
   if (angle_coude_proche(corps) < SEUIL_PROFONDEUR_POMPE) return "profond";
@@ -206,8 +209,8 @@ export function pompe_profondeur(corps) {
 }
 
 // Ecart vertical moins ecart horizontal entre le milieu des epaules et celui
-// des hanches : negatif quand le buste est plus couche que debout. Jumelle de
-// `_buste_vertical`, meme comparaison que `_torse_vertical` des gestes.
+// des hanches : negatif quand le buste est plus couche que debout. Meme
+// comparaison que `_torse_vertical` des gestes (`positions.js`).
 function buste_vertical(corps) {
   const epaules_x = (corps.epaule_gauche.x + corps.epaule_droite.x) / 2;
   const epaules_y = (corps.epaule_gauche.y + corps.epaule_droite.y) / 2;
@@ -685,8 +688,7 @@ export function oiseau_erreur_coudes(corps) {
 // Hauteur de la hanche au-dessus du genou, rapportee a celle du tibia. Sans
 // unite, donc independante de la taille de la personne et de sa distance a la
 // camera : environ 1 debout, tend vers 0 quand la hanche arrive a hauteur de
-// genou. Fonction privee, non exportee : le harnais n'apparie que les
-// detections, et sa jumelle Python est `_descente_hanche`.
+// genou. Une mesure et non une detection : elle reste hors de `DETECTIONS`.
 function descente_hanche(hanche, genou, cheville) {
   const tibia = cheville.y - genou.y;
   if (tibia <= 0) return null;
@@ -718,10 +720,10 @@ export function squat_sur_chaise_detection(corps) {
   return "milieu";
 }
 
-// Les deux mesures privees sont exportees sous un nom prefixe pour que
+// Les mesures privees sont exportees sous un nom prefixe pour que
 // instruments.js les reprenne au lieu de les recopier. Elles restent hors de
-// DETECTIONS : le harnais n'apparie que cette table, et elles n'ont pas de
-// jumelle publique cote Python.
+// DETECTIONS, que les tests rejouent en entier : une mesure ne rend pas de
+// jeton.
 export {
   appui_sur_le_bras as _appui_sur_le_bras,
   descente_hanche as _descente_hanche,
@@ -738,7 +740,8 @@ export {
 };
 
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par
-// la couche de seance. Les cles reprennent exactement les noms Python.
+// la couche de seance. Les cles sont les noms que `mouvements.json` designe
+// (`detection`, `erreurs`, `amplitude`) : renommer une fonction casse ce lien.
 export const DETECTIONS = {
   curl_biceps_droit_detection,
   coude_avance_curl_droit,

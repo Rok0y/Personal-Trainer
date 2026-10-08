@@ -35,9 +35,12 @@ export function bras_en_x(corps) {
   );
 }
 
-// Le buste debout : les epaules nettement au-dessus des hanches. Voir la
-// docstring Python pour le pourquoi — allonge, bras tendus est la position
-// haute du developpe couche, et le geste de remise a zero y effacait la serie.
+// Le buste debout : les epaules nettement au-dessus des hanches. On compare
+// l'ecart vertical entre le milieu des epaules et celui des hanches a leur
+// ecart horizontal : debout, le premier domine ; allonge, le second. Aucun
+// seuil a regler, et l'orientation de la camera n'y change rien. Pourquoi
+// l'exiger : allonge, bras tendus est la position haute du developpe couche,
+// et le geste de remise a zero y effacait la serie.
 export function _torse_vertical(corps) {
   const epaules_x = (corps.epaule_gauche.x + corps.epaule_droite.x) / 2;
   const epaules_y = (corps.epaule_gauche.y + corps.epaule_droite.y) / 2;
@@ -53,7 +56,9 @@ export function deux_bras_leves(corps) {
 // Un seul bras leve, debout : +1 a droite, -1 a gauche. L'autre poignet doit
 // etre **sous son epaule** et non simplement « pas leve » : on passe par un
 // seul bras en levant les deux, et la tenue doit se couper des que le second
-// commence a monter. Voir la docstring Python.
+// commence a monter. C'est aussi ce qui ecarte le developpe epaule et
+// l'extension triceps, ou les deux poignets sont en haut ; le buste debout
+// ecarte ce qui se fait allonge (planche laterale bras leve, developpe couche).
 export function seul_bras_droit_leve(corps) {
   return (
     bras_droit_leve(corps) &&

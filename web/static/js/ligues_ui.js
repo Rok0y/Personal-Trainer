@@ -1,15 +1,10 @@
-// L'habillage des ligues, cote navigateur.
+// L'habillage des ligues.
 //
 // Meme decoupage que `ressentis_ui.js` : ce module **ne decide rien**. La
-// regle — quel rang, quelle division, combien d'XP — vit dans `ligues.js` et
-// dans `progression/ligues.py`. Ici il n'y a que la traduction d'une ligue en
-// attributs de style, et le balisage des trois elements que les deux
-// applications montrent : le badge, la jauge d'avancement, le jalon de montee.
-//
-// Le jumeau Jinja est `web/templates/_ligue.html`, qui rend exactement le meme
-// balisage pour les pages du poste fixe. Les deux ne peuvent pas partager de
-// code — l'un rend cote serveur, l'autre cote client — mais ils partagent
-// `ligues.css`, et c'est la que vit l'apparence.
+// regle — quel rang, quelle division, combien d'XP — vit dans `ligues.js`.
+// Ici il n'y a que la traduction d'une ligue en attributs de style, et le
+// balisage des trois elements que les ecrans montrent : le badge, la jauge
+// d'avancement, le jalon de montee. L'apparence vit dans `ligues.css`.
 
 /**
  * Les variables que `ligues.css` lit : la couleur, son reflet, et la division.

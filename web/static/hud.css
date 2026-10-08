@@ -1,25 +1,12 @@
 /* ==========================================================================
-   Le HUD de seance, partage par les deux applications.
+   Le HUD de seance.
 
-   Il vivait en entier dans le <style> de `templates/index.html`, et
-   `app/index.html` en avait sa propre version — palette differente, typo
-   differente, disposition differente. Le portage web a pour objectif que
-   l'application se comporte **exactement** pareil des deux cotes : deux
-   feuilles de style rendaient cet objectif intenable, puisque toute
-   correction faite d'un cote devait etre refaite de l'autre, et qu'aucun
-   mecanisme ne le signalait. Meme raisonnement que `_navigation.html`, la
-   barre d'onglets qui etait copiee dans quatre pages.
+   Le HUD est un calque sur une image plein ecran : il n'a besoin que de la
+   palette (`palette.css`) et ne pose aucune regle de document, a l'exception
+   du `body` ci-dessous.
 
-   Lier `base.css` depuis l'application aurait ete une erreur — c'est une mise
-   en page de *site*, avec ses conteneurs et ses largeurs fixes. Le HUD, lui,
-   est un calque sur une image plein ecran : il n'a besoin que de la palette
-   (`palette.css`) et ne pose aucune regle de document, a l'exception du
-   `body` ci-dessous, que les deux pages veulent identique.
-
-   Les deux pages ne different que par la **source de l'image** : un flux MJPEG
-   servi par Flask (`<img class="video">`) sur le poste fixe, un `<canvas>`
-   alimente par la camera de l'appareil dans le navigateur. Les deux portent la
-   classe `.video`, et tout le reste du calque les ignore.
+   L'image est un `<canvas>` alimente par la camera de l'appareil ; il porte
+   la classe `.video`, et tout le reste du calque l'ignore.
    ========================================================================== */
 
 * {

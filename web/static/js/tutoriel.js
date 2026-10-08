@@ -21,8 +21,7 @@
 //     seulement mal rangee, elle est inverifiable.
 //
 // (2) **Il rend des cles, jamais des phrases.** Les textes vivent dans
-//     `audio/annonces.py` et arrivent par `donnees/sons.json`, qui porte a la
-//     fois le `.wav` et le libelle. Le bandeau affiche donc **exactement** ce
+//     `donnees/sons.json`, qui porte a la fois le `.wav` et le libelle. Le bandeau affiche donc **exactement** ce
 //     que la voix prononce, sans qu'aucune phrase soit ecrite deux fois.
 
 /**

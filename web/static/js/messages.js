@@ -44,13 +44,11 @@ export const MESSAGES = {
 // comparant des chaines : un debutant n'a rien a faire du vocabulaire interne
 // du detecteur.
 //
-// ATTENTION — `repos` est defini **deux fois** cote Python (« Position
-// relachee » pour le jeton de mouvement, puis « Repos » pour l'etape de
-// circuit), et le dernier l'emporte. Reproduit tel quel, parce que le Python
-// fait autorite et qu'un ecart ici ferait echouer le harnais pour une raison
-// qui n'a rien a voir avec le portage. C'est un defaut a corriger des deux
-// cotes en meme temps, pas ici tout seul : un gainage relache affiche
-// aujourd'hui « Repos », ce qui se lit comme une pause de seance.
+// ATTENTION — `repos` sert **deux fois** : jeton de mouvement (une position
+// relachee) et etape de circuit. Une seule cle, donc un seul libelle,
+// « Repos » : un gainage relache affiche aujourd'hui « Repos », ce qui se lit
+// comme une pause de seance. C'est un defaut connu ; le corriger change les
+// reponses figees des tests, et doit se faire expres, pas en passant.
 export const LIBELLES_ETAPE = {
   debut: "Position de départ",
   milieu: "En mouvement",

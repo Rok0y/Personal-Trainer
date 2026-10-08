@@ -54,13 +54,13 @@ export function fichier(texte) {
   return `${normaliser_nom(texte)}.wav`;
 }
 
-//: Au-dela, la partie chiffree est muette. Meme valeur qu'en Python, et meme
-//: raison : le bareme se terminant par une tranche ouverte, il n'existe aucun
-//: plafond a atteindre, et une annonce sans son nombre reste utile.
+//: Au-dela, la partie chiffree est muette : le bareme se terminant par une
+//: tranche ouverte, il n'existe aucun plafond a atteindre, et une annonce sans
+//: son nombre reste utile.
 export const NOMBRE_MAXIMAL_DIT = 60;
 
-//: Les facons d'annoncer un mouvement, selon sa place dans la seance. Meme
-//: vocabulaire ferme qu'en Python, et c'est l'appelant qui choisit.
+//: Les facons d'annoncer un mouvement, selon sa place dans la seance. Un
+//: vocabulaire ferme, et c'est l'appelant qui choisit.
 export const AMORCES_EXERCICE = [
   "prochain_exercice",
   "premier_exercice",
@@ -70,11 +70,11 @@ export const AMORCES_EXERCICE = [
 /**
  * Le fichier d'une brique du vocabulaire fixe, ou `null` si elle manque.
  *
- * Elle rend `null` la ou le Python leve : cote navigateur, une table
- * incomplete peut venir d'un `sons.json` plus ancien que le code — un cache
- * qui n'a pas expire —, et une exception y arreterait la boucle d'affichage.
- * `scripts/verifier_annonces.py` est ce qui attrape la vraie faute de frappe,
- * a froid, plutot que la boucle camera a chaud.
+ * Elle rend `null` plutot que de lever : une table incomplete peut venir d'un
+ * `sons.json` plus ancien que le code — un cache qui n'a pas expire —, et une
+ * exception arreterait la boucle d'affichage. `scripts/verifier_annonces.mjs`
+ * est ce qui attrape la vraie faute de frappe, a froid, plutot que la boucle
+ * camera a chaud.
  */
 export function brique(briques, cle) {
   return (briques ?? {})[cle] ?? null;
@@ -84,9 +84,8 @@ export function brique(briques, cle) {
  * L'entier qu'on sait prononcer, ou `null`. Point d'entree unique du plafond.
  *
  * `Number.isInteger` refuse 17,5 — un haltere declarable qui n'a aucune prise.
- * Le Python faisait `int(17.5)`, donc annoncait « 17 kilos » : c'est ce cote-ci
- * qui avait raison, et la divergence est passee inapercue tant que le harnais
- * ne tirait que des entiers.
+ * Tronquer annoncerait « 17 kilos », une charge fausse : mieux vaut taire le
+ * nombre.
  */
 export function nombre_dit(valeur) {
   const entier = Number(valeur);
@@ -98,7 +97,7 @@ export function nombre_dit(valeur) {
 /**
  * Le nombre seul, s'il est enregistre. Sinon rien.
  *
- * Sans appelant de production des deux cotes — les charges sont devenues des
+ * Sans appelant de production — les charges sont devenues des
  * phrases entieres —, conservee comme forme « sequence » du nombre.
  */
 export function sequence_nombre(valeur) {
@@ -111,16 +110,17 @@ export function sequence_nombre(valeur) {
  * morceaux : `prochain_exercice.wav` + `curl_biceps_droit.wav` donne
  * `prochain_exercice_curl_biceps_droit.wav`.
  *
- * C'est le pendant, cote navigateur, de la composition de texte que fait le
- * Python. L'invariant qui autorise les deux chemins : `normaliser_nom`
+ * C'est le pendant de la composition de texte que fait la feuille de prise de
+ * son (`lister_annonces.mjs`). L'invariant qui autorise les deux chemins :
+ * `normaliser_nom`
  * reduit toute suite de separateurs a un `_` unique et ne change plus rien a
  * un nom deja normalise, donc coudre les noms revient a coudre les textes.
  *
  * Deux refus, qui ne disent pas la meme chose. Un morceau **absent** (`null`,
  * table `briques` plus ancienne que le code) rend `null` : on ne fabrique pas
  * un nom a partir d'un trou. Un morceau **vide** (`.wav` seul, cas d'un nom
- * d'exercice vide) est simplement saute, parce que c'est ce que fait la
- * normalisation du texte cote Python.
+ * d'exercice vide) est simplement saute, parce que c'est ce que donne la
+ * normalisation du texte.
  */
 export function fichier_assemble(...fichiers) {
   if (fichiers.some((morceau) => !morceau)) return null;
@@ -163,9 +163,8 @@ export function sequence_orientation(briques, orientation) {
  * moment precis ou l'on veut agir plutot qu'ecouter. Le critere retenu : on
  * prononce ce qui demande un **geste** pendant le repos, pas ce qui se lit.
  *
- * `nombre_halteres` est injecte — il vient de `materiel.js` cote navigateur,
- * de `session.seances.nombre_halteres` cote Python. Un et deux ne sont pas
- * interchangeables a l'oreille : on ne sort pas la meme chose du placard, et
+ * `nombre_halteres` est injecte — il vient de `materiel.js`. Un et deux ne
+ * sont pas interchangeables a l'oreille : on ne sort pas la meme chose du placard, et
  * aucun ecran regarde de trois metres ne donne cette information.
  *
  * `amorce` est une cle d'`AMORCES_EXERCICE`, choisie par l'appelant selon la

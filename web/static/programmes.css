@@ -1,10 +1,7 @@
 /* ==========================================================================
-   Les programmes, partages par les deux applications.
+   Les programmes.
 
-   Meme decoupage que `hud.css` / `ressentis.css` : la page Flask et
-   l'application du navigateur montrent la meme chose, donc elles l'habillent
-   avec la meme feuille. Le comportement, lui, vit dans `js/programmes.js` —
-   le jumeau de la **lecture** de `progression/programmes.py`.
+   Le comportement vit dans `js/programmes.js`.
 
    Deux regles d'affichage sont portees par ces classes et ne doivent pas etre
    defaites. La **jauge de programme** montre la moyenne des avancements et non

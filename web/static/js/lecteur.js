@@ -47,14 +47,14 @@ const DELAI_CHANGEMENT_SORTIE = 0.3;
 export class Lecteur {
   /**
    * @param {string} dossier  ou trouver les .wav
-   * @param {object} tables   { fichiers, priorites, delais } exporte du Python
+   * @param {object} tables   { fichiers, priorites, delais } de `sons.json`
    */
   constructor(dossier, tables) {
     this.dossier = dossier.replace(/\/$/, "");
     this.fichiers = tables.fichiers ?? {};
     this.priorites = tables.priorites ?? {};
     this.delais = tables.delais ?? {};
-    // Les deux silences, exportes de `audio/lecteur.py`. Les valeurs de repli
+    // Les deux silences, de `sons.json` (`silences`). Les valeurs de repli
     // ne sont pas une seconde source : elles servent le seul cas ou
     // `sons.json` est trop ancien pour les porter, et valent alors zero —
     // c'est-a-dire le comportement d'avant, jamais un reglage invente ici.
@@ -318,7 +318,7 @@ export class Lecteur {
   }
 
   /**
-   * Demande un son. Point d'entree unique, jumeau de `coach(event, valeur)`.
+   * Demande un son. Point d'entree unique.
    *
    * Ne rend pas de promesse de lecture : l'appelant est la boucle image, qui
    * ne doit jamais attendre le son.
@@ -351,7 +351,6 @@ export class Lecteur {
 
   /**
    * Joue une phrase composee de plusieurs fichiers, **comme un seul son**.
-   * Jumeau de `jouer_sequence` dans `audio/lecteur.py`.
    *
    * C'est l'indivisibilite qui compte. Empiler quatre `coach()` d'affilee
    * ordonnerait bien les morceaux — le rang departage les priorites egales —
@@ -368,7 +367,7 @@ export class Lecteur {
     const propres = (fichiers ?? []).filter(Boolean);
     if (!propres.length) return;
 
-    // Meme garde-fou que `coach()`, et sur la meme table exportee du Python :
+    // Meme garde-fou que `coach()`, sur la meme table `delais` :
     // sans lui, une consigne evaluee a chaque image se repete des que la
     // position vacille. C'est le defaut qu'avait la correction de gainage, et
     // il se reproduirait a l'identique sur le guidage de cadrage.

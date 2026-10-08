@@ -1,10 +1,9 @@
 // Les 33 points MediaPipe et leur nom francais.
 //
-// Les noms de ce module et ceux des fonctions de detections.js reprennent
-// exactement ceux du Python, en snake_case, contrairement a l'usage
-// JavaScript : c'est ce qui permet de lire les deux implementations cote a
-// cote et au harnais de comparaison d'apparier les fonctions par leur nom,
-// sans table de correspondance qui pourrait deriver.
+// Les noms de ce module et ceux des fonctions de detections.js sont en
+// snake_case, contrairement a l'usage JavaScript : les donnees et les reponses
+// figees des tests designent les fonctions par leur nom, sans table de
+// correspondance qui pourrait deriver. Ne rien renommer.
 
 export const LANDMARKS = {
   // Visage

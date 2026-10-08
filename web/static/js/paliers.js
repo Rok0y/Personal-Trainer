@@ -91,9 +91,8 @@ export class Baremes {
     this.accessoires = donnees.accessoires;
     this.materiel_par_defaut = donnees.materiel_par_defaut;
     //: L'inventaire est normalise ici, une fois pour toutes : `null` veut
-    //: dire « rien de declare » et rend le materiel par defaut, exactement
-    //: comme `normaliser(None)` cote Python. Les fonctions d'echelle
-    //: recoivent donc toujours un stock concret, jamais une absence.
+    //: dire « rien de declare » et rend le materiel par defaut. Les fonctions
+    //: d'echelle recoivent donc toujours un stock concret, jamais une absence.
     this.inventaire = normaliser(donnees, materiel);
   }
 
@@ -102,8 +101,7 @@ export class Baremes {
    *
    * Sans `charge_corps`, le poids du corps compte pour 1 kg : seules les
    * repetitions font alors la difference. Avec, il compte pour sa part reelle,
-   * ajoutee a la charge — voir la note de `charge_corps` dans
-   * `progression/paliers.py`.
+   * ajoutee a la charge — voir `charge_corps` dans `docs/reglages.md`.
    */
   volume(series, cible, poids, charge_corps = 0) {
     if (charge_corps) return series * cible * (poids + charge_corps);
@@ -152,10 +150,9 @@ export class Baremes {
   /**
    * La charge est-elle facultative sur ce mouvement chargeable ?
    *
-   * Jumelle de `charge_facultative` (progression/paliers.py). La regle se
-   * declare dans la spec : `poids_min` a 0 veut dire « ce bareme commence au
-   * poids du corps ». Une seconde liste tenue a cote du materiel finirait par
-   * en diverger sans que rien ne le signale.
+   * La regle se declare dans la spec : `poids_min` a 0 veut dire « ce bareme
+   * commence au poids du corps ». Une seconde liste tenue a cote du materiel
+   * finirait par en diverger sans que rien ne le signale.
    *
    * Le nom dit « facultative » et non « au poids du corps » : la fonction ne
    * repond que des mouvements chargeables. Les pompes rendent false alors

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   La carte de programme, partagee par les deux applications.
+   La carte de programme.
 
    Un seul programme y figure — celui qu'on suit en ce moment —, et c'est
    delibere : on n'en suit qu'un a la fois, l'ecran des programmes reste celui
@@ -99,7 +99,7 @@
     padding: 9px 10px; border-radius: 10px; min-width: 0;
     border: 1px solid var(--border-strong); background: var(--glass-strong, transparent);
     color: var(--text); font: inherit; cursor: pointer;
-    /* Le poste fixe met ses boutons en capitales : une case n'est pas un
+    /* Pas de capitales comme sur les boutons : une case n'est pas un
        bouton d'action, elle se lit comme une ligne de liste. */
     text-transform: none; letter-spacing: normal;
 }

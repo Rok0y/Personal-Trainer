@@ -8,13 +8,11 @@
 // arrive**.
 //
 // Ce module rend une **chaine de SVG** et ne touche jamais au document : c'est
-// ce qui lui permet de servir a une page Flask comme a un ecran de
-// l'application, et ce qui le rend verifiable sans navigateur.
+// ce qui le rend verifiable sans navigateur.
 //
-// La seule chose qui differe entre les deux appelants est le **lien d'un
-// point** : le poste fixe pointe vers `/historique/<id>`, l'application n'a pas
-// d'URL a offrir. D'ou `lien`, une fonction qui peut rendre null — les points
-// deviennent alors de simples groupes, sans cible cliquable.
+// Le **lien d'un point** est injecte : `lien`, une fonction qui peut rendre
+// null — les points deviennent alors de simples groupes, sans cible
+// cliquable.
 
 //: Geometrie du trace, en unites du viewBox. Le SVG se met a l'echelle tout
 //: seul : ces valeurs ne sont pas des pixels et n'ont pas a suivre la taille

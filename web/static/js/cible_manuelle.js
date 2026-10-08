@@ -4,15 +4,14 @@
 // Elles vivaient dans `objectifs.js`, d'ou `circuit.js` devrait les importer
 // pour resoudre le drapeau a l'export — sauf que `niveaux.js` importe deja
 // `circuit.js`, et qu'un import d'`objectifs.js` depuis `circuit.js` fermerait
-// le cycle. Le Python contourne le meme cycle par un import differe en corps
-// de fonction ; les modules ES n'ont pas cet echappatoire, un cycle y laisse
+// le cycle. Les modules ES n'ont pas d'echappatoire : un cycle y laisse
 // une liaison non initialisee et la page meurt au chargement avec un
 // `ReferenceError` qui ne nomme aucun des deux fichiers fautifs.
 //
 // Ces fonctions ne dependent de rien — ni bareme, ni historique, ni profil
 // connecte : les sortir ici est donc gratuit, et ce module est desormais une
 // **feuille** que n'importe qui peut importer sans y penser. `objectifs.js`
-// les re-exporte pour que les appelants existants, harnais compris, ne voient
+// les re-exporte pour que les appelants existants, tests compris, ne voient
 // aucune difference.
 //
 // Rappel de la regle qu'elles portent : les seances sont partagees entre
@@ -46,8 +45,7 @@ export function profils_cible_manuelle(valeur) {
 
 function _valeur_cible_manuelle(bloc) {
   // Les blocs sont soit des dictionnaires (JSON des seances), soit des
-  // `BlocExercice` : l'acces est le meme en JavaScript, contrairement au
-  // Python qui doit distinguer les deux.
+  // `BlocExercice` : l'acces est le meme pour les deux.
   return bloc.cible_manuelle ?? null;
 }
 

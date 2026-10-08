@@ -1,28 +1,26 @@
 // Jouer une variante plus facile a la
 // place d'un mouvement, et en revenir.
 //
-// Meme convention que le reste du portage : noms du Python, en snake_case, et
-// le Python fait autorite. `python -m scripts.generer_variantes` ecrit l'oracle,
-// `node scripts/comparer_variantes.mjs` le rejoue ici et diffe.
+// `node scripts/comparer_variantes.mjs` rejoue des questions figees et compare
+// aux reponses figees.
 //
-// Les deux regles a retenir sont celles du module Python. **Une substitution
-// est une preference du profil**, jamais une donnee de seance : les seances
-// sont partagees. Et **elle ne doit jamais atteindre le fichier des seances**
+// Deux regles a retenir. **Une substitution est une preference du profil**,
+// jamais une donnee de seance : les seances sont partagees. Et **elle ne doit jamais atteindre le fichier des seances**
 // — `appliquer_au_circuit` ne s'appelle que sur le chemin de jeu (`demarrer()`),
 // l'affichage interroge `substitution` sans rien reecrire.
 //
 // Le bareme est injecte (`Baremes`), comme dans `objectifs.js` : il porte
 // l'unite de chaque exercice et `niveau_pour`, et c'est lui qui connait le
-// materiel du profil. Les seuils de retour viennent de `baremes.json`
-// (`variantes.retour`), exportes tels quels de `reglages.json`.
+// materiel du profil. Les seuils de retour viennent de `reglages.json`
+// (`variantes.retour`), via `composer_baremes`.
 
 const MODE_ECHAUFFEMENT = "echauffement";
 
 /**
  * La table d'un profil sous une forme toujours exploitable.
  *
- * Il n'existe aucune migration cote JavaScript : un profil anterieur ou venu
- * de SQLite n'a pas le champ, et « pas de champ » veut dire « aucune variante »
+ * Il n'existe aucune migration : un profil anterieur ou importe de l'ancienne
+ * base n'a pas le champ, et « pas de champ » veut dire « aucune variante »
  * — meme rattrapage que `tutos_vus`.
  */
 export function normaliser(variantes) {
@@ -43,8 +41,8 @@ export function catalogue_depuis(mouvements) {
     catalogue[nom] = {
       variante_facile: fiche.variante_facile ?? null,
       variante_difficile: fiche.variante_difficile ?? null,
-      // `mouvements.json` nomme la fonction de detection ; la fiche Python
-      // dit seulement si elle existe. C'est cette seconde forme qu'on garde.
+      // `mouvements.json` nomme la fonction de detection ; il suffit ici de
+      // savoir si elle existe.
       analyse_la_pose: fiche.analyse_la_pose ?? Boolean(fiche.detection),
     };
   }
@@ -77,7 +75,7 @@ function _jouable(nom, catalogue) {
 export class Variantes {
   /**
    * `niveaux` est une instance de `Niveaux` : `montees` en tire
-   * `niveau_prouve_par`, la lecture d'une ligne que le Python importe.
+   * `niveau_prouve_par`, la lecture d'une ligne d'historique.
    */
   constructor(baremes, seuils_retour = {}, niveaux = null) {
     this.baremes = baremes;
@@ -147,8 +145,8 @@ export class Variantes {
   }
 
   /**
-   * La table apres « pour `original`, je joue `joue` ». Leve sur un refus,
-   * comme le Python : point d'entree unique de l'ecriture.
+   * La table apres « pour `original`, je joue `joue` ». Leve sur un refus :
+   * point d'entree unique de l'ecriture.
    */
   definir(variantes, original, joue, catalogue) {
     const nouvelles = normaliser(variantes);
@@ -168,7 +166,7 @@ export class Variantes {
 
   /**
    * Cette ligne d'historique prouve-t-elle la performance de retour ? Lue sur
-   * la seance et jamais sur le record, comme le Python — sinon un retour en
+   * la seance et jamais sur le record — sinon un retour en
    * arriere remonterait tout seul a la seance suivante.
    */
   retour_prouve_par(ligne) {
@@ -182,8 +180,7 @@ export class Variantes {
   /**
    * La table apres cette seance, et les crans qu'elle a fait monter :
    * `[table, [{original, depuis, vers}]]`. Un cran par seance et par cle ;
-   * rien sur une seance abandonnee. Jumelle de `montees` dans
-   * `progression/variantes.py`.
+   * rien sur une seance abandonnee.
    */
   montees(variantes, seance, catalogue) {
     let table = normaliser(variantes);
@@ -209,8 +206,8 @@ export class Variantes {
 
   /**
    * Ce qu'il faut proposer sous chaque ligne d'historique :
-   * `{seance_id: {nom: {sens, original, vers}}}`. Memes regles que le Python
-   * — plus facile sous un echec au palier 1 ou apres une bascule en seance,
+   * `{seance_id: {nom: {sens, original, vers}}}`. Plus facile sous un echec
+   * au palier 1 ou apres une bascule en seance,
    * et seulement sur la derniere seance ou l'exercice apparait. « Plus dur »
    * n'est plus propose : `montees` le fait d'elle-meme.
    */

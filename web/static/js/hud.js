@@ -546,7 +546,8 @@ function afficher_maintien(progression, termine) {
  * Peint tout le HUD a partir d'un etat de seance.
  *
  * `donnees` est l'objet que `payload_etat` fabrique : c'est **le** contrat de
- * l'ecran, et y ajouter un champ se fait des deux cotes de ce contrat.
+ * l'ecran, et y ajouter un champ se fait des deux cotes de ce contrat
+ * (`payload_etat` qui l'ecrit, `peindre_hud` qui le lit).
  */
 export function peindre_hud(donnees) {
   actualiser_commandes(
