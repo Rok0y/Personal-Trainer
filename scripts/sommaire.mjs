@@ -9,19 +9,30 @@
 // Deux usages :
 //
 //     node scripts/sommaire.mjs                  verifie (joue par tester.mjs)
-//     node scripts/sommaire.mjs <site> [commit]  ecrit <site>/index.html
+//     node scripts/sommaire.mjs <site> [commit]  ecrit <site>/sommaire.html
+//                                                et <site>/index.html
+//
+// Le sommaire a **sa propre adresse**, `sommaire.html`, en plus de la racine.
+// La racine a longtemps ete une redirection vers la demo, et un navigateur qui
+// l'a gardee en cache y renvoie encore : une adresse neuve n'a jamais ete mise
+// en cache, donc elle montre toujours la bonne page. C'est celle a mettre en
+// favori.
 //
 // La verification echoue sur une page sans titre ou sans description : c'est
 // ce qui garantit que chaque carte du sommaire dit ce qu'on trouve derriere.
 // L'ecriture est faite par la CI, sur la copie `_site` publiee ; en local,
-// `node scripts/sommaire.mjs web/static` ecrit un `web/static/index.html` que
-// Git ignore.
+// `node scripts/sommaire.mjs web/static` ecrit ces deux fichiers, que Git
+// ignore.
 
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
+
+//: Les fichiers que le script ecrit lui-meme : ils ne sont pas des pages du
+//: sommaire.
+const FICHIERS_DU_SOMMAIRE = ["index.html", "sommaire.html"];
 
 //: Le nom et l'ordre des sections connues. Un dossier absent d'ici apparait
 //: quand meme, sous son propre nom et apres celles-ci : la table ne fait que
@@ -45,7 +56,7 @@ function pages(racine) {
   parcourir(racine);
   return trouvees
     .map((chemin) => relative(racine, chemin).split(sep).join("/"))
-    .filter((chemin) => chemin !== "index.html")
+    .filter((chemin) => !FICHIERS_DU_SOMMAIRE.includes(chemin))
     .sort();
 }
 
@@ -174,7 +185,8 @@ function main() {
     if (incompletes.length) process.exitCode = 1;
     return;
   }
-  writeFileSync(join(racine, "index.html"), rendre(fiches, commit));
+  const page = rendre(fiches, commit);
+  for (const fichier of FICHIERS_DU_SOMMAIRE) writeFileSync(join(racine, fichier), page);
   console.log(`Sommaire ecrit : ${fiches.length} pages.`);
 }
 

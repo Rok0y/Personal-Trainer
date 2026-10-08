@@ -37,6 +37,7 @@ Desktop.ini
 # `node scripts/sommaire.mjs web/static` l'ecrit ici pour le voir : derive,
 # donc jamais versionne.
 web/static/index.html
+web/static/sommaire.html
 
 # =========================
 # Historiques
