@@ -40,7 +40,7 @@ le texte dans `audio/annonces.py` et relance ce script : le nom de fichier
 suivra. L'inverse — renommer un fichier — ne changerait rien, le code cherche
 le nom que la table produit.
 
-**24 prises restantes.**
+**25 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -155,6 +155,7 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 | `gainage_sur_les_genoux.wav` | « Gainage sur les genoux » | deja fait |
 | `oiseau.wav` | « Oiseau » | deja fait |
 | `pompes.wav` | « Pompes » | deja fait |
+| `pompes_contre_le_mur.wav` | « Pompes contre le mur » | **a enregistrer** |
 | `pompes_inclinees.wav` | « Pompes inclinées » | deja fait |
 | `pompes_sur_les_genoux.wav` | « Pompes sur les genoux » | deja fait |
 | `rowing_penche.wav` | « Rowing penche » | deja fait |

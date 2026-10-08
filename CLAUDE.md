@@ -181,12 +181,22 @@ Progression (`progression/`) : le moteur de niveaux, qui pilote les cibles des s
   `ChargeCorps` (valeur fractionnaire, surcharge et premier haltère) : ignorer
   `charge_corps` côté JS sortait 5 889 divergences aux paliers, 4 821 aux
   ligues et 499 aux objectifs ; ignorer `premiere_charge`, 2 822, 2 496 et 292.
-  Les **variantes assistées** (pompes inclinées, pompes et gainage sur les
-  genoux, squat sur chaise) sont des exercices comptabilisés à part entière, pas
-  des échauffements : elles ont un barème, des records, une progression. Chacune
-  réutilise la détection du mouvement complet quand elle reste valable — seul
-  `squat_sur_chaise_detection` est propre, parce que le repère coude-genou de
-  `squat_detection` suppose des haltères qui pendent le long du corps.
+  Les **variantes assistées** (pompes inclinées, pompes contre le mur, pompes et
+  gainage sur les genoux, squat sur chaise) sont des exercices comptabilisés à
+  part entière, pas des échauffements : elles ont un barème, des records, une
+  progression. Chacune réutilise la détection du mouvement complet quand elle
+  reste valable — `squat_sur_chaise_detection` est propre, parce que le repère
+  coude-genou de `squat_detection` suppose des haltères qui pendent le long du
+  corps, et `pompe_mur_detection` aussi, parce que `pompe_detection` exige un
+  buste couché et qu'au mur on est debout (voir plus bas).
+  **Les pompes contre le mur viennent d'un test réel** : une débutante ne
+  faisait ni pompes, ni sur les genoux, ni sur une table, et la chaîne
+  s'arrêtait aux inclinées — donc plus rien à lui proposer. Elles font
+  travailler les mêmes muscles avec bien moins de charge (de l'ordre de 20 à
+  30 % du poids du corps, contre environ 64 % pour une pompe au sol et 41 %
+  mains sur un support de 60 cm). Leurs barème et bornes de ligue ont été
+  copiés des pompes inclinées : c'est un **amorçage**, à régler sur
+  `dev/baremes.html`.
   **Nuance apprise depuis, et elle vaut au-delà du squat : ce repère est en fait
   *meilleur* à vide, à condition que la consigne le demande.** Sans haltères les
   bras partent devant pour l'équilibre, donc aller toucher ses genoux avec ses
@@ -391,6 +401,19 @@ Détection (`mouvements/`, `vision/`) :
   intermédiaire, qu'elle n'avait pas). Une condition de position partagée par
   `"debut"` et `"fin"` fait tomber tout le reste en `"milieu"`, donc rien ne
   compte hors de la position : c'est la forme à reprendre.
+  **Les pompes contre le mur l'appliquent à l'envers** : debout, la condition
+  de buste couché est inutilisable, donc la position se dit par les mains —
+  buste debout, poignet du bras visible entre un tiers de buste au-dessus de
+  l'épaule et une moitié en dessous, et avancé d'au moins un cinquième de buste
+  devant elle (`_poignet_devant_epaule`). La borne haute n'est pas qu'une
+  affaire de forme : deux mains tenues au-dessus des épaules trois secondes
+  ressembleraient au geste qui remet le compteur à zéro. L'avancée reste basse
+  parce qu'en bas du mouvement, poitrine près du mur, l'épaule rejoint presque
+  les mains. Une zone d'instrument ne portant qu'une comparaison, les deux
+  bornes de hauteur y sont deux mesures. `generer_fixtures` a une famille de
+  poses construites à son nom (`pose_mur`, coude placé sur la médiatrice
+  épaule-poignet pour obtenir un angle exact) ; sabotée de 0,5 à 0,6 côté JS,
+  la borne basse sort des écarts dès les premières poses de la famille.
   **Une position de maintien se reconnaît à ce qui la rend difficile, pas à sa
   seule forme.** La planche latérale vérifiait l'alignement du corps, le côté au
   sol et la hanche au-dessus du coude — trois conditions que quelqu'un
@@ -440,7 +463,7 @@ Détection (`mouvements/`, `vision/`) :
   la pédagogie écrite. Ne pas confondre cette dernière avec `erreurs`, qui est
   une liste de **fonctions** exécutées à chaque frame. `variante_facile` /
   `variante_difficile` nomment un autre exercice du catalogue, et forment des
-  **chaînes** (pompes → sur les genoux → inclinées) que `progression/variantes.py`
+  **chaînes** (pompes → sur les genoux → inclinées → contre le mur) que `progression/variantes.py`
   parcourt pour faire jouer un mouvement plus facile à la place d'un autre.
   `orientation` est portée par `fiche()` **des deux côtés** depuis qu'on s'est aperçu qu'elle ne franchissait pas le portage (voir le harnais des scénarios). C'est le seul champ que le **coach prononce**, et la seule
   raison pour laquelle il existe à côté de `mise_en_place` : les vingt-trois

@@ -167,6 +167,37 @@ export function pompe_detection(corps) {
   return "milieu";
 }
 
+// Les bornes de la position « mains au mur », jumelles des constantes Python
+// (le pourquoi de chaque valeur est la-bas).
+export const HAUTEUR_MUR_MAX = 0.5;
+export const HAUTEUR_MUR_MIN = -0.35;
+export const AVANCEE_MUR_MIN = 0.2;
+
+// Hauteur et avancee du poignet du bras visible, rapportees au buste.
+function poignet_devant_epaule(corps) {
+  const [epaule, , poignet] = bras_proche(corps);
+  const hanche = epaule === corps.epaule_gauche ? corps.hanche_gauche : corps.hanche_droite;
+  const hauteur = hauteur_sous_epaule(poignet, epaule, hanche);
+  if (hauteur === null) return [null, null];
+  return [hauteur, Math.abs(poignet.x - epaule.x) / calculer_distance(epaule, hanche)];
+}
+
+// Pompe debout, mains au mur, de profil. `pompe_detection` exige un buste
+// couche : ici on est debout, donc la position se dit par les mains — devant
+// soi, a hauteur de poitrine. Hors de cette position, tout est "milieu".
+export function pompe_mur_detection(corps) {
+  if (buste_vertical(corps) <= 0) return "milieu";
+  const [hauteur, avancee] = poignet_devant_epaule(corps);
+  if (hauteur === null) return "milieu";
+  if (!(HAUTEUR_MUR_MIN < hauteur && hauteur < HAUTEUR_MUR_MAX) || avancee <= AVANCEE_MUR_MIN) {
+    return "milieu";
+  }
+  const angle_coude = angle_coude_proche(corps);
+  if (angle_coude < SEUIL_COMPTAGE_POMPE) return "debut";
+  else if (angle_coude > 160) return "fin";
+  return "milieu";
+}
+
 // Jumelle de `pompe_profondeur` : un jeton, pas une faute — le moteur retient
 // s'il a ete vu pendant la descente.
 export function pompe_profondeur(corps) {
@@ -703,6 +734,7 @@ export {
   buste_vertical as _buste_vertical,
   ecart_rapporte_aux_epaules as _ecart_rapporte_aux_epaules,
   hanche_decollee as _hanche_decollee,
+  poignet_devant_epaule as _poignet_devant_epaule,
 };
 
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par
@@ -715,6 +747,7 @@ export const DETECTIONS = {
   elevation_laterale_detection,
   pompe_detection,
   pompe_profondeur,
+  pompe_mur_detection,
   developpe_couche_sol_detection,
   extension_triceps_au_dessus_de_la_tete_detection,
   developpe_epaule_detection,

@@ -424,6 +424,36 @@
     ]
   },
   {
+    "nom": "Pompes contre le mur",
+    "description": "Pompes debout, les mains contre un mur : le même mouvement que la pompe, avec beaucoup moins de poids à pousser.",
+    "mise_en_place": [
+      "Mets-toi face à un mur, à environ un bras de distance.",
+      "Pose les mains à plat sur le mur, à hauteur de poitrine, un peu plus écartées que les épaules.",
+      "Place la caméra sur le côté, pour qu'elle te voie de profil, des pieds à la tête."
+    ],
+    "instructions": [
+      "Plie les coudes pour approcher la poitrine du mur.",
+      "Garde le corps bien droit, des talons à la tête.",
+      "Pousse sur les mains pour revenir, bras tendus."
+    ],
+    "erreurs_frequentes": [
+      "Les mains trop hautes : garde-les à hauteur de poitrine.",
+      "Les fesses qui partent en arrière : le corps reste droit comme une planche.",
+      "Si c'est trop facile, recule les pieds d'un pas."
+    ],
+    "variante_facile": null,
+    "variante_difficile": "Pompes inclinées",
+    "orientation": "profil",
+    "changements": [],
+    "analyse_la_pose": true,
+    "detection": "pompe_mur_detection",
+    "erreurs": [],
+    "amplitude": [
+      "pompe_profondeur",
+      "forme_pompe_pas_assez_profonde"
+    ]
+  },
+  {
     "nom": "Pompes inclinées",
     "description": "Pompes mains posées sur une chaise ou un plan de travail : plus le support est haut, plus le mouvement est facile.",
     "mise_en_place": [
@@ -441,7 +471,7 @@
       "Les coudes qui partent à 90° du buste : garde-les à environ 45°.",
       "Descendre trop peu : la poitrine doit approcher du support."
     ],
-    "variante_facile": null,
+    "variante_facile": "Pompes contre le mur",
     "variante_difficile": "Pompes sur les genoux",
     "orientation": "profil",
     "changements": [],

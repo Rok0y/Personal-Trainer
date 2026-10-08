@@ -306,6 +306,61 @@ def pompe_profondeur(corps):
 AMPLITUDE_POMPE = (pompe_profondeur, "forme_pompe_pas_assez_profonde")
 
 
+# Les bornes de la position « mains au mur », rapportées au buste. Le poignet
+# ne descend pas plus d'une demi-longueur de buste sous l'épaule (les mains se
+# posent à hauteur de poitrine), ne monte pas plus d'un tiers au-dessus — au-
+# delà, tenues trois secondes, deux mains en l'air ressembleraient au geste qui
+# remet le compteur à zéro —, et s'avance d'au moins un cinquième de buste
+# devant l'épaule : c'est ce qui écarte un bras qu'on plie debout le long du
+# corps. L'avancée reste basse parce qu'en bas du mouvement, poitrine près du
+# mur, l'épaule rejoint presque les mains.
+HAUTEUR_MUR_MAX = 0.5
+HAUTEUR_MUR_MIN = -0.35
+AVANCEE_MUR_MIN = 0.2
+
+
+def _poignet_devant_epaule(corps):
+    """Hauteur et avancée du poignet du bras visible, rapportées au buste.
+
+    La hauteur est celle de `_hauteur_sous_epaule` (0 à hauteur d'épaule,
+    positive en dessous). L'avancée est l'écart horizontal entre épaule et
+    poignet, sans signe : de profil, la caméra peut être d'un côté ou de
+    l'autre. (None, None) quand le buste n'a pas de longueur lisible.
+    """
+    epaule, _, poignet = _bras_proche(corps)
+    hanche = corps.hanche_gauche if epaule is corps.epaule_gauche else corps.hanche_droite
+    hauteur = _hauteur_sous_epaule(poignet, epaule, hanche)
+    if hauteur is None:
+        return None, None
+    return hauteur, abs(poignet.x - epaule.x) / calculer_distance(epaule, hanche)
+
+
+def pompe_mur_detection(corps):
+    """Pompe debout, mains contre un mur, vue de profil.
+
+    `pompe_detection` ne peut pas servir : elle exige un buste couché, et c'est
+    précisément ce qui l'empêche de compter un bras plié debout. Ici on est
+    debout, donc la position doit être dite autrement — buste debout, mains
+    devant soi à hauteur de poitrine. Une condition partagée par `"debut"` et
+    `"fin"` fait tomber tout le reste en `"milieu"`, donc rien ne compte hors
+    de la position. L'angle est celui des pompes, sur le bras que la caméra
+    voit vraiment.
+    """
+    if _buste_vertical(corps) <= 0:
+        return "milieu"
+    hauteur, avancee = _poignet_devant_epaule(corps)
+    if hauteur is None:
+        return "milieu"
+    if not HAUTEUR_MUR_MIN < hauteur < HAUTEUR_MUR_MAX or avancee <= AVANCEE_MUR_MIN:
+        return "milieu"
+    angle_coude = _angle_coude_proche(corps)
+    if angle_coude < SEUIL_COMPTAGE_POMPE:
+        return "debut"
+    elif angle_coude > 160:
+        return "fin"
+    return "milieu"
+
+
 pompe = Exercice(
     nom="Pompes",
     # De profil, et c'est un changement assume. La fiche disait « face a la
@@ -1386,7 +1441,36 @@ pompes_inclinees = Exercice(
         "Descendre trop peu : la poitrine doit approcher du support.",
     ],
     erreurs=[],
+    variante_facile="Pompes contre le mur",
     variante_difficile="Pompes sur les genoux",
+)
+
+pompes_contre_le_mur = Exercice(
+    nom="Pompes contre le mur",
+    orientation="profil",
+    detection=pompe_mur_detection,
+    amplitude=AMPLITUDE_POMPE,
+    description=(
+        "Pompes debout, les mains contre un mur : le même mouvement que la "
+        "pompe, avec beaucoup moins de poids à pousser."
+    ),
+    mise_en_place=[
+        "Mets-toi face à un mur, à environ un bras de distance.",
+        "Pose les mains à plat sur le mur, à hauteur de poitrine, un peu plus écartées que les épaules.",
+        "Place la caméra sur le côté, pour qu'elle te voie de profil, des pieds à la tête.",
+    ],
+    instructions=[
+        "Plie les coudes pour approcher la poitrine du mur.",
+        "Garde le corps bien droit, des talons à la tête.",
+        "Pousse sur les mains pour revenir, bras tendus.",
+    ],
+    erreurs_frequentes=[
+        "Les mains trop hautes : garde-les à hauteur de poitrine.",
+        "Les fesses qui partent en arrière : le corps reste droit comme une planche.",
+        "Si c'est trop facile, recule les pieds d'un pas.",
+    ],
+    erreurs=[],
+    variante_difficile="Pompes inclinées",
 )
 
 pompes_sur_les_genoux = Exercice(

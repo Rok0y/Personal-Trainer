@@ -36,6 +36,7 @@ from mouvements.exercices import (
     planche_laterale_droite,
     planche_laterale_gauche,
     pompe,
+    pompes_contre_le_mur,
     pompes_inclinees,
     pompes_sur_les_genoux,
     rowing_penche,
@@ -102,6 +103,7 @@ CATALOGUE_EXERCICES = {
         # des exercices comptabilisés à part entière (records, progression),
         # pas des échauffements.
         pompes_inclinees,
+        pompes_contre_le_mur,
         pompes_sur_les_genoux,
         gainage_sur_les_genoux,
         squat_sur_chaise,
@@ -129,6 +131,8 @@ MATERIEL_EXERCICES = {
     "Rowing penche": "Deux haltères",
     "Oiseau": "Deux haltères",
     "Pompes inclinées": "Une chaise",
+    # Pas d'accessoire a cocher : tout le monde a un mur.
+    "Pompes contre le mur": "",
     "Pompes sur les genoux": "Un tapis",
     "Gainage sur les genoux": "Un tapis",
     "Squat sur chaise": "Une chaise",

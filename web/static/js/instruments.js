@@ -28,7 +28,7 @@ import { calculer_angle, calculer_distance } from "./outils.js";
 import {
   _appui_sur_le_bras, _descente_hanche, _hauteur_sous_epaule, _ecart_lateral,
   _angle_coude_proche, _bras_proche, _buste_vertical, _ecart_rapporte_aux_epaules,
-  _hanche_decollee, _visibilite_bras, _genou_depasse_pied,
+  _hanche_decollee, _visibilite_bras, _genou_depasse_pied, _poignet_devant_epaule,
 } from "./detections.js";
 
 const ECHELLE_ANGLE = [0, 180];
@@ -276,6 +276,37 @@ export const INSTRUMENTS = {
       },
       visibilite_bras(),
       profondeur_epaules(),
+    ],
+  },
+  // Les deux bornes de hauteur sont deux mesures : une zone ne porte qu'une
+  // comparaison. Toutes trois partagees par "debut" et "fin", comme la
+  // condition de position de la detection.
+  pompe_mur_detection: {
+    ordre: ["debut", "fin"],
+    defaut: "milieu",
+    mesures: [
+      coude_proche({ debut: ["<", 120], fin: [">", 160] }),
+      {
+        libelle: "Buste debout (> 0 = debout)", unite: "", echelle: [-0.4, 0.4],
+        sommet: null, zones: { debut: [">", 0], fin: [">", 0] },
+        valeur: (corps) => _buste_vertical(corps),
+      },
+      {
+        libelle: "Mains pas trop basses (sous l'épaule, en bustes)", unite: "",
+        echelle: [-0.6, 1], sommet: null, zones: { debut: ["<", 0.5], fin: ["<", 0.5] },
+        valeur: (corps) => _poignet_devant_epaule(corps)[0],
+      },
+      {
+        libelle: "Mains pas trop hautes", unite: "",
+        echelle: [-0.6, 1], sommet: null, zones: { debut: [">", -0.35], fin: [">", -0.35] },
+        valeur: (corps) => _poignet_devant_epaule(corps)[0],
+      },
+      {
+        libelle: "Mains devant l'épaule (en bustes)", unite: "",
+        echelle: [0, 1.2], sommet: null, zones: { debut: [">", 0.2], fin: [">", 0.2] },
+        valeur: (corps) => _poignet_devant_epaule(corps)[1],
+      },
+      visibilite_bras(),
     ],
   },
   pompe_profondeur: {

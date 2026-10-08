@@ -31,6 +31,16 @@
    "poids_min": null,
    "poids_max": null
   },
+  "Pompes contre le mur": {
+   "series": 3,
+   "cible_min": 3,
+   "cible_max": 15,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null
+  },
   "Pompes sur les genoux": {
    "series": 3,
    "cible_min": 3,
@@ -572,6 +582,26 @@
     132,
     156,
     180
+   ],
+   "Pompes contre le mur": [
+    9,
+    15,
+    21,
+    27,
+    33,
+    39,
+    45,
+    52,
+    60,
+    70,
+    78,
+    90,
+    96,
+    108,
+    120,
+    132,
+    144,
+    156
    ],
    "Pompes inclinées": [
     9,

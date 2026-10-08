@@ -240,7 +240,49 @@ def pose_contacts(rng):
     return Body(points)
 
 
-FAMILLES = [pose_elevation, pose_planche, pose_planche_laterale, pose_contacts]
+def pose_mur(rng):
+    """De profil, debout ou penche, le bras le mieux vu tendu plus ou moins
+    devant soi : poignet a une hauteur et une avancee tirees autour des
+    bornes de `pompe_mur_detection`, coude a un angle tire de 40 a 180 degres.
+
+    L'angle est **construit** et non subi : le coude est place sur la
+    mediatrice epaule-poignet, a la distance qui donne exactement cet angle
+    avec deux segments de meme longueur. Le hasard ne reunit jamais seul un
+    buste debout, des mains a hauteur de poitrine et un coude plie."""
+    corps = pose_au_hasard(rng)
+    points = corps.points
+    x0, ey = 0.3 + rng.random() * 0.4, 0.2 + rng.random() * 0.15
+    buste = 0.2 + rng.random() * 0.1
+    # Du debout au couche, pour visiter les deux cotes de la condition de buste.
+    penche = math.radians(rng.uniform(0, 70))
+    sens = 1 if rng.random() < 0.5 else -1
+    vu, cache = (("gauche", "droite") if rng.random() < 0.5 else ("droite", "gauche"))
+    for cote, visibilite in ((vu, 1.0), (cache, 0.3)):
+        bras = "gauche" if cote == "gauche" else "droit"
+        decalage = 0.0 if cote == vu else rng.uniform(-0.02, 0.02)
+        ex, ey_ = x0 + decalage, ey + decalage
+        points[f"epaule_{cote}"] = LandmarkPoint(ex, ey_, 0, visibilite)
+        points[f"hanche_{cote}"] = LandmarkPoint(
+            ex - sens * buste * math.sin(penche), ey_ + buste * math.cos(penche), 0, visibilite
+        )
+        hauteur = rng.uniform(-0.6, 0.9) * buste
+        avancee = rng.uniform(0, 0.9) * buste
+        wx, wy = ex + sens * avancee, ey_ + hauteur
+        d = math.hypot(wx - ex, wy - ey_)
+        angle = math.radians(rng.uniform(40, 180))
+        demi = d / 2
+        segment = demi / max(math.sin(angle / 2), 1e-6)
+        fleche = math.sqrt(max(segment ** 2 - demi ** 2, 0))
+        mx, my = (ex + wx) / 2, (ey_ + wy) / 2
+        nx, ny = (-(wy - ey_) / d, (wx - ex) / d) if d > 0 else (0, 1)
+        if ny < 0:
+            nx, ny = -nx, -ny
+        points[f"coude_{bras}"] = LandmarkPoint(mx + nx * fleche, my + ny * fleche, 0, visibilite)
+        points[f"poignet_{bras}"] = LandmarkPoint(wx, wy, 0, visibilite)
+    return Body(points)
+
+
+FAMILLES = [pose_elevation, pose_planche, pose_planche_laterale, pose_contacts, pose_mur]
 
 
 def serialiser(corps):
