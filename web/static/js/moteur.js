@@ -1,19 +1,17 @@
-// Jumeau de session/moteur.py — ce qui fait avancer une serie, image par image.
+// Ce qui fait avancer une serie, image par image.
 //
-// Meme convention que les autres jumeaux : les noms sont ceux du Python, en
-// snake_case. Le Python fait autorite ; `scripts/comparer_seances.mjs` rejoue
-// les memes images des deux cotes et diffe.
+// `scripts/comparer_seances.mjs` rejoue des images horodatees et compare
+// l'etat et les annonces, pas a pas, a des reponses figees.
 //
-// Une difference d'architecture, et une seule : cote Python, `moteur.py`
-// importe `annoncer_progression` et `annoncer_temps_restant` d'`audio.coach`.
-// Ici elles sont **dans ce module**, parce que ce sont des decisions et non du
-// son : quand annoncer n'est pas la meme chose que comment jouer. Tout ce qui
-// sort vers le haut-parleur passe par le `coach` injecte, ce qui rend le
-// module pur et donc verifiable.
+// Les decisions d'annonce (`annoncer_progression`, `annoncer_temps_restant`…)
+// sont **dans ce module** et non dans la couche audio, parce que ce sont des
+// decisions et non du son : quand annoncer n'est pas la meme chose que comment
+// jouer. Tout ce qui sort vers le haut-parleur passe par le `coach` injecte,
+// ce qui rend le module pur et donc verifiable.
 //
-// `etat` est un objet libre (le jumeau d'`EtatSeance`) : le moteur ne
-// l'importe pas, il le recoit — exactement comme en Python, ou c'est ce qui a
-// rendu le module agnostique le jour ou l'etat a change de forme.
+// `etat` est un objet libre (voir `etat.js`) : le moteur ne l'importe pas, il
+// le recoit — c'est ce qui le rend agnostique le jour ou l'etat change de
+// forme.
 
 import {
   MODE_AMRAP,
@@ -41,8 +39,8 @@ export const COMPTEUR_DUREE_PAR_MODE = {
 /**
  * Les paliers d'encouragement d'une serie comptee.
  *
- * Vit ici et non dans la couche audio : c'est une decision de coaching, qui
- * doit rester identique des deux cotes, alors que jouer le son ne l'est pas.
+ * Vit ici et non dans la couche audio : c'est une decision de coaching, pas
+ * une affaire de son.
  */
 export function annoncer_progression(coach, repetitions, cible) {
   const restantes = cible - repetitions;
@@ -50,7 +48,7 @@ export function annoncer_progression(coach, repetitions, cible) {
   if (restantes === 1) return coach("avant_derniere");
   if (restantes === 3) return coach("encore_3");
   if (restantes === 5) coach("encore_5");
-  // **« A la moitie » a ete retire** des deux cotes, avec sa cle et sa
+  // **« A la moitie » a ete retire**, avec sa cle et sa
   // priorite : une cle qui ne sert plus laisse croire qu'un palier existe.
   // Elle tombait en plein milieu de la serie, entre deux chiffres, et
   // n'apprenait rien qu'on ne sache deja — le coach comptait par-dessus
@@ -58,18 +56,10 @@ export function annoncer_progression(coach, repetitions, cible) {
 }
 
 /**
- * Annonce le temps restant au franchissement d'un seuil, jamais en continu.
- *
- * Le repere est `bloc.temps_restant_precedent` : c'est la *traversee* du seuil
- * qui declenche, donc la premiere image d'une serie ne dit rien — elle ne fait
- * que poser le repere.
- */
-/**
- * « Change de sens », « change de jambe » : jumeau d'`annoncer_changements`
- * dans `audio/coach.py`. Un changement est annonce quand son instant tombe
- * dans ]avant, apres] — la meme borne des deux cotes, et `comparer_seances`
- * la voit. La cle se deduit du mot ; un mot inconnu est ignore par le
- * lecteur, qui ne trouve aucun fichier.
+ * « Change de sens », « change de jambe ». Un changement est annonce quand
+ * son instant tombe dans ]avant, apres] : chaque instant tombe dans un seul
+ * intervalle, donc s'annonce une seule fois. La cle se deduit du mot ; un mot
+ * inconnu est ignore par le lecteur, qui ne trouve aucun fichier.
  */
 export function annoncer_changements(coach, bloc, avant, apres) {
   for (const [fraction, quoi] of bloc.exercice.changements ?? []) {
@@ -79,14 +69,21 @@ export function annoncer_changements(coach, bloc, avant, apres) {
   }
 }
 
+/**
+ * Annonce le temps restant au franchissement d'un seuil, jamais en continu.
+ *
+ * Le repere est `bloc.temps_restant_precedent` : c'est la *traversee* du seuil
+ * qui declenche, donc la premiere image d'une serie ne dit rien — elle ne fait
+ * que poser le repere.
+ */
 export function annoncer_temps_restant(coach, bloc, secondes_restantes) {
   if (bloc.temps_restant_precedent === null || bloc.temps_restant_precedent === undefined) {
     bloc.temps_restant_precedent = secondes_restantes;
     return;
   }
-  // Les six memes seuils qu'en Python, dans le meme ordre : le decompte des
-  // trois dernieres secondes en fait partie. `comparer_seances.mjs` compare
-  // les annonces pas a pas, donc un seuil ajoute d'un seul cote s'y voit.
+  // Six seuils, du plus grand au plus petit : le decompte des trois dernieres
+  // secondes en fait partie. `comparer_seances.mjs` compare les annonces pas a
+  // pas, donc un seuil ajoute ou retire s'y voit.
   const seuils = [
     [20, "temps_20"],
     [10, "temps_10"],
@@ -107,8 +104,7 @@ export function annoncer_temps_restant(coach, bloc, secondes_restantes) {
 /**
  * Annonce le decompte d'un repos au franchissement d'un seuil.
  *
- * Jumeau d'`audio.coach.annoncer_temps_repos`. Meme forme que
- * `annoncer_temps_restant` ci-dessus, deux differences qui comptent : le
+ * Meme forme que `annoncer_temps_restant` ci-dessus, deux differences qui comptent : le
  * repere vit sur la **seance** et non sur le bloc (un repos n'appartient a
  * aucun bloc — il est entre deux), et les cles sont `repos_20` / `repos_10` /
  * `repos_5`.
@@ -186,15 +182,22 @@ function _finaliser_serie(seance, etat, bloc) {
 }
 
 // Les modes qui comptent des repetitions : les seuls ou les gestes ±1 ont un
-// compte a corriger. Voir `MODES_A_COMPTE` cote Python.
+// compte a corriger.
 export const MODES_A_COMPTE = [MODE_REPETITIONS, MODE_AMRAP];
 
 /**
  * Ajoute ou retire une repetition a la main ; rend le nouveau `derniere_rep`.
  *
- * Jumelle d'`ajuster_repetitions` (session/moteur.py), dont la docstring dit
- * le pourquoi : un +1 laisse `executer_mode` annoncer et clore la serie a
- * l'image suivante, un -1 fait reculer `derniere_rep` et annonce le compte.
+ * Point d'entree unique des gestes ±1. N'agit qu'en phase `exercice`, sur un
+ * mode a compte.
+ *
+ * **Un +1 ne se termine pas ici** : il ne touche que le compteur, et c'est
+ * `executer_mode`, a l'image suivante, qui voit le compte depasser
+ * `derniere_rep`, l'annonce et clot la serie si la cible est atteinte —
+ * exactement comme une repetition detectee, donc sans seconde regle de fin.
+ * **Un −1 doit faire reculer `derniere_rep`**, sans quoi la repetition reelle
+ * suivante ne serait pas annoncee (`repetitions > derniere_rep` resterait
+ * faux) ; et il annonce le nouveau compte, seul retour audible a trois metres.
  */
 export function ajuster_repetitions({ seance, compteur, etat, coach, delta, derniere_rep }) {
   const bloc = seance.bloc_actuel;
@@ -229,10 +232,10 @@ export function mettre_a_jour_erreur(exercice, corps, etat, texte) {
 }
 
 /**
- * Jumelle de `suivre_amplitude` : avertit d'une repetition comptee qui n'est
- * pas allee assez loin. Le jeton est retenu tant que le compteur est arme,
- * oublie a chaque nouvel armement, et l'avertissement reste affiche jusqu'a
- * la repetition suivante — une faute de forme du moment passe devant lui.
+ * Avertit d'une repetition comptee qui n'est pas allee assez loin. Le jeton
+ * est retenu tant que le compteur est arme, oublie a chaque nouvel armement,
+ * et l'avertissement reste affiche jusqu'a la repetition suivante — une faute
+ * de forme du moment passe devant lui.
  */
 export function suivre_amplitude(exercice, corps, bloc, etat, stage_avant, stage, rep_comptee, texte) {
   if (!exercice.amplitude) return;
@@ -317,9 +320,8 @@ export function gerer_mode_maintien({ corps, bloc, seance, etat, coach, messages
 
   if (position === "maintien") bloc.temps_maintien += temps_ecoule;
 
-  // Bip chaque seconde. `int()` en Python tronque vers zero, comme
-  // `Math.trunc` — le temps etant toujours positif ici, `Math.floor` ferait
-  // pareil, mais on garde la traduction litterale.
+  // Bip chaque seconde. Le temps etant toujours positif ici, `Math.floor`
+  // ferait pareil que `Math.trunc`.
   const seconde = Math.trunc(bloc.temps_maintien);
   const precedente = "derniere_seconde_bip" in bloc ? bloc.derniere_seconde_bip : -1;
   if (precedente !== seconde) {

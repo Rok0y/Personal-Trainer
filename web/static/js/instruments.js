@@ -11,8 +11,8 @@
 // detections.js, qui reste la seule autorite. Un instrument en est un miroir,
 // et un miroir qui ment serait pire que pas de miroir — d'ou
 // scripts/verifier_instruments.mjs, qui rederive le jeton de chaque instrument
-// sur les 5 500 poses du harnais des detections et le compare au jeton
-// **Python**. Changer un seuil dans detections.js sans le changer ici fait
+// sur les poses figees des tests et le compare au jeton que rend la detection
+// **actuelle**. Changer un seuil dans detections.js sans le changer ici fait
 // echouer ce controle.
 //
 // La forme est aussi un prototype : « une mesure, des zones ordonnees » est ce

@@ -1,18 +1,16 @@
-// Jumeau de historique/database.py — l'historique des seances.
+// L'historique des seances.
 //
-// Ce n'est pas un portage de SQL : c'est un portage de *ce que le SQL
-// produit*. La base y est un objet JavaScript ordinaire, et toutes les
-// fonctions de ce module sont pures au sens ou elles ne touchent ni au disque
-// ni au reseau : elles recoivent la base, la lisent ou la modifient, et
-// rendent exactement les memes structures que leurs jumelles Python.
+// La base est un objet JavaScript ordinaire, et toutes les fonctions de ce
+// module sont pures au sens ou elles ne touchent ni au disque ni au reseau :
+// elles recoivent la base, la lisent ou la modifient, et la rendent.
 //
 // Trois raisons a ce decoupage, et la troisieme est la plus importante.
 // (1) L'historique d'une personne tient largement en memoire — quelques
-// centaines de seances —, et le Python recalcule deja tout a la lecture
+// centaines de seances —, et la progression recalcule tout a la lecture
 // plutot que de le stocker. (2) L'export/import devient trivial : l'objet
-// *est* le fichier. (3) Surtout, ca rend le portage **verifiable** : un
-// harnais peut ecrire les memes seances des deux cotes et diffuser les
-// resultats, ce qu'il ne pourrait pas faire si la logique etait melee a
+// *est* le fichier. (3) Surtout, ca rend le module **verifiable** : les tests
+// rejouent des ecritures dans Node et comparent les resultats a des reponses
+// figees, ce qu'ils ne pourraient pas faire si la logique etait melee a
 // IndexedDB, qui n'existe pas dans Node.
 //
 // La persistance vit a cote, dans `stockage.js`, et ne fait que charger et
@@ -28,11 +26,11 @@ export const VERSION_BASE = 1;
 /**
  * Une base vide.
  *
- * Les cinq collections reprennent les cinq tables SQLite, y compris leurs
- * cles etrangeres : `exercices` porte `seance_id`, `series_realisees` porte
- * `exercice_id`. Aplatir la hierarchie serait plus commode a lire mais
- * rendrait le portage de `progression/` — etape suivante — infidele, puisque
- * tout son calcul part de ces jointures.
+ * Les cinq collections reprennent les tables de l'ancienne base, y compris
+ * leurs cles etrangeres : `exercices` porte `seance_id`, `series_realisees`
+ * porte `exercice_id`. Aplatir la hierarchie serait plus commode a lire, mais
+ * tout le calcul de la progression part de ces jointures, et les sauvegardes
+ * existantes ont cette forme.
  *
  * `utilisateur_id` ne figure que sur les deux tables *racines* (`seances` et
  * `corrections_niveaux`) ; `exercices` et `series_realisees` en heritent par
@@ -52,13 +50,11 @@ export function base_vide() {
     exercices: [],
     series_realisees: [],
     corrections_niveaux: [],
-    // **Pas une table SQLite** : les seances editees sur cet appareil. Cote
-    // Python elles vivent dans `seances_personnalisees.json`, que seul le
-    // poste fixe sait ecrire ; un site statique n'a pas de disque a modifier,
-    // donc l'appareil les garde avec le reste de sa base.
+    // Les seances editees sur cet appareil. Un site statique n'a pas de
+    // disque a modifier : l'appareil les garde avec le reste de sa base.
     //
-    // Un objet et non un tableau, parce que c'est la forme du fichier qu'il
-    // remplace : un nom de seance vers sa liste de blocs.
+    // Un objet et non un tableau, parce que c'est la forme de `seances.json`
+    // qu'elles masquent : un nom de seance vers sa liste de blocs.
     seances_locales: {},
   };
 }
@@ -70,7 +66,7 @@ function _prochain_id(base, collection) {
 }
 
 /**
- * Horodatage au format du Python : "JJ/MM/AAAA HH:MM".
+ * Horodatage au format de la base : "JJ/MM/AAAA HH:MM".
  *
  * Une fonction et non `new Date()` en dur, pour la meme raison que
  * `Circuit.maintenant` : une verification doit pouvoir figer le temps.
@@ -110,6 +106,13 @@ export function creer_utilisateur(base, nom, maintenant) {
     // Le rythme du programme, en tours par semaine. `null` vaut un tour, et
     // `semaine_du_programme` le borne a ce que le programme permet.
     programme_tours: null,
+    // Le jour ou commence la semaine du programme (0 = dimanche, comme
+    // `getUTCDay`). `null` vaut lundi : `jour_debut_retenu` borne la valeur.
+    programme_jour_debut: null,
+    // L'ordre des seances choisi, **par programme** (`{cle: [libelles]}`) :
+    // changer de programme ne laisse pas d'ordre perime. Absent = ordre du
+    // fichier ; `ordre_des_seances` le recale sur le programme courant.
+    programmes_ordre: {},
     materiel: null,
     // Les mesures du corps. `null` veut dire « non renseigne » et non zero :
     // personne n'est oblige de les donner, rien ne les lit encore.
@@ -136,7 +139,7 @@ export function creer_utilisateur(base, nom, maintenant) {
     //
     // Les collections etant recopiees **entieres** a l'import, ce champ
     // voyage sans une ligne de code. En revanche les profils anterieurs et
-    // ceux venus de SQLite ne l'ont pas : toute lecture passe par
+    // ceux importes de l'ancienne base ne l'ont pas : toute lecture passe par
     // `tutos_vus(profil)`, et « pas de champ » veut dire « rien vu ».
     tutos_vus: { general: 0, seances: [], exercices: [] },
     // Les variantes jouees a la place d'un mouvement (`variantes.js`),
@@ -155,11 +158,9 @@ export const FAMILLES_TUTORIEL = ["general", "seances", "exercices"];
 /**
  * Ce qu'un profil a deja vu, sous une forme toujours exploitable.
  *
- * Il n'existe **aucune migration cote JavaScript** — c'est l'asymetrie assumee
- * avec le `PRAGMA table_info` + `ALTER TABLE` du SQLite. Un profil cree avant
- * ce champ, ou importe depuis le poste fixe, rend donc `undefined`, et c'est
- * ici que ca se rattrape une fois pour toutes plutot qu'a chaque site de
- * lecture.
+ * Il n'existe **aucune migration** de la base. Un profil cree avant ce champ,
+ * ou importe d'une ancienne sauvegarde, rend donc `undefined`, et c'est ici
+ * que ca se rattrape une fois pour toutes plutot qu'a chaque site de lecture.
  */
 export function tutos_vus(profil) {
   const brut = profil?.tutos_vus ?? {};
@@ -249,7 +250,7 @@ export function oublier_tuto(base, utilisateur_id, famille = null, nom = null) {
  * **Le dernier profil n'est pas supprimable** : une base sans profil rend
  * l'application inutilisable, et le refus vit ici plutot que dans chaque
  * ecran. `seances_locales` n'est pas touchee : les seances sont communes aux
- * profils, comme sur le poste fixe.
+ * profils.
  *
  * Rend le nom du profil supprime. Rien ne rattrape ce geste : c'est a
  * l'appelant de proposer un export avant.
@@ -285,8 +286,7 @@ export const CHAMPS_MESURES = ["sexe", "date_naissance", "taille_cm", "poids_cor
 /**
  * Met a jour les mesures d'un profil.
  *
- * Jumelle de `historique.database.definir_mesures`. Une valeur absente de
- * `mesures` n'est pas touchee ; une chaine vide vaut « efface », parce que
+ * Une valeur absente de `mesures` n'est pas touchee ; une chaine vide vaut « efface », parce que
  * c'est ce que rend un champ de formulaire qu'on vide a la main.
  */
 export function definir_mesures(base, utilisateur_id, mesures) {
@@ -300,25 +300,23 @@ export function definir_mesures(base, utilisateur_id, mesures) {
   return true;
 }
 
-/**
- * Enregistre la note d'athlete d'un profil, et ce qu'elle declenche.
- *
- * Jumelle de `historique.database.definir_note_athlete`. Une **hausse** pose
- * le repere `note_relevee_apres` sur la derniere seance du profil (plancher de
- * la prochaine seance des exercices deja faits) ; une **baisse** l'efface ; un
- * premier reglage ne pose rien. Leve sur une note hors echelle, comme le
- * Python.
- */
 export function definir_variantes(base, utilisateur_id, variantes) {
-  // Jumelle de `historique.database.definir_variantes` : on ecrit, on ne juge
-  // pas. Le calcul de la table — descendre, remonter, refuser — appartient a
-  // `variantes.js` (`Variantes.definir`).
+  // On ecrit, on ne juge pas. Le calcul de la table — descendre, remonter,
+  // refuser — appartient a `variantes.js` (`Variantes.definir`).
   const utilisateur = base.utilisateurs.find((u) => u.id === utilisateur_id);
   if (!utilisateur) throw new Error(`Profil ${utilisateur_id} introuvable`);
   utilisateur.variantes = normaliser_variantes(variantes);
   return true;
 }
 
+/**
+ * Enregistre la note d'athlete d'un profil, et ce qu'elle declenche.
+ *
+ * Une **hausse** pose le repere `note_relevee_apres` sur la derniere seance du
+ * profil (plancher de la prochaine seance des exercices deja faits) ; une
+ * **baisse** l'efface ; un premier reglage ne pose rien. Leve sur une note
+ * hors echelle.
+ */
 export function definir_note_athlete(base, utilisateur_id, note) {
   if (!note_valide(note)) throw new Error("La note d'athlète est un entier de 1 à 10.");
   const utilisateur = base.utilisateurs.find((u) => u.id === utilisateur_id);
@@ -373,9 +371,8 @@ export function enregistrer_seance(
       mode: exercice.mode ?? null,
       duree: exercice.duree ?? 0,
       commentaire: exercice.commentaire ?? "",
-      // Les cibles retombent sur le realise quand elles ne sont pas fournies,
-      // exactement comme cote Python : une seance jouee sans objectif ne doit
-      // pas se relire comme un echec.
+      // Les cibles retombent sur le realise quand elles ne sont pas fournies :
+      // une seance jouee sans objectif ne doit pas se relire comme un echec.
       series_cibles: exercice.series_cibles ?? exercice.series,
       repetitions_cibles: exercice.repetitions_cibles ?? 0,
       duree_cible: exercice.duree_cible ?? exercice.duree ?? 0,
@@ -393,8 +390,8 @@ export function enregistrer_seance(
         repetitions: serie.repetitions ?? 0,
         poids: serie.poids ?? 0,
         duree: serie.duree ?? 0,
-        // Stocke en 0/1 comme en SQLite, relu en booleen : c'est la forme
-        // qu'un export doit conserver pour rester relisable par le Python.
+        // Stocke en 0/1, relu en booleen : c'est la forme des sauvegardes
+        // existantes, qu'un import doit continuer de relire.
         completee: serie.completee ? 1 : 0,
       });
     }
@@ -548,7 +545,7 @@ export function recuperer_ancrages(base, utilisateur_id) {
       date: a.date,
       apres_seance_id: a.apres_seance_id || 0,
       raison: a.raison || "",
-      // L'identifiant fait partie du releve cote Python : c'est lui que
+      // L'identifiant fait partie du releve : c'est lui que
       // `supprimer_ancrage` prend en argument depuis l'ecran des records.
       id: a.id,
     };
@@ -603,10 +600,8 @@ export function supprimer_ancrages(base, nom_exercice, utilisateur_id) {
 /**
  * Enregistre une seance editee ici.
  *
- * Elle **masque** desormais celle du fichier exporte, exactement comme
- * `seances_personnalisees.json` masque le catalogue Python. La difference est
- * qu'on ne peut pas renvoyer le resultat au fichier : un site statique n'a
- * pas de serveur a qui ecrire. C'est le prix assume de pouvoir modifier une
+ * Elle **masque** desormais celle de `seances.json`. On ne peut pas renvoyer
+ * le resultat au fichier : un site statique n'a pas de serveur a qui ecrire. C'est le prix assume de pouvoir modifier une
  * seance depuis l'appareil, et l'ecran doit le rendre visible plutot que de
  * laisser croire que la modification remontera.
  */
@@ -680,7 +675,7 @@ export function importer(texte) {
 }
 
 /**
- * Records et progression de chaque exercice — jumeau de `statistiques_exercices`.
+ * Records et progression de chaque exercice.
  *
  * Dit **ce qui a ete fait** : toutes les series realisees comptent, objectif
  * atteint ou non. Le filtre `completee` qui vivait ici faisait disparaitre une

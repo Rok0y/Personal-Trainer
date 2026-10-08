@@ -1,12 +1,12 @@
-// La saisie du ressenti, partagee par les deux applications.
+// La saisie du ressenti, partagee par l'ecran de fin et l'historique.
 //
 // **Ce module ne decide rien** : la regle de progression vit dans
-// `ressenti.js` / `progression/ressenti.py`, et la seule chose qui se joue ici
+// `ressenti.js`, et la seule chose qui se joue ici
 // est *quelles reponses proposer*. Elle en decoule directement, et c'est pour
 // ca qu'elle doit etre ecrite une fois : proposer « trop dur » apres une
 // reussite afficherait un bouton dont la table d'ajustement ne fait rien.
 //
-// Deux decisions de fond, reprises telles quelles du poste fixe.
+// Deux decisions de fond.
 //
 // **Les reponses dependent de ce qui s'est passe** : apres une reussite on
 // demande si c'etait facile, apres un echec si c'etait trop dur. Proposer les
@@ -30,8 +30,7 @@ export const OPTIONS_ECHEC = [{ valeur: "trop_dur", libelle: "C'était trop dur"
 /**
  * Remplit une zone avec le verdict d'un exercice et ses reponses possibles.
  *
- * `jugement` est ce que rend `Ressenti.juger` — `{reussi, ressenti}` — que le
- * poste fixe va chercher par HTTP et que le navigateur calcule sur place.
+ * `jugement` est ce que rend `Ressenti.juger` — `{reussi, ressenti}`.
  * `au_choix(nom, valeur)` recoit la chaine vide quand la reponse est annulee,
  * et c'est l'appelant qui decide ou l'ecrire.
  *
@@ -143,8 +142,8 @@ function annonce_de_montee(montee, au_variante) {
 
 /**
  * Une montee (`{original, depuis, vers}`, rendue par `variantes.montees`)
- * sous la forme que `construire_ligne` affiche. Partagee par les deux
- * applications, pour que le poste fixe et le navigateur disent la meme chose.
+ * sous la forme que `construire_ligne` affiche. Ecrite ici une fois, pour que
+ * l'ecran de fin et l'historique disent la meme chose.
  */
 export function proposition_de_montee(montee) {
   return { sens: "montee", original: montee.original, vers: montee.depuis, nouveau: montee.vers };

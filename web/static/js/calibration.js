@@ -1,4 +1,4 @@
-// Jumeau de progression/calibration.py — de la note d'athlete d'un profil au
+// De la note d'athlete d'un profil au
 // palier de depart de ses exercices.
 //
 // **Une seule note, de 1 a 10, que la personne se donne a l'accueil.** Elle
@@ -8,16 +8,27 @@
 // le meme effort, alors que les bornes ont ete posees exercice par exercice
 // pour vouloir dire la meme chose partout.
 //
-// **Rien n'est ancre** : la note fixe un objectif, jamais un niveau. Trois
-// regles, qui ne s'appliquent pas aux memes exercices — un exercice jamais fait
-// part de la note effective ; la note monte toute seule quand l'historique
-// recent la depasse nettement ; une note relevee a la main pose un plancher
-// sur la prochaine seance des exercices deja faits. Le detail est dans la
-// docstring du Python.
+// **Rien n'est ancre** : la note fixe un objectif, jamais un niveau. Un
+// exercice jamais fait reste « hors bareme » tant qu'une seance ne prouve
+// rien, ce qui permet a une note mal estimee de se corriger d'elle-meme.
 //
-// Les tables (`rangs`, `part_exercices`, `marge`, `exercices_min`, `reperes`)
-// sont exportees du Python dans `baremes.json`, cle `note_athlete` : aucune
-// valeur n'est ecrite ici.
+// Trois regles, qui ne s'appliquent pas aux memes exercices.
+// 1. **Un exercice jamais fait** part du palier de la note *effective*
+//    (`note_effective`).
+// 2. **La note monte toute seule** quand l'historique recent la depasse
+//    nettement (`note_mesuree`) — et redescend sur la note declaree quand il
+//    flechit, jamais en dessous. Elle ne sert, elle aussi, qu'aux exercices
+//    jamais faits.
+// 3. **Une note relevee a la main** pose son palier de depart en *plancher* de
+//    la prochaine seance des exercices deja faits qui sont en dessous. Une
+//    seule fois : le repere `relevee_apres` est l'identifiant de la derniere
+//    seance au moment de la hausse, et une seance jouee apres lui redonne la
+//    main au repere ordinaire. Une baisse efface ce repere.
+//
+// Les tables (`rangs`, `part_exercices`, `marge`, `exercices_min`) viennent
+// de `reglages.json`, les `reperes` de `baremes.json`, assembles sous la cle
+// `note_athlete` par `composer_baremes` : aucune valeur n'est ecrite ici. Le
+// pourquoi de chaque reglage est dans `docs/reglages.md`.
 
 //: Cible des anciennes series de test : un plafond inatteignable. Plus aucune
 //: seance n'en produit ; la constante ne sert qu'a relire l'historique, ou
@@ -157,12 +168,12 @@ export class Calibration {
 }
 
 /**
- * L'arrondi de Python : au pair le plus proche sur un demi exact.
+ * L'arrondi au pair : au pair le plus proche sur un demi exact (le nom est
+ * historique).
  *
- * `Math.round(2.5)` vaut 3, `round(2.5)` en Python vaut 2. La difference ne
- * se voit que sur un demi exact, ce qui arrive des que le produit tombe
- * juste — et alors le resultat diverge. Il servait au test au maximum, et
- * sert toujours a `programmes.js`.
+ * `Math.round(2.5)` vaut 3, `arrondi_python(2.5)` vaut 2. La difference ne se
+ * voit que sur un demi exact, ce qui arrive des que le produit tombe juste.
+ * Sert a `programmes.js`.
  */
 export function arrondi_python(valeur) {
   const bas = Math.floor(valeur);

@@ -1,4 +1,4 @@
-// Jumeau de progression/ligues.py — ligues, divisions et XP.
+// Ligues, divisions et XP.
 //
 // **La ligue vient du volume, pas du numero de niveau.** Le rang se lit sur le
 // *volume* du palier atteint (series x cible x poids), rapporte au volume du
@@ -13,8 +13,8 @@
 // une classe a dependances injectees — il n'y a pas de base a lire.
 //
 // Les seuils, les noms de ligue et la table d'XP viennent de
-// `donnees/baremes.json`, exporte du Python : **aucune valeur n'est ecrite
-// ici**.
+// `donnees/reglages.json`, via `composer_baremes` : **aucune valeur n'est
+// ecrite ici**.
 
 //: Ce qu'il faut retirer d'un nom de ligue pour en faire une cle utilisable
 //: partout — nom de variable CSS, nom de classe, cle de dictionnaire.
@@ -131,7 +131,7 @@ export class Ligues {
    * variable CSS) et `division_index` (0 pour III, 2 pour I, qui gradue
    * l'intensite de l'habillage). Les deux viennent du module et non de
    * l'interface : les calculer ici evite d'ecrire deux fois la meme
-   * translitteration d'accents, en Jinja et en JavaScript.
+   * translitteration d'accents.
    */
   ligue_pour_rang(rang) {
     if (rang === null || rang === undefined || rang < 1) return null;

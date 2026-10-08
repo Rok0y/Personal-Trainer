@@ -1,15 +1,12 @@
 /* ==========================================================================
-   La saisie du ressenti, partagee par les deux applications.
+   La saisie du ressenti, a l'ecran de fin et dans l'historique.
 
-   Elle vivait dans le <style> de `fin.html`, que seul le poste fixe sert.
-   L'application du navigateur n'avait aucune facon de repondre — alors que
-   `ressenti.js` y etait deja branche dans le moteur. Le moteur lisait donc
-   toujours « pas de reponse », c'est-a-dire +1 apres une reussite, pendant
-   que le poste fixe accelerait a +2 ou +3 : **les deux versions ne
-   progressaient pas au meme rythme**, et rien a l'ecran ne le disait.
+   Sans elle, le moteur lirait toujours « pas de reponse », c'est-a-dire +1
+   apres une reussite : « facile » (+2) et « trop facile » (+3) seraient
+   inatteignables, et rien a l'ecran ne le dirait.
 
-   Le comportement des boutons vit dans `js/ressentis_ui.js`, pour la meme
-   raison et selon le meme decoupage que `hud.css` / `hud.js`.
+   Le comportement des boutons vit dans `js/ressentis_ui.js`, selon le meme
+   decoupage que `hud.css` / `hud.js`.
    ========================================================================== */
 
 /* Ligne de ressenti, injectée par le script une fois la séance écrite

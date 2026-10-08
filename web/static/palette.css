@@ -1,14 +1,10 @@
 /* ==========================================================================
    La palette, et rien d'autre.
 
-   Elle vivait dans `base.css`, que seules les pages Flask lient. L'application
-   du navigateur (`app/index.html`) n'a pas de raison de tirer une mise en page
-   de site — conteneurs, onglets, largeurs fixes — mais elle a toutes les
-   raisons d'avoir **les memes couleurs** : deux palettes, c'est deux
-   applications qui se ressemblent de moins en moins a chaque correction.
-
-   `base.css` l'importe, donc les sept gabarits n'ont rien change ; l'app la
-   lie directement. Une couleur s'ajoute ici, jamais en dur ailleurs.
+   L'application et les pages `dev/` la lient directement : **les memes
+   couleurs** partout, sans tirer de mise en page. Deux palettes, c'est deux
+   pages qui se ressemblent de moins en moins a chaque correction. Une couleur
+   s'ajoute ici, jamais en dur ailleurs.
    ========================================================================== */
 
 :root {

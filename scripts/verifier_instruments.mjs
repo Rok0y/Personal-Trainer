@@ -1,39 +1,26 @@
 // Verifie que chaque instrument de web/static/js/instruments.js rederive
-// exactement le jeton de sa detection, sur les poses du harnais des detections.
+// exactement le jeton de sa detection, sur les poses figees des tests.
 //
 // Les instruments recopient les seuils de detections.js pour pouvoir les
 // montrer : c'est une duplication, et une duplication ne se signale pas tant
 // que les deux copies coincident — seulement a leur premier ecart, a l'ecran,
 // sous la forme d'une jauge qui dit « dans la zone » pendant que rien ne
-// compte. Ce controle la rend bruyante. Il compare au jeton **Python** ecrit
-// dans les fixtures, pas au jeton JS : c'est le Python qui fait autorite.
+// compte. Ce controle la rend bruyante. Il compare au jeton que rend la
+// detection **actuelle**, pas a une reponse figee : l'invariant est « les deux
+// copies des seuils coincident », et il doit tenir apres chaque modification.
 //
 // Il echoue aussi quand une fonction de DETECTIONS n'a pas d'instrument, ou
 // l'inverse : une detection ajoutee sans instrument serait sinon muette au
 // banc d'essai, sans que rien ne le dise.
 //
-//     python -m scripts.generer_fixtures
 //     node scripts/verifier_instruments.mjs
-
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { construire_corps } from "../web/static/js/landmarks.js";
 import { DETECTIONS } from "../web/static/js/detections.js";
 import { INSTRUMENTS, lire_instrument } from "../web/static/js/instruments.js";
+import { lire_lignes } from "./fixtures.mjs";
 
-const ICI = dirname(fileURLToPath(import.meta.url));
-const FIXTURES = join(ICI, "fixtures_detections.jsonl");
-
-let lignes;
-try {
-  lignes = readFileSync(FIXTURES, "utf-8").trim().split("\n");
-} catch {
-  console.error(`Fixtures absentes : ${FIXTURES}`);
-  console.error("Genere-les d'abord : python -m scripts.generer_fixtures");
-  process.exit(2);
-}
+const lignes = lire_lignes("poses_detections");
 
 const sans_instrument = Object.keys(DETECTIONS).filter((nom) => !INSTRUMENTS[nom]);
 const orphelins = Object.keys(INSTRUMENTS).filter((nom) => !DETECTIONS[nom]);
@@ -50,13 +37,12 @@ let comparaisons = 0;
 const visites = {};
 const PEU_VISITE = 20;
 
-lignes.forEach((ligne, index) => {
-  const { landmarks, jetons } = JSON.parse(ligne);
+lignes.forEach(({ landmarks }, index) => {
   const corps = construire_corps(landmarks);
 
   for (const [nom, instrument] of Object.entries(INSTRUMENTS)) {
-    if (!(nom in jetons)) continue;
-    const attendu = jetons[nom];
+    if (!DETECTIONS[nom]) continue;
+    const attendu = DETECTIONS[nom](corps);
     const { jeton, valeurs } = lire_instrument(instrument, corps);
     comparaisons++;
     visites[nom] ??= {};
@@ -67,12 +53,6 @@ lignes.forEach((ligne, index) => {
     }
   }
 });
-
-const absents_des_fixtures = Object.keys(INSTRUMENTS)
-  .filter((nom) => !(nom in JSON.parse(lignes[0]).jetons));
-for (const nom of absents_des_fixtures) {
-  console.error(`Instrument jamais compare (absent des fixtures) : ${nom}`);
-}
 
 console.log(`${lignes.length} poses, ${comparaisons} comparaisons`);
 console.log(`${Object.keys(INSTRUMENTS).length} instruments\n`);
@@ -93,7 +73,7 @@ if (peu_visites.length) {
   console.log("");
 }
 
-if (!ecarts.size && !sans_instrument.length && !orphelins.length && !absents_des_fixtures.length) {
+if (!ecarts.size && !sans_instrument.length && !orphelins.length) {
   console.log("Aucun ecart : chaque instrument redit exactement sa detection.");
   process.exit(0);
 }
@@ -102,7 +82,7 @@ for (const [nom, liste] of ecarts) {
   console.error(`${nom} : ${liste.length} ecarts`);
   for (const e of liste.slice(0, 3)) {
     const v = e.valeurs.map((x) => (x === null ? "null" : x.toFixed(4))).join(", ");
-    console.error(`  pose ${e.pose} : Python=${e.attendu}  instrument=${e.obtenu}  [${v}]`);
+    console.error(`  pose ${e.pose} : detection=${e.attendu}  instrument=${e.obtenu}  [${v}]`);
   }
 }
 process.exit(1);

@@ -8,8 +8,8 @@
 //
 // Le module est volontairement separe de la detection : il ne juge pas le
 // mouvement, il juge si les points dont le mouvement a besoin sont reellement
-// dans l'image. Il est pur, comme les detections, pour la meme raison — il
-// devra un jour avoir un jumeau Python.
+// dans l'image. Il est pur, comme les detections, pour la meme raison : il se
+// verifie dans Node, sans camera.
 
 // Les points dont une detection a besoin ne sont pas declares : ils sont
 // *observes*, en rejouant la fonction sur un corps espion qui note chaque
@@ -157,7 +157,7 @@ export const QUOI_FAIRE = {
  *
  * `partie` vaut toujours null depuis la reduction a une consigne unique. Le
  * couple est conserve parce que c'est le contrat d'`annonces.sequence_cadrage`,
- * qui sait encore composer les vingt-huit phrases des deux cotes : rebrancher
+ * qui sait encore composer les vingt-huit phrases : rebrancher
  * une consigne fine ne couterait que cette fonction, et aucune prise de son.
  */
 export function message_de_cadrage(problemes) {

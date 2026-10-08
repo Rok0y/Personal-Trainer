@@ -1,9 +1,8 @@
 // Persistance de l'historique dans le navigateur.
 //
 // Ce module ne connait rien a l'historique : il charge et sauve l'objet que
-// `historique.js` fabrique, point. C'est ce decoupage qui rend le portage
-// verifiable — la logique se compare au Python dans Node, ou IndexedDB
-// n'existe pas.
+// `historique.js` fabrique, point. C'est ce decoupage qui rend l'historique
+// verifiable — la logique se teste dans Node, ou IndexedDB n'existe pas.
 //
 // **IndexedDB et non localStorage.** localStorage est synchrone (il bloque
 // l'affichage pendant l'ecriture, ce qui se voit a 36 images par seconde),
@@ -15,7 +14,7 @@
 // d'entrainement.
 //
 // La base entiere tient dans **un seul enregistrement**. Quelques centaines
-// de seances font quelques centaines de kilo-octets, le Python recalcule deja
+// de seances font quelques centaines de kilo-octets, la progression recalcule
 // tout a la lecture, et une ecriture unique est atomique : une sauvegarde
 // interrompue laisse la version precedente intacte plutot qu'une base a
 // moitie ecrite.

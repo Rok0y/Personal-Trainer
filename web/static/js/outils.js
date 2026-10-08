@@ -1,4 +1,4 @@
-// Jumeau de mouvements/outils.py.
+// Distances, angles et tenue d'une position dans le temps.
 
 export function calculer_distance(point_a, point_b) {
   return Math.sqrt((point_a.x - point_b.x) ** 2 + (point_a.y - point_b.y) ** 2);
@@ -16,7 +16,7 @@ export function calculer_angle(a, b, c) {
 
 export class HoldPosition {
   // L'horloge est injectable pour que la classe reste testable hors
-  // navigateur : le harnais de comparaison ne peut pas attendre 1,5 s reelle.
+  // navigateur : un test ne peut pas attendre 1,5 s reelle.
   constructor(position, duree, horloge = () => performance.now() / 1000) {
     this.position = position;
     this.duree = duree;

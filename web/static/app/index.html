@@ -4,6 +4,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0d13">
 <title>Coach</title>
+<meta name="description" content="L'application : séances complètes, coach vocal, historique, niveaux et programmes. C'est elle qui s'installe sur l'écran d'accueil.">
 <!-- Detecte qu'un deploiement est arrive et va le chercher. Le document etant
      le point d'entree, il ne peut pas porter d'empreinte : c'est le seul
      fichier qu'un cache peut garder perime sans que rien ne le dise. Ne touche
@@ -14,13 +15,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<!-- La palette et le HUD sont **les memes fichiers** que ceux du poste fixe.
-     C'est ce qui remplace la copie qui vivait ici : deux feuilles separees
-     derivaient a chaque correction, et l'ecran de seance avait fini par ne
-     plus rien avoir de commun avec celui du desktop — ni couleurs, ni
-     typographie, ni disposition. `base.css` reste volontairement hors du
-     coup : c'est une mise en page de *site*, avec ses conteneurs et ses
-     largeurs fixes, que cette page n'a aucune raison de subir. -->
+<!-- La palette et l'habillage de chaque ecran vivent dans des feuilles a la
+     racine, dont certaines servent aussi aux pages `dev/` : une couleur ne se
+     decide qu'a un seul endroit, `palette.css`. -->
 <link rel="stylesheet" href="../palette.css">
 <link rel="stylesheet" href="../hud.css">
 <link rel="stylesheet" href="../ressentis.css">
@@ -65,11 +62,10 @@
      autres ecrans n'a rien a y faire. */
   #ecranSeance.actif { display: block; }
 
-  /* **`contain` et jamais `cover`**, contrairement au poste fixe. Recadrer
-     masquerait une partie de ce que le modele analyse : on se verrait entier
-     a l'ecran pendant que le controle de cadrage signale un genou hors champ,
-     c'est-a-dire exactement la confusion qu'il est la pour lever. Le poste
-     fixe peut se le permettre, son flux arrive deja au format de l'ecran. */
+  /* **`contain` et jamais `cover`**. Recadrer masquerait une partie de ce que
+     le modele analyse : on se verrait entier a l'ecran pendant que le
+     controle de cadrage signale un genou hors champ, c'est-a-dire exactement
+     la confusion qu'il est la pour lever. */
   #ecranSeance .video { object-fit: contain; background: #000; }
 
   /* ---------- Liste des seances ---------- */
@@ -222,8 +218,7 @@
   .puce b { color: var(--texte); font-weight: 600; }
   .puce-tester { color: var(--alerte); }
 
-  /* Le decrochage d'une cible figee doit se voir, sinon il est silencieux.
-     Meme couleur que le badge de l'accueil du poste fixe. */
+  /* Le decrochage d'une cible figee doit se voir, sinon il est silencieux. */
   .puce-manuelle { color: var(--orange); border-color: var(--orange); }
   /* Le choix de version, dans la zone de demarrage de la seance choisie. */
   /* Le choix de version, sur la ligne du mouvement : un menu qui a l'air
@@ -246,9 +241,9 @@
   }
   .carte-active { border-color: var(--orange); }
 
-  /* Le poste fixe en fait un <a>, l'application un <button> — meme role,
-     donc meme allure : on lui retire l'habillage de bouton plutot que de
-     lui inventer un style a part. */
+  /* Un <button> qui joue le role d'un lien, donc qui en a l'allure : on lui
+     retire l'habillage de bouton plutot que de lui inventer un style a
+     part. */
   #resumeProgramme .resume-lien {
     background: none;
     border: 0;
@@ -288,12 +283,11 @@
   }
   .barre-carte .bouton { padding: 0.35rem 0.8rem; font-size: 0.8rem; }
 
-  /* L'editeur reprend `editeur.css`, la feuille des deux pages d'edition du
-     poste fixe : memes classes, meme pastille de mode, meme liseret
+  /* L'editeur reprend `editeur.css` : classes, pastille de mode, liseret
      d'entrelacement. Ne reste ici que la mise en page etroite.
 
-     La grille du bureau aligne onze colonnes sur une ligne — elle suppose un
-     ecran large, et un iPad ne l'a qu'en paysage. En portrait on empile : les
+     La grille d'`editeur.css` aligne onze colonnes sur une ligne — elle
+     suppose un ecran large, et un iPad ne l'a qu'en paysage. En portrait on empile : les
      commandes en haut, l'exercice en pleine largeur, puis les nombres a deux
      par ligne. C'est la meme information, dans le meme ordre. */
   #ecranEditeur .bloc {
@@ -352,12 +346,11 @@
 
   .actions { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
 
-  /* La zone de ressenti est habillee par `ressentis.css`, partagee avec le
-     poste fixe ; il ne reste ici que son insertion dans les cartes. */
+  /* La zone de ressenti est habillee par `ressentis.css` ; il ne reste ici
+     que son insertion dans les cartes. */
   .exercice-fait .feedback { margin-top: 0.6rem; }
 
-  /* Propre a l'application : le poste fixe annonce la prochaine seance du
-     programme sur son accueil, que cette page remplace ici. */
+  /* La prochaine seance a enchainer, sur l'ecran du programme. */
   .programme-suite {
     margin: 0.9rem 0 0;
     font-size: 0.9rem;
@@ -435,11 +428,7 @@
   }
   .onglet.actif { background: var(--surface-haut); color: var(--texte); }
 
-  /* ---------- Historique et records ----------
-     Les formes viennent du site desktop (`web/templates/historique.html`) :
-     memes classes, memes proportions, variables de l'app. Reprendre son
-     langage visuel plutot qu'en inventer un second evite que les deux
-     n'aient l'air de deux applications differentes. */
+  /* ---------- Historique et records ---------- */
 
   .fiche-seance {
     background: var(--surface);
@@ -741,8 +730,8 @@
   }
   /* Le faux compteur de l'exercice des gestes. Il emprunte le vocabulaire
      visuel du HUD — gros chiffre, meme fonte — sans emprunter ses
-     identifiants : `verifier_hud.py` exige que ceux-la soient les memes dans
-     les deux pages, et cet ecran n'existe que dans l'application. */
+     identifiants : `hud.js` peint le HUD par ses identifiants, et cet ecran
+     n'est pas le HUD. */
   .pratique-compteur {
     font-family: "Bebas Neue", sans-serif;
     font-size: clamp(4rem, 16vw, 8rem);
@@ -905,9 +894,7 @@
      sous son propre bouton « Modifier ». */
   [hidden] { display: none !important; }
 
-  /* Les chiffres d'un resume, memes proportions que `profil.html` : libelle
-     en petit, valeur en grand. La feuille du site n'est pas liee ici (c'est
-     une mise en page de site), on en reprend le langage visuel. */
+  /* Les chiffres d'un resume : libelle en petit, valeur en grand. */
   .chiffres { display: flex; flex-wrap: wrap; gap: 1.4rem; margin: 0.8rem 0; }
   .chiffres div span {
     display: block;
@@ -955,7 +942,7 @@
   <!-- **Une page de profil se lit d'abord.** Un formulaire toujours ouvert
        donne l'impression qu'il y a quelque chose a remplir, alors qu'on vient
        le plus souvent verifier ce qui est declare. L'edition devient un geste
-       explicite, des deux cotes. -->
+       explicite. -->
   <div class="chiffres" id="resumeMesures"></div>
   <div class="actions" style="justify-content:flex-start" id="actionsMesures">
     <button class="bouton secondaire" id="boutonModifierMesures">Modifier mes informations</button>
@@ -1092,18 +1079,15 @@
 </section>
 
 <!-- ====================== PROFILS ====================== -->
-<!-- L'ecran « Qui s'entraine ? » du poste fixe. Il ne s'impose jamais au
-     lancement : l'application rouvre sur le dernier profil utilise, et ce
-     n'est qu'en le demandant qu'on arrive ici. Un appareil personnel ne doit
-     pas faire choisir son proprietaire a chaque seance ; un appareil prete a
-     quelqu'un le doit, et c'est le meme ecran. -->
+<!-- L'ecran « Qui s'entraine ? ». Il s'impose a chaque lancement
+     (`profil_a_choisir`) : deux personnes partagent la tablette. Le dernier
+     profil utilise y est pre-designe, pour qu'un appareil personnel ne coute
+     qu'un toucher. -->
 <!-- L'accueil d'un profil neuf. **Bloquant**, et c'est ce qui le distingue
      des guides de seance : `choisir_profil` s'y arrete tant que
      `onboarding_termine` vaut 0, parce qu'un profil qui n'a pas declare son
      materiel s'entrainerait sur l'inventaire par defaut — en silence, avec des
-     objectifs faux pendant des semaines.
-     La colonne existait depuis le portage de SQLite, ecrite a la creation et
-     **lue nulle part** : cet ecran est ce qui lui donne enfin un sens. -->
+     objectifs faux pendant des semaines. -->
 <section class="ecran defile" id="ecranBienvenue">
   <h1 id="bienvenueTitre">Bienvenue</h1>
   <p class="muet" id="bienvenueEtapeNum"></p>
@@ -1166,9 +1150,9 @@
      Elle reprend le balisage de `.installation`, l'ecran de debut de seance —
      les memes classes, pas une copie : on apprend ici le cadrage qu'on refera
      la-bas, et deux mises en page pour la meme chose seraient deux choses a
-     apprendre. Pas de `data-commande` : `verifier_hud.py` exige qu'elles
-     soient identiques dans les deux pages, et ce guidage n'existe que dans
-     l'application. -->
+     apprendre. Pas de `data-commande` : `brancher_commandes` envoie tout
+     bouton qui en porte un a l'executeur des commandes de seance, et ce
+     guidage n'en est pas une. -->
 <section class="ecran" id="ecranPratique">
   <canvas id="pratiqueRendu"></canvas>
 
@@ -1290,18 +1274,17 @@
   <div id="listeExercices"></div>
 </section>
 
-<!-- La fiche d'un mouvement. Un ecran et non une page : le poste fixe a des
-     URL (`/exercice/<nom>`), l'application n'en a qu'une. Le bouton retour
-     remplace donc le bouton precedent du navigateur. -->
+<!-- La fiche d'un mouvement. Un ecran et non une page : l'application n'a
+     qu'une URL. Le bouton retour remplace donc le bouton precedent du
+     navigateur. -->
 <section class="ecran defile" id="ecranFiche">
   <button class="bouton secondaire" id="retourExercices">← Tous les exercices</button>
   <div id="contenuFiche"></div>
 </section>
 
-<!-- L'ecran de seance est **le HUD du poste fixe**, aux memes classes et aux
-     memes identifiants : `hud.css` l'habille et `hud.js` le peint. La seule
-     difference est la source de l'image — un <canvas> alimente par la camera
-     de l'appareil, la ou le poste fixe recoit un flux MJPEG de Flask. -->
+<!-- L'ecran de seance est **le HUD** : `hud.css` l'habille et `hud.js` le
+     peint, par ses classes et ses identifiants. L'image est un <canvas>
+     alimente par la camera de l'appareil. -->
 <section class="ecran stage" id="ecranSeance">
 
   <canvas class="video" id="rendu"></canvas>
@@ -1364,14 +1347,13 @@
       <div id="overlaySessionProgressSegments"></div>
     </div>
 
-    <!-- Propre a l'application : personne ne doit rester bloque parce que le
-         geste bras en X ne se declenche pas chez lui. Le poste fixe a un
-         clavier pour ca, une tablette posee par terre n'a rien. -->
+    <!-- Personne ne doit rester bloque parce que le geste bras en X ne se
+         declenche pas chez lui : une tablette posee par terre n'a pas de
+         clavier. -->
     <button class="bouton" id="boutonCommencer" hidden>Je commence</button>
-    <!-- Le tutoriel d'installation. Pas de `data-commande` : `verifier_hud.py`
-         exige que celles-ci soient identiques dans les deux pages, et ce
-         guidage n'existe que dans l'application — le poste fixe a un clavier
-         et un ecran a portee de main. -->
+    <!-- Le tutoriel d'installation. Pas de `data-commande` :
+         `brancher_commandes` envoie tout bouton qui en porte un a l'executeur
+         des commandes de seance, et ce guidage n'en est pas une. -->
     <button class="bouton secondaire" id="boutonPasserTuto" data-tuto="passer" hidden>
       Passer le guide
     </button>
@@ -1442,11 +1424,9 @@
     <span class="consigne-message" id="consigneMessage"></span>
   </div>
 
-  <!-- Pas de cartes « Position » et « Etape » ici, contrairement au poste
-       fixe : elles ne servent qu'au reglage d'une detection, et ce reglage se
-       fait sur la demo, qui a un banc d'essai pour ca. L'ecart est declare
-       dans `scripts/verifier_hud.py` (ECARTS_ASSUMES) pour qu'il reste un
-       choix et non un oubli. -->
+  <!-- Pas de cartes « Position » et « Etape » ici : elles ne servent qu'au
+       reglage d'une detection, et ce reglage se fait sur la demo, qui a un
+       banc d'essai pour ca. C'est un choix, pas un oubli. -->
   <div class="side-panel">
 
     <div class="card comment-card" id="commentCard" hidden>
@@ -1539,9 +1519,9 @@
       <!-- Deux niveaux, et c'est tout l'objet du regroupement : l'action
            principale de la phase reste sous le doigt, les six autres vivent
            dans un repli. A plat, elles montaient sur trois lignes et
-           recouvraient la barre de progression. Les onze `data-commande` sont
-           inchanges — `verifier_hud.py` exige qu'elles soient les memes des
-           deux cotes, et seul leur groupement change ici. -->
+           recouvraient la barre de progression. Les `data-commande` portent
+           les noms que `commandes_autorisees` emploie ; seul leur groupement
+           se decide ici. -->
       <button type="button" class="commande-vedette" data-contexte="exercice" data-commande="terminer">Série terminée</button>
       <button type="button" class="commande-vedette" data-contexte="pause" data-commande="reprendre">Reprendre</button>
       <button type="button" class="commande-vedette" data-contexte="pause" data-commande="passer_pause">Passer la pause</button>
@@ -1595,6 +1575,7 @@ import { Camera, POSES_SEUL, dessiner_squelette } from "../js/camera.js";
 import { construire_corps } from "../js/landmarks.js";
 import { DETECTIONS } from "../js/detections.js";
 import {
+  avec_fiches,
   catalogue_effectif,
   circuit_pour,
   exercice_pour,
@@ -1632,7 +1613,7 @@ import * as historique from "../js/historique.js";
 import { Tutoriel, etapes_de_seance } from "../js/tutoriel.js";
 import * as stockage from "../js/stockage.js";
 import { Lecteur } from "../js/lecteur.js";
-import { Baremes } from "../js/paliers.js";
+import { Baremes, composer_baremes } from "../js/paliers.js";
 import { Niveaux } from "../js/niveaux.js";
 import { Ligues } from "../js/ligues.js";
 import { badge_ligue, classe_ligue, jalon_ligue, jauge_ligue, style_ligue } from "../js/ligues_ui.js";
@@ -1644,8 +1625,10 @@ import { normaliser, poids_declarable } from "../js/materiel.js";
 import { VerrouEcran } from "../js/veille.js";
 import { cle_de_progression, graphique_progression } from "../js/graphique.js";
 import {
+  deplacer_seance,
   etat_programme,
   etats_programmes,
+  ordre_des_seances,
   resume_palier,
   semaine_du_programme,
 } from "../js/programmes.js";
@@ -1675,9 +1658,8 @@ const CLE_PROFIL = "coach.profil";
 let profil_a_choisir = true;
 
 //: Le profil dont on lit et ecrit l'historique. Variable et non constante
-//: depuis l'ecran de profils — tout le cloisonnement etait deja en place
-//: (`historique.js` filtre comme le fait SQLite), seule cette valeur figee
-//: empechait d'en avoir plusieurs.
+//: depuis l'ecran de profils — tout le cloisonnement est dans
+//: `historique.js`, qui filtre par profil.
 let PROFIL = 1;
 
 /**
@@ -1706,14 +1688,12 @@ function profil_retenu() {
 }
 
 // Duree du geste « bras en X » pour lancer une serie, puis du decompte qui
-// suit. Memes valeurs que `main.py` : le geste doit etre tenu assez longtemps
-// pour ne pas se declencher en s'installant, et le decompte laisse le temps de
-// redescendre les bras.
-//: Combien de temps un geste doit etre tenu. Trois valeurs et non une :
+// suit : le geste doit etre tenu assez longtemps pour ne pas se declencher en
+// s'installant, et le decompte laisse le temps de redescendre les bras.
+//: Combien de temps un geste doit etre tenu. Deux valeurs et non une :
 //: entrer dans la seance est anodin (1,5 s), valider une serie ou la
-//: remettre a zero ne l'est pas (3 s, comme `main.py`). L'application les
-//: confondait a 1,5 s, si bien qu'un bras en X fugace pendant l'effort
-//: pouvait terminer la serie deux fois plus vite que sur le poste fixe.
+//: remettre a zero ne l'est pas (3 s). A 1,5 s partout, un bras en X fugace
+//: pendant l'effort terminait la serie.
 const TENUE_PREPARATION = 1.5;
 const TENUE_VALIDATION = 3;
 const DECOMPTE = 3;
@@ -1724,10 +1704,9 @@ const DECOMPTE = 3;
 //: pixels, deux appuis se separent davantage.
 const DELAI_DOUBLE_CLIC = 500;
 
-//: Les modes dont la cible se compte en secondes. Meme liste que le
-//: `MODES_DUREE` des gabarits du poste fixe, et pour la meme raison : la
-//: regle etait ecrite en clair a chaque endroit qui en avait besoin, et un
-//: mode absent d'une des copies voyait sa duree remise a zero.
+//: Les modes dont la cible se compte en secondes. Une seule liste : la regle
+//: etait ecrite en clair a chaque endroit qui en avait besoin, et un mode
+//: absent d'une des copies voyait sa duree remise a zero.
 const MODES_DUREE = ["maintien", "chrono", "echauffement"];
 
 const $ = (id) => document.getElementById(id);
@@ -1740,9 +1719,7 @@ const montrer = (id) => {
 // La barre d'onglets, en un seul endroit.
 //
 // Elle etait recopiee a la main dans les cinq ecrans, et le bouton de profil
-// n'existait que dans la copie de l'accueil. C'est exactement l'histoire de
-// `web/templates/_navigation.html` cote Flask : c'est en voulant y ajouter le
-// profil que la duplication est devenue intenable. Meme cause, meme remede.
+// n'existait que dans la copie de l'accueil.
 //
 // L'ecran de seance n'a volontairement pas de barre : on ne quitte pas une
 // seance par un onglet.
@@ -1792,16 +1769,21 @@ let seances_du_fichier = {};
 let moteur = null;
 
 async function charger_donnees() {
-  const [m, s, sons, baremes, progs] = await Promise.all([
+  const [m, fiches, s, sons, socle, reglages, progs] = await Promise.all([
     fetch("../donnees/mouvements.json").then((r) => r.json()),
+    fetch("../donnees/fiches.json").then((r) => r.json()),
     fetch("../donnees/seances.json").then((r) => r.json()),
     fetch("../donnees/sons.json").then((r) => r.json()),
     fetch("../donnees/baremes.json").then((r) => r.json()),
+    fetch("../donnees/reglages.json").then((r) => r.json()),
     fetch("../donnees/programmes.json").then((r) => r.json()),
   ]);
-  mouvements = m;
+  // Chaque fait n'a qu'une source : le texte des fiches et les nombres
+  // reglables vivent dans leurs propres fichiers, edites sur les pages
+  // `dev/`, et sont assembles ici plutot que recopies a l'avance.
+  mouvements = avec_fiches(m, fiches);
   seances_du_fichier = s;
-  tables_baremes = baremes;
+  tables_baremes = composer_baremes(socle, reglages);
   programmes_declares = progs;
   tables_sons = sons;
   lecteur = new Lecteur("../sons", sons);
@@ -1914,8 +1896,7 @@ function lecture_du_profil() {
 
 // ---------------------------------------------------------------- son
 
-// Le lecteur porte la file d'attente a priorites du desktop : un son a la
-// fois, le plus urgent d'abord, et un evenement important vide les petits
+// Le lecteur porte une file d'attente a priorites : un son a la fois, le plus urgent d'abord, et un evenement important vide les petits
 // sons en attente. Sans lui les annonces se chevauchaient — « le compte se
 // marche un peu dessus ».
 let lecteur = null;
@@ -1945,8 +1926,8 @@ const coach_sequence = (sons, priorite = 5, cle = null, silence_avant = 0) =>
 /**
  * Le nombre d'halteres qu'un mouvement demande, ou 0.
  *
- * Jumeau de `session.seances.nombre_halteres`, lu dans la table exportee. Les
- * echauffements n'y figurent pas — ils se font au poids du corps — et le 0 les
+ * Lu dans la table `materiel` de `baremes.json`. Les echauffements n'y
+ * figurent pas — ils se font au poids du corps — et le 0 les
  * rend muets sur le materiel, ce qui est la bonne reponse.
  */
 const nombre_halteres = (nom) =>
@@ -1956,8 +1937,7 @@ const nombre_halteres = (nom) =>
  * « Prochain exercice. Curl biceps droit. Prepare un haltere de 8 kilos. Place
  * -toi de profil, la camera a ta droite. »
  *
- * Jumelle d'`audio.coach.annoncer_prochaine_etape`. Les deux informations
- * ajoutees a la simple nomination sont celles qu'un ecran regarde de trois
+ * Les deux informations ajoutees a la simple nomination sont celles qu'un ecran regarde de trois
  * metres ne donne pas : ce qu'il faut sortir du placard, et de quel cote se
  * tourner.
  *
@@ -1970,9 +1950,7 @@ function annoncer_prochain_exercice(bloc, silence_avant = 0) {
   if (!bloc) return;
   const etape = { exercice: bloc.exercice.nom, poids: bloc.poids };
   // L'amorce se lit ici et non aux trois sites d'appel : cette fonction vit
-  // dans la page, donc elle voit deja `seance`. Cote Python, `audio.coach`
-  // est un module sans seance, d'ou l'argument que `main.py` lui passe —
-  // c'est la meme decision prise dans deux contextes differents.
+  // dans la page, donc elle voit deja `seance`.
   const sons = sequence_prochain_exercice(
     tables_sons?.briques,
     etape,
@@ -2000,9 +1978,8 @@ let geste_fin = null;
 //: la serie sauteraient aussi la pause, trois secondes plus tard.
 let geste_pause = null;
 let pause_armee = false;
-//: Deux bras leves remettent la serie a zero sans la valider. Tenu 3 s,
-//: comme sur le poste fixe : un geste destructeur ne doit pas partir au
-//: premier etirement.
+//: Deux bras leves remettent la serie a zero sans la valider. Tenu 3 s :
+//: un geste destructeur ne doit pas partir au premier etirement.
 const geste_reset = new HoldPosition(deux_bras_leves, TENUE_VALIDATION);
 //: Un bras seul corrige le compte : +1 a droite, -1 a gauche. Meme tenue que
 //: les autres gestes, pour qu'un bras monte un peu haut pendant un exercice ne
@@ -2017,8 +1994,8 @@ let en_cours = false;
 //: premier plan** : le systeme le relache des que la page devient
 //: invisible, et il ne revient pas tout seul.
 const verrou_ecran = new VerrouEcran();
-//: « running » ou « paused ». Jumeau du statut de `SessionManager` :
-//: l'application n'a pas de controleur, mais elle a les memes commandes.
+//: « running » ou « paused » : l'etat du pilote, que `payload_etat` lit pour
+//: autoriser les commandes.
 let statut = "running";
 let phase_precedente = null;
 //: Le guidage d'installation, arme seulement la premiere fois qu'un profil
@@ -2409,9 +2386,8 @@ function boucle(horodatage) {
   peindre(corps_brut);
 
   // En pause, l'image continue de defiler mais plus rien n'avance : ni le
-  // circuit, ni le comptage. Meme traitement que `main.py`, qui annule le
-  // corps detecte plutot que de sortir de la boucle — c'est ce qui laisse le
-  // flux visible pendant qu'on reprend son souffle.
+  // circuit, ni le comptage. La boucle ne s'arrete pas — c'est ce qui laisse
+  // le flux visible pendant qu'on reprend son souffle.
   if (statut === "paused") {
     poser_etape(etat, "pause", libelle_etape);
     etat.consigne = texte("pause");
@@ -2425,14 +2401,14 @@ function boucle(horodatage) {
   const avant = seance.phase;
   seance.update();
 
-  // Meme decoupage que la boucle camera du desktop : la **preparation est une
-  // phase du circuit**, pas une porte a l'interieur de l'exercice. Les
+  // La **preparation est une phase du circuit**, pas une porte a l'interieur
+  // de l'exercice. Les
   // confondre laissait la seance bloquee en `preparation`, ou rien ne
   // tournait — ni cadrage, ni geste, ni meme un message.
   if (corps_brut) {
     const corps = construire_corps(corps_brut);
-    // Un corps vu efface « place-toi devant la camera », comme `main.py` le
-    // fait a chaque image. Sans cette ligne, une seule image perdue pendant
+    // Un corps vu efface « place-toi devant la camera », a chaque image. Sans
+    // cette ligne, une seule image perdue pendant
     // l'effort figeait le message jusqu'a la fin de la serie : `jouer_exercice`
     // ne touche pas a la consigne, et on se faisait dire de se placer alors
     // qu'on l'etait. Les branches qui ont quelque chose a dire la reecrivent.
@@ -2444,8 +2420,8 @@ function boucle(horodatage) {
     // court-circuite `preparer()`, le controle de cadrage n'etait jamais
     // atteint. On lisait donc les consignes du squat sans avoir jamais ete
     // cadre. Les deux restent volontairement **en dehors de la machine a
-    // etats** : rearmer une phase ferait diverger `circuit.js` de
-    // `circuit.py`, que `comparer_seances.mjs` compare pas a pas.
+    // etats** : ce sont des etats de page, et rearmer une phase changerait le
+    // `Circuit` que `comparer_seances.mjs` rejoue pas a pas.
     if (installation) jouer_installation(corps, instant);
     else if (guide_exercice) lire_guide(corps);
     else if (seance.phase === "preparation") preparer(corps, instant);
@@ -2466,8 +2442,8 @@ function boucle(horodatage) {
   }
 
   // Le decompte des dernieres secondes de repos. `Math.trunc` et non
-  // `Math.round` : le Python tronque (`int(...)`), et un demi-seconde d'ecart
-  // suffit a decaler le franchissement d'un seuil.
+  // `Math.round` : on compte les secondes entieres restantes, et un
+  // demi-seconde d'ecart suffit a decaler le franchissement d'un seuil.
   if (seance.phase === "recuperation_serie" || seance.phase === "repos_exercice") {
     annoncer_temps_repos(coach, seance, Math.trunc(seance.temps_restant));
   }
@@ -2484,14 +2460,12 @@ function boucle(horodatage) {
 /**
  * Les gestes de controle, releves a **chaque** image quelle que soit la phase.
  *
- * Jumeau de la section correspondante de `main.py`, et il manquait trois
- * choses a l'application. (1) `position_actuelle`, qui alimente la carte
- * « Position » du HUD — sans elle la carte affichait « Aucune » en permanence.
- * (2) La **bulle de maintien** : le poste fixe montre l'avancement du bras en
- * X pendant tout l'exercice, ce qui est le seul retour disant « ton geste est
- * pris ». (3) Les **deux bras leves**, qui remettent le compteur a zero sans
- * valider la serie — un geste qui existait sur le poste fixe et nulle part
- * dans le navigateur.
+ * Trois choses. (1) `position_actuelle`, transmise au HUD par `payload_etat`
+ * — l'application n'a pas de carte « Position », `changer_champ` l'ignore
+ * alors. (2) La
+ * **bulle de maintien** : l'avancement du bras en X pendant tout l'exercice,
+ * seul retour disant « ton geste est pris ». (3) Les **deux bras leves**, qui
+ * remettent le compteur a zero sans valider la serie.
  */
 function observer_gestes(corps) {
   etat.position_actuelle = deux_bras_leves(corps)
@@ -2729,7 +2703,7 @@ function annoncer_changement(avant) {
     // des la fin de la serie, et le reste n'a pas le temps d'exister.
     // `temps_restant` vaut ici le repos entier : on vient d'y entrer.
     const court = seance.temps_restant < (lecteur?.repos_minimal ?? 0);
-    // Sinon les deux, comme `main.py` : « repos » dit qu'on s'arrete,
+    // Sinon les deux : « repos » dit qu'on s'arrete,
     // l'annonce composee dit ce qui vient — ce n'est pas la meme information.
     if (!court) coach("repos");
     // Le blanc entre les deux : sans lui, « repose-toi » et « prochain
@@ -2777,20 +2751,6 @@ function peindre(pose, canvas = $("rendu")) {
 }
 
 /**
- * Peint le HUD — **avec la meme fonction que le poste fixe**.
- *
- * Tout ce qui etait ecrit ici (badges, compteur multi-modes, fiche, voile de
- * repos, barres de progression) vivait en double : une version Flask, une
- * version navigateur, qui ne se ressemblaient plus. `payload_etat` fabrique
- * l'objet que `/etat` renvoie, `peindre_hud` s'en charge, et les deux ecrans
- * ne peuvent plus diverger sans qu'on l'ait decide.
- *
- * Ne restent ici que les deux choses que le poste fixe n'a pas : un bouton de
- * secours pour demarrer sans le geste, et l'anneau de geste bras en X pendant
- * l'effort — cote Flask, la meme information passe par `progression_maintien`,
- * que le serveur calcule.
- */
-/**
  * Previent quand l'ecran risque de s'eteindre.
  *
  * **Un echec silencieux se paie en seance** : l'ecran s'eteint au milieu d'un
@@ -2805,9 +2765,8 @@ let veille_annoncee = null;
 function signaler_veille() {
   // **Pas dans `consigne`** : la boucle la reecrit a chaque image, et
   // l'avertissement aurait clignote une fois avant de disparaitre. Le voyant
-  // de statut du HUD, lui, est libre — il annonce « connexion perdue » sur le
-  // poste fixe, et le navigateur n'a aucune connexion a perdre. Le detourner
-  // ici lui rend un sens : « quelque chose ne va pas dans cette seance ».
+  // de statut du HUD, lui, est libre, et dit ici « quelque chose ne va pas
+  // dans cette seance ».
   //
   // Le son passe devant l'ecran : un son coupe se repare d'un geste (le
   // lecteur relance au prochain contact), alors qu'un ecran qui peut
@@ -2832,6 +2791,12 @@ function signaler_veille() {
   texte.title = tenu ? "" : (verrou_ecran.raison ?? "");
 }
 
+/**
+ * Peint le HUD : `payload_etat` fabrique l'objet, `peindre_hud` (hud.js) s'en
+ * charge. Ne reste ici que ce que l'etat de seance ne porte pas — le bouton de
+ * secours pour demarrer sans le geste, ce qui se cache pendant l'installation,
+ * et le voile de repos retire pendant qu'on se place.
+ */
 function rafraichir_affichage() {
   peindre_hud(payload_etat(seance, etat, statut, PROFIL));
   // Reevalue a chaque image, et n'ecrit que si l'etat a change : un verrou
@@ -2858,17 +2823,12 @@ function rafraichir_affichage() {
   $("boutonPasserTuto").hidden =
     Boolean(installation) || !tutoriel || seance.phase !== "preparation";
 
-  // **Le voile de repos se retire pendant qu'on se place**, et c'est le
-  // quatrieme ecart assume entre les deux montages du HUD. `afficher_phase` ne
-  // l'enleve que pour `exercice` et `termine` : en `preparation` l'image de la
-  // camera est donc couverte a 74 %, c'est-a-dire pendant tout le placement et
-  // tout le controle de cadrage. On demandait de se cadrer devant une image
-  // qu'on ne voyait qu'au quart — grief remonte tel quel d'un test reel.
-  //
-  // Cote application seulement, parce que c'est elle qui a `cadrage.js` et qui
-  // reclame explicitement de se voir. Le poste fixe garde son voile, qui y
-  // annonce le prochain exercice sans gener personne : il n'y a pas de
-  // consigne de cadrage a suivre devant lui.
+  // **Le voile de repos se retire pendant qu'on se place.** `afficher_phase`
+  // (hud.js) ne l'enleve que pour `exercice` et `termine` : en `preparation`
+  // l'image de la camera serait donc couverte a 74 %, c'est-a-dire pendant
+  // tout le placement et tout le controle de cadrage. On demandait de se
+  // cadrer devant une image qu'on ne voyait qu'au quart — grief remonte tel
+  // quel d'un test reel.
   if (installation || seance.phase === "preparation") {
     $("restOverlay").classList.remove("visible");
   }
@@ -2879,9 +2839,8 @@ function rafraichir_affichage() {
 /**
  * Ce que la seance vient de faire franchir : ligues, niveaux, XP.
  *
- * Jumelle de la route `/api/historique/<id>/jalons` du poste fixe, a ceci
- * pres qu'il n'y a rien a interroger : la base est locale et la seance vient
- * d'y etre ecrite. Une seance sans jalon n'affiche rien plutot qu'un bandeau
+ * Rien a interroger : la base est locale et la seance vient d'y etre ecrite.
+ * Une seance sans jalon n'affiche rien plutot qu'un bandeau
  * vide — la celebration n'a de valeur que si elle est rare.
  */
 function afficher_jalons(seance_id) {
@@ -2997,8 +2956,8 @@ async function terminer(abandonnee = false) {
 /**
  * Remonte d'un cran les variantes que cette seance a maitrisees.
  *
- * Jumelle de `SessionManager._monter_les_variantes` : la regle est dans
- * `variantes.montees`, ici on ne fait qu'ecrire la table du profil. Rend les
+ * La regle est dans `variantes.montees`, ici on ne fait qu'ecrire la table
+ * du profil. Rend les
  * montees faites, que l'ecran de fin annonce avec de quoi les defaire.
  */
 async function monter_les_variantes(resultats) {
@@ -3078,18 +3037,17 @@ async function enteriner_cibles_figees() {
  * `dessiner_resume_de_fin`, qui compte les reponses reellement proposees.
  *
  * Ce qu'elle portait comme decision vaut d'etre garde en memoire : le module
- * `ressenti.js` etait porte et branche dans le moteur, mais **rien ne
- * permettait d'y repondre**. Le moteur lisait donc toujours « pas de
- * reponse », c'est-a-dire +1 apres une reussite, pendant que le poste fixe
- * accelerait a +2 ou +3 et reculait a -1. Les deux versions ne progressaient
- * pas au meme rythme, et ca ne se voyait sur aucun ecran — seulement trois
- * seances plus tard, sur un objectif qui n'etait pas le meme.
+ * `ressenti.js` etait branche dans le moteur, mais **rien ne permettait d'y
+ * repondre**. Le moteur lisait donc toujours « pas de reponse », c'est-a-dire
+ * +1 apres une reussite : +2, +3 et -1 etaient inatteignables, et ca ne se
+ * voyait sur aucun ecran — seulement trois seances plus tard, sur un
+ * objectif qui n'etait pas le bon.
  */
 
 // ---------------------------------------------------------------- materiel
 
 /**
- * Le questionnaire de materiel, jumeau de celui du site.
+ * Le questionnaire de materiel.
  *
  * Un `<select>` par poids plutot que deux cases : « une paire » et « un
  * haltere seul » ne sont pas deux options independantes, c'est une quantite.
@@ -3274,8 +3232,7 @@ const echapper = (texte) =>
   String(texte).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 /**
- * Une seance, telle que le site desktop la presente : un `<details>` replie,
- * son statut, et ses exercices avec le detail des series.
+ * Une seance : un `<details>` replie, son statut, et ses exercices avec le detail des series.
  *
  * Le detail des series compte plus qu'il n'en a l'air : c'est lui qui montre
  * **le maillon faible**. « 12, 12, 10, 12 » prouve 10, et une ligne agregee
@@ -3377,15 +3334,14 @@ function dessiner_seance(seance, montees, montees_ligue = {}, options = {}) {
  * @param {object} options     `apres_suppression` : quoi redessiner ensuite
  */
 function brancher_fiches_de_seance(racine, histoire, options = {}) {
-  // Le ressenti se saisit **aussi a posteriori**, comme sur le poste fixe :
-  // l'ecran de fin est le moment naturel, mais on ne sait pas toujours sur le
+  // Le ressenti se saisit **aussi a posteriori** : l'ecran de fin est le moment naturel, mais on ne sait pas toujours sur le
   // coup si c'etait trop dur. `jugements_par_seance` n'ecarte aucune seance,
   // pas meme une seance abandonnee — on decrit ici ce qui s'est passe, pas ce
   // qu'il faut viser ensuite. Il ecarte en revanche les **tests**, qui n'ont
   // pas d'objectif a ajuster.
   const jugements = moteur.ressenti.jugements_par_seance(histoire);
-  // La proposition de variante voyage **dans** le jugement, comme sur le
-  // poste fixe : `construire_ligne` l'affiche sous le verdict.
+  // La proposition de variante voyage **dans** le jugement :
+  // `construire_ligne` l'affiche sous le verdict.
   const propositions = moteur.variantes.propositions(
     histoire,
     jugements,
@@ -3506,10 +3462,6 @@ function ouvrir_editeur(nom) {
  * datent d'avant plusieurs seances —, alors *enregistrer sans rien toucher*
  * fige tous les exercices d'un coup, y compris ceux qui ont progresse. Mesure :
  * modifier une seule cible marquait les deux blocs de la seance « bras ».
- *
- * Le poste fixe n'a pas ce probleme parce que son formulaire est rendu depuis
- * `catalogue()`, qui applique deja le moteur. L'application doit faire le meme
- * geste, explicitement.
  */
 function blocs_a_editer(nom) {
   const blocs = structuredClone(seances[nom] ?? []);
@@ -3555,7 +3507,7 @@ function dessiner_editeur(message = null) {
       : "Entrelacer avec l'exercice suivant";
     conteneur.appendChild(ligne);
 
-    // La paire se lit sous la ligne, comme sur le poste fixe : « ⟷ » seul ne
+    // La paire se lit sous la ligne : « ⟷ » seul ne
     // dit pas avec quoi.
     if (bloc.entrelace_avec) {
       const paire = document.createElement("p");
@@ -3594,12 +3546,10 @@ function options_mouvements(courant) {
 }
 
 /**
- * Une ligne d'edition, aux memes classes que celles du poste fixe.
+ * Une ligne d'edition.
  *
  * `editeur.css` l'habille, y compris la **pastille de couleur du mode** et le
- * liseret d'entrelacement : ce sont des reperes qu'on lit d'un coup d'oeil, et
- * les redessiner autrement ici aurait donne deux editeurs qui ne se
- * ressemblent pas.
+ * liseret d'entrelacement : ce sont des reperes qu'on lit d'un coup d'oeil.
  */
 function ligne_editeur(bloc, index) {
   const ligne = document.createElement("div");
@@ -3712,8 +3662,8 @@ function lire_ligne(ligne, bloc) {
 /**
  * Enregistre la seance editee sur l'appareil.
  *
- * Deux choses se font ici et nulle part ailleurs. La **validation**, jumelle
- * de `construire_circuit` : un refus a l'enregistrement vaut mieux qu'une
+ * Deux choses se font ici et nulle part ailleurs. La **validation**
+ * (`problemes_des_blocs`) : un refus a l'enregistrement vaut mieux qu'une
  * erreur en pleine seance. Et le **marquage des cibles manuelles** : une cible
  * qui s'ecarte de ce que le moteur propose est figee, sans que l'utilisateur
  * ait rien a declarer — c'est l'ecart qui est detecte.
@@ -3750,10 +3700,9 @@ async function enregistrer_seance_editee() {
 /**
  * L'ecran de choix de profil.
  *
- * Tout le cloisonnement etait deja en place : `historique.js` filtre par
- * `utilisateur_id` exactement comme SQLite, et `progression/` retombe dessus
- * par en dessous. Seul `PROFIL`, fige a 1, empechait d'en avoir plusieurs —
- * c'etait un choix provisoire assume, pas une limite de structure.
+ * Tout le cloisonnement est dans `historique.js`, qui filtre par
+ * `utilisateur_id`, et la progression retombe dessus par en dessous : changer
+ * de profil, c'est changer `PROFIL`.
  *
  * Changer de profil **reconstruit le moteur** : `Baremes` porte l'inventaire
  * du profil et le normalise une fois pour toutes a la construction. Sans ca,
@@ -4238,8 +4187,8 @@ function boucle_accueil(horodatage) {
     avancer_pratique(corps, instant);
   } catch (erreur) {
     // **Une image ratee ne doit pas emporter la boucle.** C'est la meme regle
-    // que celle qui interdit a `texte()` de lever dans la boucle camera du
-    // poste fixe : une exception non rattrapee ici arrete le
+    // que celle qui interdit a `texte()` de lever dans la boucle camera : une
+    // exception non rattrapee ici arrete le
     // `requestAnimationFrame` suivant, donc gele l'image pour de bon, sur un
     // iPad ou personne n'ouvre de console. On la trace et on continue.
     console.error("image d'accueil ignoree", erreur);
@@ -4615,9 +4564,8 @@ function choisir_profil(id) {
   construire_moteur();
   majOngletProfil();
   dessiner_liste();
-  // **Le tunnel s'impose avant tout le reste.** C'est le seul endroit qui lit
-  // `onboarding_termine`, ecrite a la creation d'un profil depuis le portage
-  // de SQLite et jamais consultee jusqu'ici.
+  // **Le tunnel s'impose avant tout le reste** (`ouvrir_pour_le_profil` lit
+  // `onboarding_termine`).
   ouvrir_pour_le_profil();
 }
 
@@ -4628,8 +4576,7 @@ function choisir_profil(id) {
  * ici : le demarrage de l'application, et le changement de personne. Ne garder
  * que le second laissait le tunnel inoperant precisement au moment ou il sert
  * — un profil neuf arrive au premier lancement, pas en changeant de profil.
- * Meme piege que `ROUTES_ONBOARDING` cote Flask : une entree oubliee ne leve
- * rien, elle rend la garde muette.
+ * Une entree oubliee ne leve rien, elle rend la garde muette.
  */
 function ouvrir_pour_le_profil() {
   // **Trois situations et non deux.** Une base sans aucun profil n'est pas un
@@ -4849,7 +4796,7 @@ async function enregistrer_note() {
     : "Impossible d'écrire sur cet appareil — exporte ta sauvegarde.";
 }
 
-/** Meme bascule pour le materiel. Le resume est celui du poste fixe. */
+/** Meme bascule pour le materiel. */
 function editer_materiel(ouvert) {
   $("resumeMateriel").hidden = ouvert;
   $("actionsMateriel").hidden = ouvert;
@@ -5014,8 +4961,8 @@ function dessiner_fiche(nom) {
     )
     .join("");
 
-  // Le filet manuel des variantes, jumeau de `exercice.html` : ce qui se
-  // propose en fin de seance doit rester faisable, et defaisable, ici.
+  // Le filet manuel des variantes : ce qui se propose en fin de seance doit
+  // rester faisable, et defaisable, ici.
   const table = variantes_du_profil();
   const joue_a_la_place = table[nom] ?? null;
   const remplace = original_de(nom, table);
@@ -5083,9 +5030,8 @@ function dessiner_fiche(nom) {
 /**
  * Un clic montre, un double-clic emmene.
  *
- * `graphique.js` rend un `<a>` par point et n'a pas eu a bouger : c'est
- * l'appelant qui decide de ce qu'un clic fait, et il n'y a donc rien a porter
- * cote poste fixe, ou un lien qui suit son href reste le bon comportement.
+ * `graphique.js` rend un `<a>` par point : c'est l'appelant qui decide de ce
+ * qu'un clic fait.
  *
  * Le second clic est reconnu **par le temps et par la cible**, pas par un
  * evenement `dblclick` : celui-ci n'arrive qu'apres le premier `click`, donc
@@ -5097,8 +5043,8 @@ function brancher_points_du_graphique(nom, histoire) {
   if (!detail) return;
 
   // Le detail des series par seance : `statistiques_exercices` n'en garde que
-  // les sommes (c'est un jumeau verifie par harnais, on ne lui ajoute pas un
-  // champ pour un affichage), alors que l'historique brut les a toutes.
+  // les sommes (ses reponses sont figees par les tests, on ne lui ajoute pas
+  // un champ pour un affichage), alors que l'historique brut les a toutes.
   // **Toutes**, ratees comprises : le point du graphe les compte, et un detail
   // qui en montrerait moins que la somme au-dessus serait incomprehensible.
   // `resume_series` distingue deja les series manquees (`.ratee`).
@@ -5187,7 +5133,7 @@ function bloc_niveau(etat, nom, objectif = null) {
  *
  * Tout se recalcule ici : le niveau requis vient du bareme, le niveau acquis
  * de l'historique local, et l'ecart des deux. Rien n'est stocke, donc rien ne
- * peut se perimer — c'est le principe du module cote Python.
+ * peut se perimer — c'est le principe de `programmes.js`.
  */
 function dessiner_programmes() {
   const { seances: histoire, ancrages } = lecture_du_profil();
@@ -5233,6 +5179,36 @@ function dessiner_programmes() {
   for (const bouton of $("listeProgrammes").querySelectorAll("[data-suivre]")) {
     bouton.addEventListener("click", () => definir_programme_suivi(bouton.dataset.suivre));
   }
+
+  // Le rythme, le jour de debut et l'ordre **persistent** sur le profil : ce
+  // sont des preferences, pas une bascule pour aujourd'hui.
+  for (const bouton of $("listeProgrammes").querySelectorAll(".ma-semaine-rythme [data-tours]")) {
+    bouton.addEventListener("click", () => {
+      const tours = Number(bouton.dataset.tours);
+      regler_semaine((utilisateur) => { utilisateur.programme_tours = tours; });
+    });
+  }
+  $("listeProgrammes").querySelector("[data-jour-debut]")?.addEventListener("change", (evenement) => {
+    const jour = Number(evenement.currentTarget.value);
+    regler_semaine((utilisateur) => { utilisateur.programme_jour_debut = jour; });
+  });
+  for (const bouton of $("listeProgrammes").querySelectorAll("[data-deplacer]")) {
+    bouton.addEventListener("click", () => {
+      regler_semaine((utilisateur) => {
+        const ordres = { ...(utilisateur.programmes_ordre ?? {}) };
+        const actuel = ordre_des_seances(programmes_declares[choisi], ordres[choisi]);
+        ordres[choisi] = deplacer_seance(actuel, bouton.dataset.libelle, Number(bouton.dataset.deplacer));
+        utilisateur.programmes_ordre = ordres;
+      });
+    });
+  }
+  $("listeProgrammes").querySelector("[data-ordre-fichier]")?.addEventListener("click", () => {
+    regler_semaine((utilisateur) => {
+      const ordres = { ...(utilisateur.programmes_ordre ?? {}) };
+      delete ordres[choisi];
+      utilisateur.programmes_ordre = ordres;
+    });
+  });
   // `null` remet dans l'etat « aucun choix » : les autres programmes
   // reapparaissent, et l'accueil cesse d'en proposer un.
   $("listeProgrammes")
@@ -5243,8 +5219,7 @@ function dessiner_programmes() {
 /** La cle du programme suivi, ou `null` si aucun choix n'a ete fait.
  *
  * **Pas de repli sur le premier** : un repli n'est pas un choix, et le faire
- * passer pour tel priverait l'utilisateur de la distinction — c'est la meme
- * regle que `programme_de_l_accueil` cote poste fixe.
+ * passer pour tel priverait l'utilisateur de la distinction.
  */
 function programme_suivi() {
   const profil = base.utilisateurs.find((u) => u.id === PROFIL);
@@ -5261,16 +5236,94 @@ async function definir_programme_suivi(cle) {
   dessiner_liste();
 }
 
-/** La semaine du programme pour le profil courant (voir `semaine_du_programme`). */
-function semaine_du_profil(declare, histoire) {
+/**
+ * La semaine du programme pour le profil courant (voir `semaine_du_programme`).
+ *
+ * Le jour de debut et l'ordre sont des preferences du profil ; l'ordre est
+ * range **par programme**, d'ou la cle.
+ */
+function semaine_du_profil(cle, declare, histoire) {
   const profil = base.utilisateurs.find((u) => u.id === PROFIL);
   return semaine_du_programme(
-    declare, histoire, seances, profil?.programme_tours ?? 1, historique.horodatage()
+    declare, histoire, seances, profil?.programme_tours ?? 1, historique.horodatage(),
+    { jour_debut: profil?.programme_jour_debut, ordre: profil?.programmes_ordre?.[cle] },
+  );
+}
+
+/** Ecrit un reglage de la semaine sur le profil, puis redessine les deux ecrans qui la montrent. */
+async function regler_semaine(modifier) {
+  const utilisateur = base.utilisateurs.find((u) => u.id === PROFIL);
+  if (!utilisateur) return;
+  modifier(utilisateur);
+  await stockage.sauver(base);
+  dessiner_programmes();
+  dessiner_resume_programme();
+}
+
+//: Les jours dans l'ordre d'une semaine francaise, numerotes comme
+//: `getUTCDay` (0 = dimanche), qui est la numerotation de `jour_debut`.
+const JOURS_DE_SEMAINE = [
+  [1, "lundi"], [2, "mardi"], [3, "mercredi"], [4, "jeudi"],
+  [5, "vendredi"], [6, "samedi"], [0, "dimanche"],
+];
+
+/**
+ * Les reglages de la semaine du programme suivi : rythme, jour de debut et
+ * ordre. **Ici et non sur l'accueil** : l'accueil dit ce qu'il reste a faire,
+ * on ne vient pas y changer la regle a chaque passage.
+ *
+ * Tout se lit dans `semaine` — ce que le calcul a **retenu** —, et non sur le
+ * profil : un ordre enregistre avant un changement de `programmes.json` y est
+ * deja recale (`ordre_des_seances`), un rythme trop haut deja borne.
+ */
+function dessiner_reglages_semaine(semaine, ordre_enregistre) {
+  // Le rythme se compte en seances, pas en tours : « 6 » se lit mieux que
+  // « 2 tours » quand le programme a trois seances.
+  const seances_par_tour = semaine.ordre.length;
+  const rythme = semaine.tours_possibles.length > 1
+    ? `<div class="ma-semaine-rythme" role="group" aria-label="Séances par semaine">` +
+      semaine.tours_possibles
+        .map((tours) =>
+          `<button type="button" data-tours="${tours}"` +
+          (tours === semaine.tours ? ` class="actif" aria-pressed="true"` : ` aria-pressed="false"`) +
+          `>${tours * seances_par_tour}</button>`)
+        .join("") +
+      `<span>séances par semaine</span></div>`
+    : "";
+  const jours = JOURS_DE_SEMAINE
+    .map(([numero, nom]) =>
+      `<option value="${numero}"${numero === semaine.jour_debut ? " selected" : ""}>${nom}</option>`)
+    .join("");
+  const dernier = semaine.ordre.length - 1;
+  const lignes = semaine.ordre
+    .map((libelle, i) => {
+      const nom = echapper(libelle);
+      return (
+        `<li><span>${nom}</span>` +
+        `<button type="button" data-deplacer="-1" data-libelle="${nom}" ` +
+        `aria-label="Avancer ${nom}"${i === 0 ? " disabled" : ""}>↑</button>` +
+        `<button type="button" data-deplacer="1" data-libelle="${nom}" ` +
+        `aria-label="Reculer ${nom}"${i === dernier ? " disabled" : ""}>↓</button></li>`
+      );
+    })
+    .join("");
+  return (
+    `<div class="ma-semaine">` +
+    `<h3>Ma semaine</h3>` +
+    rythme +
+    `<label class="ma-semaine-jour">Elle commence le <select data-jour-debut>${jours}</select></label>` +
+    `<p class="ma-semaine-titre">Ordre des séances</p>` +
+    `<ol class="ma-semaine-ordre">${lignes}</ol>` +
+    (ordre_enregistre
+      ? `<button type="button" class="resume-lien" data-ordre-fichier>Revenir à l'ordre du programme</button>`
+      : "") +
+    `</div>`
   );
 }
 
 function dessiner_programme(etat, declare, histoire, options = {}) {
-  const suite = semaine_du_profil(declare, histoire)?.prochaine;
+  const semaine = semaine_du_profil(options.cle, declare, histoire);
+  const suite = semaine?.prochaine;
   const prochaine = suite
     ? `<p class="programme-suite">À enchaîner : <b>${echapper(suite.libelle)}</b>` +
       (suite.seance ? ` · séance <b>${echapper(suite.seance)}</b>` : " · aucune séance liée") +
@@ -5292,6 +5345,13 @@ function dessiner_programme(etat, declare, histoire, options = {}) {
       groupes + `</details>`
     : groupes;
 
+  // Les reglages de la semaine n'ont de sens que pour le programme suivi :
+  // c'est sa semaine que montre l'accueil.
+  const profil = base.utilisateurs.find((u) => u.id === PROFIL);
+  const reglages = options.actif && semaine
+    ? dessiner_reglages_semaine(semaine, Boolean(profil?.programmes_ordre?.[options.cle]))
+    : "";
+
   const action = options.actif
     ? ""
     : `<div class="actions" style="justify-content:flex-start">` +
@@ -5309,6 +5369,7 @@ function dessiner_programme(etat, declare, histoire, options = {}) {
     `<p class="description">Moyenne de l'avancement sur les ${etat.total} exigences · ` +
     `<b>${etat.atteintes}</b> entièrement atteinte${etat.atteintes > 1 ? "s" : ""}.</p>` +
     prochaine +
+    reglages +
     exigences +
     action +
     `</section>`
@@ -5359,16 +5420,14 @@ function dessiner_exigence(ligne) {
 /**
  * Le graphique de progression d'un exercice.
  *
- * **Toujours deplie**, comme sur le poste fixe. Il etait replie du temps ou
+ * **Toujours deplie.** Il etait replie du temps ou
  * l'ecran des records les empilait tous ; depuis la fusion, une fiche ne parle
  * que d'un mouvement, et le graphe y est la reponse a la question qu'on est
  * venu poser — le replier revenait a la cacher.
  *
- * **Chaque point mene a sa seance.** Le poste fixe passe une URL
- * (`/historique/<id>`) ; l'application n'en a pas, elle passe donc une ancre
- * et intercepte le clic pour changer d'ecran. Dans les deux cas c'est
- * `graphique.js` qui enveloppe le point dans un <a> — le module partage n'a
- * pas eu a bouger.
+ * **Chaque point mene a sa seance.** L'application n'a qu'une URL : elle
+ * passe donc une ancre et intercepte le clic pour changer d'ecran.
+ * `graphique.js` enveloppe le point dans un <a>.
  *
  * Un seul point ne fait pas une progression : on l'annonce plutot que de
  * tracer une ligne horizontale qui n'apprend rien.
@@ -5456,11 +5515,9 @@ function bloc_recalage(nom, etat) {
 /**
  * Branche les formulaires de recalage.
  *
- * La difference avec le poste fixe est ou vit la base : il POSTe sur
- * `/api/niveaux/<nom>/ancrage` et laisse Flask deduire le niveau, le
- * navigateur appelle `niveau_pour` sur place puis ecrit dans sa propre base.
- * Le refus est le meme des deux cotes — une performance qui n'atteint pas le
- * premier palier n'ancre rien, plutot que d'ancrer un niveau invente.
+ * Le niveau se deduit de la performance (`niveau_pour`), puis s'ecrit dans la
+ * base. Une performance qui n'atteint pas le premier palier n'ancre rien,
+ * plutot que d'ancrer un niveau invente.
  */
 function brancher_recalages(racine) {
   for (const form of racine.querySelectorAll(".form-ancrage")) {
@@ -5492,7 +5549,7 @@ function brancher_recalages(racine) {
     form.querySelector("[data-supprimer]")?.addEventListener("click", async () => {
       // `supprimer_ancrages` purge **tout** l'historique d'ancrages de
       // l'exercice, la ou le journal ci-dessous retire une entree precise.
-      // Ce sont deux gestes differents, comme sur le poste fixe.
+      // Ce sont deux gestes differents.
       historique.supprimer_ancrages(base, nom, PROFIL);
       await stockage.sauver(base);
       dessiner_fiche(nom);
@@ -5567,8 +5624,7 @@ const LIBELLES_RESSENTI = {
 /**
  * La derniere performance de chaque exercice, seance par seance.
  *
- * Jumeau du calcul que `web/app.py` fait pour l'accueil : pour chaque nom de
- * seance, la plus recente **non abandonnee**, et pour chaque exercice toutes
+ * Pour chaque nom de seance, la plus recente **non abandonnee**, et pour chaque exercice toutes
  * ses series. L'historique arrivant du plus recent au plus ancien, la premiere
  * rencontree est la bonne.
  *
@@ -5649,10 +5705,8 @@ function dernieres_series(histoire) {
 /**
  * Ce que la derniere seance de ce nom a donne, exercice par exercice.
  *
- * L'ecran d'accueil du poste fixe le montre sous le formulaire d'objectifs ;
- * l'application n'a pas d'editeur — le fichier fait autorite — mais elle a
- * exactement le meme besoin : savoir ce qu'on a tenu la derniere fois avant de
- * relancer la meme seance.
+ * Le besoin : savoir ce qu'on a tenu la derniere fois avant de relancer la
+ * meme seance.
  */
 function detail_seance(nom, blocs, dernieres) {
   const precedent = dernieres[nom];
@@ -5740,31 +5794,23 @@ function dessiner_resume_programme() {
   const { seances: histoire, ancrages } = lecture_du_profil();
   const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
   const etat = etat_programme(moteur.baremes, cle, declare, niveaux, variantes_du_profil());
-  const semaine = semaine_du_profil(declare, histoire);
+  const semaine = semaine_du_profil(cle, declare, histoire);
 
-  // **Meme balisage que la carte du poste fixe** (`accueil.html`), aux memes
-  // classes : `programme_resume.css` est partagee, et deux cartes qui ne se
-  // ressemblent pas seraient deux choses a apprendre.
+  // Le balisage suit les classes de `programme_resume.css`, qui l'habille.
   const colonnes = semaine ? semaine.total / semaine.tours : 0;
   const jouable = (nom) => Boolean(nom && nom in seances);
   const pluriel = (n) => (n > 1 ? "s" : "");
   let corps = "";
   if (semaine) {
-    const titre = semaine.reussie
-      ? "Semaine réussie ! La suivante démarre à ta prochaine séance."
-      : semaine.debut
-        ? `Cette semaine : ${semaine.faites}/${semaine.total} · jusqu'au ${jour_court(semaine.fin)}`
-        : "Ta semaine démarre à ta prochaine séance.";
-    const rythme = semaine.tours_possibles.length > 1
-      ? `<div class="semaine-rythme" role="group" aria-label="Séances par semaine">` +
-        semaine.tours_possibles
-          .map((tours) =>
-            `<button type="button" data-tours="${tours}"` +
-            (tours === semaine.tours ? ` class="actif" aria-pressed="true"` : "") +
-            `>${tours * colonnes}</button>`)
-          .join("") +
-        `<span>par semaine</span></div>`
-      : "";
+    // `debut` n'est nul que si l'horloge est illisible : la semaine montree
+    // est toujours celle du jour, vide ou non.
+    const titre = !semaine.debut
+      ? `Cette semaine : ${semaine.faites}/${semaine.total}`
+      : semaine.reussie
+        ? `Semaine réussie ! La suivante démarre ${jour_court(semaine.suivante)}.`
+        : `Cette semaine : ${semaine.faites}/${semaine.total} · jusqu'au ${jour_court(semaine.fin)}`;
+    // Le rythme ne se regle pas ici mais dans le detail du programme
+    // (`dessiner_reglages_semaine`) : la carte dit ce qu'il reste a faire.
     const cases = semaine.cases
       .map((c) => {
         const contenu =
@@ -5783,14 +5829,20 @@ function dessiner_resume_programme() {
         );
       })
       .join("");
+    // Une semaine passee dit **combien** elle a rempli et quand elle
+    // commencait, sans toucher : une simple croix ne disait pas si la
+    // semaine etait vide, a moitie faite ou reglee sur un rythme trop haut.
     const recents = semaine.recents.length
-      ? `<p class="semaine-recents">Semaines passées ` +
+      ? `<div class="semaine-recents"><span class="semaine-recents-titre">Semaines passées</span>` +
         semaine.recents
-          .map((cycle) =>
-            `<span class="${cycle.reussi ? "ok" : "ko"}" title="Semaine du ${jour_court(cycle.debut)} : ` +
-            `${cycle.reussi ? "réussie" : "incomplète"}">${cycle.reussi ? "✓" : "✗"}</span>`)
+          .map((passee) =>
+            `<span class="semaine-passee ${passee.reussi ? "ok" : "ko"}" ` +
+            `title="Semaine du ${jour_court(passee.debut)} : ${passee.faites} séance${pluriel(passee.faites)} sur ${passee.total}">` +
+            `<b>${passee.reussi ? "✓" : `${passee.faites}/${passee.total}`}</b>` +
+            // « JJ/MM » : `debut` sort de `_ecrire_date`, toujours sur deux chiffres.
+            `<small>${passee.debut.slice(0, 5)}</small></span>`)
           .join("") +
-        `</p>`
+        `</div>`
       : "";
     const suite = semaine.prochaine;
     // **On ne demarre pas d'ici.** La ligne mene a la carte de la seance, plus
@@ -5806,7 +5858,7 @@ function dessiner_resume_programme() {
         `<span class="resume-fleche">Voir la séance ↓</span></button>`
       : `<p class="semaine-titre">Aucune séance de ce programme n'est liée à une séance jouable.</p>`;
     corps =
-      `<div class="semaine-tete"><p class="semaine-titre">${titre}</p>${rythme}</div>` +
+      `<div class="semaine-tete"><p class="semaine-titre">${titre}</p></div>` +
       `<div class="semaine-cases" style="--colonnes:${colonnes}">${cases}</div>` +
       recents + proposee;
   }
@@ -5861,18 +5913,6 @@ function dessiner_resume_programme() {
       aller_a_la_seance(caseSemaine.dataset.seance);
     });
   }
-
-  // Le rythme, lui, **persiste** : c'est une preference du profil, comme le
-  // programme suivi.
-  for (const bouton of carte.querySelectorAll(".semaine-rythme [data-tours]")) {
-    bouton.addEventListener("click", async () => {
-      const utilisateur = base.utilisateurs.find((u) => u.id === PROFIL);
-      if (!utilisateur) return;
-      utilisateur.programme_tours = Number(bouton.dataset.tours);
-      await stockage.sauver(base);
-      dessiner_resume_programme();
-    });
-  }
 }
 
 //: Les jours de la semaine, du dimanche au samedi comme `getUTCDay` les
@@ -5883,8 +5923,7 @@ const JOURS_COURTS = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."];
 /**
  * « lun. 06/10 » depuis une date de seance « JJ/MM/AAAA HH:MM ».
  *
- * Jumeau du filtre `jour_court` de `web/app.py`. En `Date.UTC`, comme le
- * calcul de la semaine : la date stockee est une heure murale sans fuseau.
+ * En `Date.UTC`, comme le calcul de la semaine : la date stockee est une heure murale sans fuseau.
  */
 function jour_court(texte) {
   const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(texte ?? "");
@@ -5927,8 +5966,7 @@ function cible_affichee(bloc, objectifs, sans_donnees) {
 /**
  * Le contenu d'une seance, deplie a la demande.
  *
- * Les echauffements vont dans un <details> replie a part, comme le fait
- * `accueil.html` cote poste fixe : ils ne comptent ni dans les statistiques ni
+ * Les echauffements vont dans un <details> replie a part : ils ne comptent ni dans les statistiques ni
  * dans la progression, et les melanger aux exercices ferait croire l'inverse.
  */
 function contenu_seance(nom_seance, blocs, objectifs, sans_donnees) {
@@ -6088,8 +6126,7 @@ function dessiner_liste() {
       `</div>`;
     // **Choisir n'est pas commencer.** Le clic sur la carte ne fait plus que
     // selectionner la seance ; c'est le bouton « Demarrer » qui ouvre la
-    // camera. Le poste fixe a toujours fonctionne ainsi, et pour une bonne
-    // raison : on ouvre une carte pour lire son contenu et sa derniere fois,
+    // camera : on ouvre une carte pour lire son contenu et sa derniere fois,
     // pas pour se retrouver devant l'objectif.
     lancer.addEventListener("click", () => selectionner_seance(nom));
     carte.appendChild(lancer);
@@ -6292,15 +6329,13 @@ $("boutonPasserTuto").addEventListener("click", () => {
 /**
  * Les onze commandes de serie, cablees sur le `Circuit` local.
  *
- * C'est **toute** la difference avec le poste fixe, qui POSTe les memes noms
- * sur des routes Flask : la couche d'affichage ne connait que des noms de
- * commande, jamais des URL, et le reste — quel bouton est visible, lequel est
- * grise — se decide a partir de `commandes_autorisees`, que `payload_etat`
- * calcule comme le fait `SessionManager`.
+ * La couche d'affichage ne connait que des noms de commande, et le reste —
+ * quel bouton est visible, lequel est grise — se decide a partir de
+ * `commandes_autorisees`, que `payload_etat` calcule.
  */
 const COMMANDES = {
-  // Le compteur se remet a zero **avec** la serie, comme sur le poste fixe
-  // (`definir_reset_progression`) : sans lui, `executer_mode` recopiait
+  // Le compteur se remet a zero **avec** la serie : sans lui, `executer_mode`
+  // recopiait
   // l'ancien compte dans `etat` a l'image suivante, et le bouton semblait ne
   // rien faire.
   reset: () => {

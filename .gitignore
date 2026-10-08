@@ -1,21 +1,9 @@
-
 # =========================
-# Python
+# Python (outillage de prise de son et de deploiement)
 # =========================
 
-# Cache Python
 __pycache__/
 *.py[cod]
-*$py.class
-
-# Fichiers de configuration Python
-*.pyo
-*.pyd
-
-# Modèles MediaPipe (téléchargés au premier lancement, voir vision/detector.py)
-*.task
-
-# Environnements virtuels
 .venv/
 venv/
 env/
@@ -28,106 +16,52 @@ env/
 # IDE / éditeurs
 # =========================
 
-# Visual Studio Code
 .vscode/
-
-# PyCharm
 .idea/
 
 # =========================
 # Système
 # =========================
 
-# Windows
 Thumbs.db
 Desktop.ini
-
-# macOS
 .DS_Store
-
-# =========================
-# Tests / couverture
-# =========================
-
-.pytest_cache/
-.coverage
-htmlcov/
-
-# =========================
-# Logs
-# =========================
 
 *.log
 
 # =========================
+# Sommaire du site
+# =========================
+
+# Genere au deploiement par `node scripts/sommaire.mjs _site`. En local,
+# `node scripts/sommaire.mjs web/static` l'ecrit ici pour le voir : derive,
+# donc jamais versionne.
+web/static/index.html
+web/static/sommaire.html
+
+# =========================
 # Historiques
 # =========================
+
+# L'ancienne base SQLite de la version desktop (archive locale, tag
+# `derniere-version-desktop`). Un historique d'entrainement est une donnee
+# personnelle : il ne doit jamais entrer dans un depot public.
 *.db
-
-# =========================
-# Harnais de comparaison Python / JS
-# =========================
-
-# Donnee derivee : regeneree a l'identique en quelques secondes par
-# `python -m scripts.generer_fixtures`, la graine etant fixe.
-scripts/fixtures_detections.jsonl
-
-# =========================
-# Demo statique
-# =========================
-
-# Copies de travail des sons, produites par `python -m scripts.preparer_demo`.
-# Les originaux sont dans audio/Fichiers/ ; a regenerer avant un deploiement.
-# catalogue.json est versionne, lui : il est petit et son absence rendrait la
-# demo silencieusement vide.
-web/static/demo/sons/
-
-# =========================
-# Spike de validation web
-# =========================
-
-# Copies de travail des sons : les originaux sont dans audio/Fichiers/,
-# dupliquées ici uniquement parce qu'un serveur statique ne sert jamais
-# au-dessus de sa racine.
-spike/sons/
-scripts/fixtures_seances.jsonl
-scripts/fixtures_poses.jsonl
-scripts/fixtures_catalogue.json
-scripts/fixtures_historique.jsonl
-web/static/sons/
-scripts/fixtures_paliers.jsonl
-scripts/fixtures_paliers_specs.json
-scripts/fixtures_niveaux.jsonl
-scripts/fixtures_ressenti.jsonl
-scripts/fixtures_objectifs.jsonl
-scripts/fixtures_programmes.jsonl
-scripts/fixtures_ligues.jsonl
-
-# Oracle du harnais des annonces : derive, regenere en une seconde par
-# `python -m scripts.generer_annonces` (graine fixe).
-scripts/fixtures_annonces.jsonl
-
-# Oracle du harnais des variantes : derive, regenere en une seconde par
-# `python -m scripts.generer_variantes` (graine fixe).
-scripts/fixtures_variantes.jsonl
 
 # =========================
 # Prises de son brutes
 # =========================
 
 # Les enregistrements non traites, tels qu'ils sortent du micro. Ils sont la
-# **source** de `audio/Fichiers/`, produite une fois par
-# `python audio/nettoyer_sons.py`, et rien d'autre ne les lit : ni
-# l'application, ni la demo, ni un script de verification.
+# **source** de `web/static/sons/`, produite une fois par
+# `python audio/nettoyer_sons.py`, et rien d'autre ne les lit.
 #
 # Ils ont ete suivis un temps — 73 fichiers, 37 Mo — et c'etait la moitie du
 # poids du depot pour un dossier que personne n'ouvre. Un WAV ne se
 # delta-compresse pas : chaque prise est un blob entier et definitif, que tout
-# clone retelechargera pour toujours. Meme regle que `personaltrainer.db` et
-# que les fixtures : ce qui est source de travail ou derive ne vit pas dans le
-# depot de code.
+# clone retelechargera pour toujours.
 #
 # Conserve-les ailleurs (disque externe, cloud) : c'est le seul master pour
-# re-rogner autrement plus tard. Les perdre n'empeche rien — `audio/Fichiers/`
+# re-rogner autrement plus tard. Les perdre n'empeche rien — `web/static/sons/`
 # continue de marcher indefiniment — ca ferme juste la porte a un retraitement.
 audio/a_traiter/

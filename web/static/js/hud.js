@@ -1,28 +1,14 @@
-// Le HUD de seance : **une seule couche d'affichage pour les deux
-// applications**.
+// Le HUD de seance : l'affichage de l'ecran d'entrainement, partage par
+// l'application (`app/index.html`).
 //
-// Elle vivait en entier dans le <script> de `templates/index.html`, et
-// `app/index.html` en avait une seconde, ecrite a part. Les deux peignaient le
-// meme ecran a partir des memes donnees, et divergeaient a chaque correction
-// faite d'un seul cote — exactement ce que le portage a pour objectif
-// d'empecher.
+// **Tout ici est une fonction de `donnees`, et rien d'autre** : l'objet que
+// `payload_etat` (`seance.js`) fabrique depuis le `Circuit`. Aucune requete,
+// aucune horloge, aucun acces a la camera ne doit entrer dans ce module : c'est
+// ce qui le garde lisible, et peignable dans n'importe quel etat.
 //
-// **Tout ici est une fonction de `donnees`, et rien d'autre.** C'est la
-// condition pour que les deux pages la partagent : le poste fixe remplit cet
-// objet depuis `/etat` (Flask serialise `EtatSeance` + `SessionManager.etat()`),
-// le navigateur le remplit depuis son propre `Circuit` (`payload_etat` dans
-// `seance.js`). Aucune requete, aucune horloge, aucun acces a la camera ne doit
-// entrer dans ce module : le jour ou il en contiendrait un, une des deux pages
-// cesserait de pouvoir l'utiliser.
-//
-// La seule chose qui ne peut pas etre partagee est **l'execution** d'une
-// commande : le poste fixe POSTe sur une route Flask, le navigateur appelle
-// directement le `Circuit`. D'ou `brancher_commandes(executer)`, qui recoit
-// l'action a faire et ne connait que des **noms** de commande (`reset`,
+// L'**execution** d'une commande n'est pas ici : `brancher_commandes(executer)`
+// recoit l'action a faire et ne connait que des **noms** de commande (`reset`,
 // `passer_pause`, ...) — ceux-la memes que `commandes_autorisees` emploie.
-// L'ancienne version identifiait une commande par son URL, qu'il fallait
-// ensuite retraduire en nom avec une table d'exceptions ; un nom qui est deja
-// la cle des autorisations supprime cette traduction.
 
 const $ = (id) => document.getElementById(id);
 
@@ -30,9 +16,8 @@ const $ = (id) => document.getElementById(id);
 //: `stroke-dashoffset` de cette valeur a zero.
 const CIRCONFERENCE = 2 * Math.PI * 70;
 
-//: Raccourcis clavier du poste fixe. Sans effet sur une tablette, ou aucun
-//: clavier n'est branche — les laisser ici plutot que dans la page evite
-//: qu'ils existent d'un cote seulement.
+//: Raccourcis clavier, pour un ordinateur. Sans effet sur une tablette, ou
+//: aucun clavier n'est branche.
 const TOUCHES = {
   r: "reset",
   e: "recommencer",
@@ -54,8 +39,7 @@ let menu_affiche = null;
 /**
  * Branche les boutons `[data-commande]` et les raccourcis clavier.
  *
- * `executer` recoit un nom de commande et se debrouille : une requete sur le
- * poste fixe, un appel direct au circuit dans le navigateur.
+ * `executer` recoit un nom de commande et l'applique au circuit.
  */
 export function brancher_commandes(executer) {
   document.querySelectorAll("[data-commande]").forEach((bouton) => {
@@ -127,15 +111,6 @@ export function actualiser_commandes(autorisees, statut, phase, variante_facile 
   }
 }
 
-/** Le voyant « En direct » : perte de connexion sur le poste fixe uniquement. */
-export function definir_statut(en_ligne) {
-  const point = $("statusDot");
-  const texte = $("statusText");
-  if (!point || !texte) return;
-  point.classList.toggle("offline", !en_ligne);
-  texte.textContent = en_ligne ? "En direct" : "Connexion perdue";
-}
-
 // ---------------------------------------------------------------------------
 // Affichage de l'entrainement (multi-modes)
 // ---------------------------------------------------------------------------
@@ -144,8 +119,8 @@ export function definir_statut(en_ligne) {
 // metier ne doit vivre ici.
 //
 // Pour ajouter un mode : ecrire `afficher_mode_xxx`, l'inscrire dans
-// `MODES_AFFICHES`, et ajouter le bloc `.workout-block--xxx` dans les deux
-// pages.
+// `MODES_AFFICHES`, et ajouter le bloc `.workout-block--xxx` dans
+// `app/index.html`.
 
 let dernier_reps = null;
 let dernier_maintien_entier = null;
@@ -570,10 +545,9 @@ function afficher_maintien(progression, termine) {
 /**
  * Peint tout le HUD a partir d'un etat de seance.
  *
- * `donnees` est l'objet que `/etat` renvoie sur le poste fixe et que
- * `payload_etat` fabrique dans le navigateur : c'est **le** contrat entre les
- * deux applications, et la raison pour laquelle cette fonction n'a besoin de
- * savoir laquelle des deux l'appelle.
+ * `donnees` est l'objet que `payload_etat` fabrique : c'est **le** contrat de
+ * l'ecran, et y ajouter un champ se fait des deux cotes de ce contrat
+ * (`payload_etat` qui l'ecrit, `peindre_hud` qui le lit).
  */
 export function peindre_hud(donnees) {
   actualiser_commandes(

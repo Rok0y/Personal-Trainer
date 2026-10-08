@@ -1,10 +1,5 @@
 /* ==========================================================================
-   Les fiches de mouvement, partagees par les deux applications.
-
-   Meme decoupage que `hud.css`, `ressentis.css` et `programmes.css` : le
-   catalogue (`/exercices`) et la fiche (`/exercice/<nom>`) montrent la meme
-   chose que les ecrans correspondants de l'application, donc ils partagent
-   leur habillage.
+   Les fiches de mouvement, partagees par l'application et les pages `dev/`.
 
    Une regle d'affichage y est portee et ne doit pas etre defaite : le
    catalogue **separe les exercices des echauffements**, comme partout
@@ -15,10 +10,9 @@
 
 .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
 
-/* La carte du catalogue. Le selecteur est deliberement sans element : le
-   poste fixe en fait un <a> vers `/exercice/<nom>`, l'application un
-   <button> qui change d'ecran — la carte est la meme, son element
-   porteur non. */
+/* La carte du catalogue. Le selecteur est deliberement sans element : la
+   carte est la meme quel que soit son element porteur (un <button> qui
+   change d'ecran dans l'application). */
 .carte {
     display:block; padding:18px; border-radius:12px; font-size:inherit; font-weight:inherit;
     background:var(--glass); border:1px solid var(--border-strong); color:var(--text);

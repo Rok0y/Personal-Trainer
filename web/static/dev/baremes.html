@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Barèmes et ligues — réglage</title>
+<meta name="description" content="Régler les barèmes, les ligues, l'XP et la note d'athlète en voyant tout se recalculer, puis copier reglages.json.">
 <!-- Detecte qu'un deploiement est arrive et va le chercher. Le document etant
      le point d'entree, il ne peut pas porter d'empreinte : c'est le seul
      fichier qu'un cache peut garder perime sans que rien ne le dise. Ne touche
@@ -19,9 +20,11 @@
 
     **Le circuit complet tient en trois gestes** : on modifie ici, on copie le
     `reglages.json` que la page rend en bas, on le colle dans
-    `progression/reglages.json` et on pousse. Le Python et le JavaScript lisent
-    tous les deux ce fichier, donc les deux applications changent ensemble — il
-    n'y a aucune seconde valeur a reconcilier.
+    `web/static/donnees/reglages.json` et on pousse. L'application lit ce
+    fichier et le compose avec `baremes.json` (`composer_baremes`), exactement
+    comme cette page : il n'y a aucune seconde valeur a reconcilier. Le
+    pourquoi de chaque reglage est dans `docs/reglages.md` — le lire avant de
+    changer une valeur.
 
     **Aucun nombre n'est ecrit dans cette page.** Elle lit `donnees/reglages.json`
     et importe les memes modules que l'application, donc elle ne peut pas mentir
@@ -89,8 +92,8 @@
     <p class="hint">
         Modifie ce que tu veux : tout se recalcule immédiatement en dessous.
         Quand le résultat te convient, copie le <code>reglages.json</code> du bas
-        de page, colle-le dans <code>progression/reglages.json</code>, commit,
-        push — et les deux applications changent ensemble.
+        de page, colle-le dans <code>web/static/donnees/reglages.json</code>, commit,
+        push — l'application change avec lui.
     </p>
     <div class="barre">
         <span class="etat" id="etat"></span>
@@ -207,7 +210,7 @@
 
     <h2>Le fichier à coller</h2>
     <p class="hint">
-        Contenu exact de <code>progression/reglages.json</code>. Sur l'iPad :
+        Contenu exact de <code>web/static/donnees/reglages.json</code>. Sur l'iPad :
         copie, ouvre le fichier dans GitHub, remplace tout, commit.
     </p>
     <div class="barre">
@@ -218,7 +221,7 @@
 </main>
 
 <script type="module">
-import { Baremes } from "../js/paliers.js";
+import { Baremes, composer_baremes } from "../js/paliers.js";
 import { Ligues } from "../js/ligues.js";
 import { badge_ligue, classe_ligue, style_ligue } from "../js/ligues_ui.js";
 import { Calibration } from "../js/calibration.js";
@@ -293,33 +296,17 @@ function ecrire_brouillon() {
   } catch { /* tant pis */ }
 }
 
-/** Les tables telles que `Ligues` les attend, depuis la forme du fichier. */
-function tables_ligues() {
-  return {
-    ligues: reglages.ligues.ligues,
-    divisions: reglages.ligues.divisions,
-    seuils_volume: reglages.ligues.seuils_volume,
-    // **A ne pas oublier** : sans cette ligne, le moteur de la page retombe
-    // sur la table relative de repli, et le tableau niveau par niveau decrit
-    // une autre echelle que le tableau des bornes juste au-dessus — deux
-    // verites sur la meme page, sans que rien ne le signale. C'est le repli
-    // qui masque l'oubli : sans lui, la colonne se serait videe bruyamment.
-    seuils_par_exercice: reglages.ligues.seuils_par_exercice ?? {},
-    paliers_xp: reglages.xp.paliers_xp,
-    xp_base_niveau_general: reglages.xp.base_niveau_general,
-    xp_increment_niveau_general: reglages.xp.increment_niveau_general,
-  };
-}
-
 function construire() {
-  // Les baremes edites remplacent ceux du socle ; les echelles et le materiel,
-  // eux, ne se reglent pas ici et viennent du site tel quel.
-  const tables = { ...socle, specs: reglages.specs };
+  // Les reglages edites passent par la meme composition que l'application :
+  // la page ne peut donc pas decrire une autre echelle que celle qui sera
+  // jouee. Les echelles et le materiel ne se reglent pas ici et viennent du
+  // socle tel quel.
+  const tables = composer_baremes(socle, reglages);
   baremes = new Baremes(tables, INVENTAIRES(socle)[$("inventaire").value ?? "non_declare"]);
-  ligues = new Ligues(baremes, tables_ligues());
+  ligues = new Ligues(baremes, tables.ligues);
   // `niveau_de_depart` ne lit que le bareme et les bornes : ni niveaux ni
   // ressenti, qui ne servent qu'a la note mesuree, sans objet sur cette page.
-  calibration = new Calibration(baremes, ligues, null, null, reglages.note_athlete);
+  calibration = new Calibration(baremes, ligues, null, null, tables.note_athlete);
 }
 
 const resume = (p) => p

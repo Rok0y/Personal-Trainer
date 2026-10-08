@@ -228,5 +228,19 @@
   "presentation": 2.5,
   "repos_minimal": 15,
   "priorite_rythme_max": 2
- }
+ },
+ "fragments": {
+  "prepare_un_haltere_de": "Prépare un haltère de",
+  "prepare_deux_halteres_de": "Prépare deux haltères de",
+  "kilos": "kilos",
+  "kilo": "kilo"
+ },
+ "orientations": [
+  "face",
+  "profil",
+  "profil_camera_gauche",
+  "profil_camera_droite",
+  "allonge_camera_de_cote"
+ ],
+ "longueur_maximale_nom": 55
 }

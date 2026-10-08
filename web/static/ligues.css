@@ -1,9 +1,6 @@
 /* ==========================================================================
-   Les ligues, partagees par les deux applications.
-
-   Meme decoupage que `hud.css`, `ressentis.css` et `exercices.css` : le poste
-   fixe et l'application montrent la meme chose, donc elles partagent leur
-   habillage. Une carte teintee y est teintee pareil.
+   Les ligues, partagees par l'application et `dev/baremes.html` : une carte
+   teintee y est teintee pareil.
 
    **Une variable locale, pas une classe par ligue.** L'element porte en ligne
    `--ligue`, `--ligue-reflet` et `--division` (0 pour III, 2 pour I) ; tout ce

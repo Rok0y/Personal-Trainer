@@ -1,5 +1,5 @@
-// Rejoue en JavaScript les scenarios releves par `scripts/generer_scenarios.py`
-// et signale le moindre ecart.
+// Rejoue les scenarios figes sur le circuit et le moteur, et signale le
+// moindre ecart.
 //
 // Pendant de `comparer_detections.mjs`, pour une classe qui a de la memoire :
 // la ou les detections se comparent pose par pose, un circuit se compare
@@ -7,13 +7,13 @@
 // le scenario, le numero de pas et le champ — parce qu'apres une divergence
 // tous les pas suivants divergent aussi, et seul le premier renseigne.
 //
-// Usage : node scripts/comparer_seances.mjs
-// Prealable : python -m scripts.generer_scenarios
-
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+// Les scenarios melangent une marche aleatoire et des scenarios ecrits
+// (`superset_refaire`, `decompte_final`, `pompes_peu_profondes`…) : les etats
+// profonds d'une machine a etats sont hors de portee du hasard. Les commandes
+// sont des entrees figees ; seuls les etats releves sont reecrits par
+// `--mettre-a-jour`.
+//
+// Usage : node scripts/comparer_seances.mjs [--mettre-a-jour]
 
 import { Circuit, BlocExercice, Exercice, MODE_REPETITIONS } from "../web/static/js/circuit.js";
 import { DETECTIONS } from "../web/static/js/detections.js";
@@ -23,31 +23,25 @@ import { CompteurMouvement } from "../web/static/js/compteur.js";
 import { creer_etat } from "../web/static/js/etat.js";
 import { ajuster_repetitions, executer_mode, oublier_durees } from "../web/static/js/moteur.js";
 import { texte, libelle_etape } from "../web/static/js/messages.js";
+import { Releve, lire_json, lire_lignes } from "./fixtures.mjs";
 
-const ICI = dirname(fileURLToPath(import.meta.url));
-const RACINE = join(ICI, "..");
-const FIXTURES = join(ICI, "fixtures_seances.jsonl");
-const SEANCES = join(RACINE, "session", "seances_personnalisees.json");
-const POSES = join(ICI, "fixtures_poses.jsonl");
-// Le catalogue exporte par `preparer_demo` : il donne, pour chaque exercice,
-// le *nom* de sa fonction de detection et celui de ses verifications de
-// forme. Les fonctions elles-memes vivent dans `detections.js` et portent les
-// memes noms — c'est ce qui evite une table de correspondance a maintenir.
-const CATALOGUE = join(ICI, "fixtures_catalogue.json");
+// Le catalogue fige (`catalogue_seances.json`) donne, pour chaque exercice, le
+// *nom* de sa fonction de detection et celui de ses verifications de forme.
+// Les fonctions elles-memes vivent dans `detections.js` et portent les memes
+// noms — c'est ce qui evite une table de correspondance a maintenir. Il
+// contient les echauffements, que les donnees de l'application listent aussi.
 
-// Doit valoir INSTANT_INITIAL cote Python : les instants sont releves en
-// *ecart* depuis cette valeur, mais `debut` est pose dessus.
+// Les instants sont releves en *ecart* depuis cette valeur, mais `debut` est
+// pose dessus : la changer decalerait toutes les reponses figees.
 const INSTANT_INITIAL = 1000.0;
 
-// Nombre d'ecarts detailles avant de s'arreter de detailler. Au-dela, tout
-// derive du premier et le bruit masque le signal.
-const ECARTS_DETAILLES = 5;
-
 /**
- * Le meme releve que `observer()` cote Python, champ pour champ et dans le
- * meme ordre. Les deux doivent etre modifies ensemble : un champ ajoute d'un
- * seul cote n'est pas une erreur bruyante, c'est une verification qui
- * disparait en silence.
+ * La surface verifiee du circuit. **Le levier principal de ce test est le
+ * nombre de champs releves ici**, bien avant le nombre de pas : un champ
+ * ajoute est signale au premier passage, puis fige par `--mettre-a-jour`.
+ * On y releve aussi des etats internes (`_exercice_precedent_entrelace`,
+ * `_derniere_serie_terminee`) : observer la cause vaut mieux qu'attendre que
+ * son effet remonte a la surface.
  */
 function observer(circuit) {
   const bloc = circuit.bloc_actuel;
@@ -75,8 +69,6 @@ function observer(circuit) {
     nombre_series_echauffement: circuit.nombre_series_echauffement,
     series_echauffement_terminees: circuit.series_echauffement_terminees,
     peut_refaire: circuit.peut_refaire_derniere_serie(),
-    // Voir le commentaire jumeau cote Python : observer la cause plutot que
-    // d'attendre que son effet remonte a la surface.
     entrelace_en_cours:
       circuit._exercice_precedent_entrelace === null
         ? null
@@ -92,8 +84,8 @@ function observer(circuit) {
           },
     resultats: circuit.resultats_series.length,
     a_des_resultats: circuit.a_des_resultats(),
-    // Voir le commentaire jumeau cote Python : sans le nom par serie, la
-    // serie 1 de la variante ecraserait en silence celle de l'original.
+    // Sans le nom par serie, la serie 1 de la variante ecraserait en silence
+    // celle de l'original.
     variante_possible: circuit.variante_possible(),
     remplace: bloc === null ? null : bloc.remplace,
     abandons: bloc === null ? null : bloc.abandons.map((a) => ({ ...a })),
@@ -104,10 +96,8 @@ function observer(circuit) {
 }
 
 /**
- * Construit le circuit comme `construire_circuit` cote Python, mais sans
- * catalogue : le harnais compare la machine a etats, pas la validation des
- * noms d'exercices. Un exercice se reduit donc a son nom, seule chose que
- * `observer` en lit.
+ * Construit le circuit sans validation : le test porte sur la machine a
+ * etats, pas sur la validation des noms d'exercices (`problemes_des_blocs`).
  */
 function circuit_pour(blocs, horloge, catalogue) {
   const circuit = new Circuit(
@@ -160,15 +150,15 @@ function catalogue_pour(fiches) {
   return table;
 }
 
-/** Meme contrat que `jouer()` cote Python : une exception est une donnee. */
+/** Joue une commande. Une exception est une donnee relevee, pas un incident. */
 function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
   if (nom === "avancer") {
     horloge.t += arguments_.secondes;
     return [null, null];
   }
   if (nom === "image") {
-    // Meme garde que `main.py` : les modes ne tournent que pendant la phase
-    // « exercice » et sur un bloc existant.
+    // Meme garde que la boucle de l'application : les modes ne tournent que
+    // pendant la phase « exercice » et sur un bloc existant.
     if (circuit.phase !== "exercice" || circuit.bloc_actuel === null) {
       return [null, null];
     }
@@ -196,7 +186,7 @@ function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
   }
 
   if (nom === "ajuster") {
-    // Jumelle de la commande Python : le garde est dans la fonction.
+    // Le garde est dans la fonction : elle n'agit qu'en exercice.
     boucle.derniere_rep = ajuster_repetitions({
       seance: circuit,
       compteur: boucle.compteur,
@@ -209,7 +199,7 @@ function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
   }
 
   if (nom === "aller_a_l_amplitude") {
-    // Jumelle de la commande Python : premier bloc qui verifie une amplitude.
+    // Commande du test : premier bloc qui verifie une amplitude.
     for (let i = 0; i < circuit.exercices.length; i++) {
       const bloc = circuit.bloc_actuel;
       if (bloc === null || bloc.exercice.amplitude !== null) break;
@@ -218,8 +208,8 @@ function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
     return [null, null];
   }
   if (nom === "variante") {
-    // Jumelle de la commande Python : un refus a un nom commun aux deux
-    // langages, leurs classes d'exception ne se ressemblant pas.
+    // Un refus est releve sous un nom fixe plutot que par sa classe
+    // d'exception.
     const attendu = circuit.variante_possible();
     const exercice = attendu ? boucle.catalogue[attendu] ?? null : null;
     try {
@@ -233,7 +223,7 @@ function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
     return [attendu, null];
   }
   if (nom === "aller_a_un_changement") {
-    // Commande du harnais, jumelle de celle du Python.
+    // Commande du test : va au bloc qui annonce le plus de changements.
     let meilleur = 0;
     let plus = 0;
     circuit.exercices.forEach((bloc, index) => {
@@ -254,7 +244,8 @@ function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
     return [null, null];
   }
   if (nom === "aller_au_superset") {
-    // Commande du harnais, pas du circuit — jumelle de celle du Python.
+    // Commande du test, pas du circuit : pilotee par les donnees, pour qu'un
+    // superset deplace ne rende pas le scenario muet sans prevenir.
     for (let i = 0; i < circuit.exercices.length; i++) {
       if (circuit.bloc_actuel === null || circuit._est_entrelace(circuit.index_exercice)) break;
       circuit.passer_exercice_suivant();
@@ -275,15 +266,14 @@ function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
     resultat === undefined ||
     ["boolean", "number", "string"].includes(typeof resultat)
   ) {
-    // Python rend None la ou JavaScript rend undefined : on ramene les deux au
-    // meme, sinon chaque methode sans retour compterait pour un ecart.
+    // `undefined` n'existe pas en JSON : une methode sans retour est relevee
+    // comme null.
     return [resultat === undefined ? null : resultat, null];
   }
   return [resultat.constructor.name, null];
 }
 
-// Jumeau de CHAMPS_ETAT cote Python : la surface verifiee du portage de
-// `moteur.js`. Les deux listes se modifient ensemble.
+// La surface verifiee de `moteur.js`.
 const CHAMPS_ETAT = [
   "mode", "stage", "etape_libelle", "erreur", "repetitions",
   "temps_maintien", "duree_maintien", "temps_chrono", "chrono_termine",
@@ -295,8 +285,8 @@ function observer_etat(etat) {
   const releve = {};
   for (const champ of CHAMPS_ETAT) {
     const valeur = etat[champ];
-    // Meme arrondi que cote Python : deux langages ne s'accordent pas au
-    // dernier bit sur un flottant accumule image par image.
+    // Arrondi au millionieme : un flottant accumule image par image ne doit
+    // pas faire changer une reponse figee pour son dernier bit.
     releve[champ] =
       typeof valeur === "number" && !Number.isInteger(valeur)
         ? Math.round(valeur * 1e6) / 1e6
@@ -305,55 +295,19 @@ function observer_etat(etat) {
   return releve;
 }
 
-function comparer(attendu, obtenu) {
-  const ecarts = [];
-  for (const champ of Object.keys(attendu)) {
-    const a = JSON.stringify(attendu[champ]);
-    const b = JSON.stringify(obtenu[champ]);
-    if (a !== b) ecarts.push({ champ, attendu: a, obtenu: b });
-  }
-  return ecarts;
-}
-
 function main() {
-  const texte_des_seances = readFileSync(SEANCES, "utf-8");
-  const seances = JSON.parse(texte_des_seances);
-  const catalogue = catalogue_pour(JSON.parse(readFileSync(CATALOGUE, "utf-8")));
-  const banque = readFileSync(POSES, "utf-8")
-    .split("\n")
-    .filter((ligne) => ligne.trim())
-    .map((ligne) => construire_corps(JSON.parse(ligne)));
-  const pas = readFileSync(FIXTURES, "utf-8")
-    .split("\n")
-    .filter((ligne) => ligne.trim())
-    .map((ligne) => JSON.parse(ligne));
-
-  // Les seances sont reecrites a chaque fin de seance jouee : des fixtures
-  // generees avant produiraient un diff authentique et trompeur. On le dit
-  // plutot que de laisser chercher.
-  const empreinte = createHash("sha256")
-    // Voir le commentaire jumeau cote Python : sans ce nettoyage, les fins de
-    // ligne suffisent a faire diverger deux empreintes du meme contenu.
-    .update(texte_des_seances.replaceAll("\r", ""), "utf-8")
-    .digest("hex")
-    .slice(0, 16);
-  if (pas[0]?.empreinte_seances && pas[0].empreinte_seances !== empreinte) {
-    console.log(
-      "Les seances ont change depuis la generation des fixtures.\n" +
-        "Relance : python -m scripts.generer_scenarios"
-    );
-    process.exitCode = 1;
-    return;
-  }
+  const seances = lire_json("donnees/seances_personnalisees.json");
+  const catalogue = catalogue_pour(lire_json("catalogue_seances.json"));
+  const banque = lire_lignes("poses_seances").map((pose) => construire_corps(pose));
+  const pas = lire_lignes("seances");
 
   let circuit = null;
   let horloge = null;
   let boucle = null;
   let cle_courante = null;
   let compares = 0;
-  let valeurs = 0;
   let images = 0;
-  const echecs = [];
+  const releve = new Releve();
 
   for (const ligne of pas) {
     const cle = `${ligne.seance} / ${ligne.scenario}`;
@@ -383,56 +337,29 @@ function main() {
     const annonces = boucle.annonces.splice(0);
     if (ligne.commande === "image") images += 1;
     compares += 1;
-    valeurs += Object.keys(obtenu).length + Object.keys(obtenu_etat).length + 1;
 
-    const ecarts = [
-      ...comparer(ligne.etat, obtenu),
-      ...comparer(ligne.etat_seance, obtenu_etat),
-    ];
-    if (JSON.stringify(ligne.annonces) !== JSON.stringify(annonces)) {
-      ecarts.push({
-        champ: "(annonces du coach)",
-        attendu: JSON.stringify(ligne.annonces),
-        obtenu: JSON.stringify(annonces),
-      });
+    const ou = `${ligne.seance} / ${ligne.scenario} / pas ${ligne.pas} ` +
+      `${ligne.commande}(${JSON.stringify(ligne.arguments)})`;
+    for (const champ of Object.keys(obtenu)) {
+      releve.verifier(`${ou} / ${champ}`, ligne.etat, champ, obtenu[champ]);
     }
-    if (JSON.stringify(ligne.resultat) !== JSON.stringify(resultat)) {
-      ecarts.push({
-        champ: "(valeur de retour)",
-        attendu: JSON.stringify(ligne.resultat),
-        obtenu: JSON.stringify(resultat),
-      });
+    for (const champ of Object.keys(obtenu_etat)) {
+      releve.verifier(`${ou} / etat.${champ}`, ligne.etat_seance, champ, obtenu_etat[champ]);
     }
-    if (ligne.erreur !== erreur) {
-      ecarts.push({
-        champ: "(exception)",
-        attendu: String(ligne.erreur),
-        obtenu: String(erreur),
-      });
-    }
-
-    if (ecarts.length) echecs.push({ ligne, ecarts });
+    releve.verifier(`${ou} / annonces du coach`, ligne, "annonces", annonces);
+    releve.verifier(`${ou} / valeur de retour`, ligne, "resultat", resultat);
+    releve.verifier(`${ou} / exception`, ligne, "erreur", erreur);
   }
 
-  console.log(`${compares} pas rejoues (dont ${images} images), ${valeurs} valeurs comparees`);
-
-  if (!echecs.length) {
-    console.log("\nAucun ecart : le portage du circuit et du moteur est fidele.");
-    return;
-  }
-
-  console.log(`
-${echecs.length} pas divergent. Les ${ECARTS_DETAILLES} premiers :
-`);
-  for (const { ligne, ecarts } of echecs.slice(0, ECARTS_DETAILLES)) {
-    console.log(`  ${ligne.seance} / ${ligne.scenario} / pas ${ligne.pas}`);
-    console.log(`    commande : ${ligne.commande}(${JSON.stringify(ligne.arguments)})`);
-    for (const e of ecarts) {
-      console.log(`    ${e.champ.padEnd(26)} python=${e.attendu}  js=${e.obtenu}`);
-    }
-    console.log();
-  }
-  process.exitCode = 1;
+  console.log(
+    `${compares} pas rejoues (dont ${images} images), ${releve.comparaisons} valeurs comparees`
+  );
+  releve.conclure({
+    fichier: "seances",
+    lignes: pas,
+    succes: "Aucun ecart : le circuit et le moteur rendent les reponses figees.",
+    detail: 5,
+  });
 }
 
 main();

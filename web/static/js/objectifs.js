@@ -1,4 +1,4 @@
-// Jumeau de progression/objectifs.py — **c'est ici que le moteur pilote les
+// **c'est ici que le moteur pilote les
 // seances**.
 //
 // Le principe directeur de tout `progression/` est la distinction niveau /
@@ -31,7 +31,7 @@ export class Objectifs {
   /**
    * `catalogue_variantes` est celui de `variantes.js` (`catalogue_depuis`) :
    * il dit quel exercice vient d'une variante plus facile. Vide, la regle du
-   * palier 1 ne s'applique a rien — le Python, lui, lit le catalogue reel.
+   * palier 1 ne s'applique a rien.
    */
   constructor(baremes, niveaux, ressenti, calibration, catalogue_variantes = {}) {
     this.baremes = baremes;
@@ -65,8 +65,7 @@ export class Objectifs {
    * prochaine seance, une fois, sans rien valider.
    *
    * `note` vaut `{declaree, relevee_apres}` (`calibration.note_du_profil`) :
-   * passee en argument, comme les ancrages — le Python, lui, la lit sur le
-   * profil connecte.
+   * passee en argument, comme les ancrages : le module ne lit pas le profil.
    */
   objectifs_par_exercice(seances, ancrages = {}, note = { declaree: null, relevee_apres: null }) {
     const reperes = this.ressenti.evaluation(seances, ancrages);

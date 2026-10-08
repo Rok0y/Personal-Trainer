@@ -13,7 +13,7 @@ name: Demo
 
 on:
   push:
-    branches: [main, feat/portage-web, feat/ligues-et-xp, feat/onboarding-et-coach]
+    branches: [main, feat/portage-web, feat/ligues-et-xp, feat/onboarding-et-coach, chore/retrait-desktop]
   workflow_dispatch:
 
 permissions:
@@ -36,36 +36,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Toutes les verifications, en quelques secondes : les donnees de
+      # `web/static/donnees/` (des sources editees a la main, que plus rien ne
+      # valide en les fabriquant), les tables du coach, et les tests figes. Un
+      # rouge empeche de publier — une donnee bancale ne leve jamais dans
+      # l'application, elle y tait une fiche ou y refuse une seance. Node est
+      # deja present sur le runner.
+      - name: Verifier
+        run: node scripts/tester.mjs
+
+      # `empreinte_deploiement` n'utilise que la bibliotheque standard.
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # `scripts.preparer_demo` n'a besoin que de numpy : il n'importe que le
-      # catalogue d'exercices, jamais la couche vision ni l'audio. Installer
-      # tout requirements.txt tirerait opencv et mediapipe, plusieurs centaines
-      # de mega-octets pour rien. Si l'arbre d'imports s'alourdit un jour,
-      # cette etape echouera en le disant — c'est le comportement voulu.
-      - name: Installer la seule dependance necessaire
-        run: pip install numpy==1.26.4
-
-      # Le catalogue et les sons de la demo ne sont pas versionnes : ils sont
-      # derives de CATALOGUE_EXERCICES et de audio/Fichiers/. Les regenerer ici
-      # garantit que le site publie ne peut pas etre en retard sur le code.
-      - name: Exporter le catalogue et rapatrier les sons
-        run: python -m scripts.preparer_demo
-
-      # La racine du site redirige vers la demo : un lien partage sans son
-      # `/demo/` final tomberait autrement sur une 404 sans explication.
+      # La racine du site est le sommaire : une carte par page (application,
+      # demo, outils de reglage), generee depuis les <title> et les
+      # <meta name="description">. Une page ajoutee y apparait d'elle-meme.
       - name: Preparer le dossier a publier
         run: |
           cp -r web/static _site
-          cat > _site/index.html <<'HTML'
-          <!doctype html>
-          <meta charset="utf-8">
-          <title>Coach - demo</title>
-          <meta http-equiv="refresh" content="0; url=demo/">
-          <p><a href="demo/">Ouvrir la demo</a></p>
-          HTML
+          node scripts/sommaire.mjs _site "${{ github.sha }}"
 
       # Chaque ressource locale recoit l'empreinte du commit deploye. Sans ca,
       # un navigateur qui tient encore l'ancien module en cache le combine avec

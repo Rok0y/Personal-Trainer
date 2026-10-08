@@ -1,0 +1,148 @@
+{
+ "specs": {
+  "Surcharge": {
+   "series": 3,
+   "cible_min": 5,
+   "cible_max": 12,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 4,
+   "poids_max": 10,
+   "surcharges": {
+    "3": {
+     "poids": 18,
+     "cible": 20
+    },
+    "7": {
+     "series": 5
+    }
+   },
+   "charge_corps": 0,
+   "premiere_charge": null
+  },
+  "SansFin": {
+   "series": 3,
+   "cible_min": 10,
+   "cible_max": null,
+   "pas": 1,
+   "unite": "secondes",
+   "series_max": 6,
+   "poids_min": null,
+   "poids_max": null,
+   "surcharges": {},
+   "charge_corps": 0,
+   "premiere_charge": null
+  },
+  "ChargeCorps": {
+   "series": 3,
+   "cible_min": 4,
+   "cible_max": 12,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 6,
+   "poids_min": 0,
+   "poids_max": null,
+   "surcharges": {
+    "5": {
+     "poids": 6
+    }
+   },
+   "charge_corps": 7.5,
+   "premiere_charge": 4
+  }
+ },
+ "materiel": {
+  "Surcharge": {
+   "halteres": 2,
+   "brut": "Deux haltères"
+  },
+  "SansFin": {
+   "halteres": 0,
+   "brut": ""
+  },
+  "ChargeCorps": {
+   "halteres": 2,
+   "brut": "Deux haltères"
+  }
+ },
+ "inventaires": {
+  "non_declare": null,
+  "vide": {
+   "halteres": {},
+   "accessoires": []
+  },
+  "debutant": {
+   "halteres": {
+    "2": 2,
+    "3": 2,
+    "4": 2
+   },
+   "accessoires": [
+    "tapis"
+   ]
+  },
+  "une_paire_moyenne": {
+   "halteres": {
+    "6": 2,
+    "8": 2,
+    "10": 1
+   },
+   "accessoires": []
+  },
+  "complet": {
+   "halteres": {
+    "2": 2,
+    "3": 2,
+    "4": 2,
+    "5": 2,
+    "6": 2,
+    "8": 2,
+    "10": 2,
+    "12": 2,
+    "14": 2,
+    "16": 2,
+    "18": 2,
+    "20": 2,
+    "22": 2,
+    "24": 2,
+    "25": 2,
+    "28": 2,
+    "30": 2,
+    "35": 2,
+    "40": 2
+   },
+   "accessoires": [
+    "tapis",
+    "chaise"
+   ]
+  },
+  "hors_gamme": {
+   "halteres": {
+    "7": 2,
+    "17.5": 2,
+    "21": 1,
+    "26": 2,
+    "33": 2,
+    "45": 2
+   },
+   "accessoires": [
+    "chaise"
+   ]
+  },
+  "absurdes": {
+   "halteres": {
+    "0": 2,
+    "-4": 2,
+    "0.4": 2,
+    "61": 2,
+    "500": 2,
+    "8": 2,
+    "": 2
+   },
+   "accessoires": [
+    "tapis"
+   ]
+  }
+ }
+}
