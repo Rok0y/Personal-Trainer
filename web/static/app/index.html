@@ -5180,8 +5180,14 @@ function dessiner_programmes() {
     bouton.addEventListener("click", () => definir_programme_suivi(bouton.dataset.suivre));
   }
 
-  // Le jour de debut et l'ordre **persistent** sur le profil, comme le
-  // rythme : ce sont des preferences, pas une bascule pour aujourd'hui.
+  // Le rythme, le jour de debut et l'ordre **persistent** sur le profil : ce
+  // sont des preferences, pas une bascule pour aujourd'hui.
+  for (const bouton of $("listeProgrammes").querySelectorAll(".ma-semaine-rythme [data-tours]")) {
+    bouton.addEventListener("click", () => {
+      const tours = Number(bouton.dataset.tours);
+      regler_semaine((utilisateur) => { utilisateur.programme_tours = tours; });
+    });
+  }
   $("listeProgrammes").querySelector("[data-jour-debut]")?.addEventListener("change", (evenement) => {
     const jour = Number(evenement.currentTarget.value);
     regler_semaine((utilisateur) => { utilisateur.programme_jour_debut = jour; });
@@ -5262,13 +5268,28 @@ const JOURS_DE_SEMAINE = [
 ];
 
 /**
- * Les reglages de la semaine du programme suivi : jour de debut et ordre.
+ * Les reglages de la semaine du programme suivi : rythme, jour de debut et
+ * ordre. **Ici et non sur l'accueil** : l'accueil dit ce qu'il reste a faire,
+ * on ne vient pas y changer la regle a chaque passage.
  *
  * Tout se lit dans `semaine` — ce que le calcul a **retenu** —, et non sur le
  * profil : un ordre enregistre avant un changement de `programmes.json` y est
- * deja recale (`ordre_des_seances`).
+ * deja recale (`ordre_des_seances`), un rythme trop haut deja borne.
  */
 function dessiner_reglages_semaine(semaine, ordre_enregistre) {
+  // Le rythme se compte en seances, pas en tours : « 6 » se lit mieux que
+  // « 2 tours » quand le programme a trois seances.
+  const seances_par_tour = semaine.ordre.length;
+  const rythme = semaine.tours_possibles.length > 1
+    ? `<div class="ma-semaine-rythme" role="group" aria-label="Séances par semaine">` +
+      semaine.tours_possibles
+        .map((tours) =>
+          `<button type="button" data-tours="${tours}"` +
+          (tours === semaine.tours ? ` class="actif" aria-pressed="true"` : ` aria-pressed="false"`) +
+          `>${tours * seances_par_tour}</button>`)
+        .join("") +
+      `<span>séances par semaine</span></div>`
+    : "";
   const jours = JOURS_DE_SEMAINE
     .map(([numero, nom]) =>
       `<option value="${numero}"${numero === semaine.jour_debut ? " selected" : ""}>${nom}</option>`)
@@ -5289,6 +5310,7 @@ function dessiner_reglages_semaine(semaine, ordre_enregistre) {
   return (
     `<div class="ma-semaine">` +
     `<h3>Ma semaine</h3>` +
+    rythme +
     `<label class="ma-semaine-jour">Elle commence le <select data-jour-debut>${jours}</select></label>` +
     `<p class="ma-semaine-titre">Ordre des séances</p>` +
     `<ol class="ma-semaine-ordre">${lignes}</ol>` +
@@ -5787,16 +5809,8 @@ function dessiner_resume_programme() {
       : semaine.reussie
         ? `Semaine réussie ! La suivante démarre ${jour_court(semaine.suivante)}.`
         : `Cette semaine : ${semaine.faites}/${semaine.total} · jusqu'au ${jour_court(semaine.fin)}`;
-    const rythme = semaine.tours_possibles.length > 1
-      ? `<div class="semaine-rythme" role="group" aria-label="Séances par semaine">` +
-        semaine.tours_possibles
-          .map((tours) =>
-            `<button type="button" data-tours="${tours}"` +
-            (tours === semaine.tours ? ` class="actif" aria-pressed="true"` : "") +
-            `>${tours * colonnes}</button>`)
-          .join("") +
-        `<span>par semaine</span></div>`
-      : "";
+    // Le rythme ne se regle pas ici mais dans le detail du programme
+    // (`dessiner_reglages_semaine`) : la carte dit ce qu'il reste a faire.
     const cases = semaine.cases
       .map((c) => {
         const contenu =
@@ -5844,7 +5858,7 @@ function dessiner_resume_programme() {
         `<span class="resume-fleche">Voir la séance ↓</span></button>`
       : `<p class="semaine-titre">Aucune séance de ce programme n'est liée à une séance jouable.</p>`;
     corps =
-      `<div class="semaine-tete"><p class="semaine-titre">${titre}</p>${rythme}</div>` +
+      `<div class="semaine-tete"><p class="semaine-titre">${titre}</p></div>` +
       `<div class="semaine-cases" style="--colonnes:${colonnes}">${cases}</div>` +
       recents + proposee;
   }
@@ -5897,18 +5911,6 @@ function dessiner_resume_programme() {
         $("positionProgramme").textContent = caseSemaine.dataset.position;
       }
       aller_a_la_seance(caseSemaine.dataset.seance);
-    });
-  }
-
-  // Le rythme, lui, **persiste** : c'est une preference du profil, comme le
-  // programme suivi.
-  for (const bouton of carte.querySelectorAll(".semaine-rythme [data-tours]")) {
-    bouton.addEventListener("click", async () => {
-      const utilisateur = base.utilisateurs.find((u) => u.id === PROFIL);
-      if (!utilisateur) return;
-      utilisateur.programme_tours = Number(bouton.dataset.tours);
-      await stockage.sauver(base);
-      dessiner_resume_programme();
     });
   }
 }

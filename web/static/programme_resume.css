@@ -10,10 +10,10 @@
    cochee quand elle est faite (`semaine_du_programme`), puis le compte des
    semaines passees. Les objectifs de fin passent au second rang.
 
-   Plusieurs reglages y aboutissent et ne se confondent pas. Le programme
-   suivi, le **rythme** (3 ou 6 seances par semaine), le **jour de debut** et
-   l'**ordre** des seances **persistent** — ce sont des preferences du profil,
-   les deux derniers reglees depuis l'ecran des programmes —, alors que toucher une case est une
+   **On n'y regle rien de durable** : elle dit ce qu'il reste a faire. Le
+   programme suivi, le **rythme** (3 ou 6 seances par semaine), le **jour de
+   debut** et l'**ordre** des seances sont des preferences du profil, reglees
+   depuis l'ecran des programmes. Toucher une case, en revanche, est une
    **bascule ponctuelle** qui ne stocke rien : elle reecrit seulement la cible
    du bouton de demarrage, et la proposition automatique (la premiere case
    vide) reprend la main au prochain chargement.
@@ -78,14 +78,6 @@
     gap: 10px 16px; flex-wrap: wrap; margin: 12px 0 10px;
 }
 .semaine-titre { margin: 0; color: var(--muted); font-size: 13px; }
-.semaine-rythme { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
-.semaine-rythme button {
-    min-width: 34px; padding: 5px 10px; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--border-strong); background: transparent; color: var(--text);
-    font: inherit; font-weight: 700;
-}
-.semaine-rythme button.actif { background: var(--teal); border-color: var(--teal); color: #0a0d13; }
-.semaine-rythme span { margin-left: 4px; }
 
 /* Une colonne par seance du programme : les tours s'empilent, si bien qu'on
    lit d'un coup d'oeil « deux Push faits, un Pull a faire ». `minmax(0, 1fr)`

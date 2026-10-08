@@ -39,10 +39,18 @@
 .ecart { color:var(--text); }
 
 /* Les reglages de la semaine du programme suivi (`dessiner_reglages_semaine`) :
-   jour de debut et ordre des seances. Ce sont des preferences du profil, qui
-   recalculent la carte de l'accueil. */
+   rythme, jour de debut et ordre des seances. Ce sont des preferences du
+   profil, qui recalculent la carte de l'accueil. */
 .ma-semaine { margin:16px 0; padding:14px 16px; border:1px solid var(--border-strong); border-radius:10px; }
 .ma-semaine h3 { margin:0 0 10px; }
+.ma-semaine-rythme { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:12px; color:var(--muted); font-size:13px; }
+.ma-semaine-rythme button {
+    min-width:40px; min-height:34px; padding:5px 10px; border-radius:8px; cursor:pointer;
+    border:1px solid var(--border-strong); background:transparent; color:var(--text);
+    font:inherit; font-weight:700; text-transform:none; letter-spacing:normal;
+}
+.ma-semaine-rythme button.actif { background:var(--teal); border-color:var(--teal); color:#0a0d13; }
+.ma-semaine-rythme span { margin-left:4px; }
 /* Une phrase, pas une etiquette de formulaire : sans capitales. */
 .ma-semaine-jour { display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:13px; text-transform:none; letter-spacing:normal; }
 .ma-semaine-jour select { border:1px solid var(--border-strong); border-radius:8px; padding:6px 10px; background:var(--glass-strong); color:var(--text); font:inherit; cursor:pointer; }
