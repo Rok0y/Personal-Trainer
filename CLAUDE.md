@@ -11,7 +11,7 @@ Une version desktop Python (OpenCV, Flask, SQLite) a existé et a été **retir�
 ## Commandes
 
 ```bash
-python -m scripts.servir_statique 8001   # serveur local sans cache (entrée `statique-dev` de .claude/launch.json)
+python -m scripts.servir_statique 8001   # serveur local sans cache ; sans argument, le port vient de `PORT` (entrée `statique-dev` de .claude/launch.json, en `autoPort`)
 node scripts/tester.mjs                  # toutes les vérifications, ~5 s ; s'arrête au premier rouge
 node scripts/tester.mjs ligues ressenti  # seulement ces tests-là
 node scripts/tester.mjs --mettre-a-jour  # réécrire les réponses figées (changement VOULU et compris)
@@ -38,6 +38,7 @@ Les noms JS restent en **snake_case** (héritage du portage) : ne rien renommer,
 - **`verifier_donnees.mjs`** : les JSON de `donnees/` se tiennent (voir *Données*). C'est l'ancien rôle des validations au chargement, qui n'existent plus nulle part ailleurs.
 - **`verifier_annonces.mjs`** : les tables du coach se tiennent (voir *Coach vocal*).
 - **`verifier_instruments.mjs`** : chaque instrument du banc d'essai redit exactement le jeton de sa détection, et toute détection a son instrument.
+- **`verifier_simulation.mjs`** : le simulateur de progression tourne sur les données déployées pour six profils de matériel, cinq athlètes types et six scénarios, de façon déterministe ; et le moteur y tient ce qui n'est pas affaire de réglage — aucun niveau ne recule, **aucune séance ne demande un haltère que le profil n'a pas**, une note plus haute ne part jamais plus bas sur le même mouvement, une variante change d'un cran à la fois.
 - **`verifier_semaine.mjs`** : la semaine d'un programme sous un jour de début et un ordre choisis, une semaine vide, le passage à l'heure d'hiver — des cas écrits à la main, que les réponses figées (toutes lues au réglage par défaut) ne visitent pas.
 - **onze `comparer_*.mjs`** : rejouent des milliers de questions figées (poses, scénarios de séance, historiques, barèmes, ligues, objectifs, programmes, ressenti, annonces, variantes, écritures d'historique) et comparent aux réponses de `tests/fixtures/*.jsonl.gz`.
 
@@ -98,6 +99,8 @@ L'état de séance porte quatre champs qui ne se confondent pas : `erreur` (faut
 ### Progression (`paliers.js`, `niveaux.js`, `objectifs.js`, `ressenti.js`, `calibration.js`, `variantes.js`, `programmes.js`, `ligues.js`, `cible_manuelle.js`)
 
 Rien n'est stocké hormis l'historique et les ancrages : tout se recalcule à la lecture.
+
+**Le moteur d'un profil s'assemble dans `construire_progression`** (`progression.js`) : l'application et le simulateur passent par là, sans quoi deux assemblages finiraient par différer d'une dépendance et le simulateur décrirait un autre moteur que celui qui joue. À reconstruire quand le matériel change.
 
 **Niveau ≠ objectif, et rien ne doit brouiller la distinction.** Le *niveau* est le plus haut palier **jamais** validé (preuve stricte, ne recule jamais). L'*objectif* est ce que la prochaine séance demande : il monte ou descend, et peut passer **sous** le niveau (délestage, pas régression).
 
@@ -193,6 +196,10 @@ Il n'y a **aucun TTS** : toutes les voix sont enregistrées à la main. D'où la
 **Caméra** (`camera.js`) : ouverte **une fois par session** — entre deux exercices les pistes sont désactivées, pas arrêtées (chaque `getUserMedia` peut redemander l'autorisation). **Une seule pose par défaut** (36 images/s contre 24 à quatre poses) ; `choisirPose` suit la même personne d'une image à l'autre. `preparerDetecteur` sérialise ses appels. **Ne pas oublier `camera.preparer()`** : sans détecteur, `detecter` rend `[]`, exactement comme une image vide. **Le corps a deux formes** : `peindre` veut la pose brute, les règles veulent le corps nommé (`construire_corps`). Une exception dans un `requestAnimationFrame` gèle le flux définitivement : la boucle attrape, trace et replanifie.
 
 **Barres d'onglets** : rendues par `remplir_barres_onglets()` dans chaque `[data-onglets]`, **avant** le câblage générique ; le bouton de profil est délégué au document. L'écran de séance n'a pas de barre.
+
+### Simulateur de progression (`dev/progression.html`, `simulation.js`)
+
+Fait vivre des athlètes virtuels sur **le vrai moteur**, pour plusieurs profils de matériel à la fois (aucun haltère, une paire de 5 kg, seulement des lourds, un seul haltère, set complet, profil muet, saisie libre) : départ selon la note, puis parcours séance après séance — objectifs relus, variantes du profil appliquées, résultats par `resultats_par_exercice`, écriture par `historique.js` dans une base en mémoire, montées automatiques, descentes acceptées comme un appui sur le bouton. **Rien n'y est une règle de l'application** ; ce qui lui est propre, c'est le **modèle de l'athlète** (`HYPOTHESES` : part du corps déplacée par mouvement, fatigue, formule d'Epley), que l'application ne lit jamais. Il sert à faire réussir ou échouer l'athlète, et à exprimer toute exigence en **une seule unité, le 1RM estimé** — seule façon de comparer un squat à vide et un squat chargé, ou les variantes de pompes. La part du corps doit suivre l'ordre des chaînes de variantes. Deux comportements : une force cachée qui progresse (vers un plafond), ou des scénarios écrits (la mécanique pure). Les familles sont **dérivées** des chaînes de variantes. **La page ne juge rien** : elle montre courbes, plus gros saut, plus gros recul, échecs ; c'est à la personne qui relit de dire si un saut est trop brusque. Ce qui n'est pas affaire de réglage est dans `verifier_simulation`. Des courbes identiques sont réunies en une seule (sinon six profils superposés n'en montrent qu'un). Les couleurs de séries sont `--serie-1…7` de `palette.css`, dans cet ordre (vérifié pour le daltonisme contre le fond), et suivent le profil, jamais son rang.
 
 ### Démo et banc d'essai (`demo/index.html`)
 

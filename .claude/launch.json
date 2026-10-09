@@ -10,8 +10,9 @@
     {
       "name": "statique-dev",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "scripts.servir_statique", "8001"],
-      "port": 8001
+      "runtimeArgs": ["-m", "scripts.servir_statique"],
+      "port": 8001,
+      "autoPort": true
     }
   ]
 }

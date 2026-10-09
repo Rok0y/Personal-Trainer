@@ -1649,14 +1649,12 @@ import * as historique from "../js/historique.js";
 import { Tutoriel, etapes_de_seance } from "../js/tutoriel.js";
 import * as stockage from "../js/stockage.js";
 import { Lecteur } from "../js/lecteur.js";
-import { Baremes, composer_baremes } from "../js/paliers.js";
-import { Niveaux } from "../js/niveaux.js";
-import { Ligues } from "../js/ligues.js";
+import { composer_baremes } from "../js/paliers.js";
+import { construire_progression } from "../js/progression.js";
 import { badge_ligue, classe_ligue, jalon_ligue, jauge_ligue, style_ligue } from "../js/ligues_ui.js";
-import { ECHELLE, Ressenti } from "../js/ressenti.js";
+import { ECHELLE } from "../js/ressenti.js";
 import { construire_ligne, proposition_de_montee } from "../js/ressentis_ui.js";
-import { Calibration, note_du_profil } from "../js/calibration.js";
-import { Objectifs } from "../js/objectifs.js";
+import { note_du_profil } from "../js/calibration.js";
 import { normaliser, poids_declarable } from "../js/materiel.js";
 import { VerrouEcran } from "../js/veille.js";
 import { cle_de_progression, graphique_progression } from "../js/graphique.js";
@@ -1670,7 +1668,6 @@ import {
 } from "../js/programmes.js";
 import { enteriner_cibles_manuelles, est_cible_manuelle } from "../js/cible_manuelle.js";
 import {
-  Variantes,
   catalogue_depuis,
   normaliser as normaliser_variantes,
   original_de,
@@ -1859,35 +1856,11 @@ async function charger_donnees() {
  */
 function construire_moteur() {
   const profil = base.utilisateurs.find((u) => u.id === PROFIL);
-  const baremes = new Baremes(tables_baremes, profil?.materiel ?? null);
-  const niveaux = new Niveaux(baremes);
-  // `Ressenti` est nomme plutot qu'anonyme : les ecrans s'en servent aussi
-  // pour *juger* une seance passee (« reussi » ou « non atteint », et quelles
-  // reponses proposer), pas seulement le moteur pour calculer un objectif.
-  const ressenti = new Ressenti(baremes, niveaux);
-  // Les ligues suivent le meme sort que le reste : elles derivent du bareme,
-  // donc elles se refont avec lui quand le materiel change. La calibration
-  // en depend — la note se traduit par leurs bornes.
-  const ligues = new Ligues(baremes, tables_baremes.ligues);
-  const calibration = new Calibration(
-    baremes, ligues, niveaux, ressenti, tables_baremes.note_athlete,
+  // Le meme assemblage que le simulateur de progression : un seul endroit
+  // sait quel module depend de quel autre.
+  moteur = construire_progression(
+    tables_baremes, profil?.materiel ?? null, catalogue_depuis(mouvements),
   );
-  moteur = {
-    baremes,
-    niveaux,
-    calibration,
-    ressenti,
-    ligues,
-    // Le catalogue des variantes y entre pour la regle du palier 1 : un
-    // exercice atteint en remontant la chaine part du bas de son bareme.
-    objectifs: new Objectifs(
-      baremes, niveaux, ressenti, calibration, catalogue_depuis(mouvements),
-    ),
-    // Les variantes plus faciles jouees a la place d'un mouvement. Le bareme
-    // y entre pour l'unite et pour traduire la performance de retour, les
-    // niveaux pour lire ce qu'une seance a prouve (`montees`).
-    variantes: new Variantes(baremes, tables_baremes.variantes?.retour ?? {}, niveaux),
-  };
 }
 
 /**

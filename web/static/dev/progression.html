@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulateur de progression</title>
+<meta name="description" content="Faire vivre des athlètes virtuels sur le vrai moteur, avec différents haltères, pour voir si la progression reste régulière pour tout le monde.">
+<!-- Detecte qu'un deploiement est arrive et va le chercher (voir version.js).
+     Ne touche aucun stockage. -->
+<script type="module" src="../js/version.js"></script>
+<!--
+    Le simulateur de progression.
+
+    La question n'est pas « le bareme est-il bien regle ? » mais « que vit
+    quelqu'un qui n'a que des halteres de 10 kg, ou aucun, ou qui se note mal
+    a l'accueil ? ». La page le montre en faisant jouer des athletes virtuels
+    sur **le vrai moteur** : objectifs, ressenti, variantes, historique, tout
+    vient des modules de l'application (`js/simulation.js` les enchaine). Elle
+    ne decide rien et ne juge rien : c'est a la personne qui relit de dire si
+    un saut est trop brusque.
+
+    Le modele de l'athlete (part du corps deplacee, fatigue, formule d'Epley)
+    est une hypothese de test, modifiable en bas de page, que l'application
+    ne lit jamais. Il exprime tout ce qu'une seance demande en une seule unite
+    — le 1RM estime, en kg — pour qu'un squat a vide et un squat a 10 kg, ou
+    des pompes contre le mur et des vraies pompes, tiennent sur une meme
+    courbe.
+
+    Les reglages lus sont ceux qui sont deployes (`donnees/`) : pour essayer
+    un autre bareme, le regler sur `dev/baremes.html`, le pousser, et revenir.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../palette.css">
+<style>
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+        margin: 0; padding: 20px 16px; background: var(--bg); color: var(--text);
+        font: 400 14px 'Space Grotesk', system-ui, sans-serif;
+    }
+    main { width: min(1240px, 100%); margin: 0 auto; }
+    h1 { font: 400 clamp(28px, 5vw, 44px) 'Bebas Neue', sans-serif; margin: 0 0 4px; color: var(--teal); }
+    h2 { font: 400 26px 'Bebas Neue', sans-serif; margin: 34px 0 6px; }
+    h3 { font: 700 12px 'Space Grotesk', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+    .kicker { color: var(--muted); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; font-weight: 700; margin: 0 0 16px; }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 80ch; }
+    .bloc { background: var(--glass); border: 1px solid var(--border-strong); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+    .reglages { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+    label.titre { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+    input, select {
+        background: var(--glass-strong); color: var(--text); font: inherit;
+        border: 1px solid var(--border-strong); border-radius: 8px; padding: 6px 8px;
+    }
+    input[type="number"], input[type="text"], select { width: 100%; }
+    input:focus, select:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
+    .coche { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
+    .coche input { width: auto; }
+    .pastille { width: 14px; height: 4px; border-radius: 2px; flex: none; }
+    .champs { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+    .etat { font-size: 12px; color: var(--muted); }
+    .erreur { color: var(--orange); font-weight: 600; }
+    .tableau { overflow-x: auto; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--glass); margin: 8px 0; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { text-align: left; padding: 5px 9px; border-bottom: 1px solid var(--border); white-space: nowrap; vertical-align: top; }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td .sous { display: block; color: var(--muted); font-size: 11px; }
+    tr.rate td { color: var(--orange); }
+    tr.evenement td { border-top: 2px solid var(--border-strong); }
+    .famille { margin-top: 26px; }
+    .famille > h3 { color: var(--text); font-size: 13px; }
+    details { margin: 6px 0; }
+    summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; }
+
+    /* Graphique : axes et grille en retrait, courbes fines. */
+    .graphique { position: relative; }
+    .graphique svg { display: block; width: 100%; height: auto; touch-action: manipulation; }
+    .legende { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 6px; font-size: 12px; color: var(--muted); }
+    .legende span { display: inline-flex; align-items: center; gap: 6px; }
+    .legende .trait { width: 16px; height: 0; border-top: 2px solid; }
+    .legende .trait.pointille { border-top-style: dashed; }
+    .infobulle {
+        position: absolute; pointer-events: none; background: var(--glass-strong);
+        border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 10px;
+        font-size: 12px; line-height: 1.5; min-width: 180px; max-width: 320px; z-index: 2;
+        backdrop-filter: blur(6px);
+    }
+    .infobulle b { color: var(--text); }
+    .infobulle .ligne { display: flex; gap: 6px; align-items: baseline; color: var(--muted); }
+    .infobulle .ligne .pastille { transform: translateY(-3px); }
+</style>
+</head>
+<body>
+<main>
+    <p class="kicker">Outil de réglage — pas un écran d'entraînement</p>
+    <h1>Simulateur de progression</h1>
+    <p class="hint">
+        Des athlètes virtuels s'entraînent sur le vrai moteur de l'application,
+        avec des haltères différents. Chaque courbe montre ce que la séance leur
+        demande, exprimé en <strong>1RM estimé</strong> (la charge qu'on
+        soulèverait une fois, en kg) : c'est ce qui permet de comparer des
+        pompes contre le mur et des vraies pompes, ou un squat à vide et un
+        squat chargé. Une progression régulière, c'est une courbe sans marche
+        brutale ni recul. La page ne juge rien : c'est toi qui regardes.
+    </p>
+    <p class="etat" id="etat">Chargement…</p>
+
+    <h2>Réglages</h2>
+    <div class="reglages">
+        <div class="bloc">
+            <h3>Matériel comparé</h3>
+            <div id="profils"></div>
+            <label class="titre" for="perso" style="margin-top:10px">Haltères personnalisés</label>
+            <input id="perso" type="text" placeholder="ex. 4x2 8x2 15x1" autocomplete="off">
+            <p class="hint" style="margin:4px 0 0">Poids × quantité ; un poids seul vaut une paire.</p>
+            <p class="etat erreur" id="persoErreur" hidden></p>
+        </div>
+        <div class="bloc">
+            <h3>Familles de mouvements</h3>
+            <div id="familles"></div>
+        </div>
+        <div class="bloc">
+            <h3>Athlète</h3>
+            <label class="titre" for="athlete">Type</label>
+            <select id="athlete"></select>
+            <div class="champs" style="margin-top:10px">
+                <div><label class="titre" for="note">Note déclarée</label><input id="note" type="number" min="1" max="10" step="1"></div>
+                <div><label class="titre" for="poidsCorps">Poids du corps</label><input id="poidsCorps" type="number" min="30" max="200" step="1"></div>
+                <div><label class="titre" for="progression">Progrès / séance</label><input id="progression" type="number" min="0" max="50" step="0.5"></div>
+                <div><label class="titre" for="plafond">Plafond (× départ)</label><input id="plafond" type="number" min="1" max="10" step="0.1"></div>
+            </div>
+            <h3>Ce qu'il tient en une série, au poids du corps</h3>
+            <div class="champs" id="capacites"></div>
+            <label class="coche" style="margin-top:8px"><input id="descente" type="checkbox"> Accepte de passer à la variante plus facile quand on le lui propose</label>
+        </div>
+        <div class="bloc">
+            <h3>Comportement</h3>
+            <label class="titre" for="comportement">Comment il répond</label>
+            <select id="comportement"></select>
+            <p class="hint" id="comportementAide"></p>
+            <label class="titre" for="seances" style="margin-top:10px">Nombre de séances</label>
+            <input id="seances" type="number" min="1" max="150" step="1" value="40">
+        </div>
+    </div>
+
+    <h2>Le départ, selon la note d'athlète</h2>
+    <p class="hint">
+        Ce que la toute première séance propose à un profil neuf, pour chaque
+        note de 1 à 10 que l'on peut se donner à l'accueil. La courbe doit
+        monter régulièrement d'une note à la suivante ; un plat ou une marche
+        se voit tout de suite.
+    </p>
+    <div id="departs"></div>
+
+    <h2>Le parcours, séance après séance</h2>
+    <p class="hint">
+        L'athlète enchaîne les séances : le moteur fixe chaque objectif, l'athlète
+        réussit ou échoue selon sa force (ou selon le scénario choisi), répond au
+        ressenti, et monte ou descend de variante. La ligne pointillée est sa
+        force réelle : une courbe qui la suit de près est un barème qui
+        accompagne bien ; une courbe qui la dépasse fait échouer.
+        Les ronds marquent un changement de mouvement.
+    </p>
+    <div id="parcours"></div>
+
+    <h2>Hypothèses du modèle d'athlète</h2>
+    <p class="hint">
+        Elles ne servent qu'à ce simulateur : l'application n'en lit aucune.
+        La part du corps doit suivre l'ordre des variantes (le mur avant les
+        inclinées, les inclinées avant les genoux) : sinon l'athlète virtuel
+        trouverait plus dure une variante censée être plus facile.
+    </p>
+    <div class="bloc">
+        <h3>Part du poids du corps déplacée</h3>
+        <div class="champs" id="parts"></div>
+        <h3>Fatigue et ressenti</h3>
+        <div class="champs" id="regles"></div>
+    </div>
+</main>
+
+<script type="module">
+import { Baremes, composer_baremes, UNITE_SECONDES } from "../js/paliers.js";
+import { catalogue_depuis } from "../js/variantes.js";
+import * as sim from "../js/simulation.js";
+
+const $ = (id) => document.getElementById(id);
+const echapper = (texte) => String(texte ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// Trois adresses ecrites en entier, et non un gabarit : le deploiement ne
+// marque de l'empreinte du commit que les `fetch("…json")` litteraux, et une
+// donnee non marquee peut sortir perimee du cache.
+const [socle, reglages, mouvements] = await Promise.all([
+  fetch("../donnees/baremes.json"),
+  fetch("../donnees/reglages.json"),
+  fetch("../donnees/mouvements.json"),
+].map((reponse) => reponse.then((r) => r.json())));
+// La meme composition que l'application : le simulateur ne peut pas jouer un
+// autre bareme que celui qui est deploye.
+const tables = composer_baremes(socle, reglages);
+const baremes_neutres = new Baremes(tables, null);
+const toutes_les_familles = sim.familles(catalogue_depuis(mouvements), baremes_neutres);
+const PROFILS = sim.profils_materiel(tables);
+//: Le profil saisi a la main prend la septieme couleur : chaque profil garde
+//: la sienne quel que soit ce qui est coche.
+const PERSO = { cle: "perso", libelle: "Personnalisé", materiel: null };
+const couleur = (cle) => {
+  const index = [...PROFILS, PERSO].findIndex((p) => p.cle === cle);
+  return `var(--serie-${index + 1})`;
+};
+
+//: Les familles cochees au depart : les chaines de variantes, et les fentes,
+//: qui n'en ont pas encore mais font partie du chantier.
+const FAMILLES_PAR_DEFAUT = (famille) => famille.mouvements.length > 1 || famille.tete.startsWith("Fente");
+
+const reglage = {
+  profils: new Set(PROFILS.map((p) => p.cle)),
+  familles: new Set(toutes_les_familles.filter(FAMILLES_PAR_DEFAUT).map((f) => f.tete)),
+  athlete: structuredClone(sim.ATHLETES[0]),
+  comportement: sim.COMPORTEMENT_CAPACITE,
+  seances: 40,
+  hyp: structuredClone(sim.HYPOTHESES),
+  perso: null,
+};
+
+/* ---------------------------------------------------------------- reglages */
+
+function coche(libelle, coche_au_depart, sur_change, pastille = null) {
+  const etiquette = document.createElement("label");
+  etiquette.className = "coche";
+  const boite = document.createElement("input");
+  boite.type = "checkbox";
+  boite.checked = coche_au_depart;
+  boite.addEventListener("change", () => { sur_change(boite.checked); planifier(); });
+  etiquette.append(boite);
+  if (pastille) {
+    const trait = document.createElement("span");
+    trait.className = "pastille";
+    trait.style.background = pastille;
+    etiquette.append(trait);
+  }
+  etiquette.append(document.createTextNode(libelle));
+  return etiquette;
+}
+
+function champ_nombre(libelle, valeur, sur_change, { pas = "any", min = null } = {}) {
+  const bloc = document.createElement("div");
+  const etiquette = document.createElement("label");
+  etiquette.className = "titre";
+  etiquette.textContent = libelle;
+  const input = document.createElement("input");
+  input.type = "number";
+  input.step = pas;
+  if (min !== null) input.min = min;
+  input.value = valeur ?? "";
+  input.addEventListener("input", () => {
+    const brut = input.value.trim();
+    sur_change(brut === "" ? null : Number(brut));
+    planifier();
+  });
+  bloc.append(etiquette, input);
+  return bloc;
+}
+
+function dessiner_profils() {
+  $("profils").replaceChildren(...PROFILS.map((p) =>
+    coche(p.libelle, reglage.profils.has(p.cle), (oui) => {
+      if (oui) reglage.profils.add(p.cle); else reglage.profils.delete(p.cle);
+    }, couleur(p.cle)),
+  ));
+}
+
+function dessiner_familles() {
+  $("familles").replaceChildren(...toutes_les_familles.map((f) =>
+    coche(f.mouvements.join(" → "), reglage.familles.has(f.tete), (oui) => {
+      if (oui) reglage.familles.add(f.tete); else reglage.familles.delete(f.tete);
+      dessiner_capacites();
+      dessiner_hypotheses();
+    }),
+  ));
+}
+
+function familles_choisies() {
+  return toutes_les_familles.filter((f) => reglage.familles.has(f.tete));
+}
+
+/** Les champs d'athlete, relus depuis le reglage (au changement de type). */
+function remplir_athlete() {
+  const a = reglage.athlete;
+  $("note").value = a.note ?? "";
+  $("poidsCorps").value = a.poids_corps;
+  $("progression").value = Math.round(a.progression * 1000) / 10;
+  $("plafond").value = a.plafond;
+  $("descente").checked = a.accepte_descente;
+  dessiner_capacites();
+}
+
+/**
+ * Un champ par famille cochee, sur le mouvement de reference de l'athlete
+ * s'il en a un dans la chaine, sinon sur la tete : c'est la cle que
+ * `force_initiale` cherchera.
+ */
+function dessiner_capacites() {
+  const a = reglage.athlete;
+  $("capacites").replaceChildren(...familles_choisies().map((f) => {
+    const nom = f.mouvements.find((m) => a.capacites[m] !== undefined) ?? f.tete;
+    const unite = baremes_neutres.unite(nom) === UNITE_SECONDES ? "s" : "rép.";
+    return champ_nombre(`${nom} (${unite})`, a.capacites[nom], (v) => {
+      if (v === null) delete a.capacites[nom]; else a.capacites[nom] = v;
+    }, { pas: 1, min: 0 });
+  }));
+}
+
+function dessiner_hypotheses() {
+  const hyp = reglage.hyp;
+  const noms = [...new Set(familles_choisies().flatMap((f) => f.mouvements))];
+  $("parts").replaceChildren(...noms.map((nom) =>
+    champ_nombre(nom, hyp.parts_du_corps[nom], (v) => { hyp.parts_du_corps[nom] = v; }, { pas: 0.05, min: 0 }),
+  ));
+  const regles = [
+    ["fatigue_par_serie", "Fatigue / série", 0.01],
+    ["secondes_par_repetition", "Secondes = 1 rép.", 0.5],
+    ["marge_facile", "« Facile » au-delà de ×", 0.05],
+    ["marge_trop_facile", "« Trop facile » au-delà de ×", 0.05],
+    ["part_trop_dur", "« Trop dur » sous ×", 0.05],
+  ];
+  $("regles").replaceChildren(...regles.map(([cle, libelle, pas]) =>
+    champ_nombre(libelle, hyp[cle], (v) => { hyp[cle] = v; }, { pas, min: 0 }),
+  ));
+}
+
+$("athlete").innerHTML = sim.ATHLETES.map((a) => `<option value="${a.cle}">${echapper(a.libelle)}</option>`).join("");
+$("athlete").addEventListener("change", () => {
+  reglage.athlete = structuredClone(sim.ATHLETES.find((a) => a.cle === $("athlete").value));
+  remplir_athlete();
+  planifier();
+});
+for (const [id, champ, facteur] of [["note", "note", 1], ["poidsCorps", "poids_corps", 1], ["progression", "progression", 0.01], ["plafond", "plafond", 1]]) {
+  $(id).addEventListener("input", () => {
+    const brut = $(id).value.trim();
+    reglage.athlete[champ] = brut === "" ? null : Number(brut) * facteur;
+    planifier();
+  });
+}
+$("descente").addEventListener("change", () => { reglage.athlete.accepte_descente = $("descente").checked; planifier(); });
+
+const AIDES = {
+  [sim.COMPORTEMENT_CAPACITE]: "L'athlète a une vraie force, qui progresse à chaque séance : il réussit si elle suffit, et dit « facile » quand il a de la marge.",
+};
+$("comportement").innerHTML = [
+  `<option value="${sim.COMPORTEMENT_CAPACITE}">Force cachée qui progresse</option>`,
+  ...sim.SCENARIOS.map((s) => `<option value="${s.cle}">Scénario : ${echapper(s.libelle)}</option>`),
+].join("");
+function aide_comportement() {
+  $("comportementAide").textContent = AIDES[reglage.comportement]
+    ?? "Une suite de verdicts écrite à l'avance, sans modèle de force : elle montre la mécanique pure du moteur. La courbe de force n'existe pas ici.";
+}
+$("comportement").addEventListener("change", () => {
+  reglage.comportement = $("comportement").value;
+  aide_comportement();
+  planifier();
+});
+$("seances").addEventListener("input", () => {
+  reglage.seances = Math.max(1, Math.min(150, Number($("seances").value) || 1));
+  planifier();
+});
+$("perso").addEventListener("input", () => {
+  const { materiel, illisibles } = sim.inventaire_depuis_texte($("perso").value, tables);
+  reglage.perso = materiel;
+  $("persoErreur").hidden = !illisibles.length;
+  $("persoErreur").textContent = illisibles.length ? `Illisible : ${illisibles.join(", ")}` : "";
+  planifier();
+});
+
+/* --------------------------------------------------------------- graphique */
+
+/**
+ * Un graphique en courbes, une echelle, en SVG, avec son infobulle.
+ *
+ * `series` : `[{cle, libelle, couleur, pointille, points: [{x, y, marque,
+ * info}]}]`. Un `y` null coupe la courbe. `info` est le detail affiche au
+ * survol, deja echappe. Legende au-dessus des que deux series s'affichent,
+ * etiquettes en bout de courbe jusqu'a quatre.
+ */
+function graphique({ series: brutes, x_titre, y_titre, x_entiers = true }) {
+  const series = reunir_identiques(brutes);
+  const LARGEUR = 760;
+  const HAUTEUR = 270;
+  const etiquetees = series.length <= 4;
+  const marge = { gauche: 52, droite: etiquetees ? 132 : 16, haut: 12, bas: 38 };
+  const valeurs = series.flatMap((s) => s.points.map((p) => p.y)).filter((y) => y > 0);
+  const xs = [...new Set(series.flatMap((s) => s.points.map((p) => p.x)))].sort((a, b) => a - b);
+  const conteneur = document.createElement("div");
+  conteneur.className = "graphique";
+  if (!valeurs.length || !xs.length) {
+    conteneur.innerHTML = `<p class="hint">Rien à tracer.</p>`;
+    return conteneur;
+  }
+  const pas_y = pas_rond((Math.max(...valeurs) - Math.min(...valeurs)) / 4 || 10);
+  const y0 = Math.max(0, Math.floor((Math.min(...valeurs) - pas_y * 0.3) / pas_y) * pas_y);
+  const y1 = Math.ceil((Math.max(...valeurs) + pas_y * 0.2) / pas_y) * pas_y;
+  const [x0, x1] = [xs[0], xs.at(-1)];
+  const sx = (x) => marge.gauche + (x1 === x0 ? 0.5 : (x - x0) / (x1 - x0)) * (LARGEUR - marge.gauche - marge.droite);
+  const sy = (y) => HAUTEUR - marge.bas - ((y - y0) / (y1 - y0)) * (HAUTEUR - marge.haut - marge.bas);
+
+  const morceaux = [];
+  for (let y = y0; y <= y1 + 1e-9; y += pas_y) {
+    morceaux.push(
+      `<line x1="${marge.gauche}" x2="${LARGEUR - marge.droite}" y1="${sy(y)}" y2="${sy(y)}" stroke="var(--border)" stroke-width="1"/>`,
+      `<text x="${marge.gauche - 8}" y="${sy(y) + 4}" text-anchor="end" fill="var(--muted)" font-size="11">${Math.round(y)}</text>`,
+    );
+  }
+  const graduations_x = xs.length <= 12 ? xs : xs.filter((x, i) => i % Math.ceil(xs.length / 10) === 0 || x === x1);
+  for (const x of graduations_x) {
+    morceaux.push(`<text x="${sx(x)}" y="${HAUTEUR - marge.bas + 16}" text-anchor="middle" fill="var(--muted)" font-size="11">${x_entiers ? x : x.toFixed(1)}</text>`);
+  }
+  morceaux.push(
+    `<line x1="${marge.gauche}" x2="${LARGEUR - marge.droite}" y1="${HAUTEUR - marge.bas}" y2="${HAUTEUR - marge.bas}" stroke="var(--border-strong)" stroke-width="1"/>`,
+    `<text x="${(marge.gauche + LARGEUR - marge.droite) / 2}" y="${HAUTEUR - 4}" text-anchor="middle" fill="var(--muted)" font-size="11">${echapper(x_titre)}</text>`,
+    `<text x="12" y="${marge.haut + 2}" fill="var(--muted)" font-size="11" transform="rotate(-90 12 ${marge.haut + 2})" text-anchor="end">${echapper(y_titre)}</text>`,
+  );
+
+  for (const s of series) {
+    let d = "";
+    let ouvert = false;
+    for (const p of s.points) {
+      if (!(p.y > 0)) { ouvert = false; continue; }
+      d += `${ouvert ? "L" : "M"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`;
+      ouvert = true;
+    }
+    morceaux.push(`<path d="${d}" fill="none" stroke="${s.couleur}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"${s.pointille ? ' stroke-dasharray="5 4"' : ""}/>`);
+  }
+  // Les marques par-dessus toutes les courbes, cerclees du fond : une marque
+  // posee sous la courbe voisine ne se verrait pas.
+  for (const s of series) {
+    for (const p of s.points) {
+      if (p.marque && p.y > 0) {
+        morceaux.push(`<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="4.5" fill="${s.couleur}" stroke="var(--bg)" stroke-width="2"/>`);
+      }
+    }
+  }
+  if (etiquetees) {
+    // Etiquettes en bout de courbe, ecartees pour ne pas se chevaucher.
+    const bouts = series
+      .map((s) => ({ s, p: [...s.points].reverse().find((p) => p.y > 0) }))
+      .filter((b) => b.p)
+      .map((b) => ({ ...b, y: sy(b.p.y) }))
+      .sort((a, b) => a.y - b.y);
+    for (let i = 1; i < bouts.length; i += 1) bouts[i].y = Math.max(bouts[i].y, bouts[i - 1].y + 13);
+    for (const b of bouts) {
+      morceaux.push(`<text x="${sx(b.p.x) + 8}" y="${b.y + 4}" fill="var(--text)" font-size="11">${echapper(b.s.etiquette)}</text>`);
+    }
+  }
+  const curseur = `<line class="curseur" y1="${marge.haut}" y2="${HAUTEUR - marge.bas}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>`;
+  const zone = `<rect x="${marge.gauche}" y="${marge.haut}" width="${LARGEUR - marge.gauche - marge.droite}" height="${HAUTEUR - marge.haut - marge.bas}" fill="transparent"/>`;
+
+  if (series.length >= 2) {
+    const legende = document.createElement("div");
+    legende.className = "legende";
+    legende.innerHTML = series.map((s) =>
+      `<span><span class="trait${s.pointille ? " pointille" : ""}" style="border-color:${s.couleur}"></span>${echapper(s.libelle)}</span>`).join("");
+    conteneur.append(legende);
+  }
+  const cadre = document.createElement("div");
+  cadre.style.position = "relative";
+  cadre.innerHTML =
+    `<svg viewBox="0 0 ${LARGEUR} ${HAUTEUR}" role="img" aria-label="${echapper(y_titre)} selon ${echapper(x_titre)}">` +
+    `${morceaux.join("")}${curseur}${zone}</svg>`;
+  const bulle = document.createElement("div");
+  bulle.className = "infobulle";
+  bulle.hidden = true;
+  cadre.append(bulle);
+  conteneur.append(cadre);
+
+  const svg = cadre.querySelector("svg");
+  const ligne = svg.querySelector(".curseur");
+  const montrer = (evenement) => {
+    const boite = svg.getBoundingClientRect();
+    const echelle = LARGEUR / boite.width;
+    const x_svg = (evenement.clientX - boite.left) * echelle;
+    let proche = xs[0];
+    for (const x of xs) if (Math.abs(sx(x) - x_svg) < Math.abs(sx(proche) - x_svg)) proche = x;
+    ligne.setAttribute("x1", sx(proche));
+    ligne.setAttribute("x2", sx(proche));
+    ligne.setAttribute("visibility", "visible");
+    const lignes = series
+      .map((s) => ({ s, p: s.points.find((p) => p.x === proche) }))
+      .filter((l) => l.p);
+    bulle.innerHTML = `<b>${echapper(x_titre)} ${proche}</b>` + lignes.map(({ s, p }) =>
+      `<div class="ligne"><span class="pastille" style="background:${s.couleur}"></span><span><b>${echapper(s.libelle)}</b> ${p.info ?? ""}</span></div>`).join("");
+    bulle.hidden = false;
+    const gauche = sx(proche) / echelle;
+    const largeur_bulle = bulle.offsetWidth;
+    bulle.style.left = `${gauche + 12 + largeur_bulle > boite.width ? Math.max(0, gauche - 12 - largeur_bulle) : gauche + 12}px`;
+    bulle.style.top = "8px";
+  };
+  svg.addEventListener("pointermove", montrer);
+  svg.addEventListener("pointerdown", montrer);
+  svg.addEventListener("pointerleave", () => { bulle.hidden = true; ligne.setAttribute("visibility", "hidden"); });
+  return conteneur;
+}
+
+/**
+ * Les series qui tracent exactement la meme courbe, reunies en une seule.
+ *
+ * Des pompes ne dependent d'aucun haltere : les six profils y donnent la meme
+ * ligne, et six courbes superposees n'en montrent qu'une, de la couleur de la
+ * derniere — on croirait les cinq autres absentes. La serie reunie garde la
+ * couleur de la premiere et nomme toutes celles qu'elle couvre.
+ */
+function reunir_identiques(series) {
+  const groupes = new Map();
+  for (const s of series) {
+    const empreinte = JSON.stringify(s.points.map((p) => [p.x, p.y, p.marque ?? false]));
+    const groupe = groupes.get(empreinte);
+    if (groupe) groupe.libelles.push(s.libelle);
+    else groupes.set(empreinte, { ...s, libelles: [s.libelle] });
+  }
+  return [...groupes.values()].map((g) => ({
+    ...g,
+    libelle: g.libelles.join(" = "),
+    // En bout de courbe, la place manque pour six noms : la legende les donne.
+    etiquette: g.libelles.length > 1 ? `${g.libelles.length} matériels identiques` : g.libelle,
+  }));
+}
+
+/** Un pas de graduation lisible (1, 2, 5, 10, 20, 50…) proche de `brut`. */
+function pas_rond(brut) {
+  const puissance = 10 ** Math.floor(Math.log10(brut));
+  for (const facteur of [1, 2, 5, 10]) if (facteur * puissance >= brut) return facteur * puissance;
+  return 10 * puissance;
+}
+
+/* --------------------------------------------------------------- affichage */
+
+const resume = (palier) => {
+  if (!palier) return "—";
+  const unite = palier.unite === UNITE_SECONDES ? " s" : "";
+  return `${palier.series}×${palier.cible}${unite}${palier.poids ? ` à ${palier.poids} kg` : ""}`;
+};
+const kg = (valeur) => (valeur > 0 ? `${Math.round(valeur)} kg` : "—");
+const pourcent = (part) => `${part > 0 ? "+" : ""}${Math.round(part * 100)} %`;
+
+/** Les profils coches, le personnalise en dernier s'il est saisi. */
+function profils_choisis() {
+  const choisis = PROFILS.filter((p) => reglage.profils.has(p.cle));
+  if (reglage.perso) choisis.push({ ...PERSO, materiel: reglage.perso });
+  return choisis;
+}
+
+function dessiner_departs(resultats) {
+  const hote = $("departs");
+  hote.replaceChildren();
+  familles_choisies().forEach((famille, index_famille) => {
+    const section = document.createElement("section");
+    section.className = "famille";
+    section.innerHTML = `<h3>${echapper(famille.mouvements.join(" → "))}</h3>`;
+    const series = resultats.map(({ profil, par_note }) => ({
+      cle: profil.cle,
+      libelle: profil.libelle,
+      couleur: couleur(profil.cle),
+      points: par_note.map((familles, i) => {
+        const d = familles[index_famille];
+        return { x: i + 1, y: d.exige, info: `${echapper(d.joue)} ${resume(d.palier)} · ${kg(d.exige)}` };
+      }),
+    }));
+    section.append(graphique({ series, x_titre: "Note", y_titre: "1RM estimé exigé (kg)" }));
+
+    const entete = Array.from({ length: 10 }, (_, i) => `<th>${i + 1}</th>`).join("");
+    const lignes = resultats.map(({ profil, par_note }) =>
+      `<tr><td><span class="pastille" style="display:inline-block;background:${couleur(profil.cle)};margin-right:6px;vertical-align:middle"></span>${echapper(profil.libelle)}</td>` +
+      par_note.map((familles) => {
+        const d = familles[index_famille];
+        return `<td>${resume(d.palier)}<span class="sous">${kg(d.exige)}</span></td>`;
+      }).join("") + "</tr>").join("");
+    const tableau = document.createElement("div");
+    tableau.className = "tableau";
+    tableau.innerHTML = `<table><thead><tr><th>Mouvement joué : ${echapper(famille.tete)}</th>${entete}</tr></thead><tbody>${lignes}</tbody></table>`;
+    section.append(tableau);
+
+    // Le depart qu'aurait chaque mouvement de la chaine : c'est ce qu'il
+    // faut avoir sous les yeux pour decider quelle note joue quelle variante.
+    if (famille.mouvements.length > 1 && resultats.length) {
+      const { profil, par_note } = resultats[0];
+      const detail = document.createElement("details");
+      detail.innerHTML =
+        `<summary>Départ de chaque mouvement de la chaîne (${echapper(profil.libelle)})</summary>` +
+        `<div class="tableau"><table><thead><tr><th>Mouvement</th>${entete}</tr></thead><tbody>${
+          famille.mouvements.map((nom, k) =>
+            `<tr><td>${echapper(nom)}</td>${par_note.map((familles) => {
+              const m = familles[index_famille].chaine[k];
+              return `<td>${resume(m.palier)}<span class="sous">${kg(m.exige)}</span></td>`;
+            }).join("")}</tr>`).join("")
+        }</tbody></table></div>`;
+      section.append(detail);
+    }
+    hote.append(section);
+  });
+}
+
+function info_point(p) {
+  const verdict = p.reussi ? "réussi" : "échoué";
+  const ressenti = p.ressenti ? ` (${p.ressenti.replace("_", " ")})` : "";
+  const evenement = p.evenement ? `<br>→ ${p.evenement.sens} vers ${echapper(p.evenement.vers)}` : "";
+  return `${echapper(p.joue)} ${resume(p.palier)} · ${kg(p.exige)} · ${verdict}${ressenti}${evenement}`;
+}
+
+function dessiner_parcours(resultats) {
+  const hote = $("parcours");
+  hote.replaceChildren();
+  const capacite = reglage.comportement === sim.COMPORTEMENT_CAPACITE;
+  familles_choisies().forEach((famille, index_famille) => {
+    const section = document.createElement("section");
+    section.className = "famille";
+    section.innerHTML = `<h3>${echapper(famille.mouvements.join(" → "))}</h3>`;
+    const traces = resultats.map(({ profil, traces }) => ({ profil, trace: traces[index_famille] }));
+    if (traces.some(({ trace }) => trace.sans_capacite)) {
+      section.insertAdjacentHTML("beforeend",
+        `<p class="hint erreur">Aucune capacité pour cette famille : renseigne ce que l'athlète tient en une série.</p>`);
+      hote.append(section);
+      return;
+    }
+
+    const series = traces.map(({ profil, trace }) => ({
+      cle: profil.cle,
+      libelle: profil.libelle,
+      couleur: couleur(profil.cle),
+      points: trace.points.map((p, i) => ({
+        x: p.n,
+        y: p.exige,
+        marque: i > 0 && p.joue !== trace.points[i - 1].joue,
+        info: info_point(p),
+      })),
+    }));
+    // La force de l'athlete ne depend pas de ses halteres : une seule courbe.
+    if (capacite && traces.length) {
+      series.push({
+        cle: "force",
+        libelle: "Force de l'athlète",
+        couleur: "var(--muted)",
+        pointille: true,
+        points: traces[0].trace.points.map((p) => ({ x: p.n, y: p.force, info: kg(p.force) })),
+      });
+    }
+    section.append(graphique({ series, x_titre: "Séance", y_titre: "1RM estimé exigé (kg)" }));
+
+    const lignes = traces.map(({ profil, trace }) => {
+      const b = sim.bilan(trace.points);
+      const saut = b.saut
+        ? `${pourcent(b.saut.part)} <span class="sous">séance ${b.saut.n} : ${echapper(b.saut.avant.joue)} ${resume(b.saut.avant.palier)} → ${echapper(b.saut.apres.joue)} ${resume(b.saut.apres.palier)}</span>`
+        : "—";
+      const recul = b.recul
+        ? `${pourcent(b.recul.part)} <span class="sous">séance ${b.recul.n} : ${echapper(b.recul.avant.joue)} ${resume(b.recul.avant.palier)} → ${echapper(b.recul.apres.joue)} ${resume(b.recul.apres.palier)}</span>`
+        : "—";
+      return `<tr><td><span class="pastille" style="display:inline-block;background:${couleur(profil.cle)};margin-right:6px;vertical-align:middle"></span>${echapper(profil.libelle)}</td>` +
+        `<td>${saut}</td><td>${recul}</td><td class="num">${b.echecs}</td>` +
+        `<td class="num">${b.montees} / ${b.descentes}</td>` +
+        `<td>${b.dernier ? `${echapper(b.dernier.joue)} ${resume(b.dernier.palier)}<span class="sous">niveau ${b.dernier.record ?? "—"}</span>` : "—"}</td></tr>`;
+    }).join("");
+    const tableau = document.createElement("div");
+    tableau.className = "tableau";
+    tableau.innerHTML =
+      `<table><thead><tr><th>Matériel</th><th>Plus gros saut</th><th>Plus gros recul</th><th>Échecs</th>` +
+      `<th>Montées / descentes</th><th>À la fin</th></tr></thead><tbody>${lignes}</tbody></table>`;
+    section.append(tableau);
+
+    for (const { profil, trace } of traces) {
+      const detail = document.createElement("details");
+      detail.innerHTML =
+        `<summary>Séance par séance — ${echapper(profil.libelle)}</summary>` +
+        `<div class="tableau"><table><thead><tr><th>Séance</th><th>Mouvement</th><th>Objectif</th><th>Exigé</th>` +
+        `${capacite ? "<th>Force</th>" : ""}<th>Réalisé</th><th>Verdict</th><th>Niveau</th><th>Variante</th></tr></thead><tbody>${
+          trace.points.map((p, i) =>
+            `<tr class="${p.reussi ? "" : "rate"}${i > 0 && p.joue !== trace.points[i - 1].joue ? " evenement" : ""}">` +
+            `<td class="num">${p.n}</td><td>${echapper(p.joue)}</td><td>${resume(p.palier)}</td>` +
+            `<td class="num">${kg(p.exige)}</td>${capacite ? `<td class="num">${kg(p.force)}</td>` : ""}` +
+            `<td>${p.realise.join(" · ")}</td>` +
+            `<td>${p.reussi ? "réussi" : "échoué"}${p.ressenti ? ` · ${p.ressenti.replace("_", " ")}` : ""}</td>` +
+            `<td class="num">${p.record ?? "—"}</td>` +
+            `<td>${p.evenement ? `${p.evenement.sens} → ${echapper(p.evenement.vers)}` : ""}</td></tr>`).join("")
+        }</tbody></table></div>`;
+      section.append(detail);
+    }
+    hote.append(section);
+  });
+}
+
+/* ----------------------------------------------------------------- calcul */
+
+let minuterie = null;
+function planifier() {
+  clearTimeout(minuterie);
+  $("etat").textContent = "Calcul…";
+  minuterie = setTimeout(recalculer, 250);
+}
+
+function recalculer() {
+  const debut = performance.now();
+  const choisies = familles_choisies();
+  const profils = profils_choisis();
+  try {
+    const departs = profils.map((profil) => ({
+      profil,
+      par_note: sim.departs({ tables, mouvements, materiel: profil.materiel, choisies, athlete: reglage.athlete, hyp: reglage.hyp }),
+    }));
+    dessiner_departs(departs);
+    const parcours = profils.map((profil) => ({
+      profil,
+      traces: sim.simuler({
+        tables, mouvements, materiel: profil.materiel, choisies,
+        athlete: reglage.athlete, comportement: reglage.comportement,
+        seances: reglage.seances, hyp: reglage.hyp,
+      }),
+    }));
+    dessiner_parcours(parcours);
+    $("etat").className = "etat";
+    $("etat").textContent =
+      `${profils.length} profils × ${choisies.length} familles × ${reglage.seances} séances, ` +
+      `calculés en ${Math.round(performance.now() - debut)} ms sur les réglages déployés.`;
+  } catch (erreur) {
+    // Une hypothese vide ou un reglage incoherent : on le dit, au lieu de
+    // laisser les courbes d'avant faire croire a un resultat.
+    $("departs").replaceChildren();
+    $("parcours").replaceChildren();
+    $("etat").className = "etat erreur";
+    $("etat").textContent = erreur.message;
+    console.error(erreur);
+  }
+}
+
+dessiner_profils();
+dessiner_familles();
+remplir_athlete();
+dessiner_hypotheses();
+aide_comportement();
+recalculer();
+</script>
+</body>
+</html>
