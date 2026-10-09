@@ -89,6 +89,23 @@ function main() {
   for (const nom of Object.keys(bornes)) {
     if (!specs[nom]) signaler("reglages.json", `bornes de ligue pour « ${nom} », qui n'a pas de bareme`);
   }
+  // Les corrections de palier (`surcharges`, ecrites depuis
+  // dev/progression.html) : une cle inconnue fait lever `Baremes.palier`, donc
+  // planter l'exercice partout dans l'application.
+  for (const [nom, spec] of Object.entries(specs)) {
+    for (const [niveau, surcharge] of Object.entries(spec.surcharges ?? {})) {
+      if (!(Number.isInteger(Number(niveau)) && Number(niveau) >= 1)) {
+        signaler("reglages.json", `« ${nom} » : surcharge sur un palier qui n'existe pas (« ${niveau} »)`);
+      }
+      for (const [cle, valeur] of Object.entries(surcharge ?? {})) {
+        if (!["series", "cible", "poids"].includes(cle)) {
+          signaler("reglages.json", `« ${nom} », palier ${niveau} : « ${cle} » ne se surcharge pas (series, cible ou poids)`);
+        } else if (!(typeof valeur === "number" && valeur >= (cle === "poids" ? 0 : 1))) {
+          signaler("reglages.json", `« ${nom} », palier ${niveau} : ${cle} doit etre un nombre positif`);
+        }
+      }
+    }
+  }
 
   // Les variantes : une performance de retour ne sert qu'a un mouvement qui a
   // une variante plus dure ; la table de depart nomme, pour la tete d'une

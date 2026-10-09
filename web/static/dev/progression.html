@@ -4,30 +4,31 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simulateur de progression</title>
-<meta name="description" content="Faire vivre des athlètes virtuels sur le vrai moteur, avec différents haltères, pour voir si la progression reste régulière pour tout le monde.">
+<meta name="description" content="Voir où démarre chaque exercice selon la note, ce qu'il demande séance après séance, et corriger à la main un palier qui fait baisser le volume.">
 <!-- Detecte qu'un deploiement est arrive et va le chercher (voir version.js).
-     Ne touche aucun stockage. -->
+     Ne touche aucun stockage de l'application. -->
 <script type="module" src="../js/version.js"></script>
 <!--
     Le simulateur de progression.
 
-    La question n'est pas « le bareme est-il bien regle ? » mais « que vit
-    quelqu'un qui n'a que des halteres de 10 kg, ou aucun, ou qui se note mal
-    a l'accueil ? ». La page le montre en faisant jouer des athletes virtuels
-    sur **le vrai moteur** : objectifs, ressenti, variantes, historique, tout
-    vient des modules de l'application (`js/simulation.js` les enchaine). Elle
-    ne decide rien et ne juge rien : c'est a la personne qui relit de dire si
-    un saut est trop brusque.
+    Deux questions, rien de plus : **ou demarre chaque exercice** selon la note
+    d'athlete, et **ce qu'il demande seance apres seance** a quelqu'un qui
+    reussit toujours sans rien repondre. Ce qu'on y cherche, c'est un palier
+    qui demande moins de volume que le precedent — et on le corrige ici, a la
+    main, palier par palier.
 
-    Le modele de l'athlete (part du corps deplacee, fatigue, formule d'Epley)
-    est une hypothese de test, modifiable en bas de page, que l'application
-    ne lit jamais. Il exprime tout ce qu'une seance demande en une seule unite
-    — le 1RM estime, en kg — pour qu'un squat a vide et un squat a 10 kg, ou
-    des pompes contre le mur et des vraies pompes, tiennent sur une meme
-    courbe.
+    Tout vient des modules de l'application (`js/simulation.js` les
+    enchaine) : le simulateur ne peut pas decrire un autre moteur que celui
+    qui joue. Une correction est une **surcharge** du bareme (`surcharges` de
+    `reglages.json`) : elle corrige un palier sans decaler les autres. Le
+    fichier a coller est en bas de page, comme sur `dev/baremes.html`.
 
-    Les reglages lus sont ceux qui sont deployes (`donnees/`) : pour essayer
-    un autre bareme, le regler sur `dev/baremes.html`, le pousser, et revenir.
+    **Une surcharge vise un numero de palier, pas un poids** : sur un
+    exercice charge, le palier 12 ne tombe pas sur le meme haltere pour tous
+    les materiels. D'ou les profils superposes : une correction qui lisse une
+    courbe peut en creuser une autre, et ca se voit tout de suite. On ne
+    corrige que series et repetitions — un poids fixe a la main vaudrait pour
+    des profils qui n'ont pas cet haltere.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,37 +43,48 @@
     }
     main { width: min(1240px, 100%); margin: 0 auto; }
     h1 { font: 400 clamp(28px, 5vw, 44px) 'Bebas Neue', sans-serif; margin: 0 0 4px; color: var(--teal); }
-    h2 { font: 400 26px 'Bebas Neue', sans-serif; margin: 34px 0 6px; }
+    h2 { font: 400 26px 'Bebas Neue', sans-serif; margin: 30px 0 6px; }
     h3 { font: 700 12px 'Space Grotesk', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
     .kicker { color: var(--muted); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; font-weight: 700; margin: 0 0 16px; }
     .hint { color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 80ch; }
     .bloc { background: var(--glass); border: 1px solid var(--border-strong); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
-    .reglages { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+    .reglages { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
     label.titre { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
-    input, select {
+    input, select, textarea {
         background: var(--glass-strong); color: var(--text); font: inherit;
         border: 1px solid var(--border-strong); border-radius: 8px; padding: 6px 8px;
     }
     input[type="number"], input[type="text"], select { width: 100%; }
     input:focus, select:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
+    input.modifie { border-color: var(--orange); }
     .coche { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
     .coche input { width: auto; }
-    .pastille { width: 14px; height: 4px; border-radius: 2px; flex: none; }
+    .pastille { width: 14px; height: 4px; border-radius: 2px; flex: none; display: inline-block; }
     .champs { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+    .barre { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
+    .bouton {
+        background: var(--teal); color: var(--bg); border: 0; border-radius: 999px;
+        padding: 9px 18px; font: 700 12px 'Space Grotesk', sans-serif;
+        letter-spacing: .06em; text-transform: uppercase; cursor: pointer; width: auto;
+    }
+    .bouton.secondaire { background: none; color: var(--text); border: 1px solid var(--border-strong); }
     .etat { font-size: 12px; color: var(--muted); }
-    .erreur { color: var(--orange); font-weight: 600; }
+    .etat.brouillon, .erreur { color: var(--orange); font-weight: 600; }
     .tableau { overflow-x: auto; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--glass); margin: 8px 0; }
     table { border-collapse: collapse; width: 100%; font-size: 13px; }
-    th, td { text-align: left; padding: 5px 9px; border-bottom: 1px solid var(--border); white-space: nowrap; vertical-align: top; }
+    th, td { text-align: left; padding: 5px 9px; border-bottom: 1px solid var(--border); white-space: nowrap; vertical-align: middle; }
     th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
     td.num { text-align: right; font-variant-numeric: tabular-nums; }
     td .sous { display: block; color: var(--muted); font-size: 11px; }
-    tr.rate td { color: var(--orange); }
-    tr.evenement td { border-top: 2px solid var(--border-strong); }
-    .famille { margin-top: 26px; }
-    .famille > h3 { color: var(--text); font-size: 13px; }
-    details { margin: 6px 0; }
-    summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; }
+    td.baisse, td.baisse .sous { color: var(--orange); font-weight: 600; }
+    td input { width: 64px; padding: 3px 6px; text-align: right; }
+    tr.surligne td { background: rgba(27, 232, 196, 0.08); }
+    tr.choisi td { background: rgba(255, 255, 255, 0.05); }
+    .lien { background: none; border: 0; padding: 0; color: var(--text); font: inherit; cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+    .compte { font-variant-numeric: tabular-nums; }
+    .compte.alerte { color: var(--orange); font-weight: 700; }
+    .reinitialiser { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0 4px; }
+    textarea { width: 100%; min-height: 200px; font: 400 12px ui-monospace, monospace; white-space: pre; }
 
     /* Graphique : axes et grille en retrait, courbes fines. */
     .graphique { position: relative; }
@@ -80,11 +92,11 @@
     .legende { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 6px; font-size: 12px; color: var(--muted); }
     .legende span { display: inline-flex; align-items: center; gap: 6px; }
     .legende .trait { width: 16px; height: 0; border-top: 2px solid; }
-    .legende .trait.pointille { border-top-style: dashed; }
+    .legende .rond { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--orange); }
     .infobulle {
         position: absolute; pointer-events: none; background: var(--glass-strong);
         border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 10px;
-        font-size: 12px; line-height: 1.5; min-width: 180px; max-width: 320px; z-index: 2;
+        font-size: 12px; line-height: 1.5; min-width: 180px; max-width: 340px; z-index: 2;
         backdrop-filter: blur(6px);
     }
     .infobulle b { color: var(--text); }
@@ -97,15 +109,17 @@
     <p class="kicker">Outil de réglage — pas un écran d'entraînement</p>
     <h1>Simulateur de progression</h1>
     <p class="hint">
-        Des athlètes virtuels s'entraînent sur le vrai moteur de l'application,
-        avec des haltères différents. Chaque courbe montre ce que la séance leur
-        demande, exprimé en <strong>1RM estimé</strong> (la charge qu'on
-        soulèverait une fois, en kg) : c'est ce qui permet de comparer des
-        pompes contre le mur et des vraies pompes, ou un squat à vide et un
-        squat chargé. Une progression régulière, c'est une courbe sans marche
-        brutale ni recul. La page ne juge rien : c'est toi qui regardes.
+        Où démarre chaque exercice selon la note d'athlète, et ce qu'il demande
+        séance après séance à quelqu'un qui <strong>réussit toujours, sans rien
+        répondre</strong> : chaque séance le fait monter d'un palier. On cherche
+        un palier qui demande <strong>moins de volume</strong> que le précédent
+        (en orange), et on le corrige à la main dans le tableau des paliers.
+        Le fichier à coller est en bas de page.
     </p>
-    <p class="etat" id="etat">Chargement…</p>
+    <div class="barre">
+        <span class="etat" id="etat">Chargement…</span>
+        <button class="bouton secondaire" id="reinitialiser">Revenir aux valeurs déployées</button>
+    </div>
 
     <h2>Réglages</h2>
     <div class="reglages">
@@ -118,66 +132,66 @@
             <p class="etat erreur" id="persoErreur" hidden></p>
         </div>
         <div class="bloc">
-            <h3>Familles de mouvements</h3>
-            <div id="familles"></div>
-        </div>
-        <div class="bloc">
-            <h3>Athlète</h3>
-            <label class="titre" for="athlete">Type</label>
-            <select id="athlete"></select>
-            <div class="champs" style="margin-top:10px">
-                <div><label class="titre" for="note">Note déclarée</label><input id="note" type="number" min="1" max="10" step="1"></div>
-                <div><label class="titre" for="poidsCorps">Poids du corps</label><input id="poidsCorps" type="number" min="30" max="200" step="1"></div>
-                <div><label class="titre" for="progression">Progrès / séance</label><input id="progression" type="number" min="0" max="50" step="0.5"></div>
-                <div><label class="titre" for="plafond">Plafond (× départ)</label><input id="plafond" type="number" min="1" max="10" step="0.1"></div>
+            <h3>Parcours</h3>
+            <div class="champs">
+                <div><label class="titre" for="note">Note de départ</label><select id="note"></select></div>
+                <div><label class="titre" for="seances">Séances</label><input id="seances" type="number" min="5" max="150" step="1" value="60"></div>
             </div>
-            <h3>Ce qu'il tient en une série, au poids du corps</h3>
-            <div class="champs" id="capacites"></div>
-            <label class="coche" style="margin-top:8px"><input id="descente" type="checkbox"> Accepte de passer à la variante plus facile quand on le lui propose</label>
-        </div>
-        <div class="bloc">
-            <h3>Comportement</h3>
-            <label class="titre" for="comportement">Comment il répond</label>
-            <select id="comportement"></select>
-            <p class="hint" id="comportementAide"></p>
-            <label class="titre" for="seances" style="margin-top:10px">Nombre de séances</label>
-            <input id="seances" type="number" min="1" max="150" step="1" value="40">
+            <p class="hint" style="margin:8px 0 0">
+                Le parcours part du palier que cette note donne à une première
+                séance.
+            </p>
         </div>
     </div>
 
-    <h2>Le départ, selon la note d'athlète</h2>
+    <h2>Tous les exercices</h2>
     <p class="hint">
-        Ce que la toute première séance propose à un profil neuf, pour chaque
-        note de 1 à 10 que l'on peut se donner à l'accueil. La courbe doit
-        monter régulièrement d'une note à la suivante ; un plat ou une marche
-        se voit tout de suite.
+        Le nombre de baisses de volume, au départ (d'une note à la suivante)
+        et pendant le parcours, pour chaque matériel. Touche un exercice pour
+        l'ouvrir.
     </p>
-    <div id="departs"></div>
+    <div class="tableau"><table id="resume"></table></div>
 
-    <h2>Le parcours, séance après séance</h2>
-    <p class="hint">
-        L'athlète enchaîne les séances : le moteur fixe chaque objectif, l'athlète
-        réussit ou échoue selon sa force (ou selon le scénario choisi), répond au
-        ressenti, et monte ou descend de variante. La ligne pointillée est sa
-        force réelle : une courbe qui la suit de près est un barème qui
-        accompagne bien ; une courbe qui la dépasse fait échouer.
-        Les ronds marquent un changement de mouvement.
-    </p>
-    <div id="parcours"></div>
+    <section id="exercice" hidden>
+        <h2 id="titreExercice"></h2>
+        <h3>Le départ, selon la note d'athlète</h3>
+        <div id="depart"></div>
+        <h3>Le parcours, séance après séance</h3>
+        <p class="hint">
+            Les ronds pleins marquent un changement de mouvement, les cercles
+            orange une baisse de volume. Touche un point pour retrouver son
+            palier dans le tableau.
+        </p>
+        <div id="parcours"></div>
+        <h3>Les paliers</h3>
+        <p class="hint">
+            Chaque ligne est un palier, tel que le matériel le joue. Une case
+            orange demande moins de volume que le palier du dessus. Les deux
+            champs corrigent les <strong>séries</strong> et la
+            <strong>cible</strong> de ce palier pour tous les matériels (le
+            poids reste celui que le matériel permet) ; vide, le palier reprend
+            sa valeur calculée.
+        </p>
+        <p class="hint">
+            Le tableau montre tous les paliers ; le parcours, ceux qu'on vit
+            vraiment. Une case orange que le parcours ne signale pas est un
+            palier sauté : réussir une performance qui vaut un palier plus haut
+            y fait passer directement (corriger le palier 1 à 3×8 fait sauter
+            jusqu'au palier qui demandait déjà 3×8).
+        </p>
+        <div id="paliers"></div>
+    </section>
 
-    <h2>Hypothèses du modèle d'athlète</h2>
+    <h2>Le fichier à coller</h2>
     <p class="hint">
-        Elles ne servent qu'à ce simulateur : l'application n'en lit aucune.
-        La part du corps doit suivre l'ordre des variantes (le mur avant les
-        inclinées, les inclinées avant les genoux) : sinon l'athlète virtuel
-        trouverait plus dure une variante censée être plus facile.
+        Contenu exact de <code>web/static/donnees/reglages.json</code>, corrections
+        comprises. Sur l'iPad : copie, ouvre le fichier dans GitHub, remplace tout, commit.
     </p>
-    <div class="bloc">
-        <h3>Part du poids du corps déplacée</h3>
-        <div class="champs" id="parts"></div>
-        <h3>Fatigue et ressenti</h3>
-        <div class="champs" id="regles"></div>
+    <div class="barre">
+        <button class="bouton" id="copier">Copier le JSON</button>
+        <span class="etat" id="copie"></span>
     </div>
+    <textarea id="json" spellcheck="false" readonly></textarea>
 </main>
 
 <script type="module">
@@ -187,206 +201,184 @@ import * as sim from "../js/simulation.js";
 
 const $ = (id) => document.getElementById(id);
 const echapper = (texte) => String(texte ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const CLE_BROUILLON = "dev.progression.reglages";
 
 // Trois adresses ecrites en entier, et non un gabarit : le deploiement ne
 // marque de l'empreinte du commit que les `fetch("…json")` litteraux, et une
 // donnee non marquee peut sortir perimee du cache.
-const [socle, reglages, mouvements] = await Promise.all([
+const [socle, deployes, mouvements] = await Promise.all([
   fetch("../donnees/baremes.json"),
   fetch("../donnees/reglages.json"),
   fetch("../donnees/mouvements.json"),
 ].map((reponse) => reponse.then((r) => r.json())));
-// La meme composition que l'application : le simulateur ne peut pas jouer un
-// autre bareme que celui qui est deploye.
-const tables = composer_baremes(socle, reglages);
-const baremes_neutres = new Baremes(tables, null);
-const toutes_les_familles = sim.familles(catalogue_depuis(mouvements), baremes_neutres);
+
+let brouillon_perime = false;
+let reglages = lire_brouillon() ?? structuredClone(deployes);
+
+/**
+ * Le brouillon en cours, **s'il porte encore sur la version deployee** —
+ * meme regle que `dev/baremes.html` : un brouillon fait sur un ancien
+ * reglages.json est jete, pas reapplique.
+ */
+function lire_brouillon() {
+  try {
+    const brut = localStorage.getItem(CLE_BROUILLON);
+    if (!brut) return null;
+    const enregistre = JSON.parse(brut);
+    if (enregistre.base !== JSON.stringify(deployes)) {
+      localStorage.removeItem(CLE_BROUILLON);
+      brouillon_perime = true;
+      return null;
+    }
+    return enregistre.reglages;
+  } catch { return null; }
+}
+
+function ecrire_brouillon() {
+  try {
+    localStorage.setItem(CLE_BROUILLON, JSON.stringify({ base: JSON.stringify(deployes), reglages }));
+  } catch { /* tant pis : un brouillon perdu ne coute qu'une ressaisie */ }
+}
+
+// La meme composition que l'application, refaite a chaque correction.
+let tables = composer_baremes(socle, reglages);
+const FAMILLES = sim.familles(catalogue_depuis(mouvements), new Baremes(tables, null));
 const PROFILS = sim.profils_materiel(tables);
 //: Le profil saisi a la main prend la septieme couleur : chaque profil garde
 //: la sienne quel que soit ce qui est coche.
 const PERSO = { cle: "perso", libelle: "Personnalisé", materiel: null };
-const couleur = (cle) => {
-  const index = [...PROFILS, PERSO].findIndex((p) => p.cle === cle);
-  return `var(--serie-${index + 1})`;
-};
-
-//: Les familles cochees au depart : les chaines de variantes, et les fentes,
-//: qui n'en ont pas encore mais font partie du chantier.
-const FAMILLES_PAR_DEFAUT = (famille) => famille.mouvements.length > 1 || famille.tete.startsWith("Fente");
+const couleur = (cle) => `var(--serie-${[...PROFILS, PERSO].findIndex((p) => p.cle === cle) + 1})`;
 
 const reglage = {
   profils: new Set(PROFILS.map((p) => p.cle)),
-  familles: new Set(toutes_les_familles.filter(FAMILLES_PAR_DEFAUT).map((f) => f.tete)),
-  athlete: structuredClone(sim.ATHLETES[0]),
-  comportement: sim.COMPORTEMENT_CAPACITE,
-  seances: 40,
-  hyp: structuredClone(sim.HYPOTHESES),
   perso: null,
+  note: 1,
+  seances: 60,
+  choisie: null,
+  surligne: null,
 };
 
-/* ---------------------------------------------------------------- reglages */
+/* ------------------------------------------------------------------ calcul */
 
-function coche(libelle, coche_au_depart, sur_change, pastille = null) {
-  const etiquette = document.createElement("label");
-  etiquette.className = "coche";
-  const boite = document.createElement("input");
-  boite.type = "checkbox";
-  boite.checked = coche_au_depart;
-  boite.addEventListener("change", () => { sur_change(boite.checked); planifier(); });
-  etiquette.append(boite);
-  if (pastille) {
-    const trait = document.createElement("span");
-    trait.className = "pastille";
-    trait.style.background = pastille;
-    etiquette.append(trait);
-  }
-  etiquette.append(document.createTextNode(libelle));
-  return etiquette;
+//: Les resultats par famille, recalcules seulement quand ce qui les fonde
+//: change : une correction ne touche que sa famille.
+let cache = new Map();
+let generation = 0;
+
+function profils_choisis() {
+  const choisis = PROFILS.filter((p) => reglage.profils.has(p.cle));
+  if (reglage.perso) choisis.push({ ...PERSO, materiel: reglage.perso });
+  return choisis;
 }
 
-function champ_nombre(libelle, valeur, sur_change, { pas = "any", min = null } = {}) {
-  const bloc = document.createElement("div");
-  const etiquette = document.createElement("label");
-  etiquette.className = "titre";
-  etiquette.textContent = libelle;
-  const input = document.createElement("input");
-  input.type = "number";
-  input.step = pas;
-  if (min !== null) input.min = min;
-  input.value = valeur ?? "";
-  input.addEventListener("input", () => {
-    const brut = input.value.trim();
-    sur_change(brut === "" ? null : Number(brut));
-    planifier();
+/** Le depart et le parcours d'une famille, pour chaque profil coche. */
+function calculer(famille) {
+  if (cache.has(famille.tete)) return cache.get(famille.tete);
+  const resultat = profils_choisis().map((profil) => {
+    const par_note = sim.departs({ tables, mouvements, materiel: profil.materiel, choisies: [famille] })
+      .map((familles) => familles[0]);
+    const points = sim.parcours({
+      tables, mouvements, materiel: profil.materiel, famille, note: reglage.note, seances: reglage.seances,
+    });
+    return {
+      profil,
+      par_note,
+      points,
+      baisses_depart: sim.baisses(par_note),
+      baisses_parcours: sim.baisses(points),
+      baremes: new Baremes(tables, profil.materiel),
+    };
   });
-  bloc.append(etiquette, input);
-  return bloc;
+  cache.set(famille.tete, resultat);
+  return resultat;
 }
 
-function dessiner_profils() {
-  $("profils").replaceChildren(...PROFILS.map((p) =>
-    coche(p.libelle, reglage.profils.has(p.cle), (oui) => {
-      if (oui) reglage.profils.add(p.cle); else reglage.profils.delete(p.cle);
-    }, couleur(p.cle)),
-  ));
+/** Tout est a refaire : materiel, note, nombre de seances, ou reglages entiers. */
+function tout_invalider() {
+  tables = composer_baremes(socle, reglages);
+  cache = new Map();
+  generation += 1;
 }
 
-function dessiner_familles() {
-  $("familles").replaceChildren(...toutes_les_familles.map((f) =>
-    coche(f.mouvements.join(" → "), reglage.familles.has(f.tete), (oui) => {
-      if (oui) reglage.familles.add(f.tete); else reglage.familles.delete(f.tete);
-      dessiner_capacites();
-      dessiner_hypotheses();
-    }),
-  ));
+/** Une correction sur ce mouvement : seule sa famille est a refaire. */
+function invalider_mouvement(nom) {
+  tables = composer_baremes(socle, reglages);
+  for (const famille of FAMILLES) {
+    if (famille.mouvements.includes(nom)) cache.delete(famille.tete);
+  }
+  generation += 1;
 }
 
-function familles_choisies() {
-  return toutes_les_familles.filter((f) => reglage.familles.has(f.tete));
+/* ------------------------------------------------------------------ resume */
+
+function dessiner_resume_entete() {
+  const profils = profils_choisis();
+  $("resume").innerHTML =
+    `<thead><tr><th>Exercice</th>${profils.map((p) =>
+      `<th><span class="pastille" style="background:${couleur(p.cle)}"></span> ${echapper(p.libelle)}</th>`).join("")}</tr></thead>` +
+    `<tbody>${FAMILLES.map((f) =>
+      `<tr data-tete="${echapper(f.tete)}"${f.tete === reglage.choisie ? ' class="choisi"' : ""}>` +
+      `<td><button type="button" class="lien" data-ouvrir="${echapper(f.tete)}">${echapper(f.mouvements.join(" → "))}</button></td>` +
+      profils.map(() => `<td class="compte">…</td>`).join("") + `</tr>`).join("")}</tbody>`;
 }
 
-/** Les champs d'athlete, relus depuis le reglage (au changement de type). */
-function remplir_athlete() {
-  const a = reglage.athlete;
-  $("note").value = a.note ?? "";
-  $("poidsCorps").value = a.poids_corps;
-  $("progression").value = Math.round(a.progression * 1000) / 10;
-  $("plafond").value = a.plafond;
-  $("descente").checked = a.accepte_descente;
-  dessiner_capacites();
+function remplir_ligne_resume(famille, resultat) {
+  const ligne = $("resume").querySelector(`tr[data-tete="${CSS.escape(famille.tete)}"]`);
+  if (!ligne) return;
+  resultat.forEach((r, i) => {
+    const cellule = ligne.cells[i + 1];
+    const depart = r.baisses_depart.length;
+    const route = r.baisses_parcours.length;
+    cellule.className = `compte${depart + route ? " alerte" : ""}`;
+    cellule.textContent = depart + route ? `départ ${depart} · parcours ${route}` : "—";
+  });
 }
 
 /**
- * Un champ par famille cochee, sur le mouvement de reference de l'athlete
- * s'il en a un dans la chaine, sinon sur la tete : c'est la cle que
- * `force_initiale` cherchera.
+ * Remplit le resume famille par famille, sans bloquer la page : la famille
+ * ouverte d'abord, les autres ensuite, une par tache. Un nouveau calcul
+ * (correction, materiel) interrompt celui en cours.
  */
-function dessiner_capacites() {
-  const a = reglage.athlete;
-  $("capacites").replaceChildren(...familles_choisies().map((f) => {
-    const nom = f.mouvements.find((m) => a.capacites[m] !== undefined) ?? f.tete;
-    const unite = baremes_neutres.unite(nom) === UNITE_SECONDES ? "s" : "rép.";
-    return champ_nombre(`${nom} (${unite})`, a.capacites[nom], (v) => {
-      if (v === null) delete a.capacites[nom]; else a.capacites[nom] = v;
-    }, { pas: 1, min: 0 });
-  }));
+function remplir_resume() {
+  const ma_generation = generation;
+  const ordre = [...FAMILLES].sort((a, b) => (a.tete === reglage.choisie ? -1 : b.tete === reglage.choisie ? 1 : 0));
+  let i = 0;
+  const pas = () => {
+    if (ma_generation !== generation || i >= ordre.length) {
+      if (ma_generation === generation) annoncer_fin();
+      return;
+    }
+    const famille = ordre[i++];
+    remplir_ligne_resume(famille, calculer(famille));
+    $("etat").textContent = `Calcul… ${i} / ${ordre.length} exercices`;
+    setTimeout(pas, 0);
+  };
+  pas();
 }
 
-function dessiner_hypotheses() {
-  const hyp = reglage.hyp;
-  const noms = [...new Set(familles_choisies().flatMap((f) => f.mouvements))];
-  $("parts").replaceChildren(...noms.map((nom) =>
-    champ_nombre(nom, hyp.parts_du_corps[nom], (v) => { hyp.parts_du_corps[nom] = v; }, { pas: 0.05, min: 0 }),
-  ));
-  const regles = [
-    ["fatigue_par_serie", "Fatigue / série", 0.01],
-    ["secondes_par_repetition", "Secondes = 1 rép.", 0.5],
-    ["marge_facile", "« Facile » au-delà de ×", 0.05],
-    ["marge_trop_facile", "« Trop facile » au-delà de ×", 0.05],
-    ["part_trop_dur", "« Trop dur » sous ×", 0.05],
-  ];
-  $("regles").replaceChildren(...regles.map(([cle, libelle, pas]) =>
-    champ_nombre(libelle, hyp[cle], (v) => { hyp[cle] = v; }, { pas, min: 0 }),
-  ));
+function annoncer_fin() {
+  const change = JSON.stringify(reglages) !== JSON.stringify(deployes);
+  $("etat").className = "etat" + (change ? " brouillon" : "");
+  $("etat").textContent = change
+    ? "Brouillon local non déployé — copie le JSON du bas et pousse-le pour l'appliquer."
+    : brouillon_perime
+      ? "Un brouillon antérieur a été écarté : il portait sur une version déployée depuis."
+      : "Identique à ce qui est déployé.";
 }
-
-$("athlete").innerHTML = sim.ATHLETES.map((a) => `<option value="${a.cle}">${echapper(a.libelle)}</option>`).join("");
-$("athlete").addEventListener("change", () => {
-  reglage.athlete = structuredClone(sim.ATHLETES.find((a) => a.cle === $("athlete").value));
-  remplir_athlete();
-  planifier();
-});
-for (const [id, champ, facteur] of [["note", "note", 1], ["poidsCorps", "poids_corps", 1], ["progression", "progression", 0.01], ["plafond", "plafond", 1]]) {
-  $(id).addEventListener("input", () => {
-    const brut = $(id).value.trim();
-    reglage.athlete[champ] = brut === "" ? null : Number(brut) * facteur;
-    planifier();
-  });
-}
-$("descente").addEventListener("change", () => { reglage.athlete.accepte_descente = $("descente").checked; planifier(); });
-
-const AIDES = {
-  [sim.COMPORTEMENT_CAPACITE]: "L'athlète a une vraie force, qui progresse à chaque séance : il réussit si elle suffit, et dit « facile » quand il a de la marge.",
-};
-$("comportement").innerHTML = [
-  `<option value="${sim.COMPORTEMENT_CAPACITE}">Force cachée qui progresse</option>`,
-  ...sim.SCENARIOS.map((s) => `<option value="${s.cle}">Scénario : ${echapper(s.libelle)}</option>`),
-].join("");
-function aide_comportement() {
-  $("comportementAide").textContent = AIDES[reglage.comportement]
-    ?? "Une suite de verdicts écrite à l'avance, sans modèle de force : elle montre la mécanique pure du moteur. La courbe de force n'existe pas ici.";
-}
-$("comportement").addEventListener("change", () => {
-  reglage.comportement = $("comportement").value;
-  aide_comportement();
-  planifier();
-});
-$("seances").addEventListener("input", () => {
-  reglage.seances = Math.max(1, Math.min(150, Number($("seances").value) || 1));
-  planifier();
-});
-$("perso").addEventListener("input", () => {
-  const { materiel, illisibles } = sim.inventaire_depuis_texte($("perso").value, tables);
-  reglage.perso = materiel;
-  $("persoErreur").hidden = !illisibles.length;
-  $("persoErreur").textContent = illisibles.length ? `Illisible : ${illisibles.join(", ")}` : "";
-  planifier();
-});
 
 /* --------------------------------------------------------------- graphique */
 
 /**
  * Un graphique en courbes, une echelle, en SVG, avec son infobulle.
  *
- * `series` : `[{cle, libelle, couleur, pointille, points: [{x, y, marque,
+ * `series` : `[{cle, libelle, couleur, points: [{x, y, marque, baisse,
  * info}]}]`. Un `y` null coupe la courbe. `info` est le detail affiche au
- * survol, deja echappe. Legende au-dessus des que deux series s'affichent,
- * etiquettes en bout de courbe jusqu'a quatre.
+ * survol, deja echappe. `sur_choix(x)` est appele au toucher.
  */
-function graphique({ series: brutes, x_titre, y_titre, x_entiers = true }) {
+function graphique({ series: brutes, x_titre, y_titre, sur_choix = null }) {
   const series = reunir_identiques(brutes);
   const LARGEUR = 760;
-  const HAUTEUR = 270;
+  const HAUTEUR = 260;
   const etiquetees = series.length <= 4;
   const marge = { gauche: 52, droite: etiquetees ? 132 : 16, haut: 12, bas: 38 };
   const valeurs = series.flatMap((s) => s.points.map((p) => p.y)).filter((y) => y > 0);
@@ -413,14 +405,13 @@ function graphique({ series: brutes, x_titre, y_titre, x_entiers = true }) {
   }
   const graduations_x = xs.length <= 12 ? xs : xs.filter((x, i) => i % Math.ceil(xs.length / 10) === 0 || x === x1);
   for (const x of graduations_x) {
-    morceaux.push(`<text x="${sx(x)}" y="${HAUTEUR - marge.bas + 16}" text-anchor="middle" fill="var(--muted)" font-size="11">${x_entiers ? x : x.toFixed(1)}</text>`);
+    morceaux.push(`<text x="${sx(x)}" y="${HAUTEUR - marge.bas + 16}" text-anchor="middle" fill="var(--muted)" font-size="11">${x}</text>`);
   }
   morceaux.push(
     `<line x1="${marge.gauche}" x2="${LARGEUR - marge.droite}" y1="${HAUTEUR - marge.bas}" y2="${HAUTEUR - marge.bas}" stroke="var(--border-strong)" stroke-width="1"/>`,
     `<text x="${(marge.gauche + LARGEUR - marge.droite) / 2}" y="${HAUTEUR - 4}" text-anchor="middle" fill="var(--muted)" font-size="11">${echapper(x_titre)}</text>`,
     `<text x="12" y="${marge.haut + 2}" fill="var(--muted)" font-size="11" transform="rotate(-90 12 ${marge.haut + 2})" text-anchor="end">${echapper(y_titre)}</text>`,
   );
-
   for (const s of series) {
     let d = "";
     let ouvert = false;
@@ -429,19 +420,18 @@ function graphique({ series: brutes, x_titre, y_titre, x_entiers = true }) {
       d += `${ouvert ? "L" : "M"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`;
       ouvert = true;
     }
-    morceaux.push(`<path d="${d}" fill="none" stroke="${s.couleur}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"${s.pointille ? ' stroke-dasharray="5 4"' : ""}/>`);
+    morceaux.push(`<path d="${d}" fill="none" stroke="${s.couleur}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`);
   }
   // Les marques par-dessus toutes les courbes, cerclees du fond : une marque
   // posee sous la courbe voisine ne se verrait pas.
   for (const s of series) {
     for (const p of s.points) {
-      if (p.marque && p.y > 0) {
-        morceaux.push(`<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="4.5" fill="${s.couleur}" stroke="var(--bg)" stroke-width="2"/>`);
-      }
+      if (!(p.y > 0)) continue;
+      if (p.baisse) morceaux.push(`<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="7" fill="none" stroke="var(--orange)" stroke-width="2"/>`);
+      if (p.marque) morceaux.push(`<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="4.5" fill="${s.couleur}" stroke="var(--bg)" stroke-width="2"/>`);
     }
   }
   if (etiquetees) {
-    // Etiquettes en bout de courbe, ecartees pour ne pas se chevaucher.
     const bouts = series
       .map((s) => ({ s, p: [...s.points].reverse().find((p) => p.y > 0) }))
       .filter((b) => b.p)
@@ -455,13 +445,13 @@ function graphique({ series: brutes, x_titre, y_titre, x_entiers = true }) {
   const curseur = `<line class="curseur" y1="${marge.haut}" y2="${HAUTEUR - marge.bas}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>`;
   const zone = `<rect x="${marge.gauche}" y="${marge.haut}" width="${LARGEUR - marge.gauche - marge.droite}" height="${HAUTEUR - marge.haut - marge.bas}" fill="transparent"/>`;
 
-  if (series.length >= 2) {
-    const legende = document.createElement("div");
-    legende.className = "legende";
-    legende.innerHTML = series.map((s) =>
-      `<span><span class="trait${s.pointille ? " pointille" : ""}" style="border-color:${s.couleur}"></span>${echapper(s.libelle)}</span>`).join("");
-    conteneur.append(legende);
-  }
+  const legende = document.createElement("div");
+  legende.className = "legende";
+  legende.innerHTML = (series.length >= 2 ? series.map((s) =>
+    `<span><span class="trait" style="border-color:${s.couleur}"></span>${echapper(s.libelle)}</span>`).join("") : "") +
+    (series.some((s) => s.points.some((p) => p.baisse)) ? `<span><span class="rond"></span>baisse de volume</span>` : "");
+  if (legende.innerHTML) conteneur.append(legende);
+
   const cadre = document.createElement("div");
   cadre.style.position = "relative";
   cadre.innerHTML =
@@ -475,18 +465,21 @@ function graphique({ series: brutes, x_titre, y_titre, x_entiers = true }) {
 
   const svg = cadre.querySelector("svg");
   const ligne = svg.querySelector(".curseur");
+  const x_proche = (evenement) => {
+    const boite = svg.getBoundingClientRect();
+    const x_svg = (evenement.clientX - boite.left) * (LARGEUR / boite.width);
+    let proche = xs[0];
+    for (const x of xs) if (Math.abs(sx(x) - x_svg) < Math.abs(sx(proche) - x_svg)) proche = x;
+    return proche;
+  };
   const montrer = (evenement) => {
     const boite = svg.getBoundingClientRect();
     const echelle = LARGEUR / boite.width;
-    const x_svg = (evenement.clientX - boite.left) * echelle;
-    let proche = xs[0];
-    for (const x of xs) if (Math.abs(sx(x) - x_svg) < Math.abs(sx(proche) - x_svg)) proche = x;
+    const proche = x_proche(evenement);
     ligne.setAttribute("x1", sx(proche));
     ligne.setAttribute("x2", sx(proche));
     ligne.setAttribute("visibility", "visible");
-    const lignes = series
-      .map((s) => ({ s, p: s.points.find((p) => p.x === proche) }))
-      .filter((l) => l.p);
+    const lignes = series.map((s) => ({ s, p: s.points.find((p) => p.x === proche) })).filter((l) => l.p);
     bulle.innerHTML = `<b>${echapper(x_titre)} ${proche}</b>` + lignes.map(({ s, p }) =>
       `<div class="ligne"><span class="pastille" style="background:${s.couleur}"></span><span><b>${echapper(s.libelle)}</b> ${p.info ?? ""}</span></div>`).join("");
     bulle.hidden = false;
@@ -496,23 +489,22 @@ function graphique({ series: brutes, x_titre, y_titre, x_entiers = true }) {
     bulle.style.top = "8px";
   };
   svg.addEventListener("pointermove", montrer);
-  svg.addEventListener("pointerdown", montrer);
   svg.addEventListener("pointerleave", () => { bulle.hidden = true; ligne.setAttribute("visibility", "hidden"); });
+  svg.addEventListener("pointerdown", (evenement) => {
+    montrer(evenement);
+    if (sur_choix) sur_choix(x_proche(evenement));
+  });
   return conteneur;
 }
 
 /**
- * Les series qui tracent exactement la meme courbe, reunies en une seule.
- *
- * Des pompes ne dependent d'aucun haltere : les six profils y donnent la meme
- * ligne, et six courbes superposees n'en montrent qu'une, de la couleur de la
- * derniere — on croirait les cinq autres absentes. La serie reunie garde la
- * couleur de la premiere et nomme toutes celles qu'elle couvre.
+ * Les series qui tracent exactement la meme courbe, reunies en une seule :
+ * six profils superposes n'en montreraient qu'un, de la couleur du dernier.
  */
 function reunir_identiques(series) {
   const groupes = new Map();
   for (const s of series) {
-    const empreinte = JSON.stringify(s.points.map((p) => [p.x, p.y, p.marque ?? false]));
+    const empreinte = JSON.stringify(s.points.map((p) => [p.x, p.y, p.marque ?? false, p.baisse ?? false]));
     const groupe = groupes.get(empreinte);
     if (groupe) groupe.libelles.push(s.libelle);
     else groupes.set(empreinte, { ...s, libelles: [s.libelle] });
@@ -520,7 +512,6 @@ function reunir_identiques(series) {
   return [...groupes.values()].map((g) => ({
     ...g,
     libelle: g.libelles.join(" = "),
-    // En bout de courbe, la place manque pour six noms : la legende les donne.
     etiquette: g.libelles.length > 1 ? `${g.libelles.length} matériels identiques` : g.libelle,
   }));
 }
@@ -532,209 +523,241 @@ function pas_rond(brut) {
   return 10 * puissance;
 }
 
-/* --------------------------------------------------------------- affichage */
+/* ------------------------------------------------------------- exercice */
 
-const resume = (palier) => {
-  if (!palier) return "—";
-  const unite = palier.unite === UNITE_SECONDES ? " s" : "";
-  return `${palier.series}×${palier.cible}${unite}${palier.poids ? ` à ${palier.poids} kg` : ""}`;
+const resume_palier = (p) => {
+  if (!p) return "—";
+  const unite = p.unite === UNITE_SECONDES ? " s" : "";
+  return `${p.series}×${p.cible}${unite}${p.poids ? ` à ${p.poids} kg` : ""}`;
 };
-const kg = (valeur) => (valeur > 0 ? `${Math.round(valeur)} kg` : "—");
-const pourcent = (part) => `${part > 0 ? "+" : ""}${Math.round(part * 100)} %`;
+const nombre = (v) => (v === null || v === undefined ? "—" : Math.round(v * 10) / 10);
 
-/** Les profils coches, le personnalise en dernier s'il est saisi. */
-function profils_choisis() {
-  const choisis = PROFILS.filter((p) => reglage.profils.has(p.cle));
-  if (reglage.perso) choisis.push({ ...PERSO, materiel: reglage.perso });
-  return choisis;
+function info(p) {
+  return `${echapper(p.joue)} ${resume_palier(p.palier)} · volume ${nombre(p.volume)}` +
+    (p.evenement ? `<br>→ ${p.evenement.sens} vers ${echapper(p.evenement.vers)}` : "");
 }
 
-function dessiner_departs(resultats) {
-  const hote = $("departs");
-  hote.replaceChildren();
-  familles_choisies().forEach((famille, index_famille) => {
-    const section = document.createElement("section");
-    section.className = "famille";
-    section.innerHTML = `<h3>${echapper(famille.mouvements.join(" → "))}</h3>`;
-    const series = resultats.map(({ profil, par_note }) => ({
-      cle: profil.cle,
-      libelle: profil.libelle,
-      couleur: couleur(profil.cle),
-      points: par_note.map((familles, i) => {
-        const d = familles[index_famille];
-        return { x: i + 1, y: d.exige, info: `${echapper(d.joue)} ${resume(d.palier)} · ${kg(d.exige)}` };
-      }),
-    }));
-    section.append(graphique({ series, x_titre: "Note", y_titre: "1RM estimé exigé (kg)" }));
+function dessiner_exercice() {
+  const famille = FAMILLES.find((f) => f.tete === reglage.choisie);
+  $("exercice").hidden = !famille;
+  if (!famille) return;
+  $("titreExercice").textContent = famille.mouvements.join(" → ");
+  const resultat = calculer(famille);
 
-    const entete = Array.from({ length: 10 }, (_, i) => `<th>${i + 1}</th>`).join("");
-    const lignes = resultats.map(({ profil, par_note }) =>
-      `<tr><td><span class="pastille" style="display:inline-block;background:${couleur(profil.cle)};margin-right:6px;vertical-align:middle"></span>${echapper(profil.libelle)}</td>` +
-      par_note.map((familles) => {
-        const d = familles[index_famille];
-        return `<td>${resume(d.palier)}<span class="sous">${kg(d.exige)}</span></td>`;
-      }).join("") + "</tr>").join("");
-    const tableau = document.createElement("div");
-    tableau.className = "tableau";
-    tableau.innerHTML = `<table><thead><tr><th>Mouvement joué : ${echapper(famille.tete)}</th>${entete}</tr></thead><tbody>${lignes}</tbody></table>`;
-    section.append(tableau);
-
-    // Le depart qu'aurait chaque mouvement de la chaine : c'est ce qu'il
-    // faut avoir sous les yeux pour decider quelle note joue quelle variante.
-    if (famille.mouvements.length > 1 && resultats.length) {
-      const { profil, par_note } = resultats[0];
-      const detail = document.createElement("details");
-      detail.innerHTML =
-        `<summary>Départ de chaque mouvement de la chaîne (${echapper(profil.libelle)})</summary>` +
-        `<div class="tableau"><table><thead><tr><th>Mouvement</th>${entete}</tr></thead><tbody>${
-          famille.mouvements.map((nom, k) =>
-            `<tr><td>${echapper(nom)}</td>${par_note.map((familles) => {
-              const m = familles[index_famille].chaine[k];
-              return `<td>${resume(m.palier)}<span class="sous">${kg(m.exige)}</span></td>`;
-            }).join("")}</tr>`).join("")
-        }</tbody></table></div>`;
-      section.append(detail);
-    }
-    hote.append(section);
-  });
+  const indices_baisse = (liste) => new Set(liste.map((b) => b.index));
+  $("depart").replaceChildren(graphique({
+    series: resultat.map((r) => {
+      const baisse = indices_baisse(r.baisses_depart);
+      return {
+        cle: r.profil.cle, libelle: r.profil.libelle, couleur: couleur(r.profil.cle),
+        points: r.par_note.map((d, i) => ({
+          x: i + 1, y: d.volume, baisse: baisse.has(i),
+          marque: i > 0 && d.joue !== r.par_note[i - 1].joue, info: info(d),
+        })),
+      };
+    }),
+    x_titre: "Note", y_titre: "Volume",
+    sur_choix: (note) => surligner(resultat[0].par_note[note - 1]),
+  }));
+  $("parcours").replaceChildren(graphique({
+    series: resultat.map((r) => {
+      const baisse = indices_baisse(r.baisses_parcours);
+      return {
+        cle: r.profil.cle, libelle: r.profil.libelle, couleur: couleur(r.profil.cle),
+        points: r.points.map((p, i) => ({
+          x: p.n, y: p.volume, baisse: baisse.has(i),
+          marque: i > 0 && p.joue !== r.points[i - 1].joue, info: info(p),
+        })),
+      };
+    }),
+    x_titre: "Séance", y_titre: "Volume",
+    sur_choix: (n) => surligner(resultat[0].points[n - 1]),
+  }));
+  dessiner_paliers(famille, resultat);
 }
 
-function info_point(p) {
-  const verdict = p.reussi ? "réussi" : "échoué";
-  const ressenti = p.ressenti ? ` (${p.ressenti.replace("_", " ")})` : "";
-  const evenement = p.evenement ? `<br>→ ${p.evenement.sens} vers ${echapper(p.evenement.vers)}` : "";
-  return `${echapper(p.joue)} ${resume(p.palier)} · ${kg(p.exige)} · ${verdict}${ressenti}${evenement}`;
-}
-
-function dessiner_parcours(resultats) {
-  const hote = $("parcours");
-  hote.replaceChildren();
-  const capacite = reglage.comportement === sim.COMPORTEMENT_CAPACITE;
-  familles_choisies().forEach((famille, index_famille) => {
-    const section = document.createElement("section");
-    section.className = "famille";
-    section.innerHTML = `<h3>${echapper(famille.mouvements.join(" → "))}</h3>`;
-    const traces = resultats.map(({ profil, traces }) => ({ profil, trace: traces[index_famille] }));
-    if (traces.some(({ trace }) => trace.sans_capacite)) {
-      section.insertAdjacentHTML("beforeend",
-        `<p class="hint erreur">Aucune capacité pour cette famille : renseigne ce que l'athlète tient en une série.</p>`);
-      hote.append(section);
-      return;
-    }
-
-    const series = traces.map(({ profil, trace }) => ({
-      cle: profil.cle,
-      libelle: profil.libelle,
-      couleur: couleur(profil.cle),
-      points: trace.points.map((p, i) => ({
-        x: p.n,
-        y: p.exige,
-        marque: i > 0 && p.joue !== trace.points[i - 1].joue,
-        info: info_point(p),
-      })),
-    }));
-    // La force de l'athlete ne depend pas de ses halteres : une seule courbe.
-    if (capacite && traces.length) {
-      series.push({
-        cle: "force",
-        libelle: "Force de l'athlète",
-        couleur: "var(--muted)",
-        pointille: true,
-        points: traces[0].trace.points.map((p) => ({ x: p.n, y: p.force, info: kg(p.force) })),
-      });
-    }
-    section.append(graphique({ series, x_titre: "Séance", y_titre: "1RM estimé exigé (kg)" }));
-
-    const lignes = traces.map(({ profil, trace }) => {
-      const b = sim.bilan(trace.points);
-      const saut = b.saut
-        ? `${pourcent(b.saut.part)} <span class="sous">séance ${b.saut.n} : ${echapper(b.saut.avant.joue)} ${resume(b.saut.avant.palier)} → ${echapper(b.saut.apres.joue)} ${resume(b.saut.apres.palier)}</span>`
-        : "—";
-      const recul = b.recul
-        ? `${pourcent(b.recul.part)} <span class="sous">séance ${b.recul.n} : ${echapper(b.recul.avant.joue)} ${resume(b.recul.avant.palier)} → ${echapper(b.recul.apres.joue)} ${resume(b.recul.apres.palier)}</span>`
-        : "—";
-      return `<tr><td><span class="pastille" style="display:inline-block;background:${couleur(profil.cle)};margin-right:6px;vertical-align:middle"></span>${echapper(profil.libelle)}</td>` +
-        `<td>${saut}</td><td>${recul}</td><td class="num">${b.echecs}</td>` +
-        `<td class="num">${b.montees} / ${b.descentes}</td>` +
-        `<td>${b.dernier ? `${echapper(b.dernier.joue)} ${resume(b.dernier.palier)}<span class="sous">niveau ${b.dernier.record ?? "—"}</span>` : "—"}</td></tr>`;
-    }).join("");
-    const tableau = document.createElement("div");
-    tableau.className = "tableau";
-    tableau.innerHTML =
-      `<table><thead><tr><th>Matériel</th><th>Plus gros saut</th><th>Plus gros recul</th><th>Échecs</th>` +
-      `<th>Montées / descentes</th><th>À la fin</th></tr></thead><tbody>${lignes}</tbody></table>`;
-    section.append(tableau);
-
-    for (const { profil, trace } of traces) {
-      const detail = document.createElement("details");
-      detail.innerHTML =
-        `<summary>Séance par séance — ${echapper(profil.libelle)}</summary>` +
-        `<div class="tableau"><table><thead><tr><th>Séance</th><th>Mouvement</th><th>Objectif</th><th>Exigé</th>` +
-        `${capacite ? "<th>Force</th>" : ""}<th>Réalisé</th><th>Verdict</th><th>Niveau</th><th>Variante</th></tr></thead><tbody>${
-          trace.points.map((p, i) =>
-            `<tr class="${p.reussi ? "" : "rate"}${i > 0 && p.joue !== trace.points[i - 1].joue ? " evenement" : ""}">` +
-            `<td class="num">${p.n}</td><td>${echapper(p.joue)}</td><td>${resume(p.palier)}</td>` +
-            `<td class="num">${kg(p.exige)}</td>${capacite ? `<td class="num">${kg(p.force)}</td>` : ""}` +
-            `<td>${p.realise.join(" · ")}</td>` +
-            `<td>${p.reussi ? "réussi" : "échoué"}${p.ressenti ? ` · ${p.ressenti.replace("_", " ")}` : ""}</td>` +
-            `<td class="num">${p.record ?? "—"}</td>` +
-            `<td>${p.evenement ? `${p.evenement.sens} → ${echapper(p.evenement.vers)}` : ""}</td></tr>`).join("")
-        }</tbody></table></div>`;
-      section.append(detail);
-    }
-    hote.append(section);
-  });
-}
-
-/* ----------------------------------------------------------------- calcul */
-
-let minuterie = null;
-function planifier() {
-  clearTimeout(minuterie);
-  $("etat").textContent = "Calcul…";
-  minuterie = setTimeout(recalculer, 250);
-}
-
-function recalculer() {
-  const debut = performance.now();
-  const choisies = familles_choisies();
-  const profils = profils_choisis();
-  try {
-    const departs = profils.map((profil) => ({
-      profil,
-      par_note: sim.departs({ tables, mouvements, materiel: profil.materiel, choisies, athlete: reglage.athlete, hyp: reglage.hyp }),
-    }));
-    dessiner_departs(departs);
-    const parcours = profils.map((profil) => ({
-      profil,
-      traces: sim.simuler({
-        tables, mouvements, materiel: profil.materiel, choisies,
-        athlete: reglage.athlete, comportement: reglage.comportement,
-        seances: reglage.seances, hyp: reglage.hyp,
-      }),
-    }));
-    dessiner_parcours(parcours);
-    $("etat").className = "etat";
-    $("etat").textContent =
-      `${profils.length} profils × ${choisies.length} familles × ${reglage.seances} séances, ` +
-      `calculés en ${Math.round(performance.now() - debut)} ms sur les réglages déployés.`;
-  } catch (erreur) {
-    // Une hypothese vide ou un reglage incoherent : on le dit, au lieu de
-    // laisser les courbes d'avant faire croire a un resultat.
-    $("departs").replaceChildren();
-    $("parcours").replaceChildren();
-    $("etat").className = "etat erreur";
-    $("etat").textContent = erreur.message;
-    console.error(erreur);
+/** Le palier d'un point touche sur un graphique, surligne dans son tableau. */
+function surligner(point) {
+  if (!point?.palier) return;
+  reglage.surligne = { nom: point.joue, niveau: point.palier.niveau };
+  for (const ligne of document.querySelectorAll("#paliers tr.surligne")) ligne.classList.remove("surligne");
+  const ligne = document.querySelector(
+    `#paliers tr[data-nom="${CSS.escape(point.joue)}"][data-niveau="${point.palier.niveau}"]`);
+  if (ligne) {
+    ligne.classList.add("surligne");
+    ligne.scrollIntoView({ block: "center", behavior: "smooth" });
   }
 }
 
-dessiner_profils();
-dessiner_familles();
-remplir_athlete();
-dessiner_hypotheses();
-aide_comportement();
-recalculer();
+/**
+ * Le tableau des paliers de chaque mouvement de la famille, jusqu'un peu
+ * au-dela du plus haut atteint. Chaque profil a sa colonne ; une case est
+ * orange quand son volume est sous celui du palier du dessus, pour ce profil.
+ */
+function dessiner_paliers(famille, resultat) {
+  const hote = $("paliers");
+  hote.replaceChildren();
+  for (const nom of famille.mouvements) {
+    const atteints = resultat.flatMap((r) => [...r.points, ...r.par_note])
+      .filter((p) => p.joue === nom && p.palier).map((p) => p.palier.niveau);
+    const jusqua = Math.max(10, ...atteints) + 3;
+    const surcharges = reglages.specs[nom]?.surcharges ?? {};
+    const lignes = [];
+    for (let niveau = 1; niveau <= jusqua; niveau += 1) {
+      const cases = resultat.map((r) => {
+        const p = r.baremes.palier(nom, niveau);
+        const avant = niveau > 1 ? r.baremes.palier(nom, niveau - 1) : null;
+        const v = p ? sim.volume_comparable(r.baremes, famille, nom, p) : null;
+        const va = avant ? sim.volume_comparable(r.baremes, famille, nom, avant) : null;
+        const baisse = v !== null && va !== null && v < va;
+        return `<td class="${baisse ? "baisse" : ""}">${resume_palier(p)}<span class="sous">volume ${nombre(v)}</span></td>`;
+      }).join("");
+      const s = surcharges[String(niveau)] ?? {};
+      const modele = resultat[0]?.baremes.palier(nom, niveau);
+      const surligne = reglage.surligne?.nom === nom && reglage.surligne?.niveau === niveau;
+      lignes.push(
+        `<tr data-nom="${echapper(nom)}" data-niveau="${niveau}"${surligne ? ' class="surligne"' : ""}>` +
+        `<td class="num">${niveau}</td>${cases}` +
+        `<td><input type="number" min="1" step="1" data-champ="series" value="${s.series ?? ""}" placeholder="${modele?.series ?? ""}"${s.series !== undefined ? ' class="modifie"' : ""} aria-label="Séries du palier ${niveau}"></td>` +
+        `<td><input type="number" min="1" step="1" data-champ="cible" value="${s.cible ?? ""}" placeholder="${modele?.cible ?? ""}"${s.cible !== undefined ? ' class="modifie"' : ""} aria-label="Cible du palier ${niveau}"></td>` +
+        `<td>${Object.keys(s).length ? `<button type="button" class="reinitialiser" data-effacer title="Reprendre la valeur calculée">↺</button>` : ""}</td></tr>`,
+      );
+    }
+    const titre = document.createElement("h3");
+    titre.textContent = nom;
+    const tableau = document.createElement("div");
+    tableau.className = "tableau";
+    tableau.innerHTML =
+      `<table><thead><tr><th>Palier</th>${resultat.map((r) =>
+        `<th><span class="pastille" style="background:${couleur(r.profil.cle)}"></span> ${echapper(r.profil.libelle)}</th>`).join("")}` +
+      `<th>Séries</th><th>${famille && reglages.specs[nom]?.unite === "secondes" ? "Secondes" : "Cible"}</th><th></th></tr></thead>` +
+      `<tbody>${lignes.join("")}</tbody></table>`;
+    hote.append(titre, tableau);
+  }
+}
+
+/**
+ * Ecrit une correction de palier dans le bareme. Une valeur vide retire le
+ * champ ; une surcharge vide disparait, et la cle `surcharges` avec elle —
+ * pour que le fichier a coller ne change que la ou on a corrige.
+ */
+function corriger(nom, niveau, champ, valeur) {
+  const spec = reglages.specs[nom];
+  if (!spec) return;
+  const surcharges = spec.surcharges ?? {};
+  const cle = String(niveau);
+  const surcharge = { ...(surcharges[cle] ?? {}) };
+  if (valeur === null) delete surcharge[champ];
+  else surcharge[champ] = valeur;
+  if (Object.keys(surcharge).length) surcharges[cle] = surcharge;
+  else delete surcharges[cle];
+  if (Object.keys(surcharges).length) spec.surcharges = surcharges;
+  else delete spec.surcharges;
+}
+
+/* ---------------------------------------------------------------- montage */
+
+function dessiner_json() {
+  $("json").value = JSON.stringify(reglages, null, 1) + "\n";
+}
+
+function apres_correction(nom) {
+  invalider_mouvement(nom);
+  ecrire_brouillon();
+  dessiner_json();
+  dessiner_exercice();
+  remplir_resume();
+}
+
+function tout_refaire() {
+  tout_invalider();
+  dessiner_resume_entete();
+  dessiner_exercice();
+  dessiner_json();
+  remplir_resume();
+}
+
+$("profils").replaceChildren(...PROFILS.map((p) => {
+  const etiquette = document.createElement("label");
+  etiquette.className = "coche";
+  etiquette.innerHTML =
+    `<input type="checkbox"${reglage.profils.has(p.cle) ? " checked" : ""}>` +
+    `<span class="pastille" style="background:${couleur(p.cle)}"></span>${echapper(p.libelle)}`;
+  etiquette.querySelector("input").addEventListener("change", (e) => {
+    if (e.target.checked) reglage.profils.add(p.cle); else reglage.profils.delete(p.cle);
+    tout_refaire();
+  });
+  return etiquette;
+}));
+$("perso").addEventListener("change", () => {
+  const { materiel, illisibles } = sim.inventaire_depuis_texte($("perso").value, tables);
+  reglage.perso = materiel;
+  $("persoErreur").hidden = !illisibles.length;
+  $("persoErreur").textContent = illisibles.length ? `Illisible : ${illisibles.join(", ")}` : "";
+  tout_refaire();
+});
+$("note").innerHTML = Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
+$("note").addEventListener("change", () => { reglage.note = Number($("note").value); tout_refaire(); });
+$("seances").addEventListener("change", () => {
+  reglage.seances = Math.max(5, Math.min(150, Number($("seances").value) || 60));
+  $("seances").value = reglage.seances;
+  tout_refaire();
+});
+
+$("resume").addEventListener("click", (e) => {
+  const bouton = e.target.closest("[data-ouvrir]");
+  if (!bouton) return;
+  reglage.choisie = bouton.dataset.ouvrir;
+  reglage.surligne = null;
+  for (const ligne of $("resume").querySelectorAll("tr.choisi")) ligne.classList.remove("choisi");
+  bouton.closest("tr").classList.add("choisi");
+  dessiner_exercice();
+  $("exercice").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+// Une correction se valide a la sortie du champ (`change`), pas a chaque
+// frappe : « 12 » passerait par « 1 », et recalculer la famille pour rien.
+$("paliers").addEventListener("change", (e) => {
+  const champ = e.target.closest("input[data-champ]");
+  if (!champ) return;
+  const ligne = champ.closest("tr");
+  const brut = champ.value.trim();
+  const valeur = brut === "" ? null : Math.max(1, Math.round(Number(brut)));
+  corriger(ligne.dataset.nom, Number(ligne.dataset.niveau), champ.dataset.champ, Number.isFinite(valeur) ? valeur : null);
+  reglage.surligne = { nom: ligne.dataset.nom, niveau: Number(ligne.dataset.niveau) };
+  apres_correction(ligne.dataset.nom);
+});
+$("paliers").addEventListener("click", (e) => {
+  if (!e.target.closest("[data-effacer]")) return;
+  const ligne = e.target.closest("tr");
+  corriger(ligne.dataset.nom, Number(ligne.dataset.niveau), "series", null);
+  corriger(ligne.dataset.nom, Number(ligne.dataset.niveau), "cible", null);
+  apres_correction(ligne.dataset.nom);
+});
+
+$("reinitialiser").addEventListener("click", () => {
+  reglages = structuredClone(deployes);
+  try { localStorage.removeItem(CLE_BROUILLON); } catch { /* rien a faire */ }
+  brouillon_perime = false;
+  tout_refaire();
+});
+
+$("copier").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText($("json").value);
+    $("copie").textContent = "Copié.";
+  } catch {
+    // Le presse-papier peut etre refuse : on selectionne alors le texte pour
+    // que la copie manuelle soit d'un geste.
+    $("json").removeAttribute("readonly");
+    $("json").select();
+    $("copie").textContent = "Sélectionné — copie à la main.";
+  }
+  setTimeout(() => { $("copie").textContent = ""; }, 4000);
+});
+
+reglage.choisie = FAMILLES.find((f) => f.mouvements.length > 1)?.tete ?? FAMILLES[0]?.tete ?? null;
+tout_refaire();
 </script>
 </body>
 </html>
