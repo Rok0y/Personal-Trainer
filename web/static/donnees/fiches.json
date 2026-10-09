@@ -201,7 +201,7 @@
     "description": "Plier les jambes comme pour s'asseoir, puis se relever : les cuisses et les fesses travaillent.",
     "mise_en_place": [
       "Debout, pieds écartés de la largeur des hanches, pointes un peu tournées vers l'extérieur.",
-      "À vide, bras libres ; avec des haltères, un dans chaque main, bras le long du corps.",
+      "Les mains vides, bras libres.",
       "Place-toi face à la caméra : on doit voir tes jambes en entier."
     ],
     "instructions": [
@@ -219,11 +219,33 @@
       "Une douleur dans le genou n'est pas normale : descends moins bas, ou passe au squat sur chaise."
     ]
   },
+  "Squat chargé": {
+    "description": "Le squat avec un haltère dans chaque main : la même descente, plus lourde.",
+    "mise_en_place": [
+      "Debout, pieds écartés de la largeur des hanches, pointes un peu tournées vers l'extérieur.",
+      "Un haltère dans chaque main, bras le long du corps.",
+      "Place-toi face à la caméra : on doit voir tes jambes en entier."
+    ],
+    "instructions": [
+      "Descends les fesses vers l'arrière, comme pour t'asseoir sur une chaise.",
+      "En bas, va toucher tes genoux avec tes coudes : c'est ce qui compte la répétition.",
+      "Remonte en poussant dans tes talons, jusqu'à être debout."
+    ],
+    "erreurs_frequentes": [
+      "Les genoux qui se rapprochent l'un de l'autre : pousse-les vers l'extérieur.",
+      "Le dos qui s'arrondit : regarde devant toi, poitrine ouverte.",
+      "Les talons qui décollent : garde les pieds bien à plat."
+    ],
+    "sensations": [
+      "Le devant des cuisses et les fesses chauffent.",
+      "Une douleur dans le genou n'est pas normale : allège, ou reviens au squat à vide."
+    ]
+  },
   "Fente droite": {
     "description": "Un grand pas en avant avec la jambe droite, puis descendre le genou arrière vers le sol : les cuisses et les fesses travaillent.",
     "mise_en_place": [
       "Debout, fais un grand pas en avant avec la jambe droite.",
-      "Mains sur les hanches, ou un haltère dans chaque main si tu veux plus dur.",
+      "Mains sur les hanches.",
       "Place-toi de profil, la caméra à ta gauche : on doit voir tes jambes en entier."
     ],
     "instructions": [
@@ -241,11 +263,33 @@
       "Une douleur dans le genou avant veut dire : pas plus grand, ou descends moins."
     ]
   },
+  "Fente droite chargée": {
+    "description": "La fente sur la jambe droite, avec un haltère dans chaque main : le même pas, plus lourd.",
+    "mise_en_place": [
+      "Debout, fais un grand pas en avant avec la jambe droite.",
+      "Un haltère dans chaque main, bras le long du corps.",
+      "Place-toi de profil, la caméra à ta gauche : on doit voir tes jambes en entier."
+    ],
+    "instructions": [
+      "Plie les deux genoux pour descendre le genou arrière vers le sol, sans le poser.",
+      "En bas, le genou avant est plié à angle droit.",
+      "Remonte en poussant sur le pied avant."
+    ],
+    "erreurs_frequentes": [
+      "Le genou avant qui part loin devant le pied : fais un plus grand pas.",
+      "Le buste qui penche en avant : reste droit, regard devant.",
+      "Perdre l'équilibre : écarte un peu plus les pieds, comme sur des rails."
+    ],
+    "sensations": [
+      "Le devant de la cuisse droite et la fesse droite travaillent.",
+      "Une douleur dans le genou avant veut dire : allège, ou reviens à la fente à vide."
+    ]
+  },
   "Fente gauche": {
     "description": "Un grand pas en avant avec la jambe gauche, puis descendre le genou arrière vers le sol : les cuisses et les fesses travaillent.",
     "mise_en_place": [
       "Debout, fais un grand pas en avant avec la jambe gauche.",
-      "Mains sur les hanches, ou un haltère dans chaque main si tu veux plus dur.",
+      "Mains sur les hanches.",
       "Place-toi de profil, la caméra à ta droite : on doit voir tes jambes en entier."
     ],
     "instructions": [
@@ -261,6 +305,28 @@
     "sensations": [
       "Le devant de la cuisse gauche et la fesse gauche travaillent.",
       "Une douleur dans le genou avant veut dire : pas plus grand, ou descends moins."
+    ]
+  },
+  "Fente gauche chargée": {
+    "description": "La fente sur la jambe gauche, avec un haltère dans chaque main : le même pas, plus lourd.",
+    "mise_en_place": [
+      "Debout, fais un grand pas en avant avec la jambe gauche.",
+      "Un haltère dans chaque main, bras le long du corps.",
+      "Place-toi de profil, la caméra à ta droite : on doit voir tes jambes en entier."
+    ],
+    "instructions": [
+      "Plie les deux genoux pour descendre le genou arrière vers le sol, sans le poser.",
+      "En bas, le genou avant est plié à angle droit.",
+      "Remonte en poussant sur le pied avant."
+    ],
+    "erreurs_frequentes": [
+      "Le genou avant qui part loin devant le pied : fais un plus grand pas.",
+      "Le buste qui penche en avant : reste droit, regard devant.",
+      "Perdre l'équilibre : écarte un peu plus les pieds, comme sur des rails."
+    ],
+    "sensations": [
+      "Le devant de la cuisse gauche et la fesse gauche travaillent.",
+      "Une douleur dans le genou avant veut dire : allège, ou reviens à la fente à vide."
     ]
   },
   "Souleve de terre roumain": {

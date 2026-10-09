@@ -118,6 +118,10 @@
    "brut": "Un haltère"
   },
   "Squat": {
+   "halteres": 0,
+   "brut": "Un tapis"
+  },
+  "Squat chargé": {
    "halteres": 2,
    "brut": "Deux haltères et un tapis"
   },
@@ -126,10 +130,18 @@
    "brut": "Une chaise"
   },
   "Fente droite": {
+   "halteres": 0,
+   "brut": "Un tapis"
+  },
+  "Fente droite chargée": {
    "halteres": 2,
    "brut": "Deux haltères et un tapis"
   },
   "Fente gauche": {
+   "halteres": 0,
+   "brut": "Un tapis"
+  },
+  "Fente gauche chargée": {
    "halteres": 2,
    "brut": "Deux haltères et un tapis"
   },

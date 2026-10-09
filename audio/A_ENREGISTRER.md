@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**25 prises restantes.**
+**28 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -148,7 +148,9 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 | `elevations_laterales.wav` | « Elevations latérales » | deja fait |
 | `extension_triceps.wav` | « Extension Triceps » | deja fait |
 | `fente_droite.wav` | « Fente droite » | deja fait |
+| `fente_droite_chargee.wav` | « Fente droite chargée » | **a enregistrer** |
 | `fente_gauche.wav` | « Fente gauche » | deja fait |
+| `fente_gauche_chargee.wav` | « Fente gauche chargée » | **a enregistrer** |
 | `gainage_planche.wav` | « Gainage planche » | deja fait |
 | `gainage_planche_laterale_droite.wav` | « Gainage planche laterale droite » | deja fait |
 | `gainage_planche_laterale_gauche.wav` | « Gainage planche laterale gauche » | deja fait |
@@ -163,6 +165,7 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 | `rowing_unilateral_gauche.wav` | « Rowing unilateral gauche » | deja fait |
 | `souleve_de_terre_roumain.wav` | « Souleve de terre roumain » | deja fait |
 | `squat.wav` | « Squat » | deja fait |
+| `squat_charge.wav` | « Squat chargé » | **a enregistrer** |
 | `squat_sur_chaise.wav` | « Squat sur chaise » | deja fait |
 
 ## Noms des echauffements

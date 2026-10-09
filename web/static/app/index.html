@@ -1650,7 +1650,7 @@ import { Tutoriel, etapes_de_seance } from "../js/tutoriel.js";
 import * as stockage from "../js/stockage.js";
 import { Lecteur } from "../js/lecteur.js";
 import { composer_baremes } from "../js/paliers.js";
-import { construire_progression } from "../js/progression.js";
+import { construire_progression, variantes_en_cours } from "../js/progression.js";
 import { badge_ligue, classe_ligue, jalon_ligue, jauge_ligue, style_ligue } from "../js/ligues_ui.js";
 import { ECHELLE } from "../js/ressenti.js";
 import { construire_ligne, proposition_de_montee } from "../js/ressentis_ui.js";
@@ -1871,7 +1871,12 @@ function construire_moteur() {
  * pour une personne.
  */
 function variantes_du_profil() {
-  return normaliser_variantes(profil_courant()?.variantes);
+  // La preference du profil **et** le mouvement de depart des familles qu'il
+  // n'a jamais jouees : tous les ecrans lisent la meme table, donc annoncent
+  // le mouvement que la seance jouera.
+  return variantes_en_cours(
+    moteur, profil_courant()?.variantes, lecture_du_profil(), catalogue_des_variantes(),
+  );
 }
 
 function catalogue_des_variantes() {
@@ -2091,12 +2096,22 @@ async function demarrer(nom) {
 
   nom_seance = nom;
   seance = circuit_pour(mouvements, seances[nom]);
+  // Le mouvement de depart d'une famille jamais jouee est **ecrit** ici, au
+  // demarrage : apres cette seance la famille aura ete jouee, et le choix,
+  // seulement relu, se serait efface. Sauvegarde sans l'attendre — rien ne
+  // doit s'intercaler entre le geste et ce qui suit, et la fin de seance
+  // reecrit la base de toute facon.
+  const variantes = variantes_du_profil();
+  if (JSON.stringify(variantes) !== JSON.stringify(normaliser_variantes(profil_courant()?.variantes))) {
+    historique.definir_variantes(base, PROFIL, variantes);
+    void stockage.sauver(base);
+  }
   // **Le seul endroit ou les variantes du profil remplacent leurs originaux**,
   // et avant le moteur pour que l'objectif soit celui de la variante. Le
   // circuit construit ici ne repart jamais dans `seances_locales`.
   moteur.variantes.appliquer_au_circuit(
     seance,
-    variantes_du_profil(),
+    variantes,
     catalogue_des_variantes(),
     (mouvement) => exercice_pour(mouvements, mouvement),
   );
@@ -6200,8 +6215,9 @@ function dessiner_liste() {
     barre.className = "barre-carte";
     // Une variante jouee a la place est un ecart au fichier, comme une cible
     // figee : il se voit sans deplier.
+    const variantes = variantes_du_profil();
     const remplaces = exercices.filter((b) =>
-      moteur.variantes.substitution(b.exercice, b.mode, variantes_du_profil(), catalogue_des_variantes())
+      moteur.variantes.substitution(b.exercice, b.mode, variantes, catalogue_des_variantes())
     ).length;
     if (remplaces) {
       const marque = document.createElement("span");

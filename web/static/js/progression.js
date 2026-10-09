@@ -49,8 +49,33 @@ export function construire_progression(tables_baremes, materiel, catalogue_varia
     // exercice atteint en remontant la chaine part du bas de son bareme.
     objectifs: new Objectifs(baremes, niveaux, ressenti, calibration, catalogue_variantes),
     // Les variantes plus faciles jouees a la place d'un mouvement. Le bareme
-    // y entre pour l'unite et pour traduire la performance de retour, les
-    // niveaux pour lire ce qu'une seance a prouve (`montees`).
-    variantes: new Variantes(baremes, tables_baremes.variantes?.retour ?? {}, niveaux),
+    // y entre pour l'unite, le materiel et la performance de retour, les
+    // niveaux pour lire ce qu'une seance a prouve (`montees`), la table de
+    // depart pour le premier mouvement de chaque famille (`selon_la_note`).
+    variantes: new Variantes(
+      baremes, tables_baremes.variantes?.retour ?? {}, niveaux, tables_baremes.variantes?.depart ?? {},
+    ),
   };
+}
+
+/**
+ * La table des variantes qu'un profil joue **en ce moment** : sa preference,
+ * completee du mouvement de depart de chaque famille jamais jouee.
+ *
+ * Le depart suit la note **effective** (la mesuree quand elle a assez monte),
+ * la meme que celle qui fixe le palier de depart dans `objectifs.js` : le
+ * mouvement et son palier viennent ainsi de la meme note. L'application et
+ * le simulateur lisent la table par ici ; a l'appelant de l'enregistrer au
+ * demarrage d'une seance (`Variantes.selon_la_note` dit pourquoi).
+ *
+ * `lecture` vaut `{seances, ancrages, note}`, comme ce que recoit
+ * `objectifs_par_exercice`.
+ */
+export function variantes_en_cours(moteur, preference, lecture, catalogue_variantes) {
+  const { seances, ancrages, note } = lecture;
+  const effective = moteur.calibration.note_effective(
+    note?.declaree ?? null,
+    moteur.calibration.note_mesuree(seances, ancrages),
+  );
+  return moteur.variantes.selon_la_note(preference, effective, seances, ancrages, catalogue_variantes);
 }

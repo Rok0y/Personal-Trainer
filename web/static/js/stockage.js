@@ -19,7 +19,7 @@
 // interrompue laisse la version precedente intacte plutot qu'une base a
 // moitie ecrite.
 
-import { base_vide, exporter, importer } from "./historique.js";
+import { base_vide, exporter, importer, migrer } from "./historique.js";
 
 const NOM_BASE = "coach";
 const VERSION = 1;
@@ -68,7 +68,9 @@ export async function charger() {
     const transaction = bdd.transaction(MAGASIN, "readonly");
     const contenu = await promesse(transaction.objectStore(MAGASIN).get(CLE));
     bdd.close();
-    return contenu ?? base_vide();
+    // Une base ecrite par une version precedente de l'application est mise a
+    // jour ici, une fois : la suivante l'enregistrera dans sa nouvelle forme.
+    return migrer(contenu ?? base_vide());
   } catch {
     return base_vide();
   }

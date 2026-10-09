@@ -40,7 +40,7 @@ const SPEC_PAR_DEFAUT = {
  * Les tables completes du moteur, depuis leurs deux sources.
  *
  * `reglages` est `donnees/reglages.json` : tout ce qui se **regle** (baremes,
- * bornes de ligue, XP, note d'athlete, retour des variantes), edite sur
+ * bornes de ligue, XP, note d'athlete, retour et depart des variantes), edite sur
  * `dev/baremes.html`. `socle` est `donnees/baremes.json` : ce qui ne se regle
  * pas (echelles d'halteres, materiel par exercice, accessoires, reperes ecrits
  * de la note). Chaque fait n'a ainsi qu'une source — l'application relisant
@@ -66,7 +66,7 @@ export function composer_baremes(socle, reglages) {
       xp_increment_niveau_general: reglages.xp.increment_niveau_general,
     },
     note_athlete: { ...reglages.note_athlete, reperes: socle.note_athlete?.reperes ?? {} },
-    variantes: { retour: reglages.variantes?.retour ?? {} },
+    variantes: { retour: reglages.variantes?.retour ?? {}, depart: reglages.variantes?.depart ?? {} },
     specs,
     echelles: socle.echelles,
     materiel: socle.materiel,
@@ -193,6 +193,27 @@ export class Baremes {
         // pour peser quelque chose sont ecartes (`premiere_charge`).
         (!spec.premiere_charge || poids === 0 || poids >= spec.premiere_charge)
     );
+  }
+
+  /**
+   * Le profil a-t-il de quoi charger ce mouvement, dans sa fourchette ?
+   *
+   * Un mouvement sans haltere l'est toujours. Un mouvement charge ne l'est
+   * que si le materiel offre au moins un poids **dans** la fourchette de son
+   * bareme : un squat charge qui commence a 5 kg n'est pas jouable avec des
+   * halteres de 2 a 4 kg, ni a deux mains avec un seul haltere de 10 kg.
+   *
+   * La question est posee **sans le repli** d'`echelle_exercice`, qui garde un
+   * cran plutot qu'un bareme vide : ce repli rend un bareme calculable, il ne
+   * dit pas que le mouvement est faisable. C'est `Variantes` qui en tire la
+   * consequence (jouer la variante a vide a la place).
+   */
+  chargeable(nom) {
+    if (this.nombre_halteres(nom) <= 0 || this.charge_facultative(nom)) return true;
+    const echelle = this.echelle_poids(nom);
+    const spec = this.specs[nom];
+    const retenue = spec ? this._dans_la_fourchette(echelle, spec) : echelle;
+    return retenue.some((poids) => poids > 0);
   }
 
   /**

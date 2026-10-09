@@ -40,21 +40,21 @@
    },
    {
     "seance": "Jambes et abdos",
-    "exercice": "Squat",
+    "exercice": "Squat chargé",
     "series": 6,
     "cible": 26,
     "poids": 10
    },
    {
     "seance": "Jambes et abdos",
-    "exercice": "Fente droite",
+    "exercice": "Fente droite chargée",
     "series": 6,
     "cible": 10,
     "poids": 10
    },
    {
     "seance": "Jambes et abdos",
-    "exercice": "Fente gauche",
+    "exercice": "Fente gauche chargée",
     "series": 6,
     "cible": 10,
     "poids": 10
@@ -149,21 +149,21 @@
   "exigences": [
    {
     "seance": "Bas du corps",
-    "exercice": "Squat",
+    "exercice": "Squat chargé",
     "series": 4,
     "cible": 19,
     "poids": 4
    },
    {
     "seance": "Bas du corps",
-    "exercice": "Fente droite",
+    "exercice": "Fente droite chargée",
     "series": 4,
     "cible": 10,
     "poids": 8
    },
    {
     "seance": "Bas du corps",
-    "exercice": "Fente gauche",
+    "exercice": "Fente gauche chargée",
     "series": 4,
     "cible": 10,
     "poids": 8

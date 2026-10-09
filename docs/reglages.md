@@ -44,26 +44,30 @@ descendre est justement ce qui ouvre le barème aux débutants.
 facultative ».**
 - L'échelle ajoute alors un cran sans charge *devant* les haltères (`charge_facultative`), et
   le mouvement cesse d'exiger de la fonte.
-- C'est réservé à ce qui garde un sens à vide : un squat ou une fente, oui ; un curl ou un
-  développé, non.
+- C'est réservé à ce qui garde un sens à vide : un curl ou un développé, non.
+- **Plus aucun barème ne s'en sert** : le squat et les fentes, qui allaient du poids du corps
+  aux haltères dans un seul barème, sont désormais deux mouvements chacun (« Squat » à vide,
+  « Squat chargé »), reliés par les variantes. Un seul barème ne savait pas comparer
+  « 4x15 à vide » et « 4x13 à 2 kg » (voir `premiere_charge`) : c'étaient deux mesures.
 - Penser aussi à la **première borne de ligue** de l'exercice. Elle vaut souvent le volume de
   l'ancien palier 1 : laissée en place, elle prive de ligue précisément le débutant qu'on vient
   d'ouvrir.
 
-**`charge_corps`** : ce que pèse le corps dans le volume d'un mouvement à charge facultative,
-en kg « par haltère ».
+**`charge_corps`** : ce que pèse le corps dans le volume d'un mouvement chargé où le corps
+reste la charge principale (squat chargé, fentes chargées), en kg « par haltère ».
 - Sans lui, le poids du corps compterait pour 1 kg, et deux haltères de 2 kg *doubleraient* le
   volume d'un squat. Le barème passait ainsi de 4x15 au poids du corps à 4x8 à 2 kg en appelant
   ça une progression.
 - Le volume vaut `séries × cible × (poids + charge_corps)`.
 - **15 est un compromis et non une mesure** : à 30-35, plus proche de la physique, chaque cran
   d'haltère se jouerait à la cible maximale et les répétitions ne bougeraient plus.
-- Il ne sert qu'aux mouvements dont `poids_min` vaut 0.
+- C'est lui qui fait qu'un cran d'haltère ne coûte que quelques répétitions : sans lui, passer
+  de 5 à 6 kg ferait perdre un cinquième des répétitions, comme sur un curl.
 - Le toucher rebat tout le barème de l'exercice et change l'échelle de ses volumes. Ses bornes
   de ligue, en volume absolu, sont à recaler avec.
 
 **`premiere_charge`** : le premier haltère qui vaut un cran, sur un mouvement à charge
-facultative.
+facultative. Depuis la séparation, c'est le `poids_min` de la forme chargée (5 kg) qui le dit.
 - Un squat à 2 ou 3 kg par main ne se distingue pas du poids du corps : testé, 4x13 à 2 kg
   était *plus facile* que 4x15 sans rien.
 - L'échelle va donc du poids du corps directement à `premiere_charge`.
@@ -153,3 +157,24 @@ le même effort aux pompes et au curl. Un départ trop dur se juge sur cette lig
 Pour chaque variante assistée, la **performance** (séries, cible) qu'une séance menée à son
 terme doit prouver pour monter d'un cran vers le mouvement complet. C'est une performance,
 jamais un numéro de niveau : le barème la traduit.
+- Le squat et les fentes à vide montent vers leur forme chargée à 4x15 et 4x10 : c'est
+  l'endroit où l'ancien barème unique passait aux haltères. Valeur d'attente — ce seuil doit
+  dépendre du premier haltère que le profil possède (avec des 10 kg, rester plus longtemps à
+  vide).
+- On ne monte jamais vers une forme que le matériel ne permet pas de charger.
+
+## Le départ des variantes (`variantes.depart`)
+
+Pour la **tête** de chaque chaîne de variantes (le mouvement complet, celui que les séances
+écrivent), la note d'athlète à partir de laquelle on **démarre** sur chacun de ses mouvements :
+`{"Pompes contre le mur": 1, "Pompes inclinées": 2, "Pompes sur les genoux": 3, "Pompes": 4}`.
+- On part du plus dur que la note atteint ; sans note, du premier de la table.
+- Ne s'applique qu'à une famille **jamais jouée** : ensuite, ce sont les montées et les
+  descentes qui décident.
+- Un mouvement absent de la table n'est jamais un départ (le squat sur chaise ne s'atteint que
+  par un échec).
+- La note choisit le mouvement, puis le palier dans ce mouvement (par ses bornes de ligue,
+  comme pour tout exercice jamais fait) : régler les deux ensemble, sur
+  `dev/progression.html`, qui montre la courbe de départ note par note et matériel par
+  matériel.
+- `verifier_donnees` exige qu'un mouvement plus dur demande une note plus haute.

@@ -405,7 +405,7 @@
    "commentaire": ""
   },
   {
-   "exercice": "Squat",
+   "exercice": "Squat chargé",
    "mode": "repetitions",
    "poids": 6,
    "series": 4,
@@ -416,7 +416,7 @@
    "commentaire": ""
   },
   {
-   "exercice": "Fente droite",
+   "exercice": "Fente droite chargée",
    "mode": "repetitions",
    "poids": 10,
    "series": 4,
@@ -425,10 +425,10 @@
    "repos_entre_series": 45,
    "repos_apres": 90,
    "commentaire": "",
-   "entrelace_avec": "Fente gauche"
+   "entrelace_avec": "Fente gauche chargée"
   },
   {
-   "exercice": "Fente gauche",
+   "exercice": "Fente gauche chargée",
    "mode": "repetitions",
    "poids": 10,
    "series": 4,
@@ -497,7 +497,7 @@
  ],
  "Bas du corps": [
   {
-   "exercice": "Squat",
+   "exercice": "Squat chargé",
    "mode": "repetitions",
    "poids": 4,
    "series": 4,
@@ -508,7 +508,7 @@
    "commentaire": ""
   },
   {
-   "exercice": "Fente droite",
+   "exercice": "Fente droite chargée",
    "mode": "repetitions",
    "poids": 8,
    "series": 4,
@@ -519,7 +519,7 @@
    "commentaire": ""
   },
   {
-   "exercice": "Fente gauche",
+   "exercice": "Fente gauche chargée",
    "mode": "repetitions",
    "poids": 8,
    "series": 4,
@@ -663,7 +663,7 @@
   {
    "exercice": "Squat",
    "mode": "repetitions",
-   "poids": 6,
+   "poids": 0,
    "series": 4,
    "repetitions": 15,
    "duree": 0,
@@ -674,7 +674,7 @@
   {
    "exercice": "Fente droite",
    "mode": "repetitions",
-   "poids": 10,
+   "poids": 0,
    "series": 4,
    "repetitions": 9,
    "duree": 0,
@@ -686,7 +686,7 @@
   {
    "exercice": "Fente gauche",
    "mode": "repetitions",
-   "poids": 10,
+   "poids": 0,
    "series": 4,
    "repetitions": 9,
    "duree": 0,

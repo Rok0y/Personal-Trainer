@@ -21,7 +21,20 @@ import { note_valide } from "./calibration.js";
 import { normaliser as normaliser_variantes } from "./variantes.js";
 
 /** La version du format, ecrite dans chaque export. */
-export const VERSION_BASE = 1;
+export const VERSION_BASE = 2;
+
+//: Les mouvements qui se sont separes en deux a la version 2 : le nom ancien
+//: designe desormais la forme **a vide**, la forme chargee a pris le nom de
+//: droite. Avant, un seul bareme allait du poids du corps aux halteres, et
+//: une meme ligne « Squat » pouvait etre l'un ou l'autre.
+//:
+//: Une table figee, et non lue dans `mouvements.json` : c'est l'histoire
+//: d'une base, pas un reglage. Elle ne bougera plus.
+export const SEPARES_EN_VERSION_2 = {
+  Squat: "Squat chargé",
+  "Fente droite": "Fente droite chargée",
+  "Fente gauche": "Fente gauche chargée",
+};
 
 /**
  * Une base vide.
@@ -158,7 +171,8 @@ export const FAMILLES_TUTORIEL = ["general", "seances", "exercices"];
 /**
  * Ce qu'un profil a deja vu, sous une forme toujours exploitable.
  *
- * Il n'existe **aucune migration** de la base. Un profil cree avant ce champ,
+ * **Aucune migration n'ajoute ce champ** (`migrer` ne fait que renommer des
+ * mouvements). Un profil cree avant lui,
  * ou importe d'une ancienne sauvegarde, rend donc `undefined`, et c'est ici
  * que ca se rattrape une fois pour toutes plutot qu'a chaque site de lecture.
  */
@@ -623,6 +637,70 @@ export function est_seance_locale(base, nom) {
   return Boolean(base.seances_locales && nom in base.seances_locales);
 }
 
+/**
+ * Amene une base a la version courante, sur place, et la rend.
+ *
+ * **Version 1 → 2** : la separation du squat et des fentes en deux mouvements
+ * (`SEPARES_EN_VERSION_2`).
+ * - Une ligne d'historique **chargee** (poids > 0) prend le nom de la forme
+ *   chargee ; une ligne a vide garde le sien, qui designe desormais la forme
+ *   a vide. Sans ca, « 4x15 a 10 kg » serait relu sur le bareme a vide, ou le
+ *   poids compte pour 1 kg : dix fois le volume reel, et des niveaux absurdes.
+ * - Un **ancrage** sur l'un de ces noms recalait un niveau d'un bareme qui
+ *   n'existe plus : il est garde (on ne jette rien), mais rendu inerte sous
+ *   un nom qui ne designe aucun mouvement.
+ * - Une **seance locale** nomme desormais la forme chargee : une seance
+ *   ecrite nomme la forme la plus dure, et le materiel ou la note font jouer
+ *   la forme a vide a qui en a besoin.
+ * - La **cible figee** d'un profil et ses **variantes** suivent le nouveau nom.
+ *
+ * Une seule fois : le numero de version empeche de renommer deux fois, ce qui
+ * changerait une forme a vide choisie apres coup en forme chargee. Une base
+ * d'une version inconnue n'est pas touchee — `importer` la refuse.
+ */
+export function migrer(base) {
+  if (base?.version === 1) {
+    const renomme = SEPARES_EN_VERSION_2;
+    const exercices_charges = new Set();
+    for (const exercice of base.exercices ?? []) {
+      if (exercice.nom in renomme && (exercice.poids || 0) > 0) {
+        exercice.nom = renomme[exercice.nom];
+        exercices_charges.add(exercice.id);
+      }
+    }
+    for (const ancrage of base.corrections_niveaux ?? []) {
+      if (ancrage.nom_exercice in renomme) {
+        ancrage.nom_exercice = `${ancrage.nom_exercice} (barème d'avant la séparation)`;
+      }
+    }
+    for (const blocs of Object.values(base.seances_locales ?? {})) {
+      for (const bloc of blocs ?? []) {
+        if (bloc.exercice in renomme) bloc.exercice = renomme[bloc.exercice];
+        if (bloc.entrelace_avec in renomme) bloc.entrelace_avec = renomme[bloc.entrelace_avec];
+      }
+    }
+    for (const exercice of base.exercices ?? []) {
+      if (exercices_charges.has(exercice.id) && exercice.entrelace_avec in renomme) {
+        exercice.entrelace_avec = renomme[exercice.entrelace_avec];
+      }
+    }
+    for (const utilisateur of base.utilisateurs ?? []) {
+      const variantes = utilisateur.variantes ?? {};
+      for (const [ancien, nouveau] of Object.entries(renomme)) {
+        // « Pour le squat, je joue le squat sur chaise » valait pour le seul
+        // squat qui existait, qui couvrait la forme chargee : la preference
+        // suit la tete de la chaine.
+        if (ancien in variantes) {
+          variantes[nouveau] = variantes[ancien];
+          delete variantes[ancien];
+        }
+      }
+    }
+    base.version = 2;
+  }
+  return base;
+}
+
 export function exporter(base) {
   return JSON.stringify({ ...base, exporte_le: horodatage() }, null, 1);
 }
@@ -641,13 +719,15 @@ export function importer(texte) {
   } catch {
     throw new Error("Ce fichier n'est pas une sauvegarde valide.");
   }
-  if (contenu.version !== VERSION_BASE) {
+  // Une sauvegarde plus ancienne se relit : `migrer` sait l'amener a jour.
+  if (contenu.version !== VERSION_BASE && contenu.version !== 1) {
     throw new Error(
       `Sauvegarde en version ${contenu.version ?? "inconnue"}, ` +
         `cette application lit la version ${VERSION_BASE}.`
     );
   }
   const base = base_vide();
+  base.version = contenu.version;
   for (const collection of [
     "utilisateurs", "seances", "exercices", "series_realisees", "corrections_niveaux",
   ]) {
@@ -671,7 +751,7 @@ export function importer(texte) {
     const maximum = base[collection].reduce((m, ligne) => Math.max(m, ligne.id ?? 0), 0);
     base.prochains_id[collection] = maximum + 1;
   }
-  return base;
+  return migrer(base);
 }
 
 /**

@@ -25,7 +25,7 @@
 // Tout est deterministe : deux simulations des memes reglages rendent la meme
 // chose, et une courbe qui change ne peut venir que du moteur ou des reglages.
 
-import { construire_progression } from "./progression.js";
+import { construire_progression, variantes_en_cours } from "./progression.js";
 import {
   base_vide,
   creer_utilisateur,
@@ -67,8 +67,11 @@ export const HYPOTHESES = {
     Pompes: 0.65,
     "Squat sur chaise": 0.55,
     Squat: 0.7,
+    "Squat chargé": 0.7,
     "Fente droite": 0.8,
+    "Fente droite chargée": 0.8,
     "Fente gauche": 0.8,
+    "Fente gauche chargée": 0.8,
     "Gainage sur les genoux": 0.35,
     "Gainage planche": 0.6,
   },
@@ -343,11 +346,16 @@ function executer_par_le_scenario(bloc, verdict, baremes) {
 
 /* ------------------------------------------------------------- simulations */
 
+/** Le mode qui joue un mouvement dans l'unite de son bareme. */
+function mode_de(nom, baremes) {
+  return baremes.unite(nom) === UNITE_SECONDES ? MODE_MAINTIEN : MODE_REPETITIONS;
+}
+
 /** Une seance a un bloc par famille, nommant la tete : les seances ecrites nomment la forme la plus dure. */
 function blocs_synthetiques(choisies, baremes) {
   return choisies.map((famille) => ({
     exercice: famille.tete,
-    mode: baremes.unite(famille.tete) === UNITE_SECONDES ? MODE_MAINTIEN : MODE_REPETITIONS,
+    mode: mode_de(famille.tete, baremes),
     // Des valeurs de remplissage : le moteur les reecrit toutes, et un bloc
     // qu'il ne piloterait pas se verrait a sa cible de 1.
     series: 1,
@@ -368,30 +376,37 @@ function palier_lisible(palier) {
 /**
  * Ce que propose une premiere seance, pour chaque note de 1 a 10.
  *
- * Lu par `objectifs_par_exercice` sur un profil neuf — la fonction meme de
- * l'application —, et non par `niveau_de_depart` seul : c'est ce que la
- * seance jouerait, pas un calcul voisin. Pour chaque famille : le mouvement
- * joue (la tete, puisqu'un profil neuf n'a aucune variante), son palier et
- * son exigence, puis le depart qu'aurait chacun des mouvements de la chaine.
+ * Lu par les fonctions memes de l'application sur un profil neuf — le
+ * mouvement par `variantes_en_cours` puis `substitution`, son palier par
+ * `objectifs_par_exercice` —, et non par `niveau_de_depart` seul : c'est ce
+ * que la seance jouerait, pas un calcul voisin. Pour chaque famille : le
+ * mouvement joue, son palier et son exigence, puis le depart qu'aurait chacun
+ * des mouvements de la chaine.
  */
 export function departs({ tables, mouvements, materiel, choisies, athlete, hyp = HYPOTHESES }) {
   const catalogue = catalogue_depuis(mouvements);
   const moteur = construire_progression(tables, materiel, catalogue);
   const par_note = [];
   for (let note = 1; note <= 10; note += 1) {
-    const objectifs = moteur.objectifs.objectifs_par_exercice([], {}, { declaree: note, relevee_apres: null });
+    const lecture = { seances: [], ancrages: {}, note: { declaree: note, relevee_apres: null } };
+    const objectifs = moteur.objectifs.objectifs_par_exercice(lecture.seances, lecture.ancrages, lecture.note);
+    const table = variantes_en_cours(moteur, {}, lecture, catalogue);
     par_note.push(
-      choisies.map((famille) => ({
+      choisies.map((famille) => {
+        const joue = moteur.variantes.substitution(famille.tete, mode_de(famille.tete, moteur.baremes), table, catalogue)
+          ?? famille.tete;
+        return {
         tete: famille.tete,
-        joue: famille.tete,
-        palier: palier_lisible(objectifs[famille.tete] ?? null),
-        exige: exigence(famille.tete, objectifs[famille.tete] ?? null, moteur.baremes, athlete, hyp),
+        joue,
+        palier: palier_lisible(objectifs[joue] ?? null),
+        exige: exigence(joue, objectifs[joue] ?? null, moteur.baremes, athlete, hyp),
         chaine: famille.mouvements.map((nom) => ({
           nom,
           palier: palier_lisible(objectifs[nom] ?? null),
           exige: exigence(nom, objectifs[nom] ?? null, moteur.baremes, athlete, hyp),
         })),
-      })),
+        };
+      }),
     );
   }
   return par_note;
@@ -492,11 +507,18 @@ export function simuler({
   for (let n = 0; n < seances; n += 1, jour += 1) {
     const histoire = recuperer_historique(base, uid);
     const ancrages = recuperer_ancrages(base, uid);
-    const objectifs = moteur.objectifs.objectifs_par_exercice(histoire, ancrages, note_du_profil(profil));
+    const note = note_du_profil(profil);
+    const objectifs = moteur.objectifs.objectifs_par_exercice(histoire, ancrages, note);
 
+    // Comme `demarrer` : le mouvement de depart d'une famille jamais jouee
+    // est ecrit sur le profil avant de jouer.
+    const variantes = variantes_en_cours(moteur, profil.variantes, { seances: histoire, ancrages, note }, catalogue);
+    if (JSON.stringify(variantes) !== JSON.stringify(normaliser_variantes(profil.variantes))) {
+      definir_variantes(base, uid, variantes);
+    }
     const circuit = circuit_pour(mouvements, blocs_synthetiques(jouees, baremes));
     moteur.variantes.appliquer_au_circuit(
-      circuit, profil.variantes, catalogue, (nom) => exercice_pour(mouvements, nom),
+      circuit, variantes, catalogue, (nom) => exercice_pour(mouvements, nom),
     );
     moteur.objectifs.appliquer_a_circuit(circuit, objectifs, uid);
 

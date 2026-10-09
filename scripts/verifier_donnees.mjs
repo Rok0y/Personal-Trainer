@@ -75,6 +75,58 @@ function main() {
   } catch (erreur) {
     signaler("reglages.json", `composition impossible : ${erreur.message}`);
   }
+  // Les bornes de ligue : sans elles, l'exercice retombe sur la table
+  // relative, un repli qui masque le branchement oublie. Dix-huit, croissantes
+  // strictement (deux bornes egales rendraient un rang inatteignable).
+  const bornes = reglages.ligues?.seuils_par_exercice ?? {};
+  for (const nom of Object.keys(specs)) {
+    const table = bornes[nom];
+    if (!table) signaler("reglages.json", `« ${nom} » n'a pas de bornes de ligue (seuils_par_exercice)`);
+    else if (table.length !== 18 || table.some((v, i) => i > 0 && !(v > table[i - 1]))) {
+      signaler("reglages.json", `« ${nom} » : il faut dix-huit bornes de ligue strictement croissantes`);
+    }
+  }
+  for (const nom of Object.keys(bornes)) {
+    if (!specs[nom]) signaler("reglages.json", `bornes de ligue pour « ${nom} », qui n'a pas de bareme`);
+  }
+
+  // Les variantes : une performance de retour ne sert qu'a un mouvement qui a
+  // une variante plus dure ; la table de depart nomme, pour la tete d'une
+  // chaine, des mouvements de cette chaine et des notes de 1 a 10.
+  for (const [nom, seuil] of Object.entries(reglages.variantes?.retour ?? {})) {
+    if (!bruts[nom]?.variante_difficile) {
+      signaler("reglages.json", `retour de « ${nom} » : ce mouvement n'a pas de variante plus dure`);
+    }
+    if (!Array.isArray(seuil) || seuil.length !== 2 || !seuil.every((v) => v > 0)) {
+      signaler("reglages.json", `retour de « ${nom} » : il faut [series, cible] positifs`);
+    }
+  }
+  const chaine_de = (tete) => {
+    const noms = [tete];
+    for (let n = bruts[tete]?.variante_facile; n && bruts[n] && !noms.includes(n); n = bruts[n].variante_facile) noms.push(n);
+    return noms;
+  };
+  for (const [tete, seuils] of Object.entries(reglages.variantes?.depart ?? {})) {
+    if (!bruts[tete] || bruts[tete].variante_difficile) {
+      signaler("reglages.json", `depart de « ${tete} » : ce n'est pas la tete d'une chaine de variantes`);
+      continue;
+    }
+    const chaine = chaine_de(tete);
+    for (const [nom, note] of Object.entries(seuils ?? {})) {
+      if (!chaine.includes(nom)) signaler("reglages.json", `depart de « ${tete} » : « ${nom} » n'est pas dans sa chaine`);
+      if (!Number.isInteger(note) || note < 1 || note > 10) {
+        signaler("reglages.json", `depart de « ${tete} » : la note de « ${nom} » doit etre un entier de 1 a 10`);
+      }
+    }
+    // Plus dur dans la chaine, plus haute la note : sinon une note plus haute
+    // ferait partir sur une variante plus facile.
+    const ordonnes = chaine.filter((nom) => nom in seuils).reverse();
+    for (let i = 1; i < ordonnes.length; i += 1) {
+      if (!(seuils[ordonnes[i]] > seuils[ordonnes[i - 1]])) {
+        signaler("reglages.json", `depart de « ${tete} » : « ${ordonnes[i]} » doit demander une note plus haute que « ${ordonnes[i - 1]} »`);
+      }
+    }
+  }
 
   // --- fiches et mouvements ---
   for (const [nom, mouvement] of Object.entries(bruts)) {
