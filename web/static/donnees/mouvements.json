@@ -402,7 +402,7 @@
   "nom": "Rotation des épaules",
   "variante_facile": null,
   "variante_difficile": null,
-  "orientation": null,
+  "orientation": "profil",
   "changements": [
    [
     0.5,

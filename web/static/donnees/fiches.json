@@ -608,12 +608,12 @@
     ]
   },
   "Rotation des épaules": {
-    "description": "De grands cercles avec les épaules, bras relâchés, pour les réveiller.",
+    "description": "De grands moulinets avec les bras tendus, pour réveiller les épaules.",
     "mise_en_place": [
-      "Debout, bras le long du corps."
+      "Debout, pieds écartés de la largeur des épaules, bras le long du corps."
     ],
     "instructions": [
-      "Fais de grands cercles avec les épaules, vers l'arrière.",
+      "Bras tendus, fais de grands cercles qui passent au-dessus de la tête, vers l'arrière.",
       "Quand le coach te le dit, change de sens : vers l'avant."
     ],
     "erreurs_frequentes": [],
@@ -622,9 +622,10 @@
     ]
   },
   "Rotation des coudes": {
-    "description": "Bras écartés sur les côtés, les avant-bras font des cercles, pour réveiller les coudes.",
+    "description": "Bras levés devant soi, les avant-bras font des cercles, pour réveiller les coudes.",
     "mise_en_place": [
-      "Debout, bras tendus sur les côtés, à hauteur des épaules."
+      "Debout, lève les bras devant toi, coudes à hauteur des épaules.",
+      "Place-toi de profil : ton côté tourné vers la caméra."
     ],
     "instructions": [
       "Garde le haut des bras immobile, seuls les avant-bras tournent.",
