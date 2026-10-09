@@ -14,20 +14,27 @@
 //  - seances : chaque seance passe `problemes_des_blocs`, le controle que fait
 //    l'editeur de l'application a l'enregistrement ;
 //  - programmes : chaque exigence vise un exercice qui a un bareme, et chaque
-//    libelle est lie a une seance qui existe.
+//    libelle est lie a une seance qui existe ;
+//  - videos : chaque `.mp4` de `videos/` porte le nom (`fichier_video`) d'un
+//    mouvement. Un mouvement renomme rend sa video orpheline, et une video que
+//    rien ne lit est aussi invisible qu'une video absente. Une video
+//    **manquante**, elle, n'est pas une erreur : on les tourne par lots, et
+//    `dev/fiches.html` dit lesquelles restent a faire.
 //
 //     node scripts/verifier_donnees.mjs
 
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DETECTIONS } from "../web/static/js/detections.js";
 import { composer_baremes } from "../web/static/js/paliers.js";
 import { avec_fiches, problemes_des_blocs } from "../web/static/js/seance.js";
+import { fichier_video } from "../web/static/js/videos.js";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const DONNEES = join(ICI, "..", "web", "static", "donnees");
+const VIDEOS = join(ICI, "..", "web", "static", "videos");
 const lire = (nom) => JSON.parse(readFileSync(join(DONNEES, nom), "utf-8"));
 
 //: Les champs de texte d'une fiche, et leur forme.
@@ -124,6 +131,15 @@ function main() {
     }
   }
 
+  // --- videos ---
+  const attendues = new Set(Object.keys(bruts).map(fichier_video));
+  const videos = existsSync(VIDEOS) ? readdirSync(VIDEOS).filter((f) => f.endsWith(".mp4")) : [];
+  for (const fichier of videos) {
+    if (!attendues.has(fichier)) {
+      signaler("videos/", `${fichier} ne porte le nom d'aucun mouvement (renomme ?) : aucune fiche ne la montrera`);
+    }
+  }
+
   if (problemes.length) {
     console.log(`${problemes.length} problemes :\n`);
     for (const p of problemes) console.log(`  - ${p}`);
@@ -132,7 +148,8 @@ function main() {
   }
   console.log(
     `${Object.keys(bruts).length} mouvements, ${Object.keys(specs).length} baremes, ` +
-      `${Object.keys(seances).length} seances, ${Object.keys(programmes).length} programmes : les donnees se tiennent.`
+      `${Object.keys(seances).length} seances, ${Object.keys(programmes).length} programmes, ` +
+      `${videos.length} videos : les donnees se tiennent.`
   );
 }
 

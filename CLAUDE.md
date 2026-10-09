@@ -17,7 +17,10 @@ node scripts/tester.mjs ligues ressenti  # seulement ces tests-là
 node scripts/tester.mjs --mettre-a-jour  # réécrire les réponses figées (changement VOULU et compris)
 node scripts/lister_annonces.mjs         # réécrit audio/A_ENREGISTRER.md, la feuille de prise de son
 python audio/nettoyer_sons.py            # audio/a_traiter/ -> web/static/sons/ (pydub + ffmpeg)
+python video/illustrer.py video/a_traiter/curl.mp4 "Curl biceps droit" --miroir "Curl biceps gauche"
 ```
+
+**Vidéos des fiches** (`video/illustrer.py` → `web/static/videos/<fichier_video(exercice)>`) : détourée, redessinée en aplats, recadrée sur le corps, en boucle (raccord cherché entre deux silhouettes semblables, fondu), H.264 pour Safari. Le nom vient de `fichier_video` (`videos.js`), **appelé par node** : la règle reste en JS, et l'application relit la vidéo sous ce même nom. Le détourage croise deux méthodes qui se trompent en sens contraires — RobustVideoMatting (`video/modeles/`, empreinte SHA-256 vérifiée) voit le corps mais perd l'haltère ; la pièce vide du début de vidéo (trouvée seule : les images où RVM ne voit personne) voit l'haltère mais perd un t-shirt blanc devant un mur blanc. Tournage : caméra immobile, quelques secondes de pièce vide pour un exercice à haltère. Vidéos brutes, essais et modèle ne sont jamais versionnés (on y voit une personne chez elle).
 
 Aucun linter. La CI (`.github/workflows/demo.yml`) lance `tester.mjs` puis publie `web/static` à chaque push sur une des branches **qu'elle liste** — lire la liste dans le fichier : une branche absente ne déploie rien, en silence.
 
