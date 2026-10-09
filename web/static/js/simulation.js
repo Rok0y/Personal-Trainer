@@ -61,7 +61,7 @@ import { MODE_MAINTIEN, MODE_REPETITIONS } from "./circuit.js";
 //: dur ».
 export const HYPOTHESES = {
   parts_du_corps: {
-    "Pompes contre le mur": 0.25,
+    "Pompes contre le mur": 0.35,
     "Pompes inclinées": 0.45,
     "Pompes sur les genoux": 0.5,
     Pompes: 0.65,
