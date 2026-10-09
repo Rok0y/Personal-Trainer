@@ -41,8 +41,9 @@ Tout ce qui tourne vit dans `web/static/` :
   - `mouvements.json` — ce qui est couplé au code (détection, orientation, variantes) ;
   - `seances.json`, `programmes.json`, `sons.json` — les séances, les programmes, les tables du coach.
 - `sons/` — les annonces enregistrées. Le nom d'un fichier est le texte prononcé.
+- `videos/` — la boucle de chaque mouvement, montrée sur sa fiche, dans le guide du premier passage et pendant les pauses. Le nom d'un fichier vient du nom du mouvement ; une vidéo absente n'affiche simplement rien, et `dev/fiches.html` dit lesquelles restent à tourner.
 
-En dehors : `scripts/` (vérifications et outils), `tests/fixtures/` (les réponses figées des tests), `audio/` (prise de son), `docs/`.
+En dehors : `scripts/` (vérifications et outils), `tests/fixtures/` (les réponses figées des tests), `audio/` (prise de son), `video/` (illustration des fiches : `python video/illustrer.py <vidéo> "<exercice>"` détoure, redessine en aplats et écrit la boucle dans `web/static/videos/` ; demande `onnxruntime`, `imageio-ffmpeg` et le modèle RobustVideoMatting dont le script donne l'adresse), `docs/`.
 
 **Régler sans toucher au code** : `dev/baremes.html` et `dev/fiches.html` rechargent les données déployées, les rendent éditables, recalculent tout sous les yeux, et rendent le fichier prêt à coller dans `web/static/donnees/`. On colle, on pousse, c'est déployé.
 

@@ -193,6 +193,18 @@
   .reussite { text-align: center; }
   .reussite .grand { font-size: 42px; font-weight: 700; color: var(--ok); }
   [hidden] { display: none !important; }
+  /* La video du mouvement (`js/videos.js`), sur son propre fond : celui que
+     pose `video/illustrer.py` (`--bg` de `palette.css`). */
+  .video-fiche {
+    display: flex;
+    justify-content: center;
+    margin: 0 0 12px;
+    background: #0a0d13;
+    border: 1px solid var(--bord);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .video-fiche video { display: block; max-width: 100%; max-height: 50vh; }
 </style>
 </head>
 <body>
@@ -232,6 +244,7 @@
 <section id="ecranFiche" hidden>
   <h1 id="ficheNom"></h1>
   <p class="muet" id="ficheDescription"></p>
+  <div class="video-fiche" id="ficheVideo" hidden><video muted loop playsinline preload="auto"></video></div>
   <div class="carte">
     <h3 style="margin-top:0">Installe-toi</h3>
     <ul id="ficheMiseEnPlace"></ul>
@@ -321,6 +334,7 @@ import {
 } from "../js/instruments.js";
 import { texte } from "../js/messages.js";
 import { avec_fiches } from "../js/seance.js";
+import { jouer_si_visible, montrer_video } from "../js/videos.js";
 
 const VERSION_WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const MODELE = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
@@ -580,6 +594,8 @@ function montrer(id) {
     }
   }
   document.querySelector(".page").hidden = id === "ecranSeance";
+  // Hors de la fiche, sa video cesse de decoder : la detection en a besoin.
+  jouer_si_visible(document.querySelector("#ficheVideo video"), id === "ecranFiche");
   window.scrollTo(0, 0);
 }
 
@@ -700,6 +716,7 @@ function ouvrirFiche(fiche) {
   document.getElementById("ficheDescription").textContent = fiche.description ?? "";
   remplir("ficheMiseEnPlace", fiche.mise_en_place);
   remplir("ficheInstructions", fiche.instructions);
+  montrer_video(document.getElementById("ficheVideo"), fiche.nom, (video) => jouer_si_visible(video, true));
   const bouton = document.getElementById("boutonDemarrer");
   bouton.disabled = false;
   bouton.textContent = "Démarrer";

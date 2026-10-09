@@ -106,6 +106,11 @@
     .apercu h1.nom { font: 400 32px 'Bebas Neue', sans-serif; color: var(--text); margin: 0 0 6px; }
     .apercu .resume { color: var(--muted); line-height: 1.6; margin: 0 0 14px; }
     .apercu ol, .apercu ul { margin: 0; padding-left: 20px; line-height: 1.7; }
+    .encart-video.manquante { border-color: var(--orange); }
+    .encart-video p { margin: 4px 0; }
+    .encart-video pre { margin: 6px 0 0; white-space: pre-wrap; word-break: break-all; }
+    .liste .sans-video { margin-left: auto; color: var(--muted); font-size: 10px; white-space: nowrap; }
+    .liste .sans-video + .alertes { margin-left: 6px; }
 
     #json { min-height: 220px; font: 400 12px ui-monospace, monospace; white-space: pre; }
 </style>
@@ -137,9 +142,16 @@
             <div class="travail">
                 <div class="editeur" id="editeur"></div>
                 <div>
+                    <div class="machine encart-video" id="encartVideo"></div>
                     <div class="machine alertes-fiche" id="alertes" hidden></div>
                     <div class="machine" id="machine"></div>
-                    <div class="apercu" id="apercu"></div>
+                    <!-- La video vit hors du texte redessine a chaque frappe :
+                         sinon elle rechargerait a chaque lettre. -->
+                    <div class="apercu" id="apercu">
+                        <div id="apercuTete"></div>
+                        <div class="video-fiche" id="apercuVideo" hidden><video muted loop playsinline preload="auto"></video></div>
+                        <div id="apercuCorps"></div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -159,6 +171,7 @@
 
 <script type="module">
 import { INSTRUMENTS, formater_zone } from "../js/instruments.js";
+import { adresse_video, fichier_video, jouer_si_visible, montrer_video } from "../js/videos.js";
 
 const $ = (id) => document.getElementById(id);
 const CLE_BROUILLON = "dev.fiches";
@@ -195,6 +208,15 @@ const MOTS_MAX = 18;
 const deployees = await (await fetch("../donnees/fiches.json")).json();
 const mouvements = await (await fetch("../donnees/mouvements.json")).json();
 const sons = await (await fetch("../donnees/sons.json")).json();
+
+//: Les mouvements qui ont leur video, sondes une fois au chargement : une
+//: requete HEAD par mouvement, au meme nom que celui que lit l'application
+//: (`fichier_video`). Une video deposee depuis demande de recharger la page.
+const videos_presentes = new Set((await Promise.all(Object.keys(mouvements).map(async (nom) => {
+  try {
+    return (await fetch(adresse_video(nom), { method: "HEAD", cache: "no-store" })).ok ? nom : null;
+  } catch { return null; }
+}))).filter(Boolean));
 
 const brouillon = lire_brouillon();
 let fiches = brouillon?.fiches ?? structuredClone(deployees);
@@ -304,6 +326,7 @@ function dessiner_liste() {
       const n = alertes(nom).length;
       return `<button type="button" data-nom="${echapper(nom)}" class="${nom === courant ? "actif" : ""}">` +
         `<span class="pastille ${statut(nom)}"></span>${echapper(nom)}` +
+        (videos_presentes.has(nom) ? "" : `<span class="sans-video">sans vidéo</span>`) +
         (n ? `<span class="alertes">${n}</span>` : "") + `</button>`;
     }).join("")
   ).join("");
@@ -383,13 +406,31 @@ function dessiner_apercu() {
   const bloc = (titre, lignes, balise = "ol", classe = "") => lignes?.length
     ? `<div class="bloc${classe}"><h2>${titre}</h2><${balise}>${lignes.map((l) => `<li>${echapper(l)}</li>`).join("")}</${balise}></div>`
     : "";
-  $("apercu").innerHTML =
+  $("apercuTete").innerHTML =
     `<h1 class="nom">${echapper(courant)}</h1>` +
-    `<p class="resume">${echapper(fiche.description)}</p>` +
+    `<p class="resume">${echapper(fiche.description)}</p>`;
+  $("apercuCorps").innerHTML =
     bloc("Se mettre en place", fiche.mise_en_place) +
     bloc("Exécution", fiche.instructions) +
     bloc("Ce que tu dois sentir", fiche.sensations, "ul") +
     bloc("À éviter", fiche.erreurs_frequentes, "ul", " attention");
+}
+
+/**
+ * La video de la fiche : celle qui joue dans l'aperçu, ou ce qu'il reste a
+ * tourner, avec le nom de fichier attendu et la commande qui le produit.
+ */
+function dessiner_video() {
+  const fichier = fichier_video(courant);
+  const presente = videos_presentes.has(courant);
+  $("encartVideo").classList.toggle("manquante", !presente);
+  $("encartVideo").innerHTML = presente
+    ? `<h3>Vidéo</h3><p>✓ <code>videos/${echapper(fichier)}</code> — elle joue dans l'aperçu, ` +
+      `comme dans l'application (fiche, guide du premier passage, pauses).</p>`
+    : `<h3>Vidéo</h3><p>Pas encore de vidéo : à tourner.</p>` +
+      `<p class="hint">Fichier attendu : <code>videos/${echapper(fichier)}</code>. Une fois filmée :</p>` +
+      `<pre><code>python video/illustrer.py video/a_traiter/&lt;ta vidéo&gt; "${echapper(courant)}"</code></pre>`;
+  montrer_video($("apercuVideo"), presente ? courant : null, (video) => jouer_si_visible(video, true));
 }
 
 function dessiner_controle() {
@@ -404,7 +445,9 @@ function dessiner_etat() {
   const noms = Object.keys(fiches);
   const relues = noms.filter((n) => statut(n) === "relu").length;
   const modifiees = noms.filter(est_modifiee).length;
-  $("etat").textContent = `${relues} relues, ${modifiees} modifiées, ${noms.length - relues - modifiees} à relire — sur ${noms.length}.`;
+  const filmees = noms.filter((n) => videos_presentes.has(n)).length;
+  $("etat").textContent = `${relues} relues, ${modifiees} modifiées, ${noms.length - relues - modifiees} à relire — sur ${noms.length}. ` +
+    `Vidéos : ${filmees} sur ${noms.length}.`;
   $("marquerRelu").textContent = statuts[courant] === "relu" ? "Relue ✓" : "Marquer comme relue";
 }
 
@@ -422,6 +465,7 @@ function choisir(nom) {
   dessiner_liste();
   dessiner_editeur();
   dessiner_machine();
+  dessiner_video();
   dessiner_controle();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }

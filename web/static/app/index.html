@@ -639,6 +639,32 @@
     max-width: 640px;
     width: 100%;
   }
+  /* Avec une video, la carte s'elargit pour la poser a cote du texte. */
+  .guide-carte:has(.guide-video:not([hidden])) { max-width: 980px; }
+  .guide-corps {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+  .guide-texte { flex: 1; min-width: 0; }
+  /* Le fond des videos est `--bg` (`video/illustrer.py`) : le cadre le reprend. */
+  .guide-video {
+    flex: 0 0 auto;
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .guide-video video {
+    display: block;
+    max-width: 38vw;
+    max-height: 62vh;
+  }
+  /* Sur un ecran etroit, la video passe au-dessus, plus basse, pour laisser
+     « J'ai compris » a portee sans defiler. */
+  @media (max-width: 700px) {
+    .guide-corps { flex-direction: column; align-items: center; }
+    .guide-video video { max-width: 100%; max-height: 38vh; }
+  }
   .guide-carte h2 {
     margin: 0 0 6px;
     font-family: var(--titre, inherit);
@@ -1392,8 +1418,15 @@
   <div class="guide-exercice" id="guideExercice" hidden>
     <div class="guide-carte">
       <h2 id="guideNom"></h2>
-      <p class="guide-description" id="guideDescription"></p>
-      <div id="guideBlocs"></div>
+      <!-- La video a gauche, les consignes a droite : on voit le mouvement en
+           lisant ce qu'il demande. Un mouvement sans video garde le texte seul. -->
+      <div class="guide-corps">
+        <div class="guide-video" id="guideVideo" hidden><video muted loop playsinline preload="auto"></video></div>
+        <div class="guide-texte">
+          <p class="guide-description" id="guideDescription"></p>
+          <div id="guideBlocs"></div>
+        </div>
+      </div>
       <button class="bouton" id="guideCompris" data-tuto="compris">J'ai compris</button>
       <p class="guide-astuce">Ou croise les bras devant toi — tu n'as pas à revenir à l'écran.</p>
     </div>
@@ -1444,6 +1477,8 @@
          pendant les repos, ou l'on a justement le temps de lire. -->
     <details class="card fiche-card" id="ficheCard" hidden>
       <summary class="label" id="ficheLabel">Consignes</summary>
+      <!-- La video suit la carte : repliee, elle est en pause (`hud.js`). -->
+      <div class="fiche-video" id="ficheVideo" hidden><video muted loop playsinline preload="auto"></video></div>
       <ol id="ficheInstructions"></ol>
     </details>
 
@@ -1584,6 +1619,7 @@ import {
   resultats_par_exercice,
 } from "../js/seance.js";
 import { brancher_commandes, peindre_hud } from "../js/hud.js";
+import { jouer_si_visible, montrer_video } from "../js/videos.js";
 import { INTERVALLE_MAX, ajuster_repetitions, executer_mode, duree_realisee, oublier_durees, mettre_a_jour_prochain_exercice, poser_etape, annoncer_temps_repos } from "../js/moteur.js";
 import { CompteurMouvement } from "../js/compteur.js";
 import { HoldPosition } from "../js/outils.js";
@@ -1713,6 +1749,11 @@ const $ = (id) => document.getElementById(id);
 const montrer = (id) => {
   for (const ecran of document.querySelectorAll(".ecran")) {
     ecran.classList.toggle("actif", ecran.id === id);
+  }
+  // La video d'une fiche qu'on quitte cesse de decoder. Seulement celles des
+  // fiches : la video de la camera (`veille.js`) doit, elle, continuer.
+  for (const video of document.querySelectorAll(".video-fiche video")) {
+    if (!video.closest(`#${id}`)) jouer_si_visible(video, false);
   }
 };
 
@@ -2320,6 +2361,9 @@ function ouvrir_guide_exercice(bloc) {
     liste_guide("Ce que tu dois sentir", fiche.sensations),
     liste_guide("À éviter", fiche.erreurs_frequentes),
   ].join("");
+  // Lue des qu'elle est prete ; deja chargee (meme mouvement revu), relancee.
+  montrer_video($("guideVideo"), nom, (video) => jouer_si_visible(video, true));
+  jouer_si_visible($("guideVideo").querySelector("video"), !$("guideVideo").hidden);
 
   $("guideExercice").hidden = false;
 
@@ -2372,6 +2416,7 @@ async function fermer_guide(par_geste = false) {
   guide_exercice = null;
   geste_guide = null;
   $("guideExercice").hidden = true;
+  jouer_si_visible($("guideVideo").querySelector("video"), false);
   if (historique.marquer_tuto_vu(base, PROFIL, "exercices", nom)) {
     await stockage.sauver(base);
   }
@@ -4993,6 +5038,9 @@ function dessiner_fiche(nom) {
     `<p class="kicker">${fiche.est_echauffement ? "Échauffement" : "Exercice"}</p>` +
     `<h1>${echapper(nom)}</h1>` +
     `<p class="resume">${echapper(fiche.description ?? "")}</p>` +
+    // Cache tant que la video n'a pas charge : un mouvement sans video
+    // n'affiche pas de cadre vide (`montrer_video`).
+    `<div class="video-fiche" id="videoFiche" hidden><video muted loop playsinline preload="auto"></video></div>` +
     (meta.length ? `<div class="meta">${meta.join("")}</div>` : "") +
     (etat ? bloc_niveau(etat, nom, objectif) : "") +
     (etat ? bloc_graphique(nom, statistique) : "") +
@@ -5018,6 +5066,7 @@ function dessiner_fiche(nom) {
       }
     });
   }
+  montrer_video($("videoFiche"), nom, (video) => jouer_si_visible(video, true));
   brancher_points_du_graphique(nom, histoire);
   brancher_recalages($("contenuFiche"));
   $("retourExercices").textContent =
