@@ -902,9 +902,9 @@
  },
  "variantes": {
   "retour": {
-   "Pompes sur les genoux": [3, 12],
-   "Pompes inclinées": [3, 12],
-   "Pompes contre le mur": [3, 15],
+   "Pompes sur les genoux": [3, 10],
+   "Pompes inclinées": [3, 10],
+   "Pompes contre le mur": [3, 10],
    "Gainage sur les genoux": [2, 30],
    "Squat sur chaise": [3, 12],
    "Squat": [4, 15],

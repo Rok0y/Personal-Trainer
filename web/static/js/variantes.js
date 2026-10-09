@@ -305,12 +305,24 @@ export class Variantes {
   /**
    * Ce qu'il faut proposer sous chaque ligne d'historique :
    * `{seance_id: {nom: {sens, original, vers}}}`. Plus facile sous un echec
-   * au palier 1 ou apres une bascule en seance,
-   * et seulement sur la derniere seance ou l'exercice apparait. « Plus dur »
-   * n'est plus propose : `montees` le fait d'elle-meme.
+   * au palier 1, sous un echec **au depart** (voir plus bas), ou apres une
+   * bascule en seance, et seulement sur la derniere seance ou l'exercice
+   * apparait. « Plus dur » n'est plus propose : `montees` le fait d'elle-meme.
+   *
+   * **Le depart**, c'est un mouvement jamais reussi dont aucune variante plus
+   * facile n'est reussie non plus : on y est arrive par la note, pas par une
+   * montee. Quelqu'un qui se note 6 et ne tient qu'une pompe part de 4x8 ;
+   * sans cette regle, il lui faudrait descendre jusqu'au palier 1, a coups de
+   * « trop dur », avant qu'on lui propose les genoux. Apres une **montee**, un
+   * echec fait seulement refaire la seance : proposer de redescendre aussitot
+   * renvoyait a vide celui qui venait de passer au squat charge, qui remontait
+   * a la seance suivante, et ainsi de suite. Un niveau ancre n'est pas compte
+   * (la page qui affiche les propositions ne passe pas les ancrages).
    */
   propositions(seances, jugements, variantes, catalogue) {
     variantes = normaliser(variantes);
+    const prouves = this.niveaux ? this.niveaux.niveaux_par_exercice(seances) : {};
+    const au_depart = (nom) => chaine(nom, catalogue).every((m) => !(m in prouves));
     const vues = new Set();
     const resultat = {};
     for (const seance of seances) {
@@ -321,7 +333,7 @@ export class Variantes {
         if (vues.has(nom)) continue;
         const proposition = this._proposition(
           nom, lignes, jugements[identifiant]?.[nom] ?? null,
-          variantes, catalogue,
+          variantes, catalogue, au_depart(nom),
         );
         // La derniere ligne d'une meme cle l'emporte, sans changer de place :
         // un `Map` garde l'ordre de la premiere insertion, comme un `dict`.
@@ -346,12 +358,15 @@ export class Variantes {
     return nom;
   }
 
-  _proposition(nom, lignes, jugement, variantes, catalogue) {
+  _proposition(nom, lignes, jugement, variantes, catalogue, au_depart = false) {
     if (jugement === null || jugement.reussi) return null;
     const facile = catalogue[nom]?.variante_facile ?? null;
-    if (!facile || !(jugement.base === 1 || lignes.includes(facile))) return null;
+    if (!facile || !(jugement.base === 1 || au_depart || lignes.includes(facile))) return null;
     const cle = this._racine(nom, lignes, variantes, catalogue);
-    if (variantes[cle] === facile) return null;
+    // « Jouer X a la place de X » n'est pas une proposition : `definir` y
+    // verrait une suppression et ne leverait pas. Ca n'arrive que sur un
+    // catalogue dont les chaines bouclent.
+    if (variantes[cle] === facile || cle === facile) return null;
     try {
       this.definir(variantes, cle, facile, catalogue);
     } catch {

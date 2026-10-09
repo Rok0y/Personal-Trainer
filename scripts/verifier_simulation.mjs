@@ -12,9 +12,11 @@
 // - **aucune seance ne demande un haltere que le profil n'a pas** ;
 // - une note plus haute ne fait jamais partir plus bas sur le meme mouvement ;
 // - une montee ou une descente de variante va au cran voisin de la chaine ;
-// - apres une montee vers une forme chargee, la seance suivante ne demande
-//   pas moins de volume que la derniere a vide (la repetition a vide pesant
-//   la part du corps) : on entre au palier equivalent, pas au palier 1.
+// - a la premiere montee vers une forme chargee, la seance suivante ne
+//   demande pas moins de volume que la derniere a vide (la repetition a vide
+//   pesant la part du corps) : on entre au palier equivalent, pas au palier 1.
+//   Une forme deja jouee (partie de la note, ratee, quittee) reprend son
+//   dernier objectif, comme tout exercice qui a un historique.
 //
 //     node scripts/verifier_simulation.mjs
 
@@ -77,7 +79,8 @@ function verifier_parcours(profil, etiquette, traces) {
       // Le mouvement joue a la seance suivante est celui qu'annonce l'evenement.
       const suivant = trace.points[i + 1];
       const part = p.evenement?.sens === "montée" ? neutres.equivalence_a_vide(p.evenement.depuis, p.evenement.vers) : null;
-      if (part !== null && suivant?.palier && p.palier) {
+      const premiere = !trace.points.slice(0, i + 1).some((q) => q.joue === p.evenement?.vers);
+      if (part !== null && premiere && suivant?.palier && p.palier) {
         entrees_chargees += 1;
         const avant = neutres.volume(p.palier.series, p.palier.cible, 0, part);
         const apres = neutres.volume_exercice(suivant.joue, suivant.palier.series, suivant.palier.cible, suivant.palier.poids);
