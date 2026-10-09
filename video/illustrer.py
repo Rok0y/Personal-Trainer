@@ -7,9 +7,20 @@ Ecrit `web/static/videos/<fichier>`, ou `<fichier>` est `fichier_video` du nom
 de l'exercice (`web/static/js/videos.js`, appele par node : la regle n'existe
 qu'en JS, et l'application relit la video sous ce meme nom). H.264 sans son,
 lisible par Safari, recadree sur le corps, en boucle.
-`--miroir` ecrit en plus la video retournee pour l'exercice symetrique.
+
+**Une video d'exercice se montre en miroir** : l'utilisateur se voit en miroir
+dans l'application (camera avant), et l'imite du meme cote de l'ecran. Pour un
+exercice « droit », le membre qui travaille est donc a **droite** de l'image —
+sinon il imiterait avec l'autre bras, et la detection, qui verifie le bras
+droit, ne compterait rien. La prise est supposee en vue vraie, celle que
+l'iPad enregistre par defaut (seul son apercu est en miroir) : le script la
+retourne. `--miroir` ecrit en plus la vue vraie, qui est l'exercice du cote
+oppose. Ne pas activer « Camera avant en miroir » sur l'appareil : la video
+serait retournee deux fois.
+
 Ecrit aussi `video/essais/<nom>/controle.png` (non versionne) : le detourage et
-le rendu a quelques instants, puis le raccord de la boucle.
+le rendu a quelques instants, puis le raccord de la boucle. C'est la qu'on
+verifie le sens : seul un oeil sait si la prise etait deja en miroir.
 
 Le detourage croise deux methodes qui se trompent en sens contraires :
 - RobustVideoMatting (`video/modeles/`, non versionne) detoure le corps, trous
@@ -466,8 +477,8 @@ def vignette(image, hauteur=300):
     return cv2.resize(image, (max(1, round(w * hauteur / h)), hauteur), interpolation=cv2.INTER_AREA)
 
 
-def controle(chemin, paires, raccord):
-    """Planche de controle : detourage au-dessus du rendu, puis le raccord."""
+def controle(chemin, paires, raccord, exercice):
+    """Planche de controle : le sens a verifier, detourage au-dessus du rendu, puis le raccord."""
     colonnes = [np.vstack([vignette(a), vignette(b)]) for a, b in paires]
     fin, debut = (vignette(x) for x in raccord)
     separation = np.full((fin.shape[0], 6, 3), TEXTE, np.uint8)
@@ -476,7 +487,11 @@ def controle(chemin, paires, raccord):
     raccord = np.pad(raccord, ((0, 0), (0, max(0, largeur - raccord.shape[1])), (0, 0)))
     haut = np.hstack(colonnes)
     haut = np.pad(haut, ((0, 0), (0, max(0, raccord.shape[1] - haut.shape[1])), (0, 0)))
-    cv2.imwrite(chemin, np.vstack([haut, raccord]))
+    # OpenCV n'ecrit pas les accents : le rappel est en ASCII.
+    rappel = np.full((40, haut.shape[1], 3), FOND, np.uint8)
+    cv2.putText(rappel, f"{exercice} - vue miroir : un exercice 'droit' travaille a DROITE de l'image",
+                (10, 27), cv2.FONT_HERSHEY_SIMPLEX, 0.6, TEXTE, 1, cv2.LINE_AA)
+    cv2.imwrite(chemin, np.vstack([rappel, haut, raccord]))
 
 
 # ---------------------------------------------------------------- programme
@@ -486,7 +501,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("video")
     parser.add_argument("exercice", help="le nom exact de l'exercice dans mouvements.json")
-    parser.add_argument("--miroir", help="ecrire aussi la video retournee pour cet exercice (le cote oppose)")
+    parser.add_argument("--miroir", help="ecrire aussi la vue vraie, pour cet exercice (le cote oppose)")
     parser.add_argument("--debut", type=float, default=0.0, help="ne pas commencer la boucle avant (secondes)")
     parser.add_argument("--fin", type=float, help="ne pas finir la boucle apres (secondes)")
     args = parser.parse_args()
@@ -514,7 +529,10 @@ def main():
     instants = set(np.linspace(i, j - 1, 4).astype(int))
     paires = []
     for index, image in lire(args.video, i - FONDU, j):
-        image, masque = image[lignes, colonnes], analyse.masque(index)[lignes, colonnes]
+        # En miroir des le depart : rendu, controle et raccord sont tous dans
+        # le sens que l'utilisateur verra.
+        image = cv2.flip(image[lignes, colonnes], 1)
+        masque = cv2.flip(analyse.masque(index)[lignes, colonnes], 1)
         rendu = aplats.rendre(image, masque)
         if index < i:
             amorce.append(rendu)
@@ -529,6 +547,7 @@ def main():
             paires.append((np.where(masque[..., None] > 0, image, (image * 0.25).astype(np.uint8)), rendu))
         ecrivains[0].ecrire(rendu)
         if len(ecrivains) > 1:
+            # Retournee une seconde fois : la vue vraie, qui est l'exercice oppose.
             ecrivains[1].ecrire(cv2.flip(rendu, 1))
         if index % 30 == 0:
             print(f"  rendu {index - i}/{j - i}", end="\r")
@@ -536,7 +555,7 @@ def main():
     for ecrivain in ecrivains:
         ecrivain.fermer()
 
-    controle(os.path.join(essais, "controle.png"), paires, (rendu, premiere))
+    controle(os.path.join(essais, "controle.png"), paires, (rendu, premiere), args.exercice)
     for chemin in chemins:
         print(f"Ecrit {chemin} ({os.path.getsize(chemin) // 1024} Ko, {largeur}x{hauteur})")
     print(f"Controle : {essais}/controle.png")
