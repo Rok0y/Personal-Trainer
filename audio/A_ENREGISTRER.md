@@ -166,7 +166,6 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 | `souleve_de_terre_roumain.wav` | « Souleve de terre roumain » | deja fait |
 | `squat.wav` | « Squat » | deja fait |
 | `squat_charge.wav` | « Squat chargé » | **a enregistrer** |
-| `squat_sur_chaise.wav` | « Squat sur chaise » | deja fait |
 
 ## Noms des echauffements
 

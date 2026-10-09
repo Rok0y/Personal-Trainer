@@ -127,7 +127,7 @@
  },
  "Squat": {
   "nom": "Squat",
-  "variante_facile": "Squat sur chaise",
+  "variante_facile": null,
   "variante_difficile": "Squat chargé",
   "orientation": "face",
   "changements": [],
@@ -372,19 +372,6 @@
   "materiel": "Un tapis",
   "est_echauffement": false
  },
- "Squat sur chaise": {
-  "nom": "Squat sur chaise",
-  "variante_facile": null,
-  "variante_difficile": "Squat",
-  "orientation": "face",
-  "changements": [],
-  "analyse_la_pose": true,
-  "detection": "squat_sur_chaise_detection",
-  "erreurs": [],
-  "amplitude": null,
-  "materiel": "Une chaise",
-  "est_echauffement": false
- },
  "Rotation du cou": {
   "nom": "Rotation du cou",
   "variante_facile": null,
@@ -402,7 +389,7 @@
   "nom": "Rotation des épaules",
   "variante_facile": null,
   "variante_difficile": null,
-  "orientation": "profil",
+  "orientation": null,
   "changements": [
    [
     0.5,
@@ -420,7 +407,7 @@
   "nom": "Rotation des coudes",
   "variante_facile": null,
   "variante_difficile": null,
-  "orientation": null,
+  "orientation": "profil",
   "changements": [
    [
     0.5,

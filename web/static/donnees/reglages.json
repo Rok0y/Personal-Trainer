@@ -162,16 +162,6 @@
    "poids_max": null,
    "charge_corps": 15
   },
-  "Squat sur chaise": {
-   "series": 3,
-   "cible_min": 3,
-   "cible_max": 15,
-   "pas": 1,
-   "unite": "repetitions",
-   "series_max": 6,
-   "poids_min": null,
-   "poids_max": null
-  },
   "Fente droite": {
    "series": 4,
    "cible_min": 3,
@@ -829,26 +819,6 @@
     4800,
     5400,
     6000
-   ],
-   "Squat sur chaise": [
-    9,
-    15,
-    21,
-    27,
-    33,
-    39,
-    45,
-    52,
-    60,
-    70,
-    78,
-    90,
-    96,
-    108,
-    120,
-    132,
-    144,
-    156
    ]
   }
  },
@@ -906,7 +876,6 @@
    "Pompes inclinées": [3, 10],
    "Pompes contre le mur": [3, 10],
    "Gainage sur les genoux": [2, 30],
-   "Squat sur chaise": [3, 12],
    "Squat": [4, 15],
    "Fente droite": [4, 10],
    "Fente gauche": [4, 10]

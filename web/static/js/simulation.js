@@ -65,7 +65,6 @@ export const HYPOTHESES = {
     "Pompes inclinées": 0.45,
     "Pompes sur les genoux": 0.5,
     Pompes: 0.65,
-    "Squat sur chaise": 0.55,
     Squat: 0.7,
     "Squat chargé": 0.7,
     "Fente droite": 0.8,

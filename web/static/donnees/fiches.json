@@ -216,7 +216,7 @@
     ],
     "sensations": [
       "Le devant des cuisses et les fesses chauffent.",
-      "Une douleur dans le genou n'est pas normale : descends moins bas, ou passe au squat sur chaise."
+      "Une douleur dans le genou n'est pas normale : descends moins bas."
     ]
   },
   "Squat chargé": {
@@ -569,28 +569,6 @@
     "sensations": [
       "Le ventre travaille, il peut trembler un peu.",
       "Quand tu tiens tout le temps demandé sans peine, passe à la planche complète."
-    ]
-  },
-  "Squat sur chaise": {
-    "description": "S'asseoir sur une chaise puis se relever, sans les mains : la version la plus simple du squat.",
-    "mise_en_place": [
-      "Une chaise derrière toi, debout, pieds écartés de la largeur des hanches.",
-      "Tends les bras devant toi pour garder l'équilibre.",
-      "Place-toi face à la caméra : on doit voir tes jambes en entier."
-    ],
-    "instructions": [
-      "Recule les fesses et descends comme pour t'asseoir.",
-      "Effleure la chaise sans t'y poser, ou assieds-toi si c'est trop dur.",
-      "Relève-toi en poussant dans tes talons."
-    ],
-    "erreurs_frequentes": [
-      "Les genoux qui se rapprochent l'un de l'autre : pousse-les vers l'extérieur.",
-      "Le dos qui s'arrondit : regarde devant toi, poitrine ouverte.",
-      "Se laisser tomber sur la chaise : descends doucement."
-    ],
-    "sensations": [
-      "Le devant des cuisses et les fesses travaillent.",
-      "Si tu te relèves sans élan à chaque fois, passe au squat sans chaise."
     ]
   },
   "Rotation du cou": {

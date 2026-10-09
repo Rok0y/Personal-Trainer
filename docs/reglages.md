@@ -90,7 +90,7 @@ supprime jamais. Sinon, tous les niveaux au-dessus se décaleraient et l'histori
 interprété changerait de sens.
 
 Réglages par famille de mouvement, qui expliquent les écarts entre exercices :
-- **poids du corps** (pompes, squat sur chaise, crunches) : sans axe de charge, la fourchette
+- **poids du corps** (pompes, squat, crunches) : sans axe de charge, la fourchette
   de répétitions est allongée, sinon le barème est épuisé en une poignée de paliers ;
 - **variantes assistées** (pompes inclinées, sur les genoux, contre le mur) : départ plus bas
   *en effort*. Elles existent pour que quelqu'un qui ne fait pas une pompe ait quand même une
@@ -179,8 +179,7 @@ Pour la **tête** de chaque chaîne de variantes (le mouvement complet, celui qu
 - On part du plus dur que la note atteint ; sans note, du premier de la table.
 - Ne s'applique qu'à une famille **jamais jouée** : ensuite, ce sont les montées et les
   descentes qui décident.
-- Un mouvement absent de la table n'est jamais un départ (le squat sur chaise ne s'atteint que
-  par un échec).
+- Un mouvement absent de la table n'est jamais un départ : il ne s'atteint que par un échec.
 - La note choisit le mouvement, puis le palier dans ce mouvement (par ses bornes de ligue,
   comme pour tout exercice jamais fait) : régler les deux ensemble, sur
   `dev/progression.html`, qui montre la courbe de départ note par note et matériel par
