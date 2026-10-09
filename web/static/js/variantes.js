@@ -257,10 +257,17 @@ export class Variantes {
    * la seance et jamais sur le record — sinon un retour en
    * arriere remonterait tout seul a la seance suivante.
    */
-  retour_prouve_par(ligne) {
+  retour_prouve_par(ligne, catalogue = {}) {
     const seuil = this.seuils_retour[ligne.nom];
     if (!seuil) return false;
-    const requis = this.baremes.niveau_pour(ligne.nom, 0, seuil[0], seuil[1]);
+    // Vers une forme chargee, le seuil se lit « avec le premier haltere du
+    // profil », traduit a vide par la part du corps (`Baremes`) : il depend
+    // donc du materiel. Entre variantes sans charge, il se lit tel quel.
+    const dur = catalogue[ligne.nom]?.variante_difficile ?? null;
+    const a_vide = dur ? this.baremes.volume_a_vide_pour_charger?.(ligne.nom, dur, seuil[0], seuil[1]) ?? null : null;
+    const requis = a_vide !== null
+      ? this.baremes.niveau_pour_volume(ligne.nom, a_vide)
+      : this.baremes.niveau_pour(ligne.nom, 0, seuil[0], seuil[1]);
     const prouve = this.niveaux.niveau_prouve_par(ligne);
     return requis !== null && requis !== undefined && prouve !== null && prouve >= requis;
   }
@@ -283,7 +290,7 @@ export class Variantes {
       // On ne monte pas vers ce que le materiel ne permet pas : la montee
       // serait aussitot defaite par `substitution`, et l'ecran l'aurait
       // annoncee pour rien.
-      if (!dur || !this._chargeable(dur) || !this.retour_prouve_par(ligne)) continue;
+      if (!dur || !this._chargeable(dur) || !this.retour_prouve_par(ligne, catalogue)) continue;
       try {
         table = this.definir(table, cle, dur, catalogue);
       } catch {

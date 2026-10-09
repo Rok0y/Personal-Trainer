@@ -49,6 +49,25 @@ export class Objectifs {
   }
 
   /**
+   * Le premier palier d'un exercice jamais fait **atteint en montant** d'une
+   * variante plus facile, ou null s'il ne vient d'aucune.
+   *
+   * Vers une forme chargee (le squat charge apres le squat a vide), le palier
+   * de **meme volume** que le niveau acquis a vide (`palier_d_entree`) : y
+   * entrer par le palier 1, 4x3 a 5 kg apres 4x15 a vide, ferait reculer de
+   * plusieurs seances. Entre variantes sans charge (les pompes), le palier 1 :
+   * il n'y a pas de traduction entre elles, et le mouvement complet est assez
+   * plus dur pour que son bas de bareme soit deja un effort.
+   */
+  _entree_par_une_variante(nom, etats) {
+    const facile = this.catalogue_variantes[nom]?.variante_facile ?? null;
+    const acquis = facile ? etats[facile]?.actuel ?? null : null;
+    const equivalent = acquis ? this.baremes.palier_d_entree?.(facile, acquis, nom) ?? null : null;
+    if (equivalent) return equivalent;
+    return this._monte_d_une_variante(nom, etats) ? this.baremes.palier(nom, 1) : null;
+  }
+
+  /**
    * Palier a viser pour chaque exercice suivi.
    *
    * Trois regles, dans cet ordre.
@@ -57,7 +76,8 @@ export class Objectifs {
    *    moins ce que la reussite et le ressenti lui valent.
    * 2. **Un exercice jamais fait** — aucun repere, aucun niveau prouve — part
    *    du palier de la note d'athlete effective, sauf s'il vient d'une
-   *    variante plus facile qui a deja un niveau : il part alors du palier 1.
+   *    variante plus facile qui a deja un niveau : il part alors de l'entree
+   *    depuis cette variante (`_entree_par_une_variante`).
    * 3. A defaut, `suivant` : le premier palier non valide, et si le bareme est
    *    epuise, le dernier palier atteint plutot que rien.
    *
@@ -80,11 +100,11 @@ export class Objectifs {
       const repere = reperes[nom];
       const vise = repere ? this.baremes.palier(nom, repere.vise) : null;
       if (vise === null && etat.niveau === null) {
-        // Venu d'une variante plus facile deja maitrisee : le bas du bareme,
-        // et non le depart de la note, pose pour le mouvement complet.
-        objectifs[nom] = this._monte_d_une_variante(nom, etats)
-          ? this.baremes.palier(nom, 1)
-          : this.baremes.palier(nom, this.calibration.niveau_de_depart(nom, depart));
+        // Venu d'une variante plus facile deja maitrisee : l'entree depuis
+        // cette variante, et non le depart de la note, pose pour le mouvement
+        // complet.
+        objectifs[nom] = this._entree_par_une_variante(nom, etats)
+          ?? this.baremes.palier(nom, this.calibration.niveau_de_depart(nom, depart));
         continue;
       }
       let objectif = vise ?? etat.suivant ?? etat.actuel;

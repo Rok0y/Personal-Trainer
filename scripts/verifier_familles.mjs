@@ -85,19 +85,40 @@ for (const [nom, materiel, attendu] of [
   egal("materiel : le choix reste offert avec une paire",
     variantes_pour(PAIRE).versions("Charge", "repetitions", CATALOGUE), ["Charge", "Vide", "Chaise"]);
 
-  // La montee vers la forme chargee : refusee sans de quoi charger.
-  const seance = {
+  // La montee vers la forme chargee. Le seuil (3x12) se lit « avec le
+  // premier haltere » : a vide, il demande 3x12 x (5 + 15) / 15 = 48, soit
+  // 3x16, avec des 5 kg ; 3x12 x 25 / 15 = 60, soit 3x20, avec des 10 kg.
+  const seance = (repetitions) => ({
     statut: "finished",
     exercices: [{
-      nom: "Vide", mode: "repetitions", poids: 0, series_cibles: 3, repetitions_cibles: 12,
-      series_detaillees: [1, 2, 3].map((serie) => ({ serie, repetitions: 12, poids: 0, completee: true })),
+      nom: "Vide", mode: "repetitions", poids: 0, series_cibles: 3, repetitions_cibles: repetitions,
+      series_detaillees: [1, 2, 3].map((serie) => ({ serie, repetitions, poids: 0, completee: true })),
     }],
-  };
+  });
+  const MONTEE = [{ original: "Charge", depuis: "Vide", vers: "Charge" }];
+  const LOURDS = { halteres: { 10: 2 }, accessoires: [] };
   egal("montee : pas vers ce que le materiel ne permet pas",
-    variantes_pour(AUCUN).montees({ Charge: "Vide" }, seance, CATALOGUE)[1], []);
-  egal("montee : faite avec une paire",
-    variantes_pour(PAIRE).montees({ Charge: "Vide" }, seance, CATALOGUE)[1],
-    [{ original: "Charge", depuis: "Vide", vers: "Charge" }]);
+    variantes_pour(AUCUN).montees({ Charge: "Vide" }, seance(30), CATALOGUE)[1], []);
+  egal("montee, paire de 5 kg : 3x12 a vide ne suffit plus",
+    variantes_pour(PAIRE).montees({ Charge: "Vide" }, seance(12), CATALOGUE)[1], []);
+  egal("montee, paire de 5 kg : 3x16 a vide suffit",
+    variantes_pour(PAIRE).montees({ Charge: "Vide" }, seance(16), CATALOGUE)[1], MONTEE);
+  egal("montee, paire de 10 kg : 3x16 a vide ne suffit pas",
+    variantes_pour(LOURDS).montees({ Charge: "Vide" }, seance(16), CATALOGUE)[1], []);
+  egal("montee, paire de 10 kg : 3x20 a vide suffit",
+    variantes_pour(LOURDS).montees({ Charge: "Vide" }, seance(20), CATALOGUE)[1], MONTEE);
+  egal("montee entre variantes sans charge : le seuil se lit tel quel",
+    variantes_pour(PAIRE).montees({ Pompe: "Mur" }, { ...seance(12), exercices: [{ ...seance(12).exercices[0], nom: "Mur" }] }, CATALOGUE)[1],
+    [{ original: "Pompe", depuis: "Mur", vers: "Pompe" }]);
+
+  // Le palier d'entree : meme volume, la repetition a vide pesant 15.
+  const resume = (p) => (p ? `${p.series}x${p.cible}@${p.poids}` : null);
+  const entree = (materiel, cible) =>
+    resume(new Baremes(tables, materiel).palier_d_entree("Vide", { series: 3, cible, poids: 0 }, "Charge"));
+  egal("entree, paire de 5 kg, depuis 3x16 a vide : 3x12 a 5 kg", entree(PAIRE, 16), "3x12@5");
+  egal("entree, paire de 10 kg, depuis 3x20 a vide : 3x12 a 10 kg", entree(LOURDS, 20), "3x12@10");
+  egal("entree : rien entre variantes sans charge",
+    new Baremes(tables, PAIRE).palier_d_entree("Mur", { series: 3, cible: 12, poids: 0 }, "Pompe"), null);
 }
 
 // --- Le mouvement de depart selon la note

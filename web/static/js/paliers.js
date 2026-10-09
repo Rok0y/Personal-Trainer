@@ -217,6 +217,57 @@ export class Baremes {
   }
 
   /**
+   * La part du corps qui relie un mouvement a vide a sa forme chargee, ou
+   * null si `vide` et `charge` ne sont pas ce couple-la.
+   *
+   * C'est le `charge_corps` de la forme chargee : dans son bareme, une
+   * repetition pese `poids + charge_corps`, donc une repetition a vide y pese
+   * `charge_corps`. Ce seul nombre traduit une performance a vide en volume
+   * charge, et rien d'autre ne le fait : les pompes et leurs variantes n'ont
+   * pas de charge, il n'y a rien a traduire entre elles.
+   *
+   * Un bareme qui commence au poids du corps (`charge_facultative`) n'est pas
+   * une forme chargee : il contient deja la forme a vide.
+   */
+  equivalence_a_vide(vide, charge) {
+    const spec = this.specs[charge];
+    if (!spec?.charge_corps || this.charge_facultative(charge)) return null;
+    if (this.nombre_halteres(charge) <= 0 || this.nombre_halteres(vide) > 0) return null;
+    if (!this.specs[vide] || this.unite(vide) !== this.unite(charge)) return null;
+    return spec.charge_corps;
+  }
+
+  /**
+   * Le volume, **sur le bareme a vide**, qu'il faut tenir pour passer a la
+   * forme chargee, ou null hors d'un couple a vide / charge.
+   *
+   * `series` x `cible` est ce qu'on doit pouvoir tenir **avec le premier
+   * haltere que le profil possede** : traduit a vide par la part du corps, il
+   * demande d'autant plus de repetitions a vide que ce premier haltere est
+   * lourd. Avec des 10 kg, on reste plus longtemps a vide qu'avec des 5 kg, et
+   * l'entree dans la forme chargee ne fait jamais perdre de repetitions.
+   */
+  volume_a_vide_pour_charger(vide, charge, series, cible) {
+    const part = this.equivalence_a_vide(vide, charge);
+    const premier = part === null ? null : this.palier(charge, 1);
+    if (!premier) return null;
+    return (series * cible * (premier.poids + part)) / part;
+  }
+
+  /**
+   * Le palier par lequel on entre dans la forme chargee apres avoir tenu
+   * `palier_vide` a vide : le premier qui atteint le meme volume, la
+   * repetition a vide pesant la part du corps. null hors d'un couple a vide /
+   * charge — l'appelant retombe alors sur le palier 1.
+   */
+  palier_d_entree(vide, palier_vide, charge) {
+    const part = this.equivalence_a_vide(vide, charge);
+    if (part === null || !palier_vide) return null;
+    const niveau = this.niveau_pour_volume(charge, this.volume(palier_vide.series, palier_vide.cible, 0, part));
+    return niveau ? this.palier(charge, niveau) : null;
+  }
+
+  /**
    * Echelle du materiel restreinte a la fourchette utile de l'exercice.
    *
    * **C'est ici que vit le garde « le bareme reste calculable pour tout le

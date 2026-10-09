@@ -63,6 +63,10 @@ reste la charge principale (squat chargé, fentes chargées), en kg « par halt�
   d'haltère se jouerait à la cible maximale et les répétitions ne bougeraient plus.
 - C'est lui qui fait qu'un cran d'haltère ne coûte que quelques répétitions : sans lui, passer
   de 5 à 6 kg ferait perdre un cinquième des répétitions, comme sur un curl.
+- C'est aussi lui qui traduit une performance à vide en volume chargé, pour le seuil de passage
+  à la forme chargée et pour le palier d'entrée (voir *Le retour des variantes*). Le monter rend
+  l'haltère moins coûteux par rapport au corps : le passage à la charge se fait plus tôt et
+  entre avec plus de répétitions.
 - Le toucher rebat tout le barème de l'exercice et change l'échelle de ses volumes. Ses bornes
   de ligue, en volume absolu, sont à recaler avec.
 
@@ -157,10 +161,14 @@ le même effort aux pompes et au curl. Un départ trop dur se juge sur cette lig
 Pour chaque variante assistée, la **performance** (séries, cible) qu'une séance menée à son
 terme doit prouver pour monter d'un cran vers le mouvement complet. C'est une performance,
 jamais un numéro de niveau : le barème la traduit.
-- Le squat et les fentes à vide montent vers leur forme chargée à 4x15 et 4x10 : c'est
-  l'endroit où l'ancien barème unique passait aux haltères. Valeur d'attente — ce seuil doit
-  dépendre du premier haltère que le profil possède (avec des 10 kg, rester plus longtemps à
-  vide).
+- **Vers une forme chargée** (squat, fentes), le seuil dit ce qu'on doit pouvoir tenir **avec
+  le premier haltère du profil** : `"Squat": [4, 15]` veut dire « l'équivalent de 4x15 avec ton
+  plus petit haltère utilisable ». Traduit à vide par `charge_corps`, il demande 4x15 x (5 + 15)
+  / 15 = 80 répétitions à vide au total avec des 5 kg, 100 avec des 10 kg : on reste plus longtemps à
+  vide quand le premier haltère est lourd.
+- On y entre au palier de **même volume** que le niveau acquis à vide (même traduction), jamais
+  au palier 1 : 4x3 à 5 kg après 4x15 à vide reculait de plusieurs séances. Entre variantes sans
+  charge (pompes, gainage), on entre au palier 1.
 - On ne monte jamais vers une forme que le matériel ne permet pas de charger.
 
 ## Le départ des variantes (`variantes.depart`)

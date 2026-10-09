@@ -11,7 +11,10 @@
 // - un niveau ne recule jamais ;
 // - **aucune seance ne demande un haltere que le profil n'a pas** ;
 // - une note plus haute ne fait jamais partir plus bas sur le meme mouvement ;
-// - une montee ou une descente de variante va au cran voisin de la chaine.
+// - une montee ou une descente de variante va au cran voisin de la chaine ;
+// - apres une montee vers une forme chargee, la seance suivante ne demande
+//   pas moins de volume que la derniere a vide (la repetition a vide pesant
+//   la part du corps) : on entre au palier equivalent, pas au palier 1.
 //
 //     node scripts/verifier_simulation.mjs
 
@@ -37,6 +40,7 @@ const SEANCES = 20;
 
 const problemes = [];
 let controles = 0;
+let entrees_chargees = 0;
 function verifier(nom, condition, detail = "") {
   controles += 1;
   if (!condition) problemes.push(detail ? `${nom}\n      ${detail}` : nom);
@@ -72,6 +76,14 @@ function verifier_parcours(profil, etiquette, traces) {
       }
       // Le mouvement joue a la seance suivante est celui qu'annonce l'evenement.
       const suivant = trace.points[i + 1];
+      const part = p.evenement?.sens === "montée" ? neutres.equivalence_a_vide(p.evenement.depuis, p.evenement.vers) : null;
+      if (part !== null && suivant?.palier && p.palier) {
+        entrees_chargees += 1;
+        const avant = neutres.volume(p.palier.series, p.palier.cible, 0, part);
+        const apres = neutres.volume_exercice(suivant.joue, suivant.palier.series, suivant.palier.cible, suivant.palier.poids);
+        verifier(`${ou} : on entre dans la forme chargee au palier equivalent`, apres >= avant,
+          `seance ${suivant.n} : ${suivant.palier.series}x${suivant.palier.cible} a ${suivant.palier.poids} kg (volume ${apres}) apres ${p.palier.series}x${p.palier.cible} a vide (${avant})`);
+      }
       if (p.evenement && suivant) {
         verifier(`${ou} : la variante choisie est jouee a la seance suivante`, suivant.joue === p.evenement.vers,
           `seance ${suivant.n} : ${suivant.joue} au lieu de ${p.evenement.vers}`);
@@ -138,6 +150,9 @@ for (const profil of PROFILS) {
   verifier("inventaire : morceau illisible signale", JSON.stringify(illisibles) === '["dix"]', JSON.stringify(illisibles));
   verifier("inventaire : saisie vide = rien", sim.inventaire_depuis_texte("  ", tables).materiel === null);
 }
+
+// Une regle qu'aucun parcours ne visite ne prouve rien.
+verifier("au moins un parcours monte vers une forme chargee", entrees_chargees > 0, `${entrees_chargees} entrees`);
 
 if (problemes.length) {
   console.log(`${problemes.length} ecarts sur ${controles} controles :\n`);
