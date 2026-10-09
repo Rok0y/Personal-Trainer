@@ -40,18 +40,18 @@ barème rétablit un repère valide.
 **`poids_min`** : un curl ne commence pas à 2 kg pour quelqu'un qui en a fait. Mais le
 descendre est justement ce qui ouvre le barème aux débutants.
 
-**`poids_min` à `0` ne veut pas dire « très bas », il veut dire « la charge est
-facultative ».**
-- L'échelle ajoute alors un cran sans charge *devant* les haltères (`charge_facultative`), et
-  le mouvement cesse d'exiger de la fonte.
-- C'est réservé à ce qui garde un sens à vide : un curl ou un développé, non.
-- **Plus aucun barème ne s'en sert** : le squat et les fentes, qui allaient du poids du corps
-  aux haltères dans un seul barème, sont désormais deux mouvements chacun (« Squat » à vide,
-  « Squat chargé »), reliés par les variantes. Un seul barème ne savait pas comparer
-  « 4x15 à vide » et « 4x13 à 2 kg » (voir `premiere_charge`) : c'étaient deux mesures.
 - Penser aussi à la **première borne de ligue** de l'exercice. Elle vaut souvent le volume de
   l'ancien palier 1 : laissée en place, elle prive de ligue précisément le débutant qu'on vient
   d'ouvrir.
+
+**Un barème ne mélange jamais le poids du corps et les haltères.** Le squat et les fentes allaient
+autrefois de l'un aux autres dans un seul barème (`poids_min` à 0, plus un `premiere_charge`
+pour sauter les haltères trop légers) ; ce sont désormais deux mouvements chacun (« Squat » à
+vide, « Squat chargé »), reliés par les variantes. Un seul barème ne savait pas comparer
+« 4x15 à vide » et « 4x13 à 2 kg » : c'étaient deux mesures.
+- Le `poids_min` d'une forme chargée (5 kg) garde la leçon de l'ancien barème : un squat à 2 ou
+  3 kg par main ne se distingue pas du poids du corps — testé, 4x13 à 2 kg était *plus facile*
+  que 4x15 sans rien. En dessous, on reste sur la forme à vide.
 
 **`charge_corps`** : ce que pèse le corps dans le volume d'un mouvement chargé où le corps
 reste la charge principale (squat chargé, fentes chargées), en kg « par haltère ».
@@ -69,14 +69,6 @@ reste la charge principale (squat chargé, fentes chargées), en kg « par halt�
   entre avec plus de répétitions.
 - Le toucher rebat tout le barème de l'exercice et change l'échelle de ses volumes. Ses bornes
   de ligue, en volume absolu, sont à recaler avec.
-
-**`premiere_charge`** : le premier haltère qui vaut un cran, sur un mouvement à charge
-facultative. Depuis la séparation, c'est le `poids_min` de la forme chargée (5 kg) qui le dit.
-- Un squat à 2 ou 3 kg par main ne se distingue pas du poids du corps : testé, 4x13 à 2 kg
-  était *plus facile* que 4x15 sans rien.
-- L'échelle va donc du poids du corps directement à `premiere_charge`.
-- Il se règle avec `charge_corps`, qui décide combien de répétitions coûte l'entrée au premier
-  haltère.
 
 **`poids_max`** : le plafond de charge n'est pas celui du matériel. Sans lui, le barème
 proposait un curl unilatéral à 18 kg, et une exigence de programme s'y calait.

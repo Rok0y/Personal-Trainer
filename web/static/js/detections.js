@@ -698,7 +698,7 @@ function descente_hanche(hanche, genou, cheville) {
 // Le squat sur chaise a quitte le catalogue : plus aucun mouvement ne nomme
 // cette detection. Elle reste pour les entrees figees des tests
 // (`tests/fixtures/donnees/`), qui le contiennent encore et dont les reponses
-// ont ete verifiees avec elle — comme `charge_facultative`.
+// ont ete verifiees avec elle.
 export function squat_sur_chaise_detection(corps) {
   // Profondeur lue sur la descente de la hanche, et non sur un angle. Deux
   // reperes ont ete essayes avant celui-ci, et chacun supposait un point de
