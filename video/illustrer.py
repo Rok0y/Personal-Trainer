@@ -521,7 +521,11 @@ def main():
 
     hauteur, largeur = lignes.stop - lignes.start, colonnes.stop - colonnes.start
     chemins = [os.path.join(DESTINATION, f) for f in fichiers]
-    ecrivains = [Ecrivain(c, analyse.fps, largeur, hauteur) for c in chemins]
+    # Rendues a cote des essais, deplacees a la fin : une prise interrompue ne
+    # laisse aucune video tronquee dans DESTINATION, ou `illustrer_tout.mjs`
+    # la croirait a jour (plus recente que sa prise).
+    en_cours = [os.path.join(essais, f) for f in fichiers]
+    ecrivains = [Ecrivain(c, analyse.fps, largeur, hauteur) for c in en_cours]
 
     # Les FONDU images avant i sont rendues d'abord : les dernieres images de
     # la boucle s'y fondent, si bien que la fin rejoint en douceur l'image i.
@@ -554,6 +558,8 @@ def main():
     print()
     for ecrivain in ecrivains:
         ecrivain.fermer()
+    for source, chemin in zip(en_cours, chemins):
+        os.replace(source, chemin)
 
     controle(os.path.join(essais, "controle.png"), paires, (rendu, premiere), args.exercice)
     for chemin in chemins:
