@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fiches d'exercice — relecture</title>
-<meta name="description" content="Relire et corriger le texte des fiches d'exercice, à côté de ce que le coach dira et de ce que la détection vérifie, puis copier fiches.json.">
+<meta name="description" content="Relire et corriger le texte des fiches d'exercice, à côté de ce que le coach dira et de ce que la détection vérifie, puis copier fiches.json. Rédiger aussi la commande des fautes de forme à détecter.">
 <!-- Detecte qu'un deploiement est arrive et va le chercher (voir baremes.html). -->
 <script type="module" src="../js/version.js"></script>
 <!--
@@ -34,6 +34,18 @@
 
     Les avertissements (jargon, phrase longue, accord genre) sont une **aide a
     la relecture**, jamais une regle : ils signalent, ils ne bloquent rien.
+
+    **La commande de fautes de forme.** Sous chaque fiche, on decrit les fautes
+    a detecter — nouvelles, ou existantes a modifier ou supprimer — avec la
+    phrase du bandeau rouge et la phrase courte que le coach dira. Rien de tout
+    cela n'est une donnee de l'application : la page rend un **texte a envoyer**
+    dans la conversation, et une faute developpee part dans ses seules maisons
+    (`detections.js`, `messages.js`, `sons.json`). Son brouillon (`dev.fautes`)
+    n'est **jamais jete au deploiement**, contrairement a celui des fiches : une
+    commande s'ecrit sur plusieurs soirees, pendant que d'autres fichiers se
+    deploient. Les extremites d'un mouvement compte sont nommees par ses jetons
+    (`debut`, `fin`) et decrites par les zones de son instrument : ce sont des
+    moments du comptage, pas des postures (le `debut` d'un squat est en bas).
 
     Publique, simplement non listee, comme `baremes.html`.
 -->
@@ -83,7 +95,7 @@
     .pastille { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--muted); }
     .pastille.relu { background: var(--teal); }
     .pastille.modifie { background: var(--orange); }
-    .liste .alertes { margin-left: auto; color: var(--orange); font-size: 11px; font-weight: 700; }
+    .liste .alertes { color: var(--orange); font-size: 11px; font-weight: 700; }
 
     .travail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
     @media (max-width: 1100px) { .travail { grid-template-columns: 1fr; } }
@@ -109,10 +121,36 @@
     .encart-video.manquante { border-color: var(--orange); }
     .encart-video p { margin: 4px 0; }
     .encart-video pre { margin: 6px 0 0; white-space: pre-wrap; word-break: break-all; }
-    .liste .sans-video { margin-left: auto; color: var(--muted); font-size: 10px; white-space: nowrap; }
-    .liste .sans-video + .alertes { margin-left: 6px; }
+    .liste .sans-video { color: var(--muted); font-size: 10px; white-space: nowrap; }
 
-    #json { min-height: 220px; font: 400 12px ui-monospace, monospace; white-space: pre; }
+    #json, #texteCommande { min-height: 220px; font: 400 12px ui-monospace, monospace; white-space: pre; }
+
+    /* Les marques d'une ligne, poussees ensemble a droite. */
+    .liste .badges { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+    .liste .badges > * { margin-left: 0; }
+    .liste .en-commande { color: var(--teal); font-size: 10px; font-weight: 700; white-space: nowrap; }
+    .machine .faute { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 2px 0; }
+    .machine .faute small { color: var(--muted); }
+    .petit {
+        background: none; color: var(--text); border: 1px solid var(--border-strong); border-radius: 999px;
+        padding: 3px 10px; font: 600 11px 'Space Grotesk', sans-serif; cursor: pointer;
+    }
+    .commande { margin-top: 26px; border-top: 1px solid var(--border-strong); padding-top: 6px; }
+    .commande h2 { font: 400 23px 'Bebas Neue', sans-serif; margin: 10px 0 4px; }
+    .entree { background: var(--glass); border: 1px solid var(--border-strong); border-radius: 12px; padding: 10px 14px 12px; margin: 10px 0; }
+    .entree .tete { display: flex; align-items: center; gap: 10px; }
+    .entree .tete strong { flex: 1; }
+    .entree label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin: 10px 0 4px; }
+    .entree label small { text-transform: none; letter-spacing: 0; }
+    .entree fieldset { border: 0; padding: 0; margin: 8px 0 0; }
+    .entree fieldset legend { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 0; margin-bottom: 4px; }
+    .entree .choix { display: flex; gap: 8px; align-items: baseline; margin: 3px 0; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--text); cursor: pointer; }
+    .entree .choix small { color: var(--muted); }
+    .entree .alertes-entree { margin: 8px 0 0; padding-left: 18px; color: var(--orange); font-size: 12px; line-height: 1.5; }
+    .entree .alertes-entree:empty { display: none; }
+    .commande details { margin: 8px 0; }
+    .commande details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+    .commande details ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.6; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -140,7 +178,10 @@
                 <button class="bouton secondaire" id="annulerFiche">Annuler mes changements sur cette fiche</button>
             </div>
             <div class="travail">
-                <div class="editeur" id="editeur"></div>
+                <div>
+                    <div class="editeur" id="editeur"></div>
+                    <section class="commande" id="commande" aria-label="Commande de fautes de forme"></section>
+                </div>
                 <div>
                     <div class="machine encart-video" id="encartVideo"></div>
                     <div class="machine alertes-fiche" id="alertes" hidden></div>
@@ -157,6 +198,19 @@
         </section>
     </div>
 
+    <h2 class="titre">La commande de fautes à m'envoyer</h2>
+    <p class="hint">
+        Toutes les fautes que tu as décrites, rangées par mouvement. Copie ce texte
+        et colle-le dans la conversation. Il reste ici, d'une soirée à l'autre, même
+        après un déploiement : vide-le une fois envoyé.
+    </p>
+    <div class="barre">
+        <button class="bouton" id="copierCommande">Copier la commande</button>
+        <button class="bouton secondaire" id="viderCommande">Vider la commande</button>
+        <span class="etat" id="copieCommande"></span>
+    </div>
+    <textarea id="texteCommande" spellcheck="false" readonly placeholder="Aucune faute décrite pour l'instant."></textarea>
+
     <h2 class="titre">Le fichier à coller</h2>
     <p class="hint">
         Contenu exact de <code>web/static/donnees/fiches.json</code>. Sur l'iPad : copie,
@@ -171,10 +225,25 @@
 
 <script type="module">
 import { INSTRUMENTS, formater_zone } from "../js/instruments.js";
+import { MESSAGES } from "../js/messages.js";
 import { adresse_video, fichier_video, jouer_si_visible, montrer_video } from "../js/videos.js";
 
 const $ = (id) => document.getElementById(id);
 const CLE_BROUILLON = "dev.fiches";
+//: La commande de fautes a sa propre cle : voir l'en-tete, elle survit aux
+//: deploiements.
+const CLE_COMMANDE = "dev.fautes";
+
+//: Les trois genres de faute. Seul le premier a un sens pour un mouvement
+//: qui n'a pas d'aller-retour compte (maintien, echauffement).
+const GENRES = [
+  ["position", "Position", "une forme fautive à un moment du mouvement"],
+  ["incomplet", "Mouvement incomplet", "la répétition ne compte pas : on revient sans avoir atteint l'autre extrémité"],
+  ["amplitude", "Amplitude insuffisante", "la répétition compte, mais elle n'est pas allée assez loin"],
+];
+
+//: Une correction se dit pendant l'effort, a trois metres de l'ecran.
+const MOTS_MAX_VOIX = 8;
 
 //: Les champs d'une fiche, dans l'ordre ou on les lit — ceux que verifie
 //: `scripts/verifier_donnees.mjs`. Une liste s'edite une ligne par consigne.
@@ -222,6 +291,8 @@ const brouillon = lire_brouillon();
 let fiches = brouillon?.fiches ?? structuredClone(deployees);
 let statuts = brouillon?.statuts ?? {};
 let courant = Object.keys(fiches)[0];
+//: `{ mouvement: [entree, ...] }` — voir `nouvelle_entree`.
+let commande = lire_commande();
 
 /**
  * Le brouillon, **s'il porte encore sur les fiches deployees** : un
@@ -247,6 +318,24 @@ function ecrire_brouillon() {
       base: JSON.stringify(deployees), fiches, statuts,
     }));
   } catch { /* tant pis : un brouillon perdu ne coute qu'une ressaisie */ }
+}
+
+/** La commande enregistree, quel que soit le fichier deploye depuis. */
+function lire_commande() {
+  try {
+    const enregistree = JSON.parse(localStorage.getItem(CLE_COMMANDE) ?? "null");
+    const fautes = enregistree?.commande;
+    return fautes && typeof fautes === "object" && !Array.isArray(fautes) ? fautes : {};
+  } catch { return {}; }
+}
+
+function ecrire_commande() {
+  for (const nom of Object.keys(commande)) {
+    if (!commande[nom]?.length) delete commande[nom];
+  }
+  try {
+    localStorage.setItem(CLE_COMMANDE, JSON.stringify({ commande }));
+  } catch { /* le texte du bas reste copiable */ }
 }
 
 const echapper = (texte) => String(texte ?? "")
@@ -324,10 +413,12 @@ function dessiner_liste() {
   $("liste").innerHTML = groupes.map(([titre, noms]) =>
     `<h3>${titre}</h3>` + noms.map((nom) => {
       const n = alertes(nom).length;
+      const fautes = commande[nom]?.length ?? 0;
       return `<button type="button" data-nom="${echapper(nom)}" class="${nom === courant ? "actif" : ""}">` +
-        `<span class="pastille ${statut(nom)}"></span>${echapper(nom)}` +
+        `<span class="pastille ${statut(nom)}"></span>${echapper(nom)}<span class="badges">` +
         (videos_presentes.has(nom) ? "" : `<span class="sans-video">sans vidéo</span>`) +
-        (n ? `<span class="alertes">${n}</span>` : "") + `</button>`;
+        (fautes ? `<span class="en-commande" title="Fautes dans la commande">${fautes} ${fautes > 1 ? "fautes" : "faute"}</span>` : "") +
+        (n ? `<span class="alertes">${n}</span>` : "") + `</span></button>`;
     }).join("")
   ).join("");
   for (const bouton of $("liste").querySelectorAll("button")) {
@@ -394,10 +485,29 @@ function dessiner_machine() {
     verifie = `<h3>Ce que la détection vérifie (${echapper(m.detection)})</h3><ul>${lignes.join("")}</ul>` +
       `<p class="hint">Une répétition compte en passant de <code>debut</code> à <code>fin</code>. La consigne doit faire atteindre ces positions.</p>`;
   }
-  const erreurs = (m.erreurs ?? []).length
-    ? `<h3>Fautes signalées en direct</h3><ul>${m.erreurs.map((e) => `<li><code>${echapper(e)}</code></li>`).join("")}</ul>`
-    : "";
-  $("machine").innerHTML = `<h3>Ce que l'application en fait</h3><ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul>${verifie}${erreurs}`;
+  $("machine").innerHTML = `<h3>Ce que l'application en fait</h3><ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul>${verifie}${dessiner_fautes_existantes(m)}`;
+}
+
+/**
+ * Les fautes que l'application signale deja pour ce mouvement, chacune avec
+ * de quoi la mettre dans la commande. Le texte d'une fonction d'erreur ne se
+ * connait qu'en l'appelant : on n'en tient pas de table ici (ce serait une
+ * seconde source), la liste des textes actuels est sous la commande.
+ */
+function dessiner_fautes_existantes(m) {
+  const fautes = [
+    ...(m.erreurs ?? []).map((fonction) => ({ fonction, genre: "position", texte: null })),
+    ...(m.amplitude ? [{ fonction: m.amplitude[0], genre: "amplitude", texte: MESSAGES[m.amplitude[1]] ?? null }] : []),
+  ];
+  if (!fautes.length) {
+    return "<h3>Fautes signalées en direct</h3><p class=\"hint\">Aucune pour ce mouvement.</p>";
+  }
+  const boutons = (fonction, genre) => ["modifier", "supprimer"].map((type) =>
+    `<button type="button" class="petit" data-action="${type}" data-cible="${echapper(fonction)}" data-genre="${genre}">` +
+    `${type === "modifier" ? "Modifier" : "Supprimer"}</button>`).join("");
+  return `<h3>Fautes signalées en direct</h3>` + fautes.map(({ fonction, genre, texte }) =>
+    `<div class="faute"><code>${echapper(fonction)}</code><small>${genre === "amplitude" ? "amplitude" : "position"} · écran seulement` +
+    `${texte ? ` · « ${echapper(texte)} »` : ""}</small>${boutons(fonction, genre)}</div>`).join("");
 }
 
 /** L'apercu, avec les classes de la fiche reelle (`exercices.css`). */
@@ -433,6 +543,238 @@ function dessiner_video() {
   montrer_video($("apercuVideo"), presente ? courant : null, (video) => jouer_si_visible(video, true));
 }
 
+// ------------------------------------------------------------------
+// Commande de fautes de forme
+// ------------------------------------------------------------------
+
+/**
+ * Les deux extremites d'un mouvement compte, decrites par les zones de son
+ * instrument, ou null quand il n'y a pas d'aller-retour a manquer (maintien,
+ * echauffement, aucune detection). Une mesure dont les zones `debut` et `fin`
+ * vont en sens contraires dit le chemin parcouru ; une condition partagee
+ * (« buste allonge ») ne dit rien et n'est montree qu'a defaut.
+ */
+function extremites(nom) {
+  const m = mouvements[nom] ?? {};
+  const instrument = m.detection && !m.est_echauffement ? INSTRUMENTS[m.detection] : null;
+  if (!instrument?.ordre.includes("debut") || !instrument.ordre.includes("fin")) return null;
+  const vers_le_bas = (zone) => zone[0].startsWith("<");
+  const chemin = instrument.mesures.filter(({ zones }) =>
+    zones.debut && zones.fin && vers_le_bas(zones.debut) !== vers_le_bas(zones.fin));
+  const decrire = (jeton) => (chemin.length ? chemin : instrument.mesures.filter((mesure) => mesure.zones[jeton]))
+    .map((mesure) => `${mesure.libelle} ${formater_zone(mesure, mesure.zones[jeton])}`).join(", ");
+  return { debut: decrire("debut"), fin: decrire("fin") };
+}
+
+/** Les autres mouvements qui partagent la detection : une faute y vaudra aussi. */
+function meme_detection(nom) {
+  const detection = mouvements[nom]?.detection;
+  if (!detection) return [];
+  return Object.keys(mouvements).filter((autre) => autre !== nom && mouvements[autre].detection === detection);
+}
+
+/**
+ * Une entree de la commande. `type` : nouvelle, modifier ou supprimer (une
+ * fonction existante, `cible`). `extremite` ne sert qu'aux genres
+ * `incomplet` et `amplitude`.
+ */
+function nouvelle_entree(type, cible = null, genre = "position") {
+  return {
+    type, cible, genre, extremite: null,
+    ce_qu_on_voit: "", quand: "", ecran: "", voix: "", pourquoi: "",
+  };
+}
+
+function ajouter_entree(entree) {
+  (commande[courant] ??= []).push(entree);
+  ecrire_commande();
+  dessiner_commande();
+  dessiner_liste();
+  dessiner_etat();
+  dessiner_texte_commande();
+  [...$("commande").querySelectorAll(".entree")].at(-1)?.querySelector("textarea")?.focus();
+}
+
+/** Ce que la phrase d'un genre dit de l'extremite visee. */
+function libelle_extremite(genre, jeton, bornes) {
+  const zone = bornes?.[jeton] ? ` (${bornes[jeton]})` : "";
+  return genre === "incomplet"
+    ? `n'atteint pas « ${jeton} »${zone}`
+    : `pas assez loin vers « ${jeton} »${zone}`;
+}
+
+/** Une aide a la relecture, comme `alertes()` : rien ne bloque. */
+function alertes_entree(entree) {
+  const sortie = [];
+  if (entree.type === "supprimer") {
+    if (!entree.pourquoi.trim()) sortie.push("Pourquoi la supprimer ? Une ligne suffit.");
+    return sortie;
+  }
+  if (!entree.ce_qu_on_voit.trim()) sortie.push("Ce qu'on voit — vide : c'est ce que la détection devra reconnaître.");
+  if (entree.genre !== "position" && !entree.extremite) sortie.push("Quelle extrémité n'est pas atteinte ?");
+  for (const [champ, titre] of [["ecran", "Écran"], ["voix", "Voix"]]) {
+    const ligne = entree[champ].trim();
+    if (!ligne) {
+      sortie.push(`${titre} — vide.`);
+      continue;
+    }
+    const mots = JARGON.filter((m) => ligne.toLowerCase().includes(m));
+    if (mots.length) sortie.push(`${titre} — mot technique (${mots.join(", ")}).`);
+    if (GENRE.test(ligne)) sortie.push(`${titre} — accord qui suppose un genre.`);
+    for (const phrase of ligne.split(/[.!?:;]/)) {
+      const nombre = phrase.trim().split(/\s+/).filter(Boolean).length;
+      if (nombre > MOTS_MAX) sortie.push(`${titre} — phrase longue (${nombre} mots).`);
+    }
+  }
+  const mots_voix = entree.voix.trim().split(/\s+/).filter(Boolean).length;
+  if (mots_voix > MOTS_MAX_VOIX) {
+    sortie.push(`Voix — ${mots_voix} mots : une correction se dit pendant l'effort, vise ${MOTS_MAX_VOIX} au plus.`);
+  }
+  return sortie;
+}
+
+function dessiner_entree(entree, index, bornes) {
+  const titre = entree.type === "nouvelle"
+    ? "Nouvelle faute"
+    : `${entree.type === "modifier" ? "Modifier" : "Supprimer"} <code>${echapper(entree.cible)}</code>`;
+  const zone = (champ, libelle, aide = "") =>
+    `<label for="faute-${index}-${champ}">${libelle}${aide ? ` <small>— ${aide}</small>` : ""}</label>` +
+    `<textarea id="faute-${index}-${champ}" data-champ="${champ}" rows="2">${echapper(entree[champ])}</textarea>`;
+  const radio = (nom, valeur, libelle, aide, coche) =>
+    `<label class="choix"><input type="radio" name="${nom}-${index}" data-champ="${nom}" value="${valeur}"${coche ? " checked" : ""}>` +
+    `<span>${libelle}${aide ? ` <small>— ${aide}</small>` : ""}</span></label>`;
+
+  let corps;
+  if (entree.type === "supprimer") {
+    corps = zone("pourquoi", "Pourquoi la supprimer");
+  } else {
+    const genres = bornes
+      ? GENRES.map(([valeur, libelle, aide]) => radio("genre", valeur, libelle, aide, entree.genre === valeur)).join("")
+      : `<p class="hint">Position — ce mouvement n'a pas d'aller-retour compté, il ne peut pas être incomplet.</p>`;
+    const extremite = bornes && entree.genre !== "position"
+      ? `<fieldset><legend>Quelle extrémité</legend>` +
+        ["debut", "fin"].map((jeton) =>
+          radio("extremite", jeton, libelle_extremite(entree.genre, jeton, bornes), "", entree.extremite === jeton)).join("") +
+        `<p class="hint">Le compteur s'arme sur <code>debut</code> et compte sur <code>fin</code> : ce sont des moments du comptage, pas des postures.</p>` +
+        `</fieldset>`
+      : "";
+    corps = `<fieldset><legend>Genre</legend>${genres}</fieldset>${extremite}` +
+      zone("ce_qu_on_voit", "Ce qu'on voit", "la faute sur le corps, en mots") +
+      zone("quand", "Quand", "facultatif : en bas, à la montée, tout le temps…") +
+      zone("ecran", "Écran", "la phrase du bandeau rouge") +
+      zone("voix", "Voix", `courte, à enregistrer (${MOTS_MAX_VOIX} mots au plus)`);
+  }
+  return `<div class="entree" data-index="${index}">` +
+    `<div class="tete"><strong>${titre}</strong><button type="button" class="petit" data-action="retirer">Retirer</button></div>` +
+    `${corps}<ul class="alertes-entree">${alertes_entree(entree).map((a) => `<li>${echapper(a)}</li>`).join("")}</ul></div>`;
+}
+
+/** La liste des textes actuels, pour savoir ce qu'on reecrit. */
+function textes_actuels() {
+  const cles = Object.keys(MESSAGES).filter((cle) => cle.startsWith("forme_") || cle.startsWith("amplitude_"));
+  return `<details><summary>Textes actuels des fautes (tous mouvements)</summary><ul>` +
+    cles.map((cle) => `<li><code>${echapper(cle)}</code> : « ${echapper(MESSAGES[cle])} »</li>`).join("") +
+    `</ul></details>`;
+}
+
+function dessiner_commande() {
+  const entrees = commande[courant] ?? [];
+  const bornes = extremites(courant);
+  const partage = meme_detection(courant);
+  $("commande").innerHTML =
+    `<h2>Fautes de forme — commande</h2>` +
+    `<p class="hint">Décris les fautes à ajouter, ou modifie celles d'en face (« Modifier », « Supprimer »). ` +
+    `Tout part dans le texte du bas de page, à m'envoyer.` +
+    (partage.length ? ` Même détection que : ${partage.map(echapper).join(", ")} — une faute y vaudra aussi.` : "") +
+    `</p>` +
+    entrees.map((entree, index) => dessiner_entree(entree, index, bornes)).join("") +
+    `<div class="barre"><button type="button" class="bouton secondaire" data-action="ajouter">+ Ajouter une faute</button></div>` +
+    textes_actuels();
+}
+
+$("commande").addEventListener("click", (evenement) => {
+  const bouton = evenement.target.closest("button[data-action]");
+  if (!bouton) return;
+  if (bouton.dataset.action === "ajouter") return ajouter_entree(nouvelle_entree("nouvelle"));
+  if (bouton.dataset.action === "retirer") {
+    const index = Number(bouton.closest(".entree").dataset.index);
+    commande[courant].splice(index, 1);
+    ecrire_commande();
+    dessiner_commande();
+    dessiner_liste();
+    dessiner_etat();
+    dessiner_texte_commande();
+  }
+});
+
+// Une frappe ne redessine que les avertissements de son entree : redessiner
+// tout ferait perdre le curseur. Un bouton radio change ce qu'on montre, lui.
+$("commande").addEventListener("input", (evenement) => {
+  const champ = evenement.target.dataset.champ;
+  const bloc = evenement.target.closest(".entree");
+  if (!champ || !bloc) return;
+  const entree = commande[courant][Number(bloc.dataset.index)];
+  entree[champ] = evenement.target.value;
+  if (champ === "genre" && entree.genre === "position") entree.extremite = null;
+  ecrire_commande();
+  dessiner_texte_commande();
+  if (evenement.target.type === "radio") {
+    dessiner_commande();
+  } else {
+    bloc.querySelector(".alertes-entree").innerHTML =
+      alertes_entree(entree).map((a) => `<li>${echapper(a)}</li>`).join("");
+  }
+});
+
+$("machine").addEventListener("click", (evenement) => {
+  const bouton = evenement.target.closest("button[data-action]");
+  if (!bouton) return;
+  ajouter_entree(nouvelle_entree(bouton.dataset.action, bouton.dataset.cible, bouton.dataset.genre));
+});
+
+/** Une ligne de texte libre, pour une commande qui se lit d'un coup d'oeil. */
+const sur_une_ligne = (texte) => texte.trim().replace(/\s*\n\s*/g, " / ") || "—";
+
+/**
+ * Le texte a envoyer : les mouvements dans l'ordre des fiches, avec ce que la
+ * camera voit (detection, orientation) lu dans `mouvements.json`.
+ */
+function texte_commande() {
+  const noms = Object.keys(fiches).filter((nom) => commande[nom]?.length);
+  if (!noms.length) return "";
+  const date = new Date();
+  const jour = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const lignes = [`# Commande de fautes de forme — ${jour}`, ""];
+  for (const nom of noms) {
+    const m = mouvements[nom] ?? {};
+    const bornes = extremites(nom);
+    lignes.push(`## ${nom} (${m.detection ? `détection ${m.detection}` : "sans détection"}, vue : ${m.orientation ?? "—"})`);
+    for (const entree of commande[nom]) {
+      if (entree.type === "supprimer") {
+        lignes.push(`- SUPPRIMER ${entree.cible}`, `  Pourquoi : ${sur_une_ligne(entree.pourquoi)}`);
+        continue;
+      }
+      const genre = entree.genre === "position" || !bornes
+        ? "position"
+        : `${entree.genre === "incomplet" ? "mouvement incomplet" : "amplitude insuffisante"} : ` +
+          (entree.extremite ? libelle_extremite(entree.genre, entree.extremite, bornes) : "extrémité non précisée");
+      lignes.push(
+        `- ${entree.type === "modifier" ? `MODIFIER ${entree.cible}` : "NOUVELLE"} — ${genre}`,
+        `  Ce qu'on voit : ${sur_une_ligne(entree.ce_qu_on_voit)}`,
+        `  Quand : ${sur_une_ligne(entree.quand)}`,
+        `  Écran : ${sur_une_ligne(entree.ecran)}`,
+        `  Voix : ${sur_une_ligne(entree.voix)}`,
+      );
+    }
+    lignes.push("");
+  }
+  return lignes.join("\n");
+}
+
+function dessiner_texte_commande() {
+  $("texteCommande").value = texte_commande();
+}
+
 function dessiner_controle() {
   const liste = alertes(courant);
   $("alertes").hidden = liste.length === 0;
@@ -446,8 +788,11 @@ function dessiner_etat() {
   const relues = noms.filter((n) => statut(n) === "relu").length;
   const modifiees = noms.filter(est_modifiee).length;
   const filmees = noms.filter((n) => videos_presentes.has(n)).length;
+  const en_commande = noms.filter((n) => commande[n]?.length);
+  const fautes = en_commande.reduce((total, n) => total + commande[n].length, 0);
   $("etat").textContent = `${relues} relues, ${modifiees} modifiées, ${noms.length - relues - modifiees} à relire — sur ${noms.length}. ` +
-    `Vidéos : ${filmees} sur ${noms.length}.`;
+    `Vidéos : ${filmees} sur ${noms.length}. ` +
+    `Commande : ${fautes} ${fautes > 1 ? "fautes" : "faute"} sur ${en_commande.length} mouvement${en_commande.length > 1 ? "s" : ""}.`;
   $("marquerRelu").textContent = statuts[courant] === "relu" ? "Relue ✓" : "Marquer comme relue";
 }
 
@@ -464,6 +809,7 @@ function choisir(nom) {
   courant = nom;
   dessiner_liste();
   dessiner_editeur();
+  dessiner_commande();
   dessiner_machine();
   dessiner_video();
   dessiner_controle();
@@ -505,20 +851,33 @@ $("reinitialiser").addEventListener("click", () => {
   dessiner_json();
 });
 
-$("copier").addEventListener("click", async () => {
+/** Copie une zone de texte, ou la selectionne si le presse-papiers refuse. */
+async function copier(zone, etat) {
   try {
-    await navigator.clipboard.writeText($("json").value);
-    $("copie").textContent = "Copié.";
+    await navigator.clipboard.writeText(zone.value);
+    etat.textContent = "Copié.";
   } catch {
-    $("json").removeAttribute("readonly");
-    $("json").select();
-    $("copie").textContent = "Sélectionné — copie à la main.";
+    zone.removeAttribute("readonly");
+    zone.select();
+    etat.textContent = "Sélectionné — copie à la main.";
   }
-  setTimeout(() => { $("copie").textContent = ""; }, 4000);
+  setTimeout(() => { etat.textContent = ""; }, 4000);
+}
+
+$("copier").addEventListener("click", () => copier($("json"), $("copie")));
+$("copierCommande").addEventListener("click", () => copier($("texteCommande"), $("copieCommande")));
+
+$("viderCommande").addEventListener("click", () => {
+  if (!confirm("Vider toute la commande de fautes ? Fais-le une fois le texte envoyé.")) return;
+  commande = {};
+  ecrire_commande();
+  choisir(courant);
+  dessiner_texte_commande();
 });
 
 choisir(courant);
 dessiner_json();
+dessiner_texte_commande();
 </script>
 </body>
 </html>
