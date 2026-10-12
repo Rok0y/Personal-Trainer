@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**36 prises restantes.**
+**28 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -127,14 +127,14 @@ Dites **pendant l'effort**, quand une faute dure, a quelqu'un qui est a trois me
 
 | Fichier | A prononcer | Etat |
 | --- | --- | --- |
-| `garde_le_coude_colle_au_buste.wav` | « Garde le coude collé au buste » | **a enregistrer** |
-| `serre_les_coudes_pres_de_la_tete.wav` | « Serre les coudes près de la tête » | **a enregistrer** |
-| `garde_le_genou_derriere_la_pointe_du_pied.wav` | « Garde le genou derrière la pointe du pied » | **a enregistrer** |
-| `penche_toi_davantage_vers_l_avant.wav` | « Penche-toi davantage vers l'avant » | **a enregistrer** |
-| `plie_moins_les_genoux.wav` | « Plie moins les genoux » | **a enregistrer** |
-| `garde_les_coudes_un_peu_plies.wav` | « Garde les coudes un peu pliés » | **a enregistrer** |
-| `plie_moins_les_coudes.wav` | « Plie moins les coudes » | **a enregistrer** |
-| `descends_plus_pres_du_sol.wav` | « Descends plus près du sol » | **a enregistrer** |
+| `garde_le_coude_colle_au_buste.wav` | « Garde le coude collé au buste » | deja fait |
+| `serre_les_coudes_pres_de_la_tete.wav` | « Serre les coudes près de la tête » | deja fait |
+| `garde_le_genou_derriere_la_pointe_du_pied.wav` | « Garde le genou derrière la pointe du pied » | deja fait |
+| `penche_toi_davantage_vers_l_avant.wav` | « Penche-toi davantage vers l'avant » | deja fait |
+| `plie_moins_les_genoux.wav` | « Plie moins les genoux » | deja fait |
+| `garde_les_coudes_un_peu_plies.wav` | « Garde les coudes un peu pliés » | deja fait |
+| `plie_moins_les_coudes.wav` | « Plie moins les coudes » | deja fait |
+| `descends_plus_pres_du_sol.wav` | « Descends plus près du sol » | deja fait |
 
 ## Accueil d'un nouveau profil
 
