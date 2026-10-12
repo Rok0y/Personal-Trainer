@@ -53,4 +53,17 @@
     --ligue-diamant-reflet: #cdf2ff;
     --ligue-maitre: #d46bff;
     --ligue-maitre-reflet: #f3d0ff;
+
+    /* Les series d'un graphique de comparaison (`dev/progression.html`), dans
+       cet ordre et jamais dans un autre : l'ordre est ce qui garde deux
+       courbes voisines distinguables pour un daltonien, verifie contre le
+       fond de la page. Une serie garde sa couleur quand on en masque une
+       autre — la couleur suit la chose, pas son rang. */
+    --serie-1: #3987e5;
+    --serie-2: #d95926;
+    --serie-3: #199e70;
+    --serie-4: #c98500;
+    --serie-5: #d55181;
+    --serie-6: #008300;
+    --serie-7: #9085e9;
 }

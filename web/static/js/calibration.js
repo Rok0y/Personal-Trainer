@@ -46,8 +46,9 @@ export function note_valide(note) {
 /**
  * `{declaree, relevee_apres}` d'un profil de `historique.js`.
  *
- * Un profil d'avant la note n'a pas ces champs (il n'existe aucune migration
- * cote JavaScript) : absent vaut null, c'est-a-dire « pas encore demandee ».
+ * Un profil d'avant la note n'a pas ces champs (aucune migration ne les
+ * ajoute — `migrer` ne fait que renommer des mouvements) : absent vaut null,
+ * c'est-a-dire « pas encore demandee ».
  */
 export function note_du_profil(profil) {
   return {

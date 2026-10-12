@@ -14,20 +14,27 @@
 //  - seances : chaque seance passe `problemes_des_blocs`, le controle que fait
 //    l'editeur de l'application a l'enregistrement ;
 //  - programmes : chaque exigence vise un exercice qui a un bareme, et chaque
-//    libelle est lie a une seance qui existe.
+//    libelle est lie a une seance qui existe ;
+//  - videos : chaque `.mp4` de `videos/` porte le nom (`fichier_video`) d'un
+//    mouvement. Un mouvement renomme rend sa video orpheline, et une video que
+//    rien ne lit est aussi invisible qu'une video absente. Une video
+//    **manquante**, elle, n'est pas une erreur : on les tourne par lots, et
+//    `dev/fiches.html` dit lesquelles restent a faire.
 //
 //     node scripts/verifier_donnees.mjs
 
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DETECTIONS } from "../web/static/js/detections.js";
 import { composer_baremes } from "../web/static/js/paliers.js";
 import { avec_fiches, problemes_des_blocs } from "../web/static/js/seance.js";
+import { fichier_video } from "../web/static/js/videos.js";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const DONNEES = join(ICI, "..", "web", "static", "donnees");
+const VIDEOS = join(ICI, "..", "web", "static", "videos");
 const lire = (nom) => JSON.parse(readFileSync(join(DONNEES, nom), "utf-8"));
 
 //: Les champs de texte d'une fiche, et leur forme.
@@ -67,6 +74,75 @@ function main() {
     composer_baremes(socle, reglages);
   } catch (erreur) {
     signaler("reglages.json", `composition impossible : ${erreur.message}`);
+  }
+  // Les bornes de ligue : sans elles, l'exercice retombe sur la table
+  // relative, un repli qui masque le branchement oublie. Dix-huit, croissantes
+  // strictement (deux bornes egales rendraient un rang inatteignable).
+  const bornes = reglages.ligues?.seuils_par_exercice ?? {};
+  for (const nom of Object.keys(specs)) {
+    const table = bornes[nom];
+    if (!table) signaler("reglages.json", `« ${nom} » n'a pas de bornes de ligue (seuils_par_exercice)`);
+    else if (table.length !== 18 || table.some((v, i) => i > 0 && !(v > table[i - 1]))) {
+      signaler("reglages.json", `« ${nom} » : il faut dix-huit bornes de ligue strictement croissantes`);
+    }
+  }
+  for (const nom of Object.keys(bornes)) {
+    if (!specs[nom]) signaler("reglages.json", `bornes de ligue pour « ${nom} », qui n'a pas de bareme`);
+  }
+  // Les corrections de palier (`surcharges`, ecrites depuis
+  // dev/progression.html) : une cle inconnue fait lever `Baremes.palier`, donc
+  // planter l'exercice partout dans l'application.
+  for (const [nom, spec] of Object.entries(specs)) {
+    for (const [niveau, surcharge] of Object.entries(spec.surcharges ?? {})) {
+      if (!(Number.isInteger(Number(niveau)) && Number(niveau) >= 1)) {
+        signaler("reglages.json", `« ${nom} » : surcharge sur un palier qui n'existe pas (« ${niveau} »)`);
+      }
+      for (const [cle, valeur] of Object.entries(surcharge ?? {})) {
+        if (!["series", "cible", "poids"].includes(cle)) {
+          signaler("reglages.json", `« ${nom} », palier ${niveau} : « ${cle} » ne se surcharge pas (series, cible ou poids)`);
+        } else if (!(typeof valeur === "number" && valeur >= (cle === "poids" ? 0 : 1))) {
+          signaler("reglages.json", `« ${nom} », palier ${niveau} : ${cle} doit etre un nombre positif`);
+        }
+      }
+    }
+  }
+
+  // Les variantes : une performance de retour ne sert qu'a un mouvement qui a
+  // une variante plus dure ; la table de depart nomme, pour la tete d'une
+  // chaine, des mouvements de cette chaine et des notes de 1 a 10.
+  for (const [nom, seuil] of Object.entries(reglages.variantes?.retour ?? {})) {
+    if (!bruts[nom]?.variante_difficile) {
+      signaler("reglages.json", `retour de « ${nom} » : ce mouvement n'a pas de variante plus dure`);
+    }
+    if (!Array.isArray(seuil) || seuil.length !== 2 || !seuil.every((v) => v > 0)) {
+      signaler("reglages.json", `retour de « ${nom} » : il faut [series, cible] positifs`);
+    }
+  }
+  const chaine_de = (tete) => {
+    const noms = [tete];
+    for (let n = bruts[tete]?.variante_facile; n && bruts[n] && !noms.includes(n); n = bruts[n].variante_facile) noms.push(n);
+    return noms;
+  };
+  for (const [tete, seuils] of Object.entries(reglages.variantes?.depart ?? {})) {
+    if (!bruts[tete] || bruts[tete].variante_difficile) {
+      signaler("reglages.json", `depart de « ${tete} » : ce n'est pas la tete d'une chaine de variantes`);
+      continue;
+    }
+    const chaine = chaine_de(tete);
+    for (const [nom, note] of Object.entries(seuils ?? {})) {
+      if (!chaine.includes(nom)) signaler("reglages.json", `depart de « ${tete} » : « ${nom} » n'est pas dans sa chaine`);
+      if (!Number.isInteger(note) || note < 1 || note > 10) {
+        signaler("reglages.json", `depart de « ${tete} » : la note de « ${nom} » doit etre un entier de 1 a 10`);
+      }
+    }
+    // Plus dur dans la chaine, plus haute la note : sinon une note plus haute
+    // ferait partir sur une variante plus facile.
+    const ordonnes = chaine.filter((nom) => nom in seuils).reverse();
+    for (let i = 1; i < ordonnes.length; i += 1) {
+      if (!(seuils[ordonnes[i]] > seuils[ordonnes[i - 1]])) {
+        signaler("reglages.json", `depart de « ${tete} » : « ${ordonnes[i]} » doit demander une note plus haute que « ${ordonnes[i - 1]} »`);
+      }
+    }
   }
 
   // --- fiches et mouvements ---
@@ -124,6 +200,15 @@ function main() {
     }
   }
 
+  // --- videos ---
+  const attendues = new Set(Object.keys(bruts).map(fichier_video));
+  const videos = existsSync(VIDEOS) ? readdirSync(VIDEOS).filter((f) => f.endsWith(".mp4")) : [];
+  for (const fichier of videos) {
+    if (!attendues.has(fichier)) {
+      signaler("videos/", `${fichier} ne porte le nom d'aucun mouvement (renomme ?) : aucune fiche ne la montrera`);
+    }
+  }
+
   if (problemes.length) {
     console.log(`${problemes.length} problemes :\n`);
     for (const p of problemes) console.log(`  - ${p}`);
@@ -132,7 +217,8 @@ function main() {
   }
   console.log(
     `${Object.keys(bruts).length} mouvements, ${Object.keys(specs).length} baremes, ` +
-      `${Object.keys(seances).length} seances, ${Object.keys(programmes).length} programmes : les donnees se tiennent.`
+      `${Object.keys(seances).length} seances, ${Object.keys(programmes).length} programmes, ` +
+      `${videos.length} videos : les donnees se tiennent.`
   );
 }
 

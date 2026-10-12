@@ -33,14 +33,13 @@ const SPEC_PAR_DEFAUT = {
   poids_max: null,
   surcharges: {},
   charge_corps: 0,
-  premiere_charge: null,
 };
 
 /**
  * Les tables completes du moteur, depuis leurs deux sources.
  *
  * `reglages` est `donnees/reglages.json` : tout ce qui se **regle** (baremes,
- * bornes de ligue, XP, note d'athlete, retour des variantes), edite sur
+ * bornes de ligue, XP, note d'athlete, retour et depart des variantes), edite sur
  * `dev/baremes.html`. `socle` est `donnees/baremes.json` : ce qui ne se regle
  * pas (echelles d'halteres, materiel par exercice, accessoires, reperes ecrits
  * de la note). Chaque fait n'a ainsi qu'une source — l'application relisant
@@ -66,7 +65,7 @@ export function composer_baremes(socle, reglages) {
       xp_increment_niveau_general: reglages.xp.increment_niveau_general,
     },
     note_athlete: { ...reglages.note_athlete, reperes: socle.note_athlete?.reperes ?? {} },
-    variantes: { retour: reglages.variantes?.retour ?? {} },
+    variantes: { retour: reglages.variantes?.retour ?? {}, depart: reglages.variantes?.depart ?? {} },
     specs,
     echelles: socle.echelles,
     materiel: socle.materiel,
@@ -146,36 +145,19 @@ export class Baremes {
     return this.materiel[nom]?.halteres ?? 0;
   }
 
-  /** Echelle du materiel : ce que les halteres du profil permettent. */
   /**
-   * La charge est-elle facultative sur ce mouvement chargeable ?
+   * Echelle du materiel : ce que les halteres du profil permettent.
    *
-   * La regle se declare dans la spec : `poids_min` a 0 veut dire « ce bareme
-   * commence au poids du corps ». Une seconde liste tenue a cote du materiel
-   * finirait par en diverger sans que rien ne le signale.
-   *
-   * Le nom dit « facultative » et non « au poids du corps » : la fonction ne
-   * repond que des mouvements chargeables. Les pompes rendent false alors
-   * qu'elles se font evidemment sans charge — elles n'ont aucune echelle de
-   * poids, donc `echelle_poids` a deja repondu avant de l'interroger.
+   * Un bareme ne melange jamais le poids du corps et les halteres : un
+   * mouvement sans haltere a pour seul cran le poids du corps, un mouvement
+   * charge n'a que des halteres. Le squat qui allait de l'un a l'autre est
+   * devenu deux mouvements relies par les variantes — un seul bareme ne
+   * savait pas comparer « 4x15 a vide » et « 4x13 a 2 kg ».
    */
-  charge_facultative(nom) {
-    const spec = this.specs[nom];
-    return Boolean(spec) && spec.poids_min === 0;
-  }
-
   echelle_poids(nom) {
     const nb = this.nombre_halteres(nom);
     if (nb <= 0) return this.echelles.sans_charge;
-
-    const echelle = echelle_disponible(this.echelles, this.inventaire, nb);
-    // Le poids du corps est un cran du bareme et non une absence de materiel :
-    // un squat a vide est un vrai palier, celui par lequel on commence, et il
-    // se place avant le premier haltere au lieu de manquer.
-    if (this.charge_facultative(nom)) {
-      return [...this.echelles.sans_charge, ...echelle];
-    }
-    return echelle;
+    return echelle_disponible(this.echelles, this.inventaire, nb);
   }
 
   /**
@@ -188,23 +170,89 @@ export class Baremes {
     return echelle.filter(
       (poids) =>
         (spec.poids_min === null || poids >= spec.poids_min) &&
-        (spec.poids_max === null || poids <= spec.poids_max) &&
-        // Le poids du corps reste un cran : seuls les halteres trop legers
-        // pour peser quelque chose sont ecartes (`premiere_charge`).
-        (!spec.premiere_charge || poids === 0 || poids >= spec.premiere_charge)
+        (spec.poids_max === null || poids <= spec.poids_max)
     );
+  }
+
+  /**
+   * Le profil a-t-il de quoi charger ce mouvement, dans sa fourchette ?
+   *
+   * Un mouvement sans haltere l'est toujours. Un mouvement charge ne l'est
+   * que si le materiel offre au moins un poids **dans** la fourchette de son
+   * bareme : un squat charge qui commence a 5 kg n'est pas jouable avec des
+   * halteres de 2 a 4 kg, ni a deux mains avec un seul haltere de 10 kg.
+   *
+   * La question est posee **sans le repli** d'`echelle_exercice`, qui garde un
+   * cran plutot qu'un bareme vide : ce repli rend un bareme calculable, il ne
+   * dit pas que le mouvement est faisable. C'est `Variantes` qui en tire la
+   * consequence (jouer la variante a vide a la place).
+   */
+  chargeable(nom) {
+    if (this.nombre_halteres(nom) <= 0) return true;
+    const echelle = this.echelle_poids(nom);
+    const spec = this.specs[nom];
+    const retenue = spec ? this._dans_la_fourchette(echelle, spec) : echelle;
+    return retenue.some((poids) => poids > 0);
+  }
+
+  /**
+   * La part du corps qui relie un mouvement a vide a sa forme chargee, ou
+   * null si `vide` et `charge` ne sont pas ce couple-la.
+   *
+   * C'est le `charge_corps` de la forme chargee : dans son bareme, une
+   * repetition pese `poids + charge_corps`, donc une repetition a vide y pese
+   * `charge_corps`. Ce seul nombre traduit une performance a vide en volume
+   * charge, et rien d'autre ne le fait : les pompes et leurs variantes n'ont
+   * pas de charge, il n'y a rien a traduire entre elles.
+   */
+  equivalence_a_vide(vide, charge) {
+    const spec = this.specs[charge];
+    if (!spec?.charge_corps) return null;
+    if (this.nombre_halteres(charge) <= 0 || this.nombre_halteres(vide) > 0) return null;
+    if (!this.specs[vide] || this.unite(vide) !== this.unite(charge)) return null;
+    return spec.charge_corps;
+  }
+
+  /**
+   * Le volume, **sur le bareme a vide**, qu'il faut tenir pour passer a la
+   * forme chargee, ou null hors d'un couple a vide / charge.
+   *
+   * `series` x `cible` est ce qu'on doit pouvoir tenir **avec le premier
+   * haltere que le profil possede** : traduit a vide par la part du corps, il
+   * demande d'autant plus de repetitions a vide que ce premier haltere est
+   * lourd. Avec des 10 kg, on reste plus longtemps a vide qu'avec des 5 kg, et
+   * l'entree dans la forme chargee ne fait jamais perdre de repetitions.
+   */
+  volume_a_vide_pour_charger(vide, charge, series, cible) {
+    const part = this.equivalence_a_vide(vide, charge);
+    const premier = part === null ? null : this.palier(charge, 1);
+    if (!premier) return null;
+    return (series * cible * (premier.poids + part)) / part;
+  }
+
+  /**
+   * Le palier par lequel on entre dans la forme chargee apres avoir tenu
+   * `palier_vide` a vide : le premier qui atteint le meme volume, la
+   * repetition a vide pesant la part du corps. null hors d'un couple a vide /
+   * charge — l'appelant retombe alors sur le palier 1.
+   */
+  palier_d_entree(vide, palier_vide, charge) {
+    const part = this.equivalence_a_vide(vide, charge);
+    if (part === null || !palier_vide) return null;
+    const niveau = this.niveau_pour_volume(charge, this.volume(palier_vide.series, palier_vide.cible, 0, part));
+    return niveau ? this.palier(charge, niveau) : null;
   }
 
   /**
    * Echelle du materiel restreinte a la fourchette utile de l'exercice.
    *
    * **C'est ici que vit le garde « le bareme reste calculable pour tout le
-   * monde »**, et il y vit parce que c'est le seul endroit qui sache si
-   * l'exercice a un cran au poids du corps. `echelle_disponible` rend
-   * honnetement un tableau vide quand le profil n'a pas de quoi charger ; un
-   * squat retombe alors sur `[0]`, qui est sa **vraie** echelle et non un
-   * repli, tandis qu'un curl retombe sur la gamme supposee, faute de mieux et
-   * parce qu'un bareme vide casserait jusqu'a l'ecran des records.
+   * monde »**. `echelle_disponible` rend honnetement un tableau vide quand le
+   * profil n'a pas de quoi charger ; un mouvement charge retombe alors sur la
+   * gamme supposee, faute de mieux et parce qu'un bareme vide casserait
+   * jusqu'a l'ecran des records. Ce repli rend un bareme **calculable**, il ne
+   * dit pas que le mouvement est **faisable** : c'est `chargeable` qui le dit,
+   * et `Variantes` qui fait jouer la forme a vide a la place.
    */
   echelle_exercice(nom) {
     const echelle = this.echelle_poids(nom);
@@ -216,7 +264,7 @@ export class Baremes {
     // Des bornes trop etroites sur une echelle non vide : on garde le cran le
     // plus bas plutot que de laisser un bareme sans aucun palier.
     if (echelle.length) return echelle.slice(0, 1);
-    // Rien a charger, et pas de cran au poids du corps (un curl, un developpe).
+    // Rien a charger (un curl, un squat charge sans halteres).
     const supposee = this.echelles.supposes;
     const dans = this._dans_la_fourchette(supposee, spec);
     return dans.length ? dans : supposee.slice(0, 1);

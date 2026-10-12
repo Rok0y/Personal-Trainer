@@ -56,6 +56,16 @@ li { margin-bottom:4px; }
 
 .resume { font-size:16px; line-height:1.6; margin:0 0 18px; color:var(--text); }
 
+/* La video du mouvement (`js/videos.js`). Son fond est `--bg`, celui que pose
+   `video/illustrer.py` : le cadre le reprend, et la video ne fait pas de
+   rectangle sur la page. Bornee en hauteur pour laisser voir la suite. */
+.video-fiche {
+    display:flex; justify-content:center; margin:0 0 18px;
+    background:var(--bg); border:1px solid var(--border-strong); border-radius:12px; overflow:hidden;
+}
+
+.video-fiche video { display:block; max-width:100%; max-height:52vh; }
+
 .niveau { display:flex; flex-wrap:wrap; gap:22px; }
 
 .niveau div { min-width:120px; }

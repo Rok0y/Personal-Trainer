@@ -65,3 +65,17 @@ web/static/sommaire.html
 # re-rogner autrement plus tard. Les perdre n'empeche rien — `web/static/sons/`
 # continue de marcher indefiniment — ca ferme juste la porte a un retraitement.
 audio/a_traiter/
+
+# =========================
+# Videos d'exercice brutes
+# =========================
+
+# Les videos telles qu'elles sortent de la camera, et les essais de style que
+# `python video/illustrer.py` en tire. On y voit une personne et son domicile :
+# meme regle que les historiques, jamais dans un depot public. Seule la video
+# retenue, detouree et redessinee, entrera dans `web/static/`.
+video/a_traiter/
+video/essais/
+
+# Le modele de detourage (RobustVideoMatting, 107 Mo), telecharge une fois.
+video/modeles/

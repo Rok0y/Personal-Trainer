@@ -127,7 +127,20 @@
  },
  "Squat": {
   "nom": "Squat",
-  "variante_facile": "Squat sur chaise",
+  "variante_facile": null,
+  "variante_difficile": "Squat chargé",
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "squat_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "materiel": "Un tapis",
+  "est_echauffement": false
+ },
+ "Squat chargé": {
+  "nom": "Squat chargé",
+  "variante_facile": "Squat",
   "variante_difficile": null,
   "orientation": "face",
   "changements": [],
@@ -135,12 +148,27 @@
   "detection": "squat_detection",
   "erreurs": [],
   "amplitude": null,
-  "materiel": "Deux haltères (facultatif) et un tapis",
+  "materiel": "Deux haltères et un tapis",
   "est_echauffement": false
  },
  "Fente droite": {
   "nom": "Fente droite",
   "variante_facile": null,
+  "variante_difficile": "Fente droite chargée",
+  "orientation": "profil_camera_gauche",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "fente_droite_detection",
+  "erreurs": [
+   "fente_droite_erreur_genou"
+  ],
+  "amplitude": null,
+  "materiel": "Un tapis",
+  "est_echauffement": false
+ },
+ "Fente droite chargée": {
+  "nom": "Fente droite chargée",
+  "variante_facile": "Fente droite",
   "variante_difficile": null,
   "orientation": "profil_camera_gauche",
   "changements": [],
@@ -150,12 +178,27 @@
    "fente_droite_erreur_genou"
   ],
   "amplitude": null,
-  "materiel": "Deux haltères (facultatif) et un tapis",
+  "materiel": "Deux haltères et un tapis",
   "est_echauffement": false
  },
  "Fente gauche": {
   "nom": "Fente gauche",
   "variante_facile": null,
+  "variante_difficile": "Fente gauche chargée",
+  "orientation": "profil_camera_droite",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "fente_gauche_detection",
+  "erreurs": [
+   "fente_gauche_erreur_genou"
+  ],
+  "amplitude": null,
+  "materiel": "Un tapis",
+  "est_echauffement": false
+ },
+ "Fente gauche chargée": {
+  "nom": "Fente gauche chargée",
+  "variante_facile": "Fente gauche",
   "variante_difficile": null,
   "orientation": "profil_camera_droite",
   "changements": [],
@@ -165,7 +208,7 @@
    "fente_gauche_erreur_genou"
   ],
   "amplitude": null,
-  "materiel": "Deux haltères (facultatif) et un tapis",
+  "materiel": "Deux haltères et un tapis",
   "est_echauffement": false
  },
  "Souleve de terre roumain": {
@@ -329,19 +372,6 @@
   "materiel": "Un tapis",
   "est_echauffement": false
  },
- "Squat sur chaise": {
-  "nom": "Squat sur chaise",
-  "variante_facile": null,
-  "variante_difficile": "Squat",
-  "orientation": "face",
-  "changements": [],
-  "analyse_la_pose": true,
-  "detection": "squat_sur_chaise_detection",
-  "erreurs": [],
-  "amplitude": null,
-  "materiel": "Une chaise",
-  "est_echauffement": false
- },
  "Rotation du cou": {
   "nom": "Rotation du cou",
   "variante_facile": null,
@@ -377,7 +407,7 @@
   "nom": "Rotation des coudes",
   "variante_facile": null,
   "variante_difficile": null,
-  "orientation": null,
+  "orientation": "profil",
   "changements": [
    [
     0.5,

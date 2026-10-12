@@ -19,7 +19,7 @@ Coach de fitness en temps réel, dans le navigateur : la caméra de l'appareil d
 - **Coach vocal** : annonces pré-enregistrées, composées de briques (« prochain exercice » · « curl biceps droit » · « prépare un haltère de 8 kilos »). Brancher ou retirer des écouteurs en pleine séance ne coupe pas le son : il est relancé tout seul.
 - **Niveaux et ligues** : chaque exercice a un barème de paliers dont le volume ne redescend jamais, et votre niveau — le plus haut palier jamais validé — se déduit de l'historique. Il ne recule jamais. Une ligue (Bronze → Maître) traduit le volume produit, et l'XP fait monter un niveau général.
 - **Progression automatique** : chaque séance repart de l'objectif de la précédente. Réussi, il monte d'un palier (deux si « c'était facile », trois si « trop facile ») ; manqué, il revient à l'identique, ou descend si « c'était trop dur ». Une cible saisie à la main est figée (badge orange) jusqu'à ce que la séance soit menée à son terme.
-- **Variantes plus faciles** : pompes sur les genoux, inclinées, contre le mur, planche sur les genoux, squat sur chaise. On peut choisir sa version avant de démarrer, basculer en pleine séance, ou l'accepter après un échec. On **remonte ensuite tout seul**, un cran par séance réussie.
+- **Variantes plus faciles** : pompes sur les genoux, inclinées, contre le mur, planche sur les genoux, squat à vide. On peut choisir sa version avant de démarrer, basculer en pleine séance, ou l'accepter après un échec. On **remonte ensuite tout seul**, un cran par séance réussie.
 - **Programmes** : un programme liste une performance à atteindre par exercice et se vit à la semaine — une case par séance, dans l'ordre que tu choisis, sur une semaine qui commence le jour que tu choisis, et une série de semaines réussies. Rien n'est stocké : tout se recalcule depuis l'historique.
 - **Profils** : chaque profil garde son historique, ses niveaux et ses recalages ; les séances et les programmes sont communs. L'écran « Qui s'entraîne ? » s'impose à chaque lancement.
 - **Recalage du niveau** : depuis la fiche d'un exercice, on déclare une performance qu'on sait tenir, et le barème en déduit le niveau.
@@ -41,8 +41,9 @@ Tout ce qui tourne vit dans `web/static/` :
   - `mouvements.json` — ce qui est couplé au code (détection, orientation, variantes) ;
   - `seances.json`, `programmes.json`, `sons.json` — les séances, les programmes, les tables du coach.
 - `sons/` — les annonces enregistrées. Le nom d'un fichier est le texte prononcé.
+- `videos/` — la boucle de chaque mouvement, montrée sur sa fiche, dans le guide du premier passage et pendant les pauses. Le nom d'un fichier vient du nom du mouvement ; une vidéo absente n'affiche simplement rien, et `dev/fiches.html` dit lesquelles restent à tourner.
 
-En dehors : `scripts/` (vérifications et outils), `tests/fixtures/` (les réponses figées des tests), `audio/` (prise de son), `docs/`.
+En dehors : `scripts/` (vérifications et outils), `tests/fixtures/` (les réponses figées des tests), `audio/` (prise de son), `video/` (illustration des fiches : `python video/illustrer.py <vidéo> "<exercice>"` détoure, redessine en aplats et écrit la boucle dans `web/static/videos/` ; demande `onnxruntime`, `imageio-ffmpeg` et le modèle RobustVideoMatting dont le script donne l'adresse), `docs/`.
 
 **Régler sans toucher au code** : `dev/baremes.html` et `dev/fiches.html` rechargent les données déployées, les rendent éditables, recalculent tout sous les yeux, et rendent le fichier prêt à coller dans `web/static/donnees/`. On colle, on pousse, c'est déployé.
 

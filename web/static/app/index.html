@@ -639,6 +639,32 @@
     max-width: 640px;
     width: 100%;
   }
+  /* Avec une video, la carte s'elargit pour la poser a cote du texte. */
+  .guide-carte:has(.guide-video:not([hidden])) { max-width: 980px; }
+  .guide-corps {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+  .guide-texte { flex: 1; min-width: 0; }
+  /* Le fond des videos est `--bg` (`video/illustrer.py`) : le cadre le reprend. */
+  .guide-video {
+    flex: 0 0 auto;
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .guide-video video {
+    display: block;
+    max-width: 38vw;
+    max-height: 62vh;
+  }
+  /* Sur un ecran etroit, la video passe au-dessus, plus basse, pour laisser
+     « J'ai compris » a portee sans defiler. */
+  @media (max-width: 700px) {
+    .guide-corps { flex-direction: column; align-items: center; }
+    .guide-video video { max-width: 100%; max-height: 38vh; }
+  }
   .guide-carte h2 {
     margin: 0 0 6px;
     font-family: var(--titre, inherit);
@@ -1392,8 +1418,15 @@
   <div class="guide-exercice" id="guideExercice" hidden>
     <div class="guide-carte">
       <h2 id="guideNom"></h2>
-      <p class="guide-description" id="guideDescription"></p>
-      <div id="guideBlocs"></div>
+      <!-- La video a gauche, les consignes a droite : on voit le mouvement en
+           lisant ce qu'il demande. Un mouvement sans video garde le texte seul. -->
+      <div class="guide-corps">
+        <div class="guide-video" id="guideVideo" hidden><video muted loop playsinline preload="auto"></video></div>
+        <div class="guide-texte">
+          <p class="guide-description" id="guideDescription"></p>
+          <div id="guideBlocs"></div>
+        </div>
+      </div>
       <button class="bouton" id="guideCompris" data-tuto="compris">J'ai compris</button>
       <p class="guide-astuce">Ou croise les bras devant toi — tu n'as pas à revenir à l'écran.</p>
     </div>
@@ -1444,6 +1477,8 @@
          pendant les repos, ou l'on a justement le temps de lire. -->
     <details class="card fiche-card" id="ficheCard" hidden>
       <summary class="label" id="ficheLabel">Consignes</summary>
+      <!-- La video suit la carte : repliee, elle est en pause (`hud.js`). -->
+      <div class="fiche-video" id="ficheVideo" hidden><video muted loop playsinline preload="auto"></video></div>
       <ol id="ficheInstructions"></ol>
     </details>
 
@@ -1584,6 +1619,7 @@ import {
   resultats_par_exercice,
 } from "../js/seance.js";
 import { brancher_commandes, peindre_hud } from "../js/hud.js";
+import { jouer_si_visible, montrer_video } from "../js/videos.js";
 import { INTERVALLE_MAX, ajuster_repetitions, executer_mode, duree_realisee, oublier_durees, mettre_a_jour_prochain_exercice, poser_etape, annoncer_temps_repos } from "../js/moteur.js";
 import { CompteurMouvement } from "../js/compteur.js";
 import { HoldPosition } from "../js/outils.js";
@@ -1613,14 +1649,12 @@ import * as historique from "../js/historique.js";
 import { Tutoriel, etapes_de_seance } from "../js/tutoriel.js";
 import * as stockage from "../js/stockage.js";
 import { Lecteur } from "../js/lecteur.js";
-import { Baremes, composer_baremes } from "../js/paliers.js";
-import { Niveaux } from "../js/niveaux.js";
-import { Ligues } from "../js/ligues.js";
+import { composer_baremes } from "../js/paliers.js";
+import { construire_progression, variantes_en_cours } from "../js/progression.js";
 import { badge_ligue, classe_ligue, jalon_ligue, jauge_ligue, style_ligue } from "../js/ligues_ui.js";
-import { ECHELLE, Ressenti } from "../js/ressenti.js";
+import { ECHELLE } from "../js/ressenti.js";
 import { construire_ligne, proposition_de_montee } from "../js/ressentis_ui.js";
-import { Calibration, note_du_profil } from "../js/calibration.js";
-import { Objectifs } from "../js/objectifs.js";
+import { note_du_profil } from "../js/calibration.js";
 import { normaliser, poids_declarable } from "../js/materiel.js";
 import { VerrouEcran } from "../js/veille.js";
 import { cle_de_progression, graphique_progression } from "../js/graphique.js";
@@ -1634,7 +1668,6 @@ import {
 } from "../js/programmes.js";
 import { enteriner_cibles_manuelles, est_cible_manuelle } from "../js/cible_manuelle.js";
 import {
-  Variantes,
   catalogue_depuis,
   normaliser as normaliser_variantes,
   original_de,
@@ -1713,6 +1746,11 @@ const $ = (id) => document.getElementById(id);
 const montrer = (id) => {
   for (const ecran of document.querySelectorAll(".ecran")) {
     ecran.classList.toggle("actif", ecran.id === id);
+  }
+  // La video d'une fiche qu'on quitte cesse de decoder. Seulement celles des
+  // fiches : la video de la camera (`veille.js`) doit, elle, continuer.
+  for (const video of document.querySelectorAll(".video-fiche video")) {
+    if (!video.closest(`#${id}`)) jouer_si_visible(video, false);
   }
 };
 
@@ -1818,35 +1856,11 @@ async function charger_donnees() {
  */
 function construire_moteur() {
   const profil = base.utilisateurs.find((u) => u.id === PROFIL);
-  const baremes = new Baremes(tables_baremes, profil?.materiel ?? null);
-  const niveaux = new Niveaux(baremes);
-  // `Ressenti` est nomme plutot qu'anonyme : les ecrans s'en servent aussi
-  // pour *juger* une seance passee (« reussi » ou « non atteint », et quelles
-  // reponses proposer), pas seulement le moteur pour calculer un objectif.
-  const ressenti = new Ressenti(baremes, niveaux);
-  // Les ligues suivent le meme sort que le reste : elles derivent du bareme,
-  // donc elles se refont avec lui quand le materiel change. La calibration
-  // en depend — la note se traduit par leurs bornes.
-  const ligues = new Ligues(baremes, tables_baremes.ligues);
-  const calibration = new Calibration(
-    baremes, ligues, niveaux, ressenti, tables_baremes.note_athlete,
+  // Le meme assemblage que le simulateur de progression : un seul endroit
+  // sait quel module depend de quel autre.
+  moteur = construire_progression(
+    tables_baremes, profil?.materiel ?? null, catalogue_depuis(mouvements),
   );
-  moteur = {
-    baremes,
-    niveaux,
-    calibration,
-    ressenti,
-    ligues,
-    // Le catalogue des variantes y entre pour la regle du palier 1 : un
-    // exercice atteint en remontant la chaine part du bas de son bareme.
-    objectifs: new Objectifs(
-      baremes, niveaux, ressenti, calibration, catalogue_depuis(mouvements),
-    ),
-    // Les variantes plus faciles jouees a la place d'un mouvement. Le bareme
-    // y entre pour l'unite et pour traduire la performance de retour, les
-    // niveaux pour lire ce qu'une seance a prouve (`montees`).
-    variantes: new Variantes(baremes, tables_baremes.variantes?.retour ?? {}, niveaux),
-  };
 }
 
 /**
@@ -1857,7 +1871,12 @@ function construire_moteur() {
  * pour une personne.
  */
 function variantes_du_profil() {
-  return normaliser_variantes(profil_courant()?.variantes);
+  // La preference du profil **et** le mouvement de depart des familles qu'il
+  // n'a jamais jouees : tous les ecrans lisent la meme table, donc annoncent
+  // le mouvement que la seance jouera.
+  return variantes_en_cours(
+    moteur, profil_courant()?.variantes, lecture_du_profil(), catalogue_des_variantes(),
+  );
 }
 
 function catalogue_des_variantes() {
@@ -2077,12 +2096,22 @@ async function demarrer(nom) {
 
   nom_seance = nom;
   seance = circuit_pour(mouvements, seances[nom]);
+  // Le mouvement de depart d'une famille jamais jouee est **ecrit** ici, au
+  // demarrage : apres cette seance la famille aura ete jouee, et le choix,
+  // seulement relu, se serait efface. Sauvegarde sans l'attendre — rien ne
+  // doit s'intercaler entre le geste et ce qui suit, et la fin de seance
+  // reecrit la base de toute facon.
+  const variantes = variantes_du_profil();
+  if (JSON.stringify(variantes) !== JSON.stringify(normaliser_variantes(profil_courant()?.variantes))) {
+    historique.definir_variantes(base, PROFIL, variantes);
+    void stockage.sauver(base);
+  }
   // **Le seul endroit ou les variantes du profil remplacent leurs originaux**,
   // et avant le moteur pour que l'objectif soit celui de la variante. Le
   // circuit construit ici ne repart jamais dans `seances_locales`.
   moteur.variantes.appliquer_au_circuit(
     seance,
-    variantes_du_profil(),
+    variantes,
     catalogue_des_variantes(),
     (mouvement) => exercice_pour(mouvements, mouvement),
   );
@@ -2320,6 +2349,9 @@ function ouvrir_guide_exercice(bloc) {
     liste_guide("Ce que tu dois sentir", fiche.sensations),
     liste_guide("À éviter", fiche.erreurs_frequentes),
   ].join("");
+  // Lue des qu'elle est prete ; deja chargee (meme mouvement revu), relancee.
+  montrer_video($("guideVideo"), nom, (video) => jouer_si_visible(video, true));
+  jouer_si_visible($("guideVideo").querySelector("video"), !$("guideVideo").hidden);
 
   $("guideExercice").hidden = false;
 
@@ -2372,6 +2404,7 @@ async function fermer_guide(par_geste = false) {
   guide_exercice = null;
   geste_guide = null;
   $("guideExercice").hidden = true;
+  jouer_si_visible($("guideVideo").querySelector("video"), false);
   if (historique.marquer_tuto_vu(base, PROFIL, "exercices", nom)) {
     await stockage.sauver(base);
   }
@@ -4993,6 +5026,9 @@ function dessiner_fiche(nom) {
     `<p class="kicker">${fiche.est_echauffement ? "Échauffement" : "Exercice"}</p>` +
     `<h1>${echapper(nom)}</h1>` +
     `<p class="resume">${echapper(fiche.description ?? "")}</p>` +
+    // Cache tant que la video n'a pas charge : un mouvement sans video
+    // n'affiche pas de cadre vide (`montrer_video`).
+    `<div class="video-fiche" id="videoFiche" hidden><video muted loop playsinline preload="auto"></video></div>` +
     (meta.length ? `<div class="meta">${meta.join("")}</div>` : "") +
     (etat ? bloc_niveau(etat, nom, objectif) : "") +
     (etat ? bloc_graphique(nom, statistique) : "") +
@@ -5018,6 +5054,7 @@ function dessiner_fiche(nom) {
       }
     });
   }
+  montrer_video($("videoFiche"), nom, (video) => jouer_si_visible(video, true));
   brancher_points_du_graphique(nom, histoire);
   brancher_recalages($("contenuFiche"));
   $("retourExercices").textContent =
@@ -6178,8 +6215,9 @@ function dessiner_liste() {
     barre.className = "barre-carte";
     // Une variante jouee a la place est un ecart au fichier, comme une cible
     // figee : il se voit sans deplier.
+    const variantes = variantes_du_profil();
     const remplaces = exercices.filter((b) =>
-      moteur.variantes.substitution(b.exercice, b.mode, variantes_du_profil(), catalogue_des_variantes())
+      moteur.variantes.substitution(b.exercice, b.mode, variantes, catalogue_des_variantes())
     ).length;
     if (remplaces) {
       const marque = document.createElement("span");

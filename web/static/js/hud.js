@@ -4,11 +4,15 @@
 // **Tout ici est une fonction de `donnees`, et rien d'autre** : l'objet que
 // `payload_etat` (`seance.js`) fabrique depuis le `Circuit`. Aucune requete,
 // aucune horloge, aucun acces a la camera ne doit entrer dans ce module : c'est
-// ce qui le garde lisible, et peignable dans n'importe quel etat.
+// ce qui le garde lisible, et peignable dans n'importe quel etat. La video de
+// la fiche n'y fait pas exception : comme une image, elle se designe par le
+// nom du mouvement de `donnees.fiche`, et le navigateur la charge.
 //
 // L'**execution** d'une commande n'est pas ici : `brancher_commandes(executer)`
 // recoit l'action a faire et ne connait que des **noms** de commande (`reset`,
 // `passer_pause`, ...) — ceux-la memes que `commandes_autorisees` emploie.
+
+import { jouer_si_visible, montrer_video } from "./videos.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -268,10 +272,24 @@ let fiche_affichee = null;
 //: chaque transition pour ne changer qu'un booleen.
 let fiche_en_effort = null;
 
+//: La video de la carte se lit quand on la voit et seulement alors : repliee
+//: pendant l'effort, elle ne decode pas. `toggle` couvre les deux ouvertures,
+//: par `afficher_fiche` comme au doigt. Branche une fois.
+let video_de_fiche_branchee = false;
+
+function lire_video_de_fiche() {
+  const carte = $("ficheCard");
+  jouer_si_visible($("ficheVideo").querySelector("video"), carte.open && !carte.hidden);
+}
+
 function afficher_fiche(donnees) {
   const carte = $("ficheCard");
   const liste = $("ficheInstructions");
   const etiquette = $("ficheLabel");
+  if (!video_de_fiche_branchee) {
+    video_de_fiche_branchee = true;
+    carte.addEventListener("toggle", lire_video_de_fiche);
+  }
 
   // Repliee pendant l'effort, depliee des qu'on souffle : c'est la meme raison
   // qui vaut a `.right-column` de passer au-dessus du voile de repos (z-index
@@ -310,7 +328,16 @@ function afficher_fiche(donnees) {
     element.textContent = consigne;
     liste.appendChild(element);
   });
-  carte.hidden = consignes.length === 0;
+  // La video suit la meme cle que les consignes : pendant `repos_exercice`,
+  // c'est celle du prochain mouvement. Une carte sans consigne se montre
+  // quand meme si une video arrive ; sans l'une ni l'autre, rien.
+  montrer_video($("ficheVideo"), (fiche && fiche.nom) || null, () => {
+    carte.hidden = false;
+    lire_video_de_fiche();
+  });
+  // Apres `montrer_video` : une video deja chargee sous le meme nom garde son
+  // cadre visible, et ne rappelle pas le chargement.
+  carte.hidden = consignes.length === 0 && $("ficheVideo").hidden;
 }
 
 /** Remplace un texte avec un petit fondu, et seulement s'il a change. */

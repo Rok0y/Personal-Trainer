@@ -19,9 +19,12 @@ minutes, donc on demande simplement au navigateur de ne rien garder.
 déploiement — c'est elle qu'il faut pour vérifier le comportement du cache, et
 celle-ci pour vérifier le reste.
 
-Usage : `python -m scripts.servir_statique [port]`
+Usage : `python -m scripts.servir_statique [port]` — sans argument, le port
+vient de la variable `PORT` (celui que l'application de bureau attribue au
+volet de prévisualisation), puis 8001.
 """
 
+import os
 import sys
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -41,7 +44,7 @@ class SansCache(SimpleHTTPRequestHandler):
 
 
 def main():
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8001
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get("PORT", 8001))
     gestionnaire = partial(SansCache, directory=str(RACINE))
     serveur = ThreadingHTTPServer(("127.0.0.1", port), gestionnaire)
     print(f"web/static servi sans cache sur http://127.0.0.1:{port}")
