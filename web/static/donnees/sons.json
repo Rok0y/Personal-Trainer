@@ -84,6 +84,30 @@
   ],
   "changement_jambe": [
    "change_de_jambe.wav"
+  ],
+  "forme_coude_qui_part_en_avant": [
+   "garde_le_coude_colle_au_buste.wav"
+  ],
+  "forme_coudes_trop_ecartes": [
+   "serre_les_coudes_pres_de_la_tete.wav"
+  ],
+  "forme_genou_avant_trop_avance": [
+   "garde_le_genou_derriere_la_pointe_du_pied.wav"
+  ],
+  "forme_buste_pas_assez_penche": [
+   "penche_toi_davantage_vers_l_avant.wav"
+  ],
+  "forme_genoux_trop_plies": [
+   "plie_moins_les_genoux.wav"
+  ],
+  "forme_coudes_trop_tendus": [
+   "garde_les_coudes_un_peu_plies.wav"
+  ],
+  "forme_coudes_trop_plies": [
+   "plie_moins_les_coudes.wav"
+  ],
+  "forme_pompe_pas_assez_profonde": [
+   "descends_plus_pres_du_sol.wav"
   ]
  },
  "priorites": {
@@ -109,11 +133,27 @@
   "repos_5": 8,
   "bip": 2,
   "changement_sens": 7,
-  "changement_jambe": 7
+  "changement_jambe": 7,
+  "forme_coude_qui_part_en_avant": 4,
+  "forme_coudes_trop_ecartes": 4,
+  "forme_genou_avant_trop_avance": 4,
+  "forme_buste_pas_assez_penche": 4,
+  "forme_genoux_trop_plies": 4,
+  "forme_coudes_trop_tendus": 4,
+  "forme_coudes_trop_plies": 4,
+  "forme_pompe_pas_assez_profonde": 4
  },
  "delais": {
   "correction_gainage": 8,
-  "cadrage": 6
+  "cadrage": 6,
+  "forme_coude_qui_part_en_avant": 4,
+  "forme_coudes_trop_ecartes": 4,
+  "forme_genou_avant_trop_avance": 4,
+  "forme_buste_pas_assez_penche": 4,
+  "forme_genoux_trop_plies": 4,
+  "forme_coudes_trop_tendus": 4,
+  "forme_coudes_trop_plies": 4,
+  "forme_pompe_pas_assez_profonde": 4
  },
  "briques": {
   "prochain_exercice": "prochain_exercice.wav",
@@ -169,7 +209,15 @@
   "prepare_un_haltere_de": "prepare_un_haltere_de.wav",
   "prepare_deux_halteres_de": "prepare_deux_halteres_de.wav",
   "kilos": "kilos.wav",
-  "kilo": "kilo.wav"
+  "kilo": "kilo.wav",
+  "forme_coude_qui_part_en_avant": "garde_le_coude_colle_au_buste.wav",
+  "forme_coudes_trop_ecartes": "serre_les_coudes_pres_de_la_tete.wav",
+  "forme_genou_avant_trop_avance": "garde_le_genou_derriere_la_pointe_du_pied.wav",
+  "forme_buste_pas_assez_penche": "penche_toi_davantage_vers_l_avant.wav",
+  "forme_genoux_trop_plies": "plie_moins_les_genoux.wav",
+  "forme_coudes_trop_tendus": "garde_les_coudes_un_peu_plies.wav",
+  "forme_coudes_trop_plies": "plie_moins_les_coudes.wav",
+  "forme_pompe_pas_assez_profonde": "descends_plus_pres_du_sol.wav"
  },
  "textes": {
   "prochain_exercice": "Prochain exercice",
@@ -221,7 +269,15 @@
   "bienvenue_camera_compte": "Ma caméra compte tes répétitions",
   "bienvenue_je_te_guide": "Et je te guide à la voix",
   "bienvenue_rien_ne_sort": "Aucune image ne sort de ton appareil",
-  "bienvenue_pret": "On y va quand tu veux"
+  "bienvenue_pret": "On y va quand tu veux",
+  "forme_coude_qui_part_en_avant": "Garde le coude collé au buste",
+  "forme_coudes_trop_ecartes": "Serre les coudes près de la tête",
+  "forme_genou_avant_trop_avance": "Garde le genou derrière la pointe du pied",
+  "forme_buste_pas_assez_penche": "Penche-toi davantage vers l'avant",
+  "forme_genoux_trop_plies": "Plie moins les genoux",
+  "forme_coudes_trop_tendus": "Garde les coudes un peu pliés",
+  "forme_coudes_trop_plies": "Plie moins les coudes",
+  "forme_pompe_pas_assez_profonde": "Descends plus près du sol"
  },
  "silences": {
   "entre_annonces": 0.8,

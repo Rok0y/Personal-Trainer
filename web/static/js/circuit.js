@@ -146,6 +146,9 @@ const CHAMPS_TEMPORELS = [
   "dernier_tick_echauffement",
   "amplitude_atteinte",
   "avertissement_amplitude",
+  "faute_en_cours",
+  "faute_depuis",
+  "faute_dite_a",
 ];
 
 export class BlocExercice {
