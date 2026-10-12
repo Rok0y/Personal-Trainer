@@ -22,6 +22,10 @@
 //  7. les changements d'echauffement ont-ils une cle et un instant valides ?
 //  8. la charge cousue par fichiers (`fichier_assemble`, ce que fait
 //     l'application) mene-t-elle au meme fichier que son texte ?
+//  9. la voix d'une faute de forme porte-t-elle la cle d'un message du
+//     bandeau (`messages.js`) ? Une cle, deux canaux : le moteur dit la cle
+//     que la detection rend, une voix sous une autre cle ne serait jamais
+//     appelee. Et son fichier est-il celui de sa brique ?
 //
 // Les sons manquants ne sont **pas** un probleme : un fichier absent est un
 // silence, jamais une panne. Ils se comptent, ils ne font pas echouer.
@@ -37,6 +41,7 @@ import {
   fichier_assemble,
 } from "../web/static/js/annonces.js";
 import { AMORCES_PAR_POSITION } from "../web/static/js/circuit.js";
+import { MESSAGES } from "../web/static/js/messages.js";
 import { SONS, charger, fichier, phrases_enregistrees, texte_charge } from "./vocabulaire.mjs";
 
 function main() {
@@ -98,9 +103,15 @@ function main() {
       }
     }
   }
+  // 7. et 9. : un changement ou une faute se joue par `coach(cle)`, donc par
+  // `fichiers` — qui doit designer le fichier de sa brique.
   for (const [cle, texte] of Object.entries(sons.textes)) {
-    if (cle.startsWith("changement_") && JSON.stringify(sons.fichiers[cle]) !== JSON.stringify([fichier(texte)])) {
+    const par_coach = cle.startsWith("changement_") || cle.startsWith("forme_");
+    if (par_coach && JSON.stringify(sons.fichiers[cle]) !== JSON.stringify([fichier(texte)])) {
       problemes.push(`cle « ${cle} » : fichiers doit jouer ${fichier(texte)}, le fichier de sa brique`);
+    }
+    if (cle.startsWith("forme_") && !(cle in MESSAGES)) {
+      problemes.push(`faute « ${cle} » : aucun message de ce nom dans messages.js — le moteur ne l'appellera jamais`);
     }
   }
 

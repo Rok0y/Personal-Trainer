@@ -70,6 +70,16 @@ const FAMILLES = [
       "l'ecran. Un ordre bref, qui arrive seul.",
   ],
   [
+    ["forme_"],
+    "Corrections de forme",
+    "Dites **pendant l'effort**, quand une faute dure, a quelqu'un qui " +
+      "est a trois metres et qui ne lit pas l'ecran. Une consigne, pas un " +
+      "reproche : un ton ferme et calme, un peu plus fort que les autres " +
+      "phrases, sans chute. Elles arrivent seules, souvent juste apres un " +
+      "chiffre du comptage. La phrase de l'ecran, plus longue, est dans " +
+      "`messages.js` ; celle-ci est la version courte, sous la meme cle.",
+  ],
+  [
     ["bienvenue"],
     "Accueil d'un nouveau profil",
     "Joue une seule fois dans la vie d'un profil. A enregistrer en " +

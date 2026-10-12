@@ -214,7 +214,8 @@ export function ajuster_repetitions({ seance, compteur, etat, coach, delta, dern
 }
 
 /**
- * Publie la premiere faute de forme detectee, ou efface le bandeau.
+ * Publie la premiere faute de forme detectee, ou efface le bandeau, et rend
+ * sa cle (null sans faute) pour que la voix la reprenne (`annoncer_faute`).
  *
  * Les fonctions de verification retournent une **cle**, pas une phrase : c'est
  * ici qu'elle est resolue. Une cle inconnue rend null, donc n'affiche rien.
@@ -229,6 +230,42 @@ export function mettre_a_jour_erreur(exercice, corps, etat, texte) {
     }
   }
   etat.erreur = cle ? texte(cle) : null;
+  return cle;
+}
+
+// Une faute n'est dite qu'apres avoir dure : une image isolee (le modele qui
+// hesite sur un coude) ferait parler le coach a tort, et une consigne qui se
+// declenche a tort apprend a ne plus etre ecoutee. Six dixiemes, c'est une
+// vingtaine d'images ; une vraie faute (genou trop avance en bas d'une fente,
+// coude qui part pendant la montee d'un curl) dure davantage.
+export const DUREE_AVANT_CORRECTION = 0.6;
+
+// Une faute qui persiste est redite, mais pas plus souvent : le coach compte
+// aussi les repetitions, et une correction en boucle couvrirait le compte.
+export const RAPPEL_CORRECTION = 6;
+
+/**
+ * Dit la faute de forme qui dure. **Une cle, deux canaux** : la cle du
+ * bandeau (`messages.js`) est aussi celle du son (`sons.json`), et une faute
+ * sans voix enregistree se tait d'elle-meme dans le lecteur.
+ *
+ * Le repere vit sur le bloc (`faute_en_cours`, `faute_depuis`,
+ * `faute_dite_a`, nettoyes par `reinitialiser_etat_serie`) et se lit a
+ * l'horloge de la seance. Une autre faute, ou la fin de la faute, ouvre un
+ * nouvel episode ; le delai du lecteur (`delais`) empeche un episode qui
+ * vacille de se redire aussitot.
+ */
+export function annoncer_faute(coach, bloc, cle, maintenant) {
+  if (cle !== bloc.faute_en_cours) {
+    bloc.faute_en_cours = cle;
+    bloc.faute_depuis = maintenant;
+    delete bloc.faute_dite_a;
+    return;
+  }
+  if (!cle || maintenant - bloc.faute_depuis < DUREE_AVANT_CORRECTION) return;
+  if ("faute_dite_a" in bloc && maintenant - bloc.faute_dite_a < RAPPEL_CORRECTION) return;
+  bloc.faute_dite_a = maintenant;
+  coach(cle);
 }
 
 /**
@@ -236,9 +273,13 @@ export function mettre_a_jour_erreur(exercice, corps, etat, texte) {
  * est retenu tant que le compteur est arme, oublie a chaque nouvel armement,
  * et l'avertissement reste affiche jusqu'a la repetition suivante — une faute
  * de forme du moment passe devant lui.
+ *
+ * Rend la cle de l'avertissement **a l'image ou la repetition compte**, null
+ * sinon : la voix le dit une fois, au moment ou il nait, alors que l'ecran le
+ * garde jusqu'a la repetition suivante.
  */
 export function suivre_amplitude(exercice, corps, bloc, etat, stage_avant, stage, rep_comptee, texte) {
-  if (!exercice.amplitude) return;
+  if (!exercice.amplitude) return null;
   const [atteinte, cle] = exercice.amplitude;
   if (stage === "debut") {
     if (stage_avant !== "debut") bloc.amplitude_atteinte = false;
@@ -249,6 +290,7 @@ export function suivre_amplitude(exercice, corps, bloc, etat, stage_avant, stage
   }
   const avertissement = bloc.avertissement_amplitude ?? null;
   if (etat.erreur === null && avertissement) etat.erreur = texte(avertissement);
+  return rep_comptee ? avertissement : null;
 }
 
 /**
@@ -272,21 +314,25 @@ export function gerer_mode_repetitions({
   corps, exercice, bloc, seance, compteur, etat, coach, derniere_rep, messages,
 }) {
   let serie_terminee = false;
-  mettre_a_jour_erreur(exercice, corps, etat, messages.texte);
+  const faute = mettre_a_jour_erreur(exercice, corps, etat, messages.texte);
   const stage_detecte = exercice.detection(corps);
 
   const stage_avant = compteur.stage;
   const repetitions_avant = compteur.repetitions;
   const [stage, repetitions] = compteur.mettre_a_jour(stage_detecte, seance.maintenant());
-  suivre_amplitude(
+  const amplitude_manquee = suivre_amplitude(
     exercice, corps, bloc, etat, stage_avant, stage, repetitions > repetitions_avant, messages.texte
   );
 
   if (repetitions > derniere_rep) {
     coach("compteur", repetitions);
+    // Avant les encouragements : un evenement important (fin de serie) vide
+    // la file, et une correction dite apres « fin de serie » ne sert a rien.
+    if (amplitude_manquee) coach(amplitude_manquee);
     annoncer_progression(coach, repetitions, bloc.repetitions_par_serie);
     derniere_rep = repetitions;
   }
+  annoncer_faute(coach, bloc, faute, seance.maintenant());
 
   poser_etape(etat, stage, messages.libelle_etape);
   etat.repetitions = repetitions;
@@ -304,7 +350,8 @@ export function gerer_mode_repetitions({
 }
 
 export function gerer_mode_maintien({ corps, bloc, seance, etat, coach, messages }) {
-  mettre_a_jour_erreur(bloc.exercice, corps, etat, messages.texte);
+  const faute = mettre_a_jour_erreur(bloc.exercice, corps, etat, messages.texte);
+  annoncer_faute(coach, bloc, faute, seance.maintenant());
   const position = bloc.exercice.detection(corps);
   if (position === "maintien") bloc.position_maintien_validee = true;
 
@@ -375,8 +422,9 @@ export function gerer_mode_chrono({ bloc, seance, etat, coach }) {
 export function gerer_mode_amrap({
   corps, bloc, compteur, seance, etat, coach, derniere_rep, messages,
 }) {
-  mettre_a_jour_erreur(bloc.exercice, corps, etat, messages.texte);
+  const faute = mettre_a_jour_erreur(bloc.exercice, corps, etat, messages.texte);
   const maintenant = seance.maintenant();
+  annoncer_faute(coach, bloc, faute, maintenant);
 
   if (!("debut_amrap" in bloc)) bloc.debut_amrap = maintenant;
 
@@ -433,7 +481,8 @@ export function gerer_mode_echauffement({ corps, bloc, seance, etat, coach, mess
   bloc.temps_echauffement += Math.min(delta, INTERVALLE_MAX);
 
   if (bloc.exercice.detection !== null && bloc.exercice.detection !== undefined) {
-    mettre_a_jour_erreur(bloc.exercice, corps, etat, messages.texte);
+    const faute = mettre_a_jour_erreur(bloc.exercice, corps, etat, messages.texte);
+    annoncer_faute(coach, bloc, faute, maintenant);
     poser_etape(etat, bloc.exercice.detection(corps), messages.libelle_etape);
   } else {
     etat.erreur = null;

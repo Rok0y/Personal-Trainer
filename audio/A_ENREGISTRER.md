@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**28 prises restantes.**
+**36 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -120,6 +120,21 @@ Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus l'ecran. Un ordre
 | --- | --- | --- |
 | `change_de_sens.wav` | « Change de sens » | **a enregistrer** |
 | `change_de_jambe.wav` | « Change de jambe » | **a enregistrer** |
+
+## Corrections de forme
+
+Dites **pendant l'effort**, quand une faute dure, a quelqu'un qui est a trois metres et qui ne lit pas l'ecran. Une consigne, pas un reproche : un ton ferme et calme, un peu plus fort que les autres phrases, sans chute. Elles arrivent seules, souvent juste apres un chiffre du comptage. La phrase de l'ecran, plus longue, est dans `messages.js` ; celle-ci est la version courte, sous la meme cle.
+
+| Fichier | A prononcer | Etat |
+| --- | --- | --- |
+| `garde_le_coude_colle_au_buste.wav` | « Garde le coude collé au buste » | **a enregistrer** |
+| `serre_les_coudes_pres_de_la_tete.wav` | « Serre les coudes près de la tête » | **a enregistrer** |
+| `garde_le_genou_derriere_la_pointe_du_pied.wav` | « Garde le genou derrière la pointe du pied » | **a enregistrer** |
+| `penche_toi_davantage_vers_l_avant.wav` | « Penche-toi davantage vers l'avant » | **a enregistrer** |
+| `plie_moins_les_genoux.wav` | « Plie moins les genoux » | **a enregistrer** |
+| `garde_les_coudes_un_peu_plies.wav` | « Garde les coudes un peu pliés » | **a enregistrer** |
+| `plie_moins_les_coudes.wav` | « Plie moins les coudes » | **a enregistrer** |
+| `descends_plus_pres_du_sol.wav` | « Descends plus près du sol » | **a enregistrer** |
 
 ## Accueil d'un nouveau profil
 
