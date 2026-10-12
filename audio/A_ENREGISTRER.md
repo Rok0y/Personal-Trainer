@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**28 prises restantes.**
+**20 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -109,8 +109,8 @@ Le guidage du debut de seance, dit camera ouverte pendant qu'on se place.
 | `c_est_bien_te_voila_reparti_de_zero.wav` | « C'est bien, te voilà reparti de zéro » | deja fait |
 | `croise_les_bras_et_tiens_la_position.wav` | « Croise les bras et tiens la position » | deja fait |
 | `bravo_tu_sais_tout_piloter_de_loin.wav` | « Bravo, tu sais tout piloter de loin » | deja fait |
-| `leve_le_bras_droit_pour_ajouter_une_repetition.wav` | « Lève le bras droit pour ajouter une répétition » | **a enregistrer** |
-| `leve_le_bras_gauche_pour_en_retirer_une.wav` | « Lève le bras gauche pour en retirer une » | **a enregistrer** |
+| `leve_le_bras_droit_pour_ajouter_une_repetition.wav` | « Lève le bras droit pour ajouter une répétition » | deja fait |
+| `leve_le_bras_gauche_pour_en_retirer_une.wav` | « Lève le bras gauche pour en retirer une » | deja fait |
 
 ## Changements en cours d'echauffement
 
@@ -118,8 +118,8 @@ Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus l'ecran. Un ordre
 
 | Fichier | A prononcer | Etat |
 | --- | --- | --- |
-| `change_de_sens.wav` | « Change de sens » | **a enregistrer** |
-| `change_de_jambe.wav` | « Change de jambe » | **a enregistrer** |
+| `change_de_sens.wav` | « Change de sens » | deja fait |
+| `change_de_jambe.wav` | « Change de jambe » | deja fait |
 
 ## Corrections de forme
 
@@ -163,16 +163,16 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 | `elevations_laterales.wav` | « Elevations latérales » | deja fait |
 | `extension_triceps.wav` | « Extension Triceps » | deja fait |
 | `fente_droite.wav` | « Fente droite » | deja fait |
-| `fente_droite_chargee.wav` | « Fente droite chargée » | **a enregistrer** |
+| `fente_droite_chargee.wav` | « Fente droite chargée » | deja fait |
 | `fente_gauche.wav` | « Fente gauche » | deja fait |
-| `fente_gauche_chargee.wav` | « Fente gauche chargée » | **a enregistrer** |
+| `fente_gauche_chargee.wav` | « Fente gauche chargée » | deja fait |
 | `gainage_planche.wav` | « Gainage planche » | deja fait |
 | `gainage_planche_laterale_droite.wav` | « Gainage planche laterale droite » | deja fait |
 | `gainage_planche_laterale_gauche.wav` | « Gainage planche laterale gauche » | deja fait |
 | `gainage_sur_les_genoux.wav` | « Gainage sur les genoux » | deja fait |
 | `oiseau.wav` | « Oiseau » | deja fait |
 | `pompes.wav` | « Pompes » | deja fait |
-| `pompes_contre_le_mur.wav` | « Pompes contre le mur » | **a enregistrer** |
+| `pompes_contre_le_mur.wav` | « Pompes contre le mur » | deja fait |
 | `pompes_inclinees.wav` | « Pompes inclinées » | deja fait |
 | `pompes_sur_les_genoux.wav` | « Pompes sur les genoux » | deja fait |
 | `rowing_penche.wav` | « Rowing penche » | deja fait |
@@ -180,7 +180,7 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 | `rowing_unilateral_gauche.wav` | « Rowing unilateral gauche » | deja fait |
 | `souleve_de_terre_roumain.wav` | « Souleve de terre roumain » | deja fait |
 | `squat.wav` | « Squat » | deja fait |
-| `squat_charge.wav` | « Squat chargé » | **a enregistrer** |
+| `squat_charge.wav` | « Squat chargé » | deja fait |
 
 ## Noms des echauffements
 
