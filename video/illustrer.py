@@ -19,7 +19,8 @@ oppose. Ne pas activer « Camera avant en miroir » sur l'appareil : la video
 serait retournee deux fois.
 
 Ecrit aussi `video/essais/<nom>/controle.png` (non versionne) : le detourage et
-le rendu a quelques instants, puis le raccord de la boucle. C'est la qu'on
+le rendu aux instants les plus differents de la boucle (le haut et le bas du
+mouvement), puis le raccord de la boucle. C'est la qu'on
 verifie le sens : seul un oeil sait si la prise etait deja en miroir.
 
 Le detourage croise deux methodes qui se trompent en sens contraires :
@@ -106,6 +107,9 @@ LONGUEUR_MIN = 2.0
 FONDU = 8
 # Marge autour du corps dans le cadre final (pixels a 720 de haut).
 MARGE_CADRE = 24
+# Instants montres par la planche de controle, et hauteur de leurs vignettes.
+INSTANTS_CONTROLE = 6
+HAUTEUR_CONTROLE = 220
 
 
 # ---------------------------------------------------------------- noms
@@ -349,6 +353,23 @@ class Analyse:
               f"ecart du raccord {distances[di, dj] / a.shape[1]:.3f}")
         return i, j
 
+    def instants_varies(self, i, j, nombre):
+        """Les images de la boucle aux silhouettes les plus differentes, dans l'ordre.
+
+        Chaque image choisie est la plus eloignee de celles deja prises : le
+        haut et le bas du mouvement y sont, quel que soit son rythme. Des
+        instants regulierement espaces tombaient tous sur la meme phase quand
+        le rythme des repetitions divisait leur ecart.
+        """
+        formes = self.formes[i:j]
+        choisis = [0]
+        distances = ((formes - formes[0]) ** 2).sum(1)
+        while len(choisis) < min(nombre, len(formes)) and distances.max() > 0:
+            k = int(np.argmax(distances))
+            choisis.append(k)
+            distances = np.minimum(distances, ((formes - formes[k]) ** 2).sum(1))
+        return sorted(i + k for k in choisis)
+
     def cadre(self, i, j):
         """Le rectangle qui contient le corps sur toute la boucle, marge comprise."""
         union = np.zeros(self.forme, np.uint8)
@@ -472,7 +493,7 @@ class Ecrivain:
             raise SystemExit("ffmpeg a echoue.")
 
 
-def vignette(image, hauteur=300):
+def vignette(image, hauteur=HAUTEUR_CONTROLE):
     h, w = image.shape[:2]
     return cv2.resize(image, (max(1, round(w * hauteur / h)), hauteur), interpolation=cv2.INTER_AREA)
 
@@ -530,7 +551,7 @@ def main():
     # Les FONDU images avant i sont rendues d'abord : les dernieres images de
     # la boucle s'y fondent, si bien que la fin rejoint en douceur l'image i.
     amorce = []
-    instants = set(np.linspace(i, j - 1, 4).astype(int))
+    instants = set(analyse.instants_varies(i, j, INSTANTS_CONTROLE))
     paires = []
     for index, image in lire(args.video, i - FONDU, j):
         # En miroir des le depart : rendu, controle et raccord sont tous dans
