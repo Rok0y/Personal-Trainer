@@ -319,7 +319,9 @@ export function gerer_mode_repetitions({
 
   const stage_avant = compteur.stage;
   const repetitions_avant = compteur.repetitions;
-  const [stage, repetitions] = compteur.mettre_a_jour(stage_detecte, seance.maintenant());
+  const [stage, repetitions] = compteur.mettre_a_jour(
+    stage_detecte, seance.maintenant(), exercice.depart ?? null
+  );
   const amplitude_manquee = suivre_amplitude(
     exercice, corps, bloc, etat, stage_avant, stage, repetitions > repetitions_avant, messages.texte
   );
@@ -432,7 +434,9 @@ export function gerer_mode_amrap({
   annoncer_temps_restant(coach, bloc, bloc.duree - bloc.temps_amrap);
 
   const stage_detecte = bloc.exercice.detection(corps);
-  const [stage, repetitions] = compteur.mettre_a_jour(stage_detecte, maintenant);
+  const [stage, repetitions] = compteur.mettre_a_jour(
+    stage_detecte, maintenant, bloc.exercice.depart ?? null
+  );
 
   if (repetitions > derniere_rep) {
     coach("compteur", repetitions);

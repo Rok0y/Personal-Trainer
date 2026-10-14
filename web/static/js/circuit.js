@@ -88,6 +88,7 @@ export class Exercice {
     amplitude = null,
     changements = null,
     sensations = null,
+    depart = null,
   }) {
     this.nom = nom;
     this.detection = detection;
@@ -113,6 +114,10 @@ export class Exercice {
     // echauffements muets sans que rien ne le signale.
     this.changements = (changements ?? []).map((c) => [...c]);
     this.sensations = sensations ?? [];
+    // La position ou une serie commence ("debut", "fin"), ou null pour « la
+    // premiere vue ». Lue par `CompteurMouvement.mettre_a_jour`. Meme piege
+    // que les deux champs ci-dessus.
+    this.depart = depart;
   }
 
   fiche() {

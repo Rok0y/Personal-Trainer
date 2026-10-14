@@ -83,6 +83,7 @@
   "detection": "developpe_couche_sol_detection",
   "erreurs": [],
   "amplitude": null,
+  "depart": "fin",
   "materiel": "Deux haltères et un tapis",
   "est_echauffement": false
  },

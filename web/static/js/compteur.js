@@ -17,8 +17,17 @@ export class CompteurMouvement {
   }
 
   // `instant` est l'horloge de la seance, en secondes ; null le desactive.
-  mettre_a_jour(nouveau_stage, instant = null) {
+  //
+  // `depart` est la position ou une serie commence (`Exercice.depart`), ou
+  // null. **Tant que rien n'est arme, seule elle est retenue.** Sans elle, le
+  // premier jeton vu fixait la position de depart : en s'allongeant coudes
+  // plies pour un developpe couche, on etait vu en `debut`, et pousser les
+  // halteres en place comptait une repetition a chaque serie.
+  mettre_a_jour(nouveau_stage, instant = null, depart = null) {
     if (nouveau_stage !== "debut" && nouveau_stage !== "fin") {
+      return [this.stage, this.repetitions];
+    }
+    if (this.stage === null && depart !== null && nouveau_stage !== depart) {
       return [this.stage, this.repetitions];
     }
 

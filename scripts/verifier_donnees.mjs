@@ -166,6 +166,11 @@ function main() {
         signaler("mouvements.json", `« ${nom} » nomme ${fonction}, absente de detections.js`);
       }
     }
+    // Une position de depart hors vocabulaire n'armerait jamais le compteur :
+    // plus une seule repetition comptee, en silence.
+    if (mouvement.depart != null && !(["debut", "fin"].includes(mouvement.depart) && mouvement.detection)) {
+      signaler("mouvements.json", `« ${nom} » : depart « ${mouvement.depart} » — "debut" ou "fin", et seulement avec une detection`);
+    }
     for (const sens of ["variante_facile", "variante_difficile"]) {
       if (mouvement[sens] && !bruts[mouvement[sens]]) {
         signaler("mouvements.json", `« ${nom} » : ${sens} « ${mouvement[sens]} » n'est pas un mouvement`);

@@ -70,6 +70,7 @@ export function exercice_pour(mouvements, nom) {
     orientation: fiche.orientation ?? null,
     amplitude: amplitude_pour(fiche.amplitude),
     changements: fiche.changements ?? [],
+    depart: fiche.depart ?? null,
   });
 }
 
