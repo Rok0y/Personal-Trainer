@@ -443,6 +443,38 @@ export class Circuit {
     );
   }
 
+  /**
+   * Les series de chaque bloc, telles qu'elles ont ete jouees.
+   *
+   * Pour chaque bloc de `blocs` (l'une des deux listes des barres de
+   * progression) : `series`, une case par serie, null tant qu'elle n'est pas
+   * faite, sinon `{repetitions, duree, completee}` ; et `en_cours`, le numero
+   * de la serie courante si ce bloc est le bloc courant, null sinon.
+   *
+   * **Lu dans les resultats, pas deduit d'un compte.** La barre remplissait
+   * ses segments a plat avec `series_terminees` : en superset, A1 puis B1
+   * remplissaient A1 puis A2, et la barre n'avancait qu'un exercice sur deux.
+   * Seules comptent les series du mouvement joue : apres une variante, celles
+   * du mouvement quitte ne remplissent pas la barre de sa remplacante.
+   */
+  etat_des_series(blocs) {
+    return blocs.map((bloc) => {
+      const index = this.exercices.indexOf(bloc);
+      const series = Array.from({ length: Number(bloc.nombre_series) || 0 }, () => null);
+      for (const resultat of this.resultats_series) {
+        if (resultat.index_exercice !== index || resultat.exercice !== bloc.exercice.nom) continue;
+        if (resultat.serie < 1 || resultat.serie > series.length) continue;
+        series[resultat.serie - 1] = {
+          repetitions: resultat.repetitions,
+          duree: resultat.duree,
+          completee: resultat.completee,
+        };
+      }
+      const courant = index === this.index_exercice && !["termine", "abandonne"].includes(this.phase);
+      return { series, en_cours: courant ? this.serie_actuelle : null };
+    });
+  }
+
   passer_pause() {
     if (this.phase !== "recuperation_serie" && this.phase !== "repos_exercice") {
       return false;

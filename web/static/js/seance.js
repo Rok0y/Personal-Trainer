@@ -241,6 +241,10 @@ export function payload_etat(seance, etat, statut = "running", utilisateur_id = 
       ? seance.exporter_configuration(seance.blocs_echauffement, utilisateur_id)
       : [],
     echauffements_termines: active ? seance.series_echauffement_terminees : 0,
+    // Une entree par bloc, dans l'ordre de `exercices` et `echauffements` :
+    // ce que la barre de progression remplit, et ce que sa bulle detaille.
+    series_exercices: active ? seance.etat_des_series(seance.blocs_comptabilises) : [],
+    series_echauffements: active ? seance.etat_des_series(seance.blocs_echauffement) : [],
     dans_echauffement: active ? seance.dans_echauffement : false,
     // Le nom que le bouton « Plus facile » annonce, ou null : il se cache.
     variante_facile: active ? seance.variante_possible() : null,

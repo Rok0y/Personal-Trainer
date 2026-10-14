@@ -12,6 +12,7 @@
 // recoit l'action a faire et ne connait que des **noms** de commande (`reset`,
 // `passer_pause`, ...) — ceux-la memes que `commandes_autorisees` emploie.
 
+import { resume_series } from "./pastilles.js";
 import { jouer_si_visible, montrer_video } from "./videos.js";
 
 const $ = (id) => document.getElementById(id);
@@ -376,16 +377,33 @@ let signature_progression = "";
 
 const CONTENEURS_PROGRESSION = ["sessionProgressSegments", "overlaySessionProgressSegments"];
 
+//: Le groupe dont la bulle de detail est ouverte (son rang dans la liste
+//: affichee), ou null. Un etat d'affichage ouvert **par l'utilisateur**, comme
+//: le menu des commandes : la boucle le repeint, et ne le referme qu'a un
+//: changement de liste (la bascule echauffement -> exercices).
+let groupe_detaille = null;
+
+//: La barre ou le toucher a eu lieu : celle du HUD reste visible sous le voile
+//: de repos, et les deux bulles ouvertes ensemble se superposaient.
+let barre_detaillee = null;
+
+//: Ce que la barre a peint en dernier : un toucher ouvre la bulle tout de
+//: suite, sans attendre l'image suivante.
+let derniere_progression = null;
+
+let bulle_branchee = false;
+
 function initialiser_progression(exercices) {
-  const signature = JSON.stringify(exercices || []);
+  const signature = JSON.stringify((exercices || []).map((e) => [e.nom, e.series]));
   if (signature === signature_progression) return;
 
   CONTENEURS_PROGRESSION.forEach((id) => {
     const conteneur = $(id);
     conteneur.replaceChildren();
-    (exercices || []).forEach((exercice) => {
+    (exercices || []).forEach((exercice, rang) => {
       const groupe = document.createElement("div");
       groupe.className = "progress-exercise";
+      groupe.dataset.rang = String(rang);
       const etiquette = document.createElement("span");
       etiquette.className = "progress-exercise-label";
       etiquette.textContent = exercice.nom;
@@ -399,8 +417,99 @@ function initialiser_progression(exercices) {
       groupe.append(etiquette, series);
       conteneur.appendChild(groupe);
     });
+    const bulle = document.createElement("div");
+    bulle.className = "progress-bulle";
+    bulle.hidden = true;
+    conteneur.appendChild(bulle);
   });
   signature_progression = signature;
+  groupe_detaille = null;
+  barre_detaillee = null;
+}
+
+/**
+ * Un toucher sur un groupe ouvre sa bulle ; un second toucher, ou un toucher
+ * ailleurs, la ferme. Delegue au document une fois pour toutes : les groupes
+ * sont recrees a chaque changement de liste.
+ */
+function brancher_bulle() {
+  if (bulle_branchee) return;
+  bulle_branchee = true;
+  document.addEventListener("click", (evenement) => {
+    if (evenement.target.closest?.(".progress-bulle")) return;
+    const groupe = evenement.target.closest?.(".progress-exercise");
+    const rang = groupe ? Number(groupe.dataset.rang) : null;
+    const barre = groupe?.parentElement.id ?? null;
+    const meme = rang === groupe_detaille && barre === barre_detaillee;
+    groupe_detaille = rang !== null && !meme ? rang : null;
+    barre_detaillee = groupe_detaille === null ? null : barre;
+    if (derniere_progression) peindre_bulles(...derniere_progression);
+  });
+}
+
+/** La cible d'une serie, dans l'unite que son mode joue. */
+function cible_de(exercice) {
+  return ["maintien", "chrono", "amrap", "echauffement"].includes(exercice.mode)
+    ? `${exercice.duree} s`
+    : `${exercice.repetitions}`;
+}
+
+function echapper(texte) {
+  const noeud = document.createElement("span");
+  noeud.textContent = texte;
+  return noeud.innerHTML;
+}
+
+/**
+ * La bulle du groupe ouvert : le nom entier, puis une pastille par serie —
+ * faite (les pastilles de l'historique, `resume_series`), en cours (le compte
+ * qui monte), a faire (sa cible).
+ */
+function contenu_bulle(exercice, etat, repetitions_en_direct) {
+  const pastilles = etat.series.map((serie, index) => {
+    if (serie) return resume_series([{ ...serie, poids: exercice.poids }], exercice.mode);
+    if (etat.en_cours === index + 1) {
+      const direct = ["repetitions", "amrap"].includes(exercice.mode)
+        ? `${Number(repetitions_en_direct) || 0}/${exercice.repetitions}`
+        : cible_de(exercice);
+      return `<span class="serie-puce en-cours">${direct}</span>`;
+    }
+    return `<span class="serie-puce a-faire">${cible_de(exercice)}</span>`;
+  });
+  const charge = exercice.poids ? ` · ${exercice.poids} kg` : "";
+  return (
+    `<strong>${echapper(exercice.nom)}</strong>` +
+    `<small>${etat.series.length} × ${cible_de(exercice)}${charge}</small>` +
+    `<div class="series-detail">${pastilles.join("")}</div>`
+  );
+}
+
+function peindre_bulles(exercices, etats, repetitions_en_direct) {
+  CONTENEURS_PROGRESSION.forEach((id) => {
+    const conteneur = $(id);
+    const bulle = conteneur.querySelector(".progress-bulle");
+    if (!bulle) return;
+    const rang = id === barre_detaillee ? groupe_detaille : null;
+    conteneur.querySelectorAll(".progress-exercise").forEach((groupe) => {
+      groupe.classList.toggle("detaille", Number(groupe.dataset.rang) === rang);
+    });
+    const exercice = rang === null ? null : exercices[rang];
+    const etat = rang === null ? null : etats[rang];
+    if (!exercice || !etat) {
+      bulle.hidden = true;
+      return;
+    }
+    // Repeinte a chaque image, puisque le compte bouge, mais ecrite seulement
+    // quand elle change.
+    const html = contenu_bulle(exercice, etat, repetitions_en_direct);
+    if (bulle.innerHTML !== html) bulle.innerHTML = html;
+    bulle.hidden = false;
+    // Au-dessus de son groupe, sans deborder de la barre.
+    const groupe = conteneur.querySelector(`.progress-exercise[data-rang="${rang}"]`);
+    const gauche = groupe.offsetLeft + groupe.offsetWidth / 2 - bulle.offsetWidth / 2;
+    const max = conteneur.clientWidth - bulle.offsetWidth;
+    bulle.style.left = `${Math.max(0, Math.min(max, gauche))}px`;
+  });
 }
 
 /**
@@ -410,18 +519,30 @@ function initialiser_progression(exercices) {
  * premier exercice comptabilise commence. Meme fonction, deux jeux de donnees
  * — la memoisation d'`initialiser_progression` portant sur la liste, la
  * bascule redessine d'elle-meme.
+ *
+ * **Chaque segment se lit dans l'etat de sa serie** (`etat_des_series`), et
+ * non dans un compte a plat : en superset, la barre remplissait le premier
+ * exercice deux fois plus vite et laissait le second vide. Desormais le
+ * segment orange saute d'un exercice a l'autre, comme la seance.
  */
-function afficher_progression(exercices, series_terminees, echauffement) {
+function afficher_progression(exercices, etats, echauffement, repetitions_en_direct) {
+  brancher_bulle();
   initialiser_progression(exercices);
-  const terminees = Number(series_terminees) || 0;
   CONTENEURS_PROGRESSION.forEach((id) => {
     const conteneur = $(id);
     conteneur.classList.toggle("progress-echauffement", Boolean(echauffement));
-    conteneur.querySelectorAll(".progress-segment").forEach((segment, index) => {
-      segment.classList.toggle("complete", index < terminees);
-      segment.classList.toggle("active", index === terminees);
+    conteneur.querySelectorAll(".progress-exercise").forEach((groupe) => {
+      const etat = (etats || [])[Number(groupe.dataset.rang)];
+      groupe.querySelectorAll(".progress-segment").forEach((segment, index) => {
+        const serie = etat?.series[index] ?? null;
+        segment.classList.toggle("complete", serie !== null);
+        segment.classList.toggle("ratee", serie !== null && serie.completee === false);
+        segment.classList.toggle("active", serie === null && etat?.en_cours === index + 1);
+      });
     });
   });
+  derniere_progression = [exercices || [], etats || [], repetitions_en_direct];
+  peindre_bulles(...derniere_progression);
 }
 
 // ---------------------------------------------------------------------------
@@ -590,8 +711,9 @@ export function peindre_hud(donnees) {
     Boolean(donnees.dans_echauffement) && (donnees.echauffements || []).length > 0;
   afficher_progression(
     echauffement ? donnees.echauffements : donnees.exercices,
-    echauffement ? donnees.echauffements_termines : donnees.series_terminees,
-    echauffement
+    echauffement ? donnees.series_echauffements : donnees.series_exercices,
+    echauffement,
+    donnees.repetitions
   );
 
   const minutes = Math.floor(Math.max(0, Number(donnees.duree_session) || 0) / 60);

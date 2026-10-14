@@ -89,6 +89,14 @@ function observer(circuit) {
     variante_possible: circuit.variante_possible(),
     remplace: bloc === null ? null : bloc.remplace,
     abandons: bloc === null ? null : bloc.abandons.map((a) => ({ ...a })),
+    // Ce que la barre de progression remplit, bloc par bloc : une case par
+    // serie (0 a faire, 1 reussie, 2 manquee) et la serie en cours. Les
+    // scenarios de superset y montrent que les deux partenaires avancent
+    // chacun leur tour.
+    etat_des_series: circuit.etat_des_series(circuit.exercices).map((e) => [
+      e.series.map((s) => (s === null ? 0 : s.completee ? 1 : 2)).join(""),
+      e.en_cours,
+    ]),
     resultats_detail: circuit.resultats_series.map((r) => [
       r.index_exercice, r.serie, r.exercice ?? null, r.completee,
     ]),

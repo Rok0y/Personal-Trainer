@@ -642,13 +642,15 @@ body {
 .overlay-session-info strong { color: var(--text); }
 
 .overlay-session-progress {
-    width: min(560px, calc(100vw - 56px));
+    /* Large : huit exercices et leurs noms sur deux lignes doivent y tenir. */
+    width: min(960px, calc(100vw - 56px));
 }
 
 #overlaySessionProgressSegments {
+    position: relative;
     display: flex;
     gap: 8px;
-    min-height: 22px;
+    min-height: 32px;
 }
 
 .prep-ring-wrap {
@@ -848,10 +850,15 @@ body {
     z-index: 5;
     display: flex;
     gap: 8px;
-    height: 28px;
+    height: 40px;
 }
 
+/* La barre forme son propre contexte d'empilement : sa bulle ouverte doit
+   passer devant les commandes qui la surplombent (`.series-controls`, 10). */
+.session-progress:has(.progress-bulle:not([hidden])) { z-index: 11; }
+
 #sessionProgressSegments {
+    position: relative;
     display: flex;
     width: 100%;
     gap: 8px;
@@ -861,22 +868,34 @@ body {
     display: flex;
     flex: 1;
     flex-direction: column;
+    justify-content: flex-end;
     gap: 4px;
     min-width: 0;
+    /* Un toucher ouvre le detail des series (`hud.js`, bulle). */
+    cursor: pointer;
+    touch-action: manipulation;
 }
 
 .progress-exercise-label {
+    /* Deux lignes plutot qu'une coupee : « Gainage planche laterale droite »
+       ne se reconnaissait plus une fois tronque a la premiere ligne. */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     overflow: hidden;
     color: rgba(255, 255, 255, .72);
-    font-size: 10px;
-    line-height: 1;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 11px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
 }
+
+.progress-exercise.detaille .progress-exercise-label { color: var(--text); }
 
 .progress-series {
     display: flex;
-    flex: 1;
+    /* Hauteur fixe, alignee en bas du groupe : un nom sur une ou deux lignes
+       ne doit ni ecraser ses segments ni les decaler de ceux du voisin. */
+    flex: 0 0 10px;
     gap: 3px;
 }
 
@@ -893,10 +912,60 @@ body {
     box-shadow: 0 0 8px var(--teal-glow);
 }
 
+.progress-segment.complete.ratee {
+    background: rgba(255, 255, 255, .5);
+    box-shadow: none;
+}
+
 .progress-segment.active {
     background: var(--orange);
     box-shadow: 0 0 8px var(--orange-glow);
 }
+
+/* Le détail d'un groupe, ouvert au toucher : au-dessus de la barre, avec les
+   pastilles de l'historique (`pastilles.js`) recolorées pour le fond sombre. */
+.progress-bulle {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    z-index: 8;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: min(360px, 100%);
+    padding: 10px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    background: var(--glass-strong);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+    color: var(--text);
+    text-align: left;
+}
+
+.progress-bulle strong { font-size: 14px; }
+.progress-bulle small { color: var(--muted); font-size: 12px; }
+
+.progress-bulle .series-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.progress-bulle .serie-puce {
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .12);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.progress-bulle .serie-puce i { color: var(--muted); font-style: normal; font-weight: 400; }
+.progress-bulle .serie-puce.ratee { color: var(--orange); }
+.progress-bulle .serie-puce.en-cours { background: var(--orange); color: #111; }
+.progress-bulle .serie-puce.a-faire { background: transparent; border: 1px dashed rgba(255, 255, 255, .3); color: var(--muted); font-weight: 400; }
 
 /* Barre de l'échauffement : même géométrie, autre couleur. La bascule
    vers la barre des exercices est un moment de la séance, elle doit se
