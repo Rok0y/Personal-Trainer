@@ -250,6 +250,16 @@ function ecart_rapporte_aux_epaules(point_gauche, point_droit, corps) {
   return calculer_distance(point_gauche, point_droit) / largeur;
 }
 
+// Deux seuils sur l'ecart des coudes, comme les pompes en ont deux sur la
+// profondeur : au-dela du premier, le coach avertit ; au-dela du second, la
+// repetition ne compte plus. A 18 kg, des coudes grands ouverts faisaient
+// passer pour des extensions ce que les epaules soulevaient. Le refus est une
+// **condition de position** partagee par `debut` et `fin` — une repetition
+// coudes ouverts ne s'arme ni ne se valide —, jamais une repetition retiree.
+// En largeurs d'epaules, coudes leves.
+export const ECART_COUDES_AVERTISSEMENT = 1.3;
+export const ECART_COUDES_MAX = 1.6;
+
 export function extension_triceps_au_dessus_de_la_tete_detection(corps) {
   const angle_coude_droit = calculer_angle(
     corps.epaule_gauche,
@@ -266,20 +276,23 @@ export function extension_triceps_au_dessus_de_la_tete_detection(corps) {
   const ecart_poignets = ecart_rapporte_aux_epaules(
     corps.poignet_gauche, corps.poignet_droit, corps
   );
+  const ecart_coudes = ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps);
   if (!coudes_leves(corps) || ecart_poignets === null || ecart_poignets >= 0.6) {
     return "milieu";
   }
+  if (ecart_coudes === null || ecart_coudes >= ECART_COUDES_MAX) return "milieu";
   if (angle_coude_droit < 90 && angle_coude_gauche < 90) return "debut";
   else if (angle_coude_droit > 140 && angle_coude_gauche > 140) return "fin";
   return "milieu";
 }
 
 // Coudes ecartes au-dela de la largeur des epaules, coudes leves seulement
-// (bras le long du corps, ils y sont naturellement).
+// (bras le long du corps, ils y sont naturellement). Avertit avant que le
+// comptage ne refuse (`ECART_COUDES_MAX`).
 export function extension_triceps_erreur_coudes(corps) {
   if (!coudes_leves(corps)) return null;
   const ecart = ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps);
-  if (ecart !== null && ecart > 1.5) return "forme_coudes_trop_ecartes";
+  if (ecart !== null && ecart > ECART_COUDES_AVERTISSEMENT) return "forme_coudes_trop_ecartes";
   return null;
 }
 

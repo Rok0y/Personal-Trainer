@@ -348,6 +348,11 @@ export const INSTRUMENTS = {
         sommet: "poignet_gauche", zones: { debut: ["<", 0.6], fin: ["<", 0.6] },
         valeur: (corps) => _ecart_rapporte_aux_epaules(corps.poignet_gauche, corps.poignet_droit, corps),
       },
+      {
+        libelle: "Écart des coudes (÷ largeur d'épaules)", unite: "", echelle: [0, 2.5],
+        sommet: "coude_gauche", zones: { debut: ["<", 1.6], fin: ["<", 1.6] },
+        valeur: (corps) => _ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps),
+      },
     ],
   }),
   // L'erreur ne parle que coudes leves : l'ecart y vaut donc null quand ils ne
@@ -357,7 +362,7 @@ export const INSTRUMENTS = {
     defaut: null,
     mesures: [{
       libelle: "Écart des coudes (÷ largeur d'épaules)", unite: "", echelle: [0, 2],
-      sommet: "coude_gauche", zones: { forme_coudes_trop_ecartes: [">", 1.5] },
+      sommet: "coude_gauche", zones: { forme_coudes_trop_ecartes: [">", 1.3] },
       valeur: (corps) =>
         corps.coude_gauche.y < corps.epaule_gauche.y && corps.coude_droit.y < corps.epaule_droite.y
           ? _ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps)
