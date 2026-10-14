@@ -30,7 +30,7 @@ const INSTRUMENT = {
   mesures: [
     { zones: { debut: ["<", 90], fin: [">", 140] }, raisons: { debut: "raison_descendre", fin: "raison_tendre_bras" } },
     { zones: { debut: ["<", 0], fin: ["<", 0] } },
-    { zones: { debut: ["<", 1.6], fin: ["<", 1.6] }, raisons: { debut: "raison_coudes_serres", fin: "raison_coudes_serres" } },
+    { zones: { debut: ["<", 1.6], fin: ["<", 1.6] }, raisons: { debut: "raison_coudes_ecartes", fin: "raison_coudes_ecartes" } },
   ],
 };
 const SANS_RAISON = {
@@ -69,11 +69,11 @@ egal("descendre de 10 % du chemin et remonter : hesitation",
   rejouer([img(150), img(135), img(150)]), [["retour", false, false, "raison_descendre"]]);
 
 // --- Pas assez bas : le compteur ne se rearme pas
-egal("une pompe pas assez descendue dit « descends plus bas »",
+egal("une pompe pas assez descendue : « tu ne descends pas assez bas »",
   rejouer([img(150), img(120), img(100), img(150)]), [["retour", false, true, "raison_descendre"]]);
 
 // --- Pas assez haut
-egal("un aller interrompu dit « tends completement les bras »",
+egal("un aller interrompu : « tes bras ne sont pas completement tendus »",
   rejouer([img(150), img(80), img(110), img(80)]),
   [["retour", true, true, null], ["aller", false, true, "raison_tendre_bras"]]);
 
@@ -82,9 +82,9 @@ egal("debout, plier les bras ne fait pas une tentative",
   rejouer([img(150), img(100, 1), img(80, 1), img(150)]), [["retour", false, false, "raison_descendre"]]);
 
 // --- La forme : le chemin est alle au bout, coudes ouverts a la meme image
-egal("descendu coudes ouverts : « garde les coudes serres »",
+egal("descendu coudes ouverts : « tes coudes sont trop ecartes »",
   rejouer([img(150), img(110, -1, 1.2), img(80, -1, 1.8), img(150)]),
-  [["retour", false, true, "raison_coudes_serres"]]);
+  [["retour", false, true, "raison_coudes_ecartes"]]);
 egal("des coudes ouverts en chemin seulement ne sont pas la raison",
   rejouer([img(150), img(110, -1, 1.8), img(100, -1, 1.2), img(150)]),
   [["retour", false, true, "raison_descendre"]]);
@@ -115,9 +115,9 @@ egal("depart = fin : une fois bras tendus, le suivi commence",
   pas(img(150)); pas(img(100));
   egal("la raison est dite quand la tentative echoue", pas(img(150)), "raison_descendre");
   egal("par la cle composee du lecteur", dites, [["repetition_non_comptee", "raison_descendre"]]);
-  egal("le bandeau la compose", etat.erreur, "Ça ne compte pas : descends plus bas.");
+  egal("le bandeau la compose", etat.erreur, "Ça ne compte pas : tu ne descends pas assez bas.");
   pas(img(150));
-  egal("le bandeau la garde, la voix ne la redit pas", [etat.erreur, dites.length], ["Ça ne compte pas : descends plus bas.", 1]);
+  egal("le bandeau la garde, la voix ne la redit pas", [etat.erreur, dites.length], ["Ça ne compte pas : tu ne descends pas assez bas.", 1]);
   pas(img(150), { faute: "forme_coudes_trop_ecartes" });
   egal("une faute du moment passe devant", etat.erreur, null);
   pas(img(80)); pas(img(150), { rep_comptee: true });

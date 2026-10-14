@@ -36,7 +36,7 @@ const ECHELLE_ANGLE = [0, 180];
 
 // Pourquoi une repetition ne compte pas : une cle de `messages.js` (le
 // bandeau) et de `sons.json` (la voix, apres « Ca ne compte pas »), par
-// position visee. Un petit vocabulaire partage, parce que chaque cle est une
+// position visee. Un constat de ce qui a manque, pas un ordre. Un petit vocabulaire partage, parce que chaque cle est une
 // prise de son : ce qui manque se dit de la meme facon d'un mouvement a
 // l'autre. Une mesure sans raison pour une cible laisse la phrase generique
 // du demi-cycle (`amplitude_aller_incomplet`, `amplitude_retour_incomplet`).
@@ -45,7 +45,7 @@ export const RAISONS = {
   monter: "raison_monter",
   tendre: "raison_tendre_bras",
   remonter: "raison_remonter",
-  coudes: "raison_coudes_serres",
+  coudes: "raison_coudes_ecartes",
 };
 
 // La meme mesure, qui sait dire ce qui lui manque.
@@ -53,11 +53,11 @@ function avec_raisons(mesure, raisons) {
   return { ...mesure, raisons };
 }
 
-// Bas -> haut sur un bras qui pousse : en bas, « descends plus bas » ; en
-// haut, « tends completement les bras ».
+// Bas -> haut sur un bras qui pousse : en bas, « tu ne descends pas assez
+// bas » ; en haut, « tes bras ne sont pas completement tendus ».
 const POUSSEE = { debut: RAISONS.descendre, fin: RAISONS.tendre };
-// Bas -> debout sur des jambes : « descends plus bas », « remonte
-// completement ».
+// Bas -> debout sur des jambes : « tu ne descends pas assez bas », « tu ne
+// remontes pas completement ».
 const FLEXION = { debut: RAISONS.descendre, fin: RAISONS.remonter };
 
 // Un angle en un sommet. `sommet` sert a ecrire la valeur sur l'image.

@@ -124,18 +124,18 @@ Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus l'ecran. Un ordre
 
 ## Repetitions qui ne comptent pas
 
-« Ca ne compte pas » se dit **seul**, suspendu, puis vient la raison, enregistree a part : elle se colle derriere, apres la pause du deux-points. Dites a quelqu'un qui vient de rater une repetition et va recommencer : une explication, pas un reproche — calme, net, un peu plus fort que les autres phrases. Chaque raison sert plusieurs mouvements (« descends plus bas » vaut pour la pompe, le squat, la fente).
+« Ca ne compte pas » se dit **seul**, suspendu, puis vient la raison, enregistree a part : elle se colle derriere, apres la pause du deux-points. Dites a quelqu'un qui vient de rater une repetition et va recommencer : un constat, pas un reproche — calme, net, un peu plus fort que les autres phrases. Chaque raison sert plusieurs mouvements (« tu ne descends pas assez bas » vaut pour la pompe, le squat, la fente).
 
 | Fichier | A prononcer | Etat |
 | --- | --- | --- |
 | `ca_ne_compte_pas.wav` | « Ça ne compte pas » | **a enregistrer** |
-| `descends_plus_bas.wav` | « Descends plus bas » | **a enregistrer** |
-| `monte_plus_haut.wav` | « Monte plus haut » | **a enregistrer** |
-| `tends_completement_les_bras.wav` | « Tends complètement les bras » | **a enregistrer** |
-| `remonte_completement.wav` | « Remonte complètement » | **a enregistrer** |
-| `garde_les_coudes_serres.wav` | « Garde les coudes serrés » | **a enregistrer** |
-| `va_jusqu_au_bout_du_mouvement.wav` | « Va jusqu'au bout du mouvement » | **a enregistrer** |
-| `reviens_completement_en_position_de_depart.wav` | « Reviens complètement en position de départ » | **a enregistrer** |
+| `tu_ne_descends_pas_assez_bas.wav` | « Tu ne descends pas assez bas » | **a enregistrer** |
+| `tu_ne_montes_pas_assez_haut.wav` | « Tu ne montes pas assez haut » | **a enregistrer** |
+| `tes_bras_ne_sont_pas_completement_tendus.wav` | « Tes bras ne sont pas complètement tendus » | **a enregistrer** |
+| `tu_ne_remontes_pas_completement.wav` | « Tu ne remontes pas complètement » | **a enregistrer** |
+| `tes_coudes_sont_trop_ecartes.wav` | « Tes coudes sont trop écartés » | **a enregistrer** |
+| `tu_ne_vas_pas_jusqu_au_bout_du_mouvement.wav` | « Tu ne vas pas jusqu'au bout du mouvement » | **a enregistrer** |
+| `tu_ne_reviens_pas_completement_au_depart.wav` | « Tu ne reviens pas complètement au départ » | **a enregistrer** |
 
 ## Corrections de forme
 

@@ -116,25 +116,25 @@
    "ca_ne_compte_pas.wav"
   ],
   "raison_descendre": [
-   "descends_plus_bas.wav"
+   "tu_ne_descends_pas_assez_bas.wav"
   ],
   "raison_monter": [
-   "monte_plus_haut.wav"
+   "tu_ne_montes_pas_assez_haut.wav"
   ],
   "raison_tendre_bras": [
-   "tends_completement_les_bras.wav"
+   "tes_bras_ne_sont_pas_completement_tendus.wav"
   ],
   "raison_remonter": [
-   "remonte_completement.wav"
+   "tu_ne_remontes_pas_completement.wav"
   ],
-  "raison_coudes_serres": [
-   "garde_les_coudes_serres.wav"
+  "raison_coudes_ecartes": [
+   "tes_coudes_sont_trop_ecartes.wav"
   ],
   "amplitude_aller_incomplet": [
-   "va_jusqu_au_bout_du_mouvement.wav"
+   "tu_ne_vas_pas_jusqu_au_bout_du_mouvement.wav"
   ],
   "amplitude_retour_incomplet": [
-   "reviens_completement_en_position_de_depart.wav"
+   "tu_ne_reviens_pas_completement_au_depart.wav"
   ]
  },
  "priorites": {
@@ -250,13 +250,13 @@
   "forme_coudes_trop_plies": "plie_moins_les_coudes.wav",
   "forme_pompe_pas_assez_profonde": "descends_plus_pres_du_sol.wav",
   "repetition_non_comptee": "ca_ne_compte_pas.wav",
-  "raison_descendre": "descends_plus_bas.wav",
-  "raison_monter": "monte_plus_haut.wav",
-  "raison_tendre_bras": "tends_completement_les_bras.wav",
-  "raison_remonter": "remonte_completement.wav",
-  "raison_coudes_serres": "garde_les_coudes_serres.wav",
-  "amplitude_aller_incomplet": "va_jusqu_au_bout_du_mouvement.wav",
-  "amplitude_retour_incomplet": "reviens_completement_en_position_de_depart.wav"
+  "raison_descendre": "tu_ne_descends_pas_assez_bas.wav",
+  "raison_monter": "tu_ne_montes_pas_assez_haut.wav",
+  "raison_tendre_bras": "tes_bras_ne_sont_pas_completement_tendus.wav",
+  "raison_remonter": "tu_ne_remontes_pas_completement.wav",
+  "raison_coudes_ecartes": "tes_coudes_sont_trop_ecartes.wav",
+  "amplitude_aller_incomplet": "tu_ne_vas_pas_jusqu_au_bout_du_mouvement.wav",
+  "amplitude_retour_incomplet": "tu_ne_reviens_pas_completement_au_depart.wav"
  },
  "textes": {
   "prochain_exercice": "Prochain exercice",
@@ -319,13 +319,13 @@
   "forme_coudes_trop_plies": "Plie moins les coudes",
   "forme_pompe_pas_assez_profonde": "Descends plus près du sol",
   "repetition_non_comptee": "Ça ne compte pas",
-  "raison_descendre": "Descends plus bas",
-  "raison_monter": "Monte plus haut",
-  "raison_tendre_bras": "Tends complètement les bras",
-  "raison_remonter": "Remonte complètement",
-  "raison_coudes_serres": "Garde les coudes serrés",
-  "amplitude_aller_incomplet": "Va jusqu'au bout du mouvement",
-  "amplitude_retour_incomplet": "Reviens complètement en position de départ"
+  "raison_descendre": "Tu ne descends pas assez bas",
+  "raison_monter": "Tu ne montes pas assez haut",
+  "raison_tendre_bras": "Tes bras ne sont pas complètement tendus",
+  "raison_remonter": "Tu ne remontes pas complètement",
+  "raison_coudes_ecartes": "Tes coudes sont trop écartés",
+  "amplitude_aller_incomplet": "Tu ne vas pas jusqu'au bout du mouvement",
+  "amplitude_retour_incomplet": "Tu ne reviens pas complètement au départ"
  },
  "silences": {
   "entre_annonces": 0.8,

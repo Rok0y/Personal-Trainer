@@ -75,10 +75,10 @@ const FAMILLES = [
     "« Ca ne compte pas » se dit **seul**, suspendu, puis vient la raison, " +
       "enregistree a part : elle se colle derriere, apres la pause du " +
       "deux-points. Dites a quelqu'un qui vient de rater une repetition et " +
-      "va recommencer : une explication, pas un reproche — calme, net, un " +
-      "peu plus fort que les autres phrases. Chaque raison sert plusieurs " +
-      "mouvements (« descends plus bas » vaut pour la pompe, le squat, la " +
-      "fente).",
+      "va recommencer : un constat, pas un reproche — calme, net, un peu " +
+      "plus fort que les autres phrases. Chaque raison sert plusieurs " +
+      "mouvements (« tu ne descends pas assez bas » vaut pour la pompe, le " +
+      "squat, la fente).",
   ],
   [
     ["forme_"],

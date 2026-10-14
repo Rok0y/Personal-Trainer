@@ -30,15 +30,20 @@ export const MESSAGES = {
   // --- Repetition qui ne compte pas : une tentative a vraiment progresse,
   // sans atteindre la position visee (voir instruments.js, SuiviTentatives).
   // La raison se glisse dans la phrase, d'ou sa minuscule ; la meme cle
-  // designe la brique dite apres « Ca ne compte pas » (`sons.json`).
+  // designe la brique dite apres « Ca ne compte pas » (`sons.json`). **Un
+  // constat, pas un ordre** : « tu ne descends pas assez bas » dit pourquoi
+  // ca n'a pas compte, « descends plus bas » ne disait que quoi faire. Au
+  // present, qui ne s'accorde pas : une voix enregistree une fois sert a
+  // tous les profils, et « tu n'es pas descendu » serait faux pour une
+  // utilisatrice.
   repetition_non_comptee: "Ça ne compte pas : {raison}.",
-  raison_descendre: "descends plus bas",
-  raison_monter: "monte plus haut",
-  raison_tendre_bras: "tends complètement les bras",
-  raison_remonter: "remonte complètement",
-  raison_coudes_serres: "garde les coudes serrés",
-  amplitude_aller_incomplet: "va jusqu'au bout du mouvement",
-  amplitude_retour_incomplet: "reviens complètement en position de départ",
+  raison_descendre: "tu ne descends pas assez bas",
+  raison_monter: "tu ne montes pas assez haut",
+  raison_tendre_bras: "tes bras ne sont pas complètement tendus",
+  raison_remonter: "tu ne remontes pas complètement",
+  raison_coudes_ecartes: "tes coudes sont trop écartés",
+  amplitude_aller_incomplet: "tu ne vas pas jusqu'au bout du mouvement",
+  amplitude_retour_incomplet: "tu ne reviens pas complètement au départ",
   // --- Consignes d'etat : ce qu'il faut faire, pas ce qui est mal fait ---
   corps_absent: "Place-toi devant la caméra, bien en pied.",
   // « la seance » et non « la serie » : cette phase n'existe qu'une fois.
