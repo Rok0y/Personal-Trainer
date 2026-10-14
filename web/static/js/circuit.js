@@ -796,12 +796,7 @@ export class Circuit {
       this._exercice_precedent_entrelace = null;
 
       if (this.serie_actuelle > this.nombre_series) {
-        if (this.bloc_actuel.repos_apres > 0) {
-          this.phase = "repos_exercice";
-          this.debut_repos = this.maintenant();
-        } else {
-          this.passer_exercice_suivant();
-        }
+        this._finir_bloc();
       } else {
         this.phase = "recuperation_serie";
         this.debut_repos = this.maintenant();
@@ -816,12 +811,7 @@ export class Circuit {
       this._exercice_precedent_entrelace = null;
 
       if (this.serie_actuelle > this.nombre_series) {
-        if (this.bloc_actuel.repos_apres > 0) {
-          this.phase = "repos_exercice";
-          this.debut_repos = this.maintenant();
-        } else {
-          this.passer_exercice_suivant();
-        }
+        this._finir_bloc();
       } else {
         this.phase = "recuperation_serie";
         this.debut_repos = this.maintenant();
@@ -838,7 +828,19 @@ export class Circuit {
     }
 
     // Toutes les series de cet exercice sont terminees.
-    if (this.bloc_actuel.repos_apres > 0) {
+    this._finir_bloc();
+  }
+
+  /**
+   * Toutes les series du bloc courant sont faites : repos, ou bloc suivant.
+   *
+   * **Pas de repos apres le dernier bloc** : il ne prepare a rien, et l'on
+   * attendait la fin d'un compte a rebours pour voir l'ecran de fin. Le bloc
+   * suivant se lit par `prochain_bloc`, qui saute le partenaire d'un superset
+   * — sans quoi la derniere paire de la seance garderait son repos.
+   */
+  _finir_bloc() {
+    if (this.bloc_actuel.repos_apres > 0 && this.prochain_bloc() !== null) {
       this.phase = "repos_exercice";
       this.debut_repos = this.maintenant();
     } else {
