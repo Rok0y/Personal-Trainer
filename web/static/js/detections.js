@@ -301,23 +301,35 @@ export function developpe_epaule_detection(corps) {
   return "milieu";
 }
 
+// Angle du buste au-dessus de l'horizontale, en degres : la droite qui va du
+// milieu des hanches au milieu des epaules. Positif quand les epaules sont
+// plus hautes que les hanches. Les deux cotes sont moyennes par construction,
+// ce qui convient a une vue de profil, ou le cote eloigne est estime.
+function inclinaison_buste(corps) {
+  const epaules_x = (corps.epaule_gauche.x + corps.epaule_droite.x) / 2;
+  const epaules_y = (corps.epaule_gauche.y + corps.epaule_droite.y) / 2;
+  const hanches_x = (corps.hanche_gauche.x + corps.hanche_droite.x) / 2;
+  const hanches_y = (corps.hanche_gauche.y + corps.hanche_droite.y) / 2;
+  return (Math.atan2(hanches_y - epaules_y, Math.abs(epaules_x - hanches_x)) * 180) / Math.PI;
+}
+
+// Un crunch se lit a ce que la fiche demande : **decoller les epaules**,
+// c'est-a-dire incliner le buste. L'angle epaule-hanche-genou qui le mesurait
+// dependait des genoux — allonge pieds a plat, il valait deja 110 a 135
+// degres —, et son seuil de 85 degres demandait presque un releve de buste.
+// Il exigeait en plus les deux cotes ensemble, vus de profil.
+//
+// Dix degres d'ecart entre les deux bornes : l'hysteresis qui empeche un
+// tremblement de compter. Le plafond de `fin` est une condition de position :
+// au-dela, on est assis ou debout, ce n'est plus un crunch.
+export const CRUNCH_DEBUT_MAX = 10;
+export const CRUNCH_FIN_MIN = 20;
+export const CRUNCH_FIN_MAX = 60;
+
 export function crunches_detection(corps) {
-  const angle_hanche_droite = calculer_angle(
-    corps.epaule_gauche,
-    corps.hanche_gauche,
-    corps.genou_gauche
-  );
-  const angle_hanche_gauche = calculer_angle(
-    corps.epaule_droite,
-    corps.hanche_droite,
-    corps.genou_droit
-  );
-  // Seuils ouverts de 70/95 a 85/100 : a 70 degres il fallait decoller tout le
-  // dos, c'est-a-dire faire un releve de buste et non un crunch. L'ecart de 15
-  // degres entre les deux bornes est conserve — c'est lui qui empeche un
-  // tremblement de landmark de compter une repetition.
-  if (angle_hanche_droite < 85 && angle_hanche_gauche < 85) return "fin";
-  else if (angle_hanche_droite > 100 && angle_hanche_gauche > 100) return "debut";
+  const inclinaison = inclinaison_buste(corps);
+  if (inclinaison < CRUNCH_DEBUT_MAX) return "debut";
+  if (inclinaison > CRUNCH_FIN_MIN && inclinaison < CRUNCH_FIN_MAX) return "fin";
   return "milieu";
 }
 
@@ -738,6 +750,7 @@ export {
   visibilite_bras as _visibilite_bras,
   genou_depasse_pied as _genou_depasse_pied,
   buste_vertical as _buste_vertical,
+  inclinaison_buste as _inclinaison_buste,
   ecart_rapporte_aux_epaules as _ecart_rapporte_aux_epaules,
   hanche_decollee as _hanche_decollee,
   poignet_devant_epaule as _poignet_devant_epaule,

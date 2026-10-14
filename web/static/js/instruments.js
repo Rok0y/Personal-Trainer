@@ -29,6 +29,7 @@ import {
   _appui_sur_le_bras, _descente_hanche, _hauteur_sous_epaule, _ecart_lateral,
   _angle_coude_proche, _bras_proche, _buste_vertical, _ecart_rapporte_aux_epaules,
   _hanche_decollee, _visibilite_bras, _genou_depasse_pied, _poignet_devant_epaule,
+  _inclinaison_buste,
 } from "./detections.js";
 
 const ECHELLE_ANGLE = [0, 180];
@@ -69,6 +70,14 @@ function distance_moyenne(libelle, p1, p2, echelle, zones) {
     valeur: (corps) =>
       (calculer_distance(corps[p1[0]], corps[p1[1]]) +
         calculer_distance(corps[p2[0]], corps[p2[1]])) / 2,
+  };
+}
+
+// L'inclinaison du buste au-dessus du sol (crunch), ecrite sur la hanche.
+function inclinaison_buste(libelle, zones) {
+  return {
+    libelle, unite: "°", echelle: [-20, 90], sommet: "hanche_gauche", zones,
+    valeur: (corps) => _inclinaison_buste(corps),
   };
 }
 
@@ -362,12 +371,14 @@ export const INSTRUMENTS = {
     ],
   }),
 
+  // Deux mesures pour une seule valeur : une zone ne porte qu'une
+  // comparaison, et `fin` est une fourchette.
   crunches_detection: {
-    ordre: ["fin", "debut"],
+    ordre: ["debut", "fin"],
     defaut: "milieu",
     mesures: [
-      angle("Hanche gauche", "epaule_gauche", "hanche_gauche", "genou_gauche", { fin: ["<", 85], debut: [">", 100] }),
-      angle("Hanche droite", "epaule_droite", "hanche_droite", "genou_droit", { fin: ["<", 85], debut: [">", 100] }),
+      inclinaison_buste("Buste décollé (degrés au-dessus du sol)", { debut: ["<", 10], fin: [">", 20] }),
+      inclinaison_buste("Buste pas redressé (assis au-delà)", { fin: ["<", 60] }),
     ],
   },
 
