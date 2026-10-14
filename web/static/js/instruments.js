@@ -321,7 +321,7 @@ export const INSTRUMENTS = {
   pompe_profondeur: {
     ordre: ["profond"],
     defaut: null,
-    mesures: [coude_proche({ profond: ["<", 100] })],
+    mesures: [coude_proche({ profond: ["<", 108] })],
   },
   developpe_couche_sol_detection: {
     ordre: ["debut", "fin"],

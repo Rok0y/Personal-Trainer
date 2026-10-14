@@ -150,9 +150,15 @@ function angle_coude_proche(corps) {
 }
 
 // Deux seuils en bas : le premier decide si la pompe compte, le second si
-// elle etait assez profonde.
+// elle etait assez profonde. Profondeur ouverte de 100 a 108 degres : l'angle
+// se lit en deux dimensions et sur le bras le mieux vu, et une pompe
+// franchement descendue se faisait encore dire de descendre plus bas. Pas
+// 110 : la pose figee qui joue la pompe peu profonde du scenario ecrit
+// (`pompes_peu_profondes`) est construite a 110 pile, et elle ne serait plus
+// peu profonde — le scenario ne testerait plus rien. Aller au-dela demande
+// d'abord un nouveau cas construit.
 export const SEUIL_COMPTAGE_POMPE = 120;
-export const SEUIL_PROFONDEUR_POMPE = 100;
+export const SEUIL_PROFONDEUR_POMPE = 108;
 
 export function pompe_detection(corps) {
   // Corps a l'horizontale, ou rien ne compte : debout, plier le bras
