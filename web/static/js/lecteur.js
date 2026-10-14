@@ -373,6 +373,19 @@ export class Lecteur {
       return;
     }
 
+    if (cle === "repetition_non_comptee") {
+      // « Ca ne compte pas » puis la raison, en une seule entree : rien ne
+      // doit se glisser entre les deux. La raison est une cle de `fichiers`
+      // (`valeur`) ; une brique absente abrege la phrase, sans panne.
+      const raison = this.fichiers[valeur] ?? [];
+      this.sequence(
+        [(this.fichiers[cle] ?? [])[0], raison[0]],
+        this.priorites[cle] ?? PRIORITE_PAR_DEFAUT,
+        cle
+      );
+      return;
+    }
+
     const variantes = this.fichiers[cle];
     if (!variantes?.length) return;
 

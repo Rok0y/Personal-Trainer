@@ -34,6 +34,32 @@ import {
 
 const ECHELLE_ANGLE = [0, 180];
 
+// Pourquoi une repetition ne compte pas : une cle de `messages.js` (le
+// bandeau) et de `sons.json` (la voix, apres « Ca ne compte pas »), par
+// position visee. Un petit vocabulaire partage, parce que chaque cle est une
+// prise de son : ce qui manque se dit de la meme facon d'un mouvement a
+// l'autre. Une mesure sans raison pour une cible laisse la phrase generique
+// du demi-cycle (`amplitude_aller_incomplet`, `amplitude_retour_incomplet`).
+export const RAISONS = {
+  descendre: "raison_descendre",
+  monter: "raison_monter",
+  tendre: "raison_tendre_bras",
+  remonter: "raison_remonter",
+  coudes: "raison_coudes_serres",
+};
+
+// La meme mesure, qui sait dire ce qui lui manque.
+function avec_raisons(mesure, raisons) {
+  return { ...mesure, raisons };
+}
+
+// Bas -> haut sur un bras qui pousse : en bas, « descends plus bas » ; en
+// haut, « tends completement les bras ».
+const POUSSEE = { debut: RAISONS.descendre, fin: RAISONS.tendre };
+// Bas -> debout sur des jambes : « descends plus bas », « remonte
+// completement ».
+const FLEXION = { debut: RAISONS.descendre, fin: RAISONS.remonter };
+
 // Un angle en un sommet. `sommet` sert a ecrire la valeur sur l'image.
 function angle(libelle, a, b, c, zones) {
   return {
@@ -88,7 +114,8 @@ function curl(cote) {
   return {
     ordre: ["fin", "debut"],
     defaut: "milieu",
-    mesures: [angle(`Coude ${cote}`, e, c, p, { fin: ["<", 20], debut: [">", 160] })],
+    mesures: [avec_raisons(angle(`Coude ${cote}`, e, c, p, { fin: ["<", 20], debut: [">", 160] }),
+      { fin: RAISONS.monter })],
   };
 }
 
@@ -107,13 +134,13 @@ function coude_avance(cote) {
 // Les detections a deux coudes nomment leurs variables a l'envers des
 // landmarks (angle_coude_droit lit le cote gauche) ; les libelles suivent ici
 // les landmarks, c'est-a-dire ce qu'on voit a l'image.
-function deux_coudes(debut, fin, { ordre = ["debut", "fin"], extra = [] } = {}) {
+function deux_coudes(debut, fin, { ordre = ["debut", "fin"], extra = [], raisons = undefined } = {}) {
   return {
     ordre,
     defaut: "milieu",
     mesures: [
-      angle("Coude gauche", "epaule_gauche", "coude_gauche", "poignet_gauche", { debut, fin }),
-      angle("Coude droit", "epaule_droite", "coude_droit", "poignet_droit", { debut, fin }),
+      avec_raisons(angle("Coude gauche", "epaule_gauche", "coude_gauche", "poignet_gauche", { debut, fin }), raisons),
+      avec_raisons(angle("Coude droit", "epaule_droite", "coude_droit", "poignet_droit", { debut, fin }), raisons),
       ...extra,
     ],
   };
@@ -178,8 +205,8 @@ function fente(cote) {
   return {
     ordre: ["debut", "fin"],
     defaut: "milieu",
-    mesures: [angle(`Genou ${cote === "droite" ? "droit" : "gauche"}`, h, g, c,
-      { debut: ["<", 100], fin: [">", 150] })],
+    mesures: [avec_raisons(angle(`Genou ${cote === "droite" ? "droit" : "gauche"}`, h, g, c,
+      { debut: ["<", 100], fin: [">", 150] }), FLEXION)],
   };
 }
 
@@ -217,7 +244,8 @@ function rowing(cote, seuil_buste, seuil_coude) {
     ordre: ["fin", "debut"],
     defaut: "milieu",
     mesures: [
-      angle(`Coude ${cote === "gauche" ? "gauche" : "droit"}`, e, c, p, { fin: ["<", seuil_coude], debut: [">", 150] }),
+      avec_raisons(angle(`Coude ${cote === "gauche" ? "gauche" : "droit"}`, e, c, p,
+        { fin: ["<", seuil_coude], debut: [">", 150] }), { fin: RAISONS.monter }),
       ecart_vertical("Poignet au-dessus de la hanche", p, h, { fin: ["<", 0] }),
       angle("Buste penché (épaule-hanche-genou)", e, h, g, { fin: ["<", seuil_buste] }),
     ],
@@ -254,11 +282,14 @@ export const INSTRUMENTS = {
           libelle: `Main ${cote === "droit" ? "droite" : "gauche"} sous l'épaule (1 = en bas)`,
           unite: "", echelle: [-0.4, 1.2], sommet: p,
           zones: { debut: [">", 0.6], fin: ["<", 0.15] },
+          raisons: { fin: RAISONS.monter },
           valeur: (corps) => _hauteur_sous_epaule(corps[p], corps[e], corps[h]),
         };
       }),
-      angle("Coude droit (bras tendu)", "epaule_droite", "coude_droit", "poignet_droit", { fin: [">", 140] }),
-      angle("Coude gauche (bras tendu)", "epaule_gauche", "coude_gauche", "poignet_gauche", { fin: [">", 140] }),
+      avec_raisons(angle("Coude droit (bras tendu)", "epaule_droite", "coude_droit", "poignet_droit", { fin: [">", 140] }),
+        { fin: RAISONS.tendre }),
+      avec_raisons(angle("Coude gauche (bras tendu)", "epaule_gauche", "coude_gauche", "poignet_gauche", { fin: [">", 140] }),
+        { fin: RAISONS.tendre }),
       ...["droit", "gauche"].map((cote) => {
         const [p, e, autre, h] = cote === "droit"
           ? ["poignet_droit", "epaule_droite", "epaule_gauche", "hanche_droite"]
@@ -277,7 +308,7 @@ export const INSTRUMENTS = {
     ordre: ["debut", "fin"],
     defaut: "milieu",
     mesures: [
-      coude_proche({ debut: ["<", 120], fin: [">", 160] }),
+      avec_raisons(coude_proche({ debut: ["<", 120], fin: [">", 160] }), POUSSEE),
       {
         libelle: "Buste debout (< 0 = allongé)", unite: "", echelle: [-0.4, 0.4],
         sommet: null, zones: { debut: ["<", 0], fin: ["<", 0] },
@@ -294,7 +325,7 @@ export const INSTRUMENTS = {
     ordre: ["debut", "fin"],
     defaut: "milieu",
     mesures: [
-      coude_proche({ debut: ["<", 120], fin: [">", 160] }),
+      avec_raisons(coude_proche({ debut: ["<", 120], fin: [">", 160] }), POUSSEE),
       {
         libelle: "Buste debout (> 0 = debout)", unite: "", echelle: [-0.4, 0.4],
         sommet: null, zones: { debut: [">", 0], fin: [">", 0] },
@@ -327,7 +358,7 @@ export const INSTRUMENTS = {
     ordre: ["debut", "fin"],
     defaut: "milieu",
     mesures: [
-      coude_proche({ debut: ["<", 100], fin: [">", 160] }),
+      avec_raisons(coude_proche({ debut: ["<", 100], fin: [">", 160] }), POUSSEE),
       {
         libelle: "Buste debout (< 0 = allongé)", unite: "", echelle: [-0.4, 0.4],
         sommet: null, zones: { debut: ["<", 0], fin: ["<", 0] },
@@ -338,6 +369,7 @@ export const INSTRUMENTS = {
     ],
   },
   extension_triceps_au_dessus_de_la_tete_detection: deux_coudes(["<", 90], [">", 140], {
+    raisons: POUSSEE,
     extra: [
       ecart_vertical("Coude gauche au-dessus de l'épaule", "coude_gauche", "epaule_gauche",
         { debut: ["<", 0], fin: ["<", 0] }),
@@ -351,6 +383,8 @@ export const INSTRUMENTS = {
       {
         libelle: "Écart des coudes (÷ largeur d'épaules)", unite: "", echelle: [0, 2.5],
         sommet: "coude_gauche", zones: { debut: ["<", 1.6], fin: ["<", 1.6] },
+        // Une condition de forme : on fait le mouvement, coudes ouverts.
+        raisons: { debut: RAISONS.coudes, fin: RAISONS.coudes },
         valeur: (corps) => _ecart_rapporte_aux_epaules(corps.coude_gauche, corps.coude_droit, corps),
       },
     ],
@@ -370,6 +404,7 @@ export const INSTRUMENTS = {
     }],
   },
   developpe_epaule_detection: deux_coudes(["<", 60], [">", 150], {
+    raisons: POUSSEE,
     extra: [
       ecart_vertical("Poignet gauche au-dessus de l'épaule", "poignet_gauche", "epaule_gauche", { fin: ["<", 0] }),
       ecart_vertical("Poignet droit au-dessus de l'épaule", "poignet_droit", "epaule_droite", { fin: ["<", 0] }),
@@ -382,7 +417,8 @@ export const INSTRUMENTS = {
     ordre: ["debut", "fin"],
     defaut: "milieu",
     mesures: [
-      inclinaison_buste("Buste décollé (degrés au-dessus du sol)", { debut: ["<", 10], fin: [">", 20] }),
+      avec_raisons(inclinaison_buste("Buste décollé (degrés au-dessus du sol)", { debut: ["<", 10], fin: [">", 20] }),
+        { fin: RAISONS.monter }),
       inclinaison_buste("Buste pas redressé (assis au-delà)", { fin: ["<", 60] }),
     ],
   },
@@ -418,9 +454,9 @@ export const INSTRUMENTS = {
   squat_detection: {
     ordre: ["debut", "fin"],
     defaut: "milieu",
-    mesures: [distance_moyenne("Distance coude-genou (moyenne)",
+    mesures: [avec_raisons(distance_moyenne("Distance coude-genou (moyenne)",
       ["coude_gauche", "genou_gauche"], ["coude_droit", "genou_droit"], [0, 0.4],
-      { debut: ["<", 0.05], fin: [">", 0.15] })],
+      { debut: ["<", 0.05], fin: [">", 0.15] }), FLEXION)],
   },
 
   fente_droite_detection: fente("droite"),
@@ -431,9 +467,9 @@ export const INSTRUMENTS = {
   souleve_de_terre_roumain_detection: {
     ordre: ["debut", "fin"],
     defaut: "milieu",
-    mesures: [distance_moyenne("Distance poignet-cheville (moyenne)",
+    mesures: [avec_raisons(distance_moyenne("Distance poignet-cheville (moyenne)",
       ["poignet_gauche", "cheville_gauche"], ["poignet_droit", "cheville_droite"], [0, 0.6],
-      { debut: ["<", 0.1], fin: [">", 0.2] })],
+      { debut: ["<", 0.1], fin: [">", 0.2] }), FLEXION)],
   },
 
   detection_gainage_laterale_gauche: gainage_lateral("gauche"),
@@ -455,10 +491,10 @@ export const INSTRUMENTS = {
   oiseau_detection: {
     ordre: ["fin", "debut"],
     defaut: "milieu",
-    mesures: [angle_moyen("Bras écartés (moyenne hanche-épaule-coude)",
+    mesures: [avec_raisons(angle_moyen("Bras écartés (moyenne hanche-épaule-coude)",
       ["hanche_gauche", "epaule_gauche", "coude_gauche"],
       ["hanche_droite", "epaule_droite", "coude_droit"],
-      { fin: [">", 65], debut: ["<", 30] })],
+      { fin: [">", 65], debut: ["<", 30] }), { fin: RAISONS.monter })],
   },
   oiseau_erreur_coudes: {
     ordre: ["forme_coudes_trop_tendus", "forme_coudes_trop_plies"],
@@ -571,6 +607,28 @@ function autre(position) {
   return position === "debut" ? "fin" : "debut";
 }
 
+/**
+ * Le role d'une mesure dans un demi-cycle `depart` -> `cible`, lu sur ses
+ * zones, ou null si elle n'en a pas pour la cible :
+ *
+ * - "chemin" : zones de depart et de cible opposees (l'angle du coude d'une
+ *   pompe). C'est sur elles que se mesure la progression ;
+ * - "position" : la meme zone des deux cotes, sans raison (« buste
+ *   allonge »). Hors d'elle, on n'est pas en train de faire le mouvement ;
+ * - "forme" : la meme zone des deux cotes, **avec** une raison (l'ecart des
+ *   coudes du triceps). On fait le mouvement, mais mal ;
+ * - "cible" : une zone pour la seule cible (« poignets au-dessus des
+ *   epaules » en haut d'un developpe), une condition d'arrivee.
+ */
+export function role_mesure(mesure, depart, cible) {
+  const zone_cible = mesure.zones[cible];
+  if (!zone_cible) return null;
+  const zone_depart = mesure.zones[depart];
+  if (!zone_depart) return "cible";
+  if (vers_le_bas(zone_depart) !== vers_le_bas(zone_cible)) return "chemin";
+  return mesure.raisons?.[cible] ? "forme" : "position";
+}
+
 function mediane(nombres) {
   const tries = nombres.filter((n) => n !== null && !Number.isNaN(n)).sort((a, b) => a - b);
   if (!tries.length) return null;
@@ -596,13 +654,25 @@ function mediane(nombres) {
 // dira jusqu'ou un seuil peut etre resserre.
 //
 // Meme regle que CompteurMouvement pour le premier jeton : il fixe la position
-// de depart sans rien compter. Les allers complets coincident donc avec les
+// de depart sans rien compter, et seul le jeton `depart` le peut quand le
+// mouvement en declare un. Les allers complets coincident donc avec les
 // repetitions comptees.
+//
+// **Une tentative ne progresse qu'en position** : une image ou une condition
+// de position manque (debout pendant une pompe) ne retient rien. Sans cela,
+// marcher entre deux series en pliant les bras ferait dire « descends plus
+// bas ». Et **une tentative qui echoue dit pourquoi** (`raison`) : la forme
+// d'abord — le chemin est alle au bout pendant qu'une condition de forme
+// manquait, *a la meme image* (les meilleures valeurs, mesure par mesure, ne
+// le verraient pas : l'ecart minimal des coudes vient du haut du mouvement,
+// ou ils sont serres) —, puis la premiere mesure bloquante qui porte une
+// raison, puis la phrase generique du demi-cycle.
 //
 // Pur : l'instant est passe a chaque image, rien ne lit l'horloge.
 export class SuiviTentatives {
-  constructor(instrument, { intervalle_max = 0.5, taille_journal = 200 } = {}) {
+  constructor(instrument, { intervalle_max = 0.5, taille_journal = 200, depart = null } = {}) {
     this.instrument = instrument;
+    this.depart = depart;
     this.maintien = instrument.ordre.includes("maintien");
     this.intervalle_max = intervalle_max;
     this.taille_journal = taille_journal;
@@ -667,7 +737,7 @@ export class SuiviTentatives {
     if (this.sejour && jeton === this.sejour.cible) this._retenir(this.sejour, valeurs);
 
     if (this.position === null) {
-      this.position = jeton;
+      if (this.depart === null || jeton === this.depart) this.position = jeton;
       return null;
     }
 
@@ -688,16 +758,35 @@ export class SuiviTentatives {
   }
 
   _ouvrir(depart, cible, instant) {
+    const roles = this.instrument.mesures.map((mesure) => role_mesure(mesure, depart, cible));
     return {
       type: depart === "debut" ? "aller" : "retour",
       depart,
       cible,
       debut: instant,
       meilleures: this.instrument.mesures.map(() => null),
+      roles,
+      a_un_chemin: roles.includes("chemin"),
+      en_position_vu: false,
+      // La premiere mesure de forme qui manquait quand tout le reste etait
+      // arrive : la raison d'un refus de forme.
+      forme_manquee: null,
     };
   }
 
+  // `demi_cycle` est aussi le sejour d'un demi-cycle complet (l'entree du
+  // journal, sans roles) : on y suit l'amplitude reelle, sans condition.
   _retenir(demi_cycle, valeurs) {
+    const { roles, cible } = demi_cycle;
+    const dedans = (i) => dans_zone(valeurs[i], this.instrument.mesures[i].zones[cible]);
+    const indices = (roles ?? []).map((_, i) => i);
+    if (indices.some((i) => roles[i] === "position" && !dedans(i))) return;
+    if (roles) demi_cycle.en_position_vu = true;
+    if (roles && demi_cycle.forme_manquee === null) {
+      const arrive = indices.every((i) => !["chemin", "cible"].includes(roles[i]) || dedans(i));
+      const manquee = indices.find((i) => roles[i] === "forme" && !dedans(i));
+      if (arrive && manquee !== undefined) demi_cycle.forme_manquee = manquee;
+    }
     this.instrument.mesures.forEach((mesure, i) => {
       const zone = mesure.zones[demi_cycle.cible];
       const v = valeurs[i];
@@ -718,9 +807,13 @@ export class SuiviTentatives {
           const zone = this.instrument.mesures[i].zones[demi_cycle.cible];
           return zone && !dans_zone(demi_cycle.meilleures[i], zone);
         });
+    // Jamais en position : rien n'a ete tente. Une mesure de chemin existait
+    // pour en juger, elle n'a simplement rien vu.
     const avance = complet
       ? 1
-      : progression(this.instrument, demi_cycle.depart, demi_cycle.cible, demi_cycle.meilleures);
+      : demi_cycle.a_un_chemin && !demi_cycle.en_position_vu
+        ? 0
+        : progression(this.instrument, demi_cycle.depart, demi_cycle.cible, demi_cycle.meilleures);
     const entree = {
       type: demi_cycle.type,
       cible: demi_cycle.cible,
@@ -728,6 +821,7 @@ export class SuiviTentatives {
       duree: instant - demi_cycle.debut,
       meilleures: demi_cycle.meilleures,
       bloquantes,
+      raison: complet ? null : this._raison(demi_cycle, bloquantes),
       progression: avance,
       // Sans mesure pour en juger, on prefere signaler que taire.
       significatif: complet || avance === null || avance >= PROGRESSION_SIGNIFICATIVE,
@@ -742,6 +836,20 @@ export class SuiviTentatives {
     if (this.journal.length > this.taille_journal) this.journal.shift();
     this.sejour = complet ? entree : null;
     return entree;
+  }
+
+  // La cle de message qui dit pourquoi un demi-cycle n'a pas abouti. Les
+  // mesures de chemin passent avant les conditions d'arrivee : « descends plus
+  // bas » dit le geste, « mains au-dessus des epaules » n'en est qu'un detail.
+  _raison(demi_cycle, bloquantes) {
+    const raison_de = (i) => this.instrument.mesures[i].raisons?.[demi_cycle.cible] ?? null;
+    if (demi_cycle.forme_manquee !== null) return raison_de(demi_cycle.forme_manquee);
+    const ordre = ["chemin", "cible"];
+    const triees = [...bloquantes].sort(
+      (a, b) => ordre.indexOf(demi_cycle.roles[a]) - ordre.indexOf(demi_cycle.roles[b])
+    );
+    for (const i of triees) if (raison_de(i)) return raison_de(i);
+    return `amplitude_${demi_cycle.type}_incomplet`;
   }
 
   // Ce que la demo enregistre a la fin d'un exercice : des nombres, jamais du

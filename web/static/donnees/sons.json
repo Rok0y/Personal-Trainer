@@ -111,6 +111,30 @@
   ],
   "forme_pompe_pas_assez_profonde": [
    "descends_plus_pres_du_sol.wav"
+  ],
+  "repetition_non_comptee": [
+   "ca_ne_compte_pas.wav"
+  ],
+  "raison_descendre": [
+   "descends_plus_bas.wav"
+  ],
+  "raison_monter": [
+   "monte_plus_haut.wav"
+  ],
+  "raison_tendre_bras": [
+   "tends_completement_les_bras.wav"
+  ],
+  "raison_remonter": [
+   "remonte_completement.wav"
+  ],
+  "raison_coudes_serres": [
+   "garde_les_coudes_serres.wav"
+  ],
+  "amplitude_aller_incomplet": [
+   "va_jusqu_au_bout_du_mouvement.wav"
+  ],
+  "amplitude_retour_incomplet": [
+   "reviens_completement_en_position_de_depart.wav"
   ]
  },
  "priorites": {
@@ -145,7 +169,8 @@
   "forme_genoux_trop_plies": 4,
   "forme_coudes_trop_tendus": 4,
   "forme_coudes_trop_plies": 4,
-  "forme_pompe_pas_assez_profonde": 4
+  "forme_pompe_pas_assez_profonde": 4,
+  "repetition_non_comptee": 6
  },
  "delais": {
   "correction_gainage": 8,
@@ -157,7 +182,8 @@
   "forme_genoux_trop_plies": 4,
   "forme_coudes_trop_tendus": 4,
   "forme_coudes_trop_plies": 4,
-  "forme_pompe_pas_assez_profonde": 4
+  "forme_pompe_pas_assez_profonde": 4,
+  "repetition_non_comptee": 4
  },
  "briques": {
   "prochain_exercice": "prochain_exercice.wav",
@@ -222,7 +248,15 @@
   "forme_genoux_trop_plies": "plie_moins_les_genoux.wav",
   "forme_coudes_trop_tendus": "garde_les_coudes_un_peu_plies.wav",
   "forme_coudes_trop_plies": "plie_moins_les_coudes.wav",
-  "forme_pompe_pas_assez_profonde": "descends_plus_pres_du_sol.wav"
+  "forme_pompe_pas_assez_profonde": "descends_plus_pres_du_sol.wav",
+  "repetition_non_comptee": "ca_ne_compte_pas.wav",
+  "raison_descendre": "descends_plus_bas.wav",
+  "raison_monter": "monte_plus_haut.wav",
+  "raison_tendre_bras": "tends_completement_les_bras.wav",
+  "raison_remonter": "remonte_completement.wav",
+  "raison_coudes_serres": "garde_les_coudes_serres.wav",
+  "amplitude_aller_incomplet": "va_jusqu_au_bout_du_mouvement.wav",
+  "amplitude_retour_incomplet": "reviens_completement_en_position_de_depart.wav"
  },
  "textes": {
   "prochain_exercice": "Prochain exercice",
@@ -283,7 +317,15 @@
   "forme_genoux_trop_plies": "Plie moins les genoux",
   "forme_coudes_trop_tendus": "Garde les coudes un peu pliés",
   "forme_coudes_trop_plies": "Plie moins les coudes",
-  "forme_pompe_pas_assez_profonde": "Descends plus près du sol"
+  "forme_pompe_pas_assez_profonde": "Descends plus près du sol",
+  "repetition_non_comptee": "Ça ne compte pas",
+  "raison_descendre": "Descends plus bas",
+  "raison_monter": "Monte plus haut",
+  "raison_tendre_bras": "Tends complètement les bras",
+  "raison_remonter": "Remonte complètement",
+  "raison_coudes_serres": "Garde les coudes serrés",
+  "amplitude_aller_incomplet": "Va jusqu'au bout du mouvement",
+  "amplitude_retour_incomplet": "Reviens complètement en position de départ"
  },
  "silences": {
   "entre_annonces": 0.8,

@@ -1097,7 +1097,12 @@ function preparerInstruments() {
 
 function demarrerSuivis() {
   for (const l of lectures) {
-    l.suivi = new SuiviTentatives(l.instrument, { intervalle_max: INTERVALLE_MAX });
+    // Le depart du mouvement pour la detection seule : les autres lectures
+    // sont des fautes de forme, sans debut ni fin.
+    l.suivi = new SuiviTentatives(l.instrument, {
+      intervalle_max: INTERVALLE_MAX,
+      depart: l.forme ? null : exercice.depart ?? null,
+    });
   }
   tempsErreurs = {};
   erreurPrecedente = null;
@@ -1166,7 +1171,9 @@ function mesurerInstruments(corps, jeton, instant) {
     // celui de l'instrument.
     if (comptage) {
       const entree = l.suivi.observer(rang === 0 ? jeton : l.lecture.jeton, l.lecture.valeurs, instant);
-      if (rang === 0 && entree && !entree.complet && entree.significatif) signalerIncomplet(entree);
+      if (rang === 0 && entree && !entree.complet && entree.significatif && entree.raison) {
+        signalerIncomplet(entree);
+      }
     }
   });
 
@@ -1215,8 +1222,8 @@ const DUREE_SIGNALEMENT = 2.5;
 let finSignalement = 0;
 
 function signalerIncomplet(entree) {
-  const cle = entree.type === "aller" ? "amplitude_aller_incomplet" : "amplitude_retour_incomplet";
-  afficherConsigne(texte(cle) ?? cle);
+  // Meme phrase que le bandeau de la seance (`expliquer_tentative`).
+  afficherConsigne(texte("repetition_non_comptee", { raison: texte(entree.raison) ?? "" }));
   finSignalement = performance.now() / 1000 + DUREE_SIGNALEMENT;
 }
 

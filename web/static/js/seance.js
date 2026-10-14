@@ -20,6 +20,7 @@ import {
   est_echauffement,
 } from "./circuit.js";
 import { DETECTIONS } from "./detections.js";
+import { INSTRUMENTS } from "./instruments.js";
 
 /**
  * Les mouvements avec leurs textes de fiche.
@@ -71,7 +72,16 @@ export function exercice_pour(mouvements, nom) {
     amplitude: amplitude_pour(fiche.amplitude),
     changements: fiche.changements ?? [],
     depart: fiche.depart ?? null,
+    instrument: instrument_pour(fiche.detection),
   });
+}
+
+/**
+ * L'instrument d'une detection, par son nom, ou null. Exporte pour le banc de
+ * scenarios, qui construit ses `Exercice` lui-meme.
+ */
+export function instrument_pour(nom_detection) {
+  return (nom_detection && INSTRUMENTS[nom_detection]) || null;
 }
 
 /**

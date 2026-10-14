@@ -89,6 +89,7 @@ export class Exercice {
     changements = null,
     sensations = null,
     depart = null,
+    instrument = null,
   }) {
     this.nom = nom;
     this.detection = detection;
@@ -118,6 +119,10 @@ export class Exercice {
     // premiere vue ». Lue par `CompteurMouvement.mettre_a_jour`. Meme piege
     // que les deux champs ci-dessus.
     this.depart = depart;
+    // L'instrument de sa detection (`instruments.js`) : ce qui dit **pourquoi**
+    // une repetition n'a pas compte (`expliquer_tentative`). Jamais ce qui
+    // compte.
+    this.instrument = instrument;
   }
 
   fiche() {
@@ -154,6 +159,8 @@ const CHAMPS_TEMPORELS = [
   "faute_en_cours",
   "faute_depuis",
   "faute_dite_a",
+  "suivi_tentatives",
+  "non_comptee",
 ];
 
 export class BlocExercice {

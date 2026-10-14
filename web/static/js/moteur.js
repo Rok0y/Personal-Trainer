@@ -20,6 +20,7 @@ import {
   MODE_MAINTIEN,
   MODE_REPETITIONS,
 } from "./circuit.js";
+import { SuiviTentatives } from "./instruments.js";
 
 // Un ecart plus long que ca entre deux images vient forcement d'une
 // interruption du flux (utilisateur hors champ, onglet suspendu par iOS,
@@ -294,6 +295,50 @@ export function suivre_amplitude(exercice, corps, bloc, etat, stage_avant, stage
 }
 
 /**
+ * Dit pourquoi une repetition n'a pas compte.
+ *
+ * « Ca ne compte pas », sans plus, frustre : on recommence la meme erreur.
+ * Le suivi des tentatives (`SuiviTentatives`, sur l'instrument de la
+ * detection) voit l'aller interrompu (un crunch qui ne monte pas assez) et le
+ * retour incomplet (une pompe pas assez descendue : le compteur ne se
+ * rearme pas, la suivante ne comptera pas), et dit ce qui a manque. Une
+ * hesitation sous `PROGRESSION_SIGNIFICATIVE` du chemin, ou un mouvement fait
+ * hors position, se tait.
+ *
+ * La voix le dit une fois, quand la tentative echoue ; le bandeau le garde
+ * jusqu'a la prochaine repetition comptee, **devant** l'avertissement
+ * d'amplitude (plus ancien) et **derriere** une faute de forme du moment.
+ * Le suivi et la raison vivent sur le bloc (`CHAMPS_TEMPORELS`). Rend la cle
+ * de la raison a l'image ou elle est dite, null sinon.
+ */
+export function expliquer_tentative({
+  exercice, corps, bloc, etat, coach, jeton, maintenant, rep_comptee, faute, texte,
+}) {
+  const instrument = exercice.instrument;
+  if (!instrument) return null;
+  if (!bloc.suivi_tentatives) {
+    bloc.suivi_tentatives = new SuiviTentatives(instrument, {
+      intervalle_max: INTERVALLE_MAX,
+      depart: exercice.depart ?? null,
+    });
+  }
+  const valeurs = instrument.mesures.map((mesure) => mesure.valeur(corps));
+  const entree = bloc.suivi_tentatives.observer(jeton, valeurs, maintenant);
+  if (rep_comptee) delete bloc.non_comptee;
+
+  let dite = null;
+  if (entree && !entree.complet && entree.significatif && entree.raison) {
+    bloc.non_comptee = entree.raison;
+    coach("repetition_non_comptee", entree.raison);
+    dite = entree.raison;
+  }
+  if (!faute && bloc.non_comptee) {
+    etat.erreur = texte("repetition_non_comptee", { raison: texte(bloc.non_comptee) ?? "" });
+  }
+  return dite;
+}
+
+/**
  * Publie l'etape du mouvement, sous sa forme brute et sous sa forme lisible.
  *
  * Les deux, parce qu'elles ne servent pas au meme public : le jeton reste la
@@ -325,6 +370,10 @@ export function gerer_mode_repetitions({
   const amplitude_manquee = suivre_amplitude(
     exercice, corps, bloc, etat, stage_avant, stage, repetitions > repetitions_avant, messages.texte
   );
+  expliquer_tentative({
+    exercice, corps, bloc, etat, coach, jeton: stage_detecte, maintenant: seance.maintenant(),
+    rep_comptee: repetitions > repetitions_avant, faute, texte: messages.texte,
+  });
 
   if (repetitions > derniere_rep) {
     coach("compteur", repetitions);
@@ -434,9 +483,14 @@ export function gerer_mode_amrap({
   annoncer_temps_restant(coach, bloc, bloc.duree - bloc.temps_amrap);
 
   const stage_detecte = bloc.exercice.detection(corps);
+  const repetitions_avant = compteur.repetitions;
   const [stage, repetitions] = compteur.mettre_a_jour(
     stage_detecte, maintenant, bloc.exercice.depart ?? null
   );
+  expliquer_tentative({
+    exercice: bloc.exercice, corps, bloc, etat, coach, jeton: stage_detecte, maintenant,
+    rep_comptee: repetitions > repetitions_avant, faute, texte: messages.texte,
+  });
 
   if (repetitions > derniere_rep) {
     coach("compteur", repetitions);

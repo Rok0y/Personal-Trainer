@@ -17,7 +17,7 @@
 
 import { Circuit, BlocExercice, Exercice, MODE_REPETITIONS } from "../web/static/js/circuit.js";
 import { DETECTIONS } from "../web/static/js/detections.js";
-import { amplitude_pour } from "../web/static/js/seance.js";
+import { amplitude_pour, instrument_pour } from "../web/static/js/seance.js";
 import { construire_corps } from "../web/static/js/landmarks.js";
 import { CompteurMouvement } from "../web/static/js/compteur.js";
 import { creer_etat } from "../web/static/js/etat.js";
@@ -153,6 +153,8 @@ function catalogue_pour(fiches) {
       orientation: fiche.orientation ?? null,
       amplitude: amplitude_pour(fiche.amplitude),
       changements: fiche.changements ?? [],
+      depart: fiche.depart ?? null,
+      instrument: instrument_pour(fiche.detection),
     });
   }
   return table;

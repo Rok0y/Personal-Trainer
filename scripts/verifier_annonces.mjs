@@ -22,6 +22,11 @@
 //  7. les changements d'echauffement ont-ils une cle et un instant valides ?
 //  8. la charge cousue par fichiers (`fichier_assemble`, ce que fait
 //     l'application) mene-t-elle au meme fichier que son texte ?
+// 10. chaque raison qu'un instrument peut donner d'une repetition refusee
+//     (`raisons`, et la phrase generique de chaque demi-cycle) a-t-elle son
+//     message (`messages.js`) et sa voix (`fichiers`, le fichier de sa
+//     brique) ? Sans message, le bandeau dirait « Ca ne compte pas : . » ;
+//     sans voix, seule l'amorce se dirait.
 //  9. la voix d'une faute de forme porte-t-elle la cle d'un message du
 //     bandeau (`messages.js`) ? Une cle, deux canaux : le moteur dit la cle
 //     que la detection rend, une voix sous une autre cle ne serait jamais
@@ -42,6 +47,7 @@ import {
 } from "../web/static/js/annonces.js";
 import { AMORCES_PAR_POSITION } from "../web/static/js/circuit.js";
 import { MESSAGES } from "../web/static/js/messages.js";
+import { INSTRUMENTS } from "../web/static/js/instruments.js";
 import { SONS, charger, fichier, phrases_enregistrees, texte_charge } from "./vocabulaire.mjs";
 
 function main() {
@@ -106,12 +112,27 @@ function main() {
   // 7. et 9. : un changement ou une faute se joue par `coach(cle)`, donc par
   // `fichiers` — qui doit designer le fichier de sa brique.
   for (const [cle, texte] of Object.entries(sons.textes)) {
-    const par_coach = cle.startsWith("changement_") || cle.startsWith("forme_");
+    const par_coach = ["changement_", "forme_", "raison_", "amplitude_", "repetition_non_comptee"]
+      .some((prefixe) => cle.startsWith(prefixe));
     if (par_coach && JSON.stringify(sons.fichiers[cle]) !== JSON.stringify([fichier(texte)])) {
       problemes.push(`cle « ${cle} » : fichiers doit jouer ${fichier(texte)}, le fichier de sa brique`);
     }
     if (cle.startsWith("forme_") && !(cle in MESSAGES)) {
       problemes.push(`faute « ${cle} » : aucun message de ce nom dans messages.js — le moteur ne l'appellera jamais`);
+    }
+  }
+
+  // 10.
+  const raisons = new Set(["repetition_non_comptee", "amplitude_aller_incomplet", "amplitude_retour_incomplet"]);
+  for (const instrument of Object.values(INSTRUMENTS)) {
+    for (const mesure of instrument.mesures) {
+      for (const raison of Object.values(mesure.raisons ?? {})) raisons.add(raison);
+    }
+  }
+  for (const raison of raisons) {
+    if (!(raison in MESSAGES)) problemes.push(`raison « ${raison} » : aucun message de ce nom dans messages.js`);
+    if (!(raison in sons.textes) || !sons.fichiers[raison]?.length) {
+      problemes.push(`raison « ${raison} » : ni texte ni fichier dans sons.json — la voix ne dirait que « Ca ne compte pas »`);
     }
   }
 

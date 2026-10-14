@@ -27,10 +27,18 @@ export const MESSAGES = {
   forme_genou_avant_trop_avance:
     "Attention à ne pas trop avancer ton genou avant",
   forme_pompe_pas_assez_profonde: "Descends la poitrine plus près du sol",
-  // --- Repetition incomplete : une tentative a vraiment progresse, sans
-  // atteindre la position visee (voir instruments.js, SuiviTentatives).
-  amplitude_aller_incomplet: "Va jusqu'au bout du mouvement",
-  amplitude_retour_incomplet: "Reviens complètement en position de départ",
+  // --- Repetition qui ne compte pas : une tentative a vraiment progresse,
+  // sans atteindre la position visee (voir instruments.js, SuiviTentatives).
+  // La raison se glisse dans la phrase, d'ou sa minuscule ; la meme cle
+  // designe la brique dite apres « Ca ne compte pas » (`sons.json`).
+  repetition_non_comptee: "Ça ne compte pas : {raison}.",
+  raison_descendre: "descends plus bas",
+  raison_monter: "monte plus haut",
+  raison_tendre_bras: "tends complètement les bras",
+  raison_remonter: "remonte complètement",
+  raison_coudes_serres: "garde les coudes serrés",
+  amplitude_aller_incomplet: "va jusqu'au bout du mouvement",
+  amplitude_retour_incomplet: "reviens complètement en position de départ",
   // --- Consignes d'etat : ce qu'il faut faire, pas ce qui est mal fait ---
   corps_absent: "Place-toi devant la caméra, bien en pied.",
   // « la seance » et non « la serie » : cette phase n'existe qu'une fois.

@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**21 prises restantes.**
+**29 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -121,6 +121,21 @@ Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus l'ecran. Un ordre
 | `change_de_sens.wav` | « Change de sens » | deja fait |
 | `change_de_jambe.wav` | « Change de jambe » | deja fait |
 | `change_de_bras.wav` | « Change de bras » | **a enregistrer** |
+
+## Repetitions qui ne comptent pas
+
+« Ca ne compte pas » se dit **seul**, suspendu, puis vient la raison, enregistree a part : elle se colle derriere, apres la pause du deux-points. Dites a quelqu'un qui vient de rater une repetition et va recommencer : une explication, pas un reproche — calme, net, un peu plus fort que les autres phrases. Chaque raison sert plusieurs mouvements (« descends plus bas » vaut pour la pompe, le squat, la fente).
+
+| Fichier | A prononcer | Etat |
+| --- | --- | --- |
+| `ca_ne_compte_pas.wav` | « Ça ne compte pas » | **a enregistrer** |
+| `descends_plus_bas.wav` | « Descends plus bas » | **a enregistrer** |
+| `monte_plus_haut.wav` | « Monte plus haut » | **a enregistrer** |
+| `tends_completement_les_bras.wav` | « Tends complètement les bras » | **a enregistrer** |
+| `remonte_completement.wav` | « Remonte complètement » | **a enregistrer** |
+| `garde_les_coudes_serres.wav` | « Garde les coudes serrés » | **a enregistrer** |
+| `va_jusqu_au_bout_du_mouvement.wav` | « Va jusqu'au bout du mouvement » | **a enregistrer** |
+| `reviens_completement_en_position_de_depart.wav` | « Reviens complètement en position de départ » | **a enregistrer** |
 
 ## Corrections de forme
 

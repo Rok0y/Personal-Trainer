@@ -70,6 +70,17 @@ const FAMILLES = [
       "l'ecran. Un ordre bref, qui arrive seul.",
   ],
   [
+    ["repetition_non_comptee", "raison_", "amplitude_"],
+    "Repetitions qui ne comptent pas",
+    "« Ca ne compte pas » se dit **seul**, suspendu, puis vient la raison, " +
+      "enregistree a part : elle se colle derriere, apres la pause du " +
+      "deux-points. Dites a quelqu'un qui vient de rater une repetition et " +
+      "va recommencer : une explication, pas un reproche — calme, net, un " +
+      "peu plus fort que les autres phrases. Chaque raison sert plusieurs " +
+      "mouvements (« descends plus bas » vaut pour la pompe, le squat, la " +
+      "fente).",
+  ],
+  [
     ["forme_"],
     "Corrections de forme",
     "Dites **pendant l'effort**, quand une faute dure, a quelqu'un qui " +
