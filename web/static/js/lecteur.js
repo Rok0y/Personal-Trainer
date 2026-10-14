@@ -44,6 +44,12 @@ const DELAI_REPRISE = 0.5;
 //: contexte, en secondes.
 const DELAI_CHANGEMENT_SORTIE = 0.3;
 
+//: Le limiteur qui suit l'amplification (voir `_brancher_sortie`). Reglages
+//: techniques et non de gout : un seuil sous le plafond, un rapport assez fort
+//: pour qu'aucune crete ne sature, une attaque assez courte pour attraper la
+//: premiere syllabe. Le gout — combien plus fort — est dans `sons.json`.
+const LIMITEUR = { seuil: -6, genou: 3, rapport: 20, attaque: 0.002, relache: 0.1 };
+
 export class Lecteur {
   /**
    * @param {string} dossier  ou trouver les .wav
@@ -64,8 +70,12 @@ export class Lecteur {
     // « repose-toi » puis le blanc, et aucun son traite comme du rythme).
     this.repos_minimal = tables.silences?.repos_minimal ?? 0;
     this.priorite_rythme_max = tables.silences?.priorite_rythme_max ?? 0;
+    // Meme regle encore : zero decibel, c'est le son tel qu'enregistre.
+    this.amplification_db = tables.sortie?.amplification_db ?? 0;
 
     this.contexte = null;
+    // Ou brancher un son : l'entree de la chaine de sortie du contexte.
+    this._sortie = null;
     this._tampons = new Map();
     this._file = [];
     this._joue = false;
@@ -150,6 +160,35 @@ export class Lecteur {
       }
     };
     this.contexte = contexte;
+    this._sortie = this._brancher_sortie(contexte);
+  }
+
+  /**
+   * L'entree de la chaine de sortie : amplification, puis limiteur.
+   *
+   * **Le coach se perdait sous la musique.** Spotify joue sur l'iPad au meme
+   * volume systeme que nous, et rien ne regle l'un par rapport a l'autre ; or
+   * les prises de son sont a environ −24 dBFS en moyenne, la musique vers
+   * −14. La seule marge est notre propre signal : on l'amplifie, et le
+   * limiteur rabat les cretes que l'amplification pousserait au-dela du
+   * plafond (une saturation s'entendrait bien plus qu'un son un peu plat).
+   *
+   * Construite ici, parce que c'est le seul endroit ou un contexte devient le
+   * notre : un contexte recree (changement d'ecouteurs) a sa propre chaine.
+   */
+  _brancher_sortie(contexte) {
+    if (!this.amplification_db || !contexte.createGain) return contexte.destination;
+    const gain = contexte.createGain();
+    gain.gain.value = 10 ** (this.amplification_db / 20);
+    const limiteur = contexte.createDynamicsCompressor();
+    limiteur.threshold.value = LIMITEUR.seuil;
+    limiteur.knee.value = LIMITEUR.genou;
+    limiteur.ratio.value = LIMITEUR.rapport;
+    limiteur.attack.value = LIMITEUR.attaque;
+    limiteur.release.value = LIMITEUR.relache;
+    gain.connect(limiteur);
+    limiteur.connect(contexte.destination);
+    return gain;
   }
 
   /**
@@ -453,7 +492,7 @@ export class Lecteur {
     return new Promise((resoudre) => {
       const source = this.contexte.createBufferSource();
       source.buffer = tampon;
-      source.connect(this.contexte.destination);
+      source.connect(this._sortie ?? this.contexte.destination);
       source.onended = resoudre;
       source.start();
       // Filet : `onended` ne se declenche pas si le contexte est suspendu

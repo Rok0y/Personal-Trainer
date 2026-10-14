@@ -285,6 +285,9 @@
   "repos_minimal": 15,
   "priorite_rythme_max": 2
  },
+ "sortie": {
+  "amplification_db": 10
+ },
  "fragments": {
   "prepare_un_haltere_de": "Prépare un haltère de",
   "prepare_deux_halteres_de": "Prépare deux haltères de",
