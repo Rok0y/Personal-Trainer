@@ -920,29 +920,6 @@
      sous son propre bouton « Modifier ». */
   [hidden] { display: none !important; }
 
-  /* La version d'essai se voit partout, seance comprise : un liseré orange
-     en haut de l'ecran, qui ne prend aucun clic. On ne doit jamais se
-     demander laquelle des deux on utilise. */
-  body.version-essai::before {
-    content: "";
-    position: fixed;
-    inset: 0 0 auto 0;
-    height: 4px;
-    z-index: 100;
-    background: var(--orange);
-    pointer-events: none;
-  }
-  .version-bascule {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: .6rem 1rem;
-    margin-top: 2rem;
-    color: var(--muted);
-    font-size: .9rem;
-  }
-  body.version-essai .version-bascule { color: var(--orange); }
-
   /* Les chiffres d'un resume : libelle en petit, valeur en grand. */
   .chiffres { display: flex; flex-wrap: wrap; gap: 1.4rem; margin: 0.8rem 0; }
   .chiffres div span {
@@ -1291,13 +1268,6 @@
   <div class="actions" style="justify-content:flex-start;margin-top:1.4rem" id="profilsActions">
     <button class="bouton secondaire" id="retourDepuisProfils">Retour aux séances</button>
   </div>
-  <!-- Passer d'une version a l'autre **sans quitter la web app** : c'est la
-       que vit la base (`essai.js`). Cache tant que la version d'essai n'est
-       pas publiee ; ici, a l'ecran qui s'impose a chaque lancement. -->
-  <p class="version-bascule" id="versionBascule" hidden>
-    <span id="versionTexte"></span>
-    <button class="bouton secondaire" id="versionBouton"></button>
-  </p>
 </section>
 
 <!-- ====================== PROGRAMMES ====================== -->
@@ -1683,7 +1653,6 @@ import {
   sequence_prochain_exercice,
 } from "../js/annonces.js";
 import * as historique from "../js/historique.js";
-import { est_version_essai, adresse_version_essai, adresse_version_principale } from "../js/essai.js";
 import { Tutoriel, etapes_de_seance } from "../js/tutoriel.js";
 import * as stockage from "../js/stockage.js";
 import { Lecteur } from "../js/lecteur.js";
@@ -1828,41 +1797,6 @@ function remplir_barres_onglets() {
 // dans le corps du module, et ne verrait rien a brancher si la barre etait
 // rendue apres elle.
 remplir_barres_onglets();
-
-/**
- * La bascule entre la version principale et la version d'essai (`essai.js`).
- *
- * Depuis l'essai, le retour est toujours offert. Depuis la principale, le
- * bouton n'apparait que si une version d'essai est publiee : une requete
- * `HEAD` le dit, et une absence (ou le hors-ligne) laisse le bouton cache.
- * La navigation passe par `location.assign` : une web app iOS sans manifeste
- * garde en son sein ce que le script ouvre, la ou un lien pourrait partir
- * dans Safari.
- */
-async function brancher_bascule_de_version() {
-  const essai = est_version_essai(location.href);
-  document.body.classList.toggle("version-essai", essai);
-  const cible = essai
-    ? adresse_version_principale(location.href)
-    : adresse_version_essai(location.href);
-  $("versionTexte").textContent = essai
-    ? "Tu utilises la version d'essai."
-    : "Une version d'essai est publiée.";
-  $("versionBouton").textContent = essai
-    ? "Revenir à la version principale"
-    : "Essayer la version d'essai";
-  $("versionBouton").addEventListener("click", () => location.assign(cible));
-  if (!essai) {
-    try {
-      const reponse = await fetch(cible, { method: "HEAD", cache: "no-store" });
-      if (!reponse.ok) return;
-    } catch {
-      return;
-    }
-  }
-  $("versionBascule").hidden = false;
-}
-brancher_bascule_de_version();
 
 // ---------------------------------------------------------------- donnees
 

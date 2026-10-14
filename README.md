@@ -92,7 +92,7 @@ Un fichier absent est un silence, jamais une panne : on peut enregistrer par lot
 
 **Le point d'entrée est https://rok0y.github.io/Personal-Trainer/sommaire.html** (la racine montre la même page) : un sommaire de toutes les pages (application, banc d'essai, outils de réglage), généré au déploiement par `scripts/sommaire.mjs`. Une nouvelle page y apparaît d'elle-même, à condition d'avoir un `<title>` et une `<meta name="description">` — les tests refusent une page qui n'en a pas.
 
-`.github/workflows/demo.yml` publie `web/static` sur GitHub Pages à chaque push sur `main` ou `test`, après avoir lancé les tests. Il publie les deux branches ensemble : `main` à la racine, `test` sous `app/essai/` — **la version d'essai**, où l'on essaie une modification en séance avant de la fusionner dans `main`. On y passe depuis l'application, par le bouton en bas de « Qui s'entraîne ? » (un liseré orange la signale) : elle s'ouvre ainsi dans la web app de l'iPad, avec la vraie base, qu'elle partage avec la version principale. Chaque ressource est marquée de l'empreinte du commit (`camera.js?v=<sha>`), pour qu'un navigateur ne combine jamais un document neuf avec un module gardé en cache.
+`.github/workflows/demo.yml` publie `web/static` sur GitHub Pages à chaque push sur `main` ou `travail`, après avoir lancé les tests. Le dernier push gagne : on travaille et on essaie sur `travail`, puis on fusionne dans `main` une fois la modification validée en séance. Si un essai casse l'application, on republie `main` depuis l'onglet Actions (*Demo > Run workflow*). Chaque ressource est marquée de l'empreinte du commit (`camera.js?v=<sha>`), pour qu'un navigateur ne combine jamais un document neuf avec un module gardé en cache.
 
 ## Historique du projet
 
