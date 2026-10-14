@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**29 prises restantes.**
+**21 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -128,14 +128,14 @@ Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus l'ecran. Un ordre
 
 | Fichier | A prononcer | Etat |
 | --- | --- | --- |
-| `ca_ne_compte_pas.wav` | « Ça ne compte pas » | **a enregistrer** |
-| `tu_ne_descends_pas_assez_bas.wav` | « Tu ne descends pas assez bas » | **a enregistrer** |
-| `tu_ne_montes_pas_assez_haut.wav` | « Tu ne montes pas assez haut » | **a enregistrer** |
-| `tes_bras_ne_sont_pas_completement_tendus.wav` | « Tes bras ne sont pas complètement tendus » | **a enregistrer** |
-| `tu_ne_remontes_pas_completement.wav` | « Tu ne remontes pas complètement » | **a enregistrer** |
-| `tes_coudes_sont_trop_ecartes.wav` | « Tes coudes sont trop écartés » | **a enregistrer** |
-| `tu_ne_vas_pas_jusqu_au_bout_du_mouvement.wav` | « Tu ne vas pas jusqu'au bout du mouvement » | **a enregistrer** |
-| `tu_ne_reviens_pas_completement_au_depart.wav` | « Tu ne reviens pas complètement au départ » | **a enregistrer** |
+| `ca_ne_compte_pas.wav` | « Ça ne compte pas » | deja fait |
+| `tu_ne_descends_pas_assez_bas.wav` | « Tu ne descends pas assez bas » | deja fait |
+| `tu_ne_montes_pas_assez_haut.wav` | « Tu ne montes pas assez haut » | deja fait |
+| `tes_bras_ne_sont_pas_completement_tendus.wav` | « Tes bras ne sont pas complètement tendus » | deja fait |
+| `tu_ne_remontes_pas_completement.wav` | « Tu ne remontes pas complètement » | deja fait |
+| `tes_coudes_sont_trop_ecartes.wav` | « Tes coudes sont trop écartés » | deja fait |
+| `tu_ne_vas_pas_jusqu_au_bout_du_mouvement.wav` | « Tu ne vas pas jusqu'au bout du mouvement » | deja fait |
+| `tu_ne_reviens_pas_completement_au_depart.wav` | « Tu ne reviens pas complètement au départ » | deja fait |
 
 ## Corrections de forme
 
