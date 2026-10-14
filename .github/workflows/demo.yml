@@ -1,10 +1,32 @@
-# Publie la demo statique sur GitHub Pages.
+# Publie le site statique sur GitHub Pages : `main` a la racine, `test`
+# sous `app/essai/`.
 #
-# Elle vivait jusqu'ici derriere un tunnel Cloudflare, ce qui imposait trois
+# Il vivait jusqu'ici derriere un tunnel Cloudflare, ce qui imposait trois
 # contraintes a chaque test : le PC allume, le tunnel lance, et une adresse
-# qui change a chaque redemarrage. Un testeur ouvre le lien quand ca l'arrange,
-# pas quand la machine est prete. Pages donne une adresse definitive, gratuite,
-# et se met a jour par un simple push.
+# qui change a chaque redemarrage. Pages donne une adresse definitive,
+# gratuite, et se met a jour par un simple push.
+#
+# **Deux sites, une publication.** Pages n'offre qu'un site par depot, et
+# chaque deploiement le remplace entier : publier une branche d'essai seule,
+# c'etait la mettre en production. Chaque push sur `main` ou `test` construit
+# donc **les deux** branches et les publie ensemble —
+#
+#   https://rok0y.github.io/Personal-Trainer/app/            main
+#   https://rok0y.github.io/Personal-Trainer/app/essai/app/  test
+#
+# Le deroule : une branche de travail est poussee sur `test`, essayee en
+# seance, puis fusionnee dans `main`. `main` ne recoit rien qui n'ait ete
+# essaye.
+#
+# **Sous `app/`, et pas a cote** : l'application se joue en web app sur
+# l'iPad, et une web app a son propre stockage, separe de Safari — la base
+# vit dedans. La version d'essai s'ouvre donc depuis l'application (bouton de
+# « Qui s'entraine ? », `js/essai.js`) et doit rester dans sa portee, que
+# iOS deduit du dossier de depart faute de manifeste. On y essaie avec son
+# vrai profil, et une seance faite en essai entre dans le vrai historique.
+# C'est voulu. **Une branche qui
+# change le format de la base (`migrer`) s'essaie apres un export** : le site
+# d'essai migrerait la base que le site principal relit.
 #
 # Prealable a faire une fois, a la main : Settings > Pages > Source =
 # "GitHub Actions". Sans ca, l'etape configure-pages echoue en le disant.
@@ -13,7 +35,7 @@ name: Demo
 
 on:
   push:
-    branches: [main, feat/portage-web, feat/ligues-et-xp, feat/onboarding-et-coach, chore/retrait-desktop, feat/familles-progression]
+    branches: [main, test]
   workflow_dispatch:
 
 permissions:
@@ -34,13 +56,17 @@ jobs:
       name: github-pages
       url: ${{ steps.deploiement.outputs.page_url }}
     steps:
+      # Tout l'historique : les deux branches publiees en sont tirees.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # Toutes les verifications, en quelques secondes : les donnees de
-      # `web/static/donnees/` (des sources editees a la main, que plus rien ne
-      # valide en les fabriquant), les tables du coach, et les tests figes. Un
-      # rouge empeche de publier — une donnee bancale ne leve jamais dans
-      # l'application, elle y tait une fiche ou y refuse une seance. Node est
+      # Toutes les verifications de la branche poussee, en quelques secondes :
+      # les donnees de `web/static/donnees/` (des sources editees a la main,
+      # que plus rien ne valide en les fabriquant), les tables du coach, et les
+      # tests figes. Un rouge empeche de publier — une donnee bancale ne leve
+      # jamais dans l'application, elle y tait une fiche ou y refuse une
+      # seance. L'autre branche a ete verifiee a son propre push. Node est
       # deja present sur le runner.
       - name: Verifier
         run: node scripts/tester.mjs
@@ -50,24 +76,43 @@ jobs:
         with:
           python-version: "3.11"
 
-      # La racine du site est le sommaire : une carte par page (application,
-      # demo, outils de reglage), generee depuis les <title> et les
-      # <meta name="description">. Une page ajoutee y apparait d'elle-meme.
-      - name: Preparer le dossier a publier
-        run: |
-          cp -r web/static _site
-          node scripts/sommaire.mjs _site "${{ github.sha }}"
-
+      # Chaque branche est construite **avec ses propres scripts**, dans son
+      # propre arbre : une branche d'essai qui change le sommaire ou
+      # l'empreinte ne doit pas changer la facon dont `main` est publie.
+      #
+      # La racine d'un site est son sommaire : une carte par page, generee
+      # depuis les <title> et les <meta name="description">. Il parcourt tout
+      # son dossier — d'ou `main` construit et marque **avant** que l'essai y
+      # soit range (`app/essai/`), sans quoi le sommaire principal listerait les pages
+      # d'essai. Meme raison pour l'empreinte : celle de `main` ne doit pas
+      # marquer les fichiers de l'essai avec le mauvais commit.
+      #
       # Chaque ressource locale recoit l'empreinte du commit deploye. Sans ca,
       # un navigateur qui tient encore l'ancien module en cache le combine avec
       # le nouveau document : l'application echoue sur une fonction disparue et
       # accuse un code deja corrige. C'est arrive, sur un iPad, au demarrage
-      # d'une seance. Le cache n'est pas en cause — sa granularite l'est, chaque
-      # fichier expirant pour son compte. Changer l'adresse plutot qu'esperer
-      # l'expiration est la seule facon d'etre sur qu'un deploiement est servi
-      # entier.
-      - name: Marquer les ressources avec l'empreinte du commit
-        run: python -m scripts.empreinte_deploiement _site "${{ github.sha }}"
+      # d'une seance. Changer l'adresse plutot qu'esperer l'expiration est la
+      # seule facon d'etre sur qu'un deploiement est servi entier. Les
+      # adresses etant relatives, un site range sous `app/essai/`
+      # fonctionne tel quel.
+      - name: Construire main et test
+        run: |
+          set -e
+          construire() {
+            # $1 branche, $2 dossier de sortie (absolu)
+            git worktree add --detach "arbre-$1" "origin/$1"
+            commit=$(git -C "arbre-$1" rev-parse HEAD)
+            cp -r "arbre-$1/web/static" "$2"
+            (cd "arbre-$1" \
+              && node scripts/sommaire.mjs "$2" "$commit" \
+              && python -m scripts.empreinte_deploiement "$2" "$commit")
+            echo "$1 publie au commit $commit"
+          }
+          construire main "$PWD/_site"
+          # Sans branche `test`, le site principal est publie seul.
+          if git rev-parse --verify --quiet origin/test > /dev/null; then
+            construire test "$PWD/_site/app/essai"
+          fi
 
       - uses: actions/configure-pages@v5
 
