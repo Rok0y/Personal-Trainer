@@ -21,6 +21,7 @@ import {
   MODE_REPETITIONS,
 } from "./circuit.js";
 import { SuiviTentatives } from "./instruments.js";
+import { SEUIL_IMMOBILE, vitesse_du_buste } from "./immobilite.js";
 
 // Un ecart plus long que ca entre deux images vient forcement d'une
 // interruption du flux (utilisateur hors champ, onglet suspendu par iOS,
@@ -183,8 +184,84 @@ function _finaliser_serie(seance, etat, bloc) {
 }
 
 // Les modes qui comptent des repetitions : les seuls ou les gestes ±1 ont un
-// compte a corriger.
+// compte a corriger, et les seuls qui attendent qu'on soit en place.
 export const MODES_A_COMPTE = [MODE_REPETITIONS, MODE_AMRAP];
+
+// Combien de temps il faut rester immobile en position pour ouvrir une serie
+// comptee. Assez pour qu'un passage par la position en marchant ou en prenant
+// l'haltere ne suffise pas, assez peu pour ne pas faire attendre.
+export const DUREE_MISE_EN_PLACE = 1.5;
+
+/**
+ * Ouvre la serie : « c'est parti ». Une fois par serie — le drapeau vit sur
+ * le bloc (`CHAMPS_TEMPORELS`), si bien qu'une serie refaite, remise a zero
+ * ou changee de variante se rouvre.
+ */
+function ouvrir_serie(bloc, coach) {
+  bloc.serie_ouverte = true;
+  coach("debut_serie");
+}
+
+/**
+ * Attend qu'on soit en place avant d'ouvrir une serie comptee ; rend vrai
+ * quand elle est ouverte.
+ *
+ * **Rien ne compte avant** : se rendre a sa place, prendre l'haltere, faire
+ * un essai a vide passaient par les positions du mouvement, et le coach
+ * comptait ou expliquait des repetitions que personne ne faisait. Etre en
+ * place, c'est deux conditions tenues `DUREE_MISE_EN_PLACE` sans interruption :
+ *
+ * - le jeton reste **le meme, a une extremite** du mouvement (`debut` ou
+ *   `fin`, ou le seul `depart` declare) : bras tendu pour un curl, planche
+ *   bras tendus pour une pompe, debout pour un squat. Une detection ne rend
+ *   une extremite qu'en position, donc debout devant une pompe n'y est pas ;
+ * - le buste est **immobile** (`vitesse_du_buste`, le seuil de la demo) :
+ *   marcher bras ballant tient un curl en `debut`.
+ *
+ * Le compteur ne recoit ses jetons qu'a partir de la : sa position de depart
+ * est donc la position tenue, et la mise en place ne peut plus devenir une
+ * repetition.
+ *
+ * Une image manquee (corps hors champ, image lente) remet l'attente a zero :
+ * sans elle, sortir du champ deux secondes puis revenir ouvrait la serie a
+ * la premiere image.
+ */
+export function attendre_mise_en_place({ bloc, corps, jeton, maintenant, depart, coach }) {
+  if (bloc.serie_ouverte) return true;
+
+  const precedent = bloc.mise_en_place_buste ?? null;
+  const continu = precedent !== null && maintenant - precedent.instant <= INTERVALLE_MAX;
+  const [vitesse, repere] = vitesse_du_buste(continu ? precedent : null, corps, maintenant);
+  bloc.mise_en_place_buste = repere;
+
+  const en_position = depart ? jeton === depart : jeton === "debut" || jeton === "fin";
+  const immobile = vitesse !== null && vitesse <= SEUIL_IMMOBILE;
+  if (!en_position || !immobile) {
+    delete bloc.mise_en_place_jeton;
+    delete bloc.mise_en_place_depuis;
+    return false;
+  }
+  if (bloc.mise_en_place_jeton !== jeton) {
+    bloc.mise_en_place_jeton = jeton;
+    bloc.mise_en_place_depuis = maintenant;
+  }
+  if (maintenant - bloc.mise_en_place_depuis < DUREE_MISE_EN_PLACE) return false;
+
+  ouvrir_serie(bloc, coach);
+  return true;
+}
+
+/**
+ * Ce que montre une serie comptee qui attend : l'etape, et la consigne de se
+ * mettre en place. Ni faute de forme (elle n'existe que pendant l'effort), ni
+ * compte.
+ */
+function montrer_attente(etat, jeton, compteur, messages) {
+  etat.erreur = null;
+  etat.consigne = messages.texte("mise_en_place");
+  poser_etape(etat, jeton, messages.libelle_etape);
+  etat.repetitions = compteur.repetitions;
+}
 
 /**
  * Ajoute ou retire une repetition a la main ; rend le nouveau `derniere_rep`.
@@ -199,12 +276,16 @@ export const MODES_A_COMPTE = [MODE_REPETITIONS, MODE_AMRAP];
  * **Un −1 doit faire reculer `derniere_rep`**, sans quoi la repetition reelle
  * suivante ne serait pas annoncee (`repetitions > derniere_rep` resterait
  * faux) ; et il annonce le nouveau compte, seul retour audible a trois metres.
+ *
+ * **Un geste ±1 ouvre la serie, en silence** : corriger son compte prouve
+ * qu'on est la, et attendre encore l'immobilite laisserait le +1 sans suite.
  */
 export function ajuster_repetitions({ seance, compteur, etat, coach, delta, derniere_rep }) {
   const bloc = seance.bloc_actuel;
   if (seance.phase !== "exercice" || !bloc || !MODES_A_COMPTE.includes(bloc.mode)) {
     return derniere_rep;
   }
+  bloc.serie_ouverte = true;
   const repetitions = compteur.ajuster(delta);
   etat.repetitions = repetitions;
   if (delta < 0) {
@@ -294,6 +375,36 @@ export function suivre_amplitude(exercice, corps, bloc, etat, stage_avant, stage
   return rep_comptee ? avertissement : null;
 }
 
+// Combien de temps l'extremite ou une tentative a echoue doit durer pour que
+// l'echec soit dit. Une image isolee qui retombe a tort sur une extremite (un
+// avant-bras pointe vers la camera en pleine montee de curl : le poignet se
+// projette sur le coude, et l'angle 2D se lit « bras tendu ») ne dure pas ;
+// un vrai echec — on redescend sans etre monte assez haut — se pose. Un quart
+// de seconde, huit images : bien moins que le temps d'une repetition.
+export const PERSISTANCE_VERDICT = 0.25;
+
+/**
+ * Decide si un echec de tentative se dit : rend `[attente, raison_dite]`.
+ *
+ * Un echec significatif qui porte une raison n'est pas dit sur-le-champ : il
+ * est mis **en attente** avec le jeton de l'extremite ou il s'est clos. Il est
+ * dit si ce jeton dure `PERSISTANCE_VERDICT` ; il est **abandonne** si le
+ * jeton change avant, ou si une repetition compte. Le suivi des tentatives,
+ * lui, ne change pas : son journal (le banc d'essai) dit ce qu'il voit, et
+ * c'est la parole qui attend d'etre sure. Pur, pour servir a la demo comme a
+ * la seance.
+ */
+export function confirmer_verdict(attente, entree, jeton, maintenant, rep_comptee) {
+  if (rep_comptee) attente = null;
+  if (entree && !entree.complet && entree.significatif && entree.raison) {
+    attente = { raison: entree.raison, jeton, depuis: maintenant };
+  }
+  if (!attente) return [null, null];
+  if (jeton !== attente.jeton) return [null, null];
+  if (maintenant - attente.depuis < PERSISTANCE_VERDICT) return [attente, null];
+  return [null, attente.raison];
+}
+
 /**
  * Dit pourquoi une repetition n'a pas compte.
  *
@@ -305,7 +416,8 @@ export function suivre_amplitude(exercice, corps, bloc, etat, stage_avant, stage
  * hesitation sous `PROGRESSION_SIGNIFICATIVE` du chemin, ou un mouvement fait
  * hors position, se tait.
  *
- * La voix le dit une fois, quand la tentative echoue ; le bandeau le garde
+ * La voix le dit une fois, quand l'echec est confirme (`confirmer_verdict`,
+ * un quart de seconde plus tard) ; le bandeau le garde
  * jusqu'a la prochaine repetition comptee, **devant** l'avertissement
  * d'amplitude (plus ancien) et **derriere** une faute de forme du moment.
  * Le suivi et la raison vivent sur le bloc (`CHAMPS_TEMPORELS`). Rend la cle
@@ -326,11 +438,14 @@ export function expliquer_tentative({
   const entree = bloc.suivi_tentatives.observer(jeton, valeurs, maintenant);
   if (rep_comptee) delete bloc.non_comptee;
 
-  let dite = null;
-  if (entree && !entree.complet && entree.significatif && entree.raison) {
-    bloc.non_comptee = entree.raison;
-    coach("repetition_non_comptee", entree.raison);
-    dite = entree.raison;
+  const [attente, dite] = confirmer_verdict(
+    bloc.verdict_en_attente ?? null, entree, jeton, maintenant, rep_comptee
+  );
+  if (attente) bloc.verdict_en_attente = attente;
+  else delete bloc.verdict_en_attente;
+  if (dite) {
+    bloc.non_comptee = dite;
+    coach("repetition_non_comptee", dite);
   }
   if (!faute && bloc.non_comptee) {
     etat.erreur = texte("repetition_non_comptee", { raison: texte(bloc.non_comptee) ?? "" });
@@ -359,8 +474,15 @@ export function gerer_mode_repetitions({
   corps, exercice, bloc, seance, compteur, etat, coach, derniere_rep, messages,
 }) {
   let serie_terminee = false;
-  const faute = mettre_a_jour_erreur(exercice, corps, etat, messages.texte);
   const stage_detecte = exercice.detection(corps);
+  if (!attendre_mise_en_place({
+    bloc, corps, jeton: stage_detecte, maintenant: seance.maintenant(),
+    depart: exercice.depart ?? null, coach,
+  })) {
+    montrer_attente(etat, stage_detecte, compteur, messages);
+    return [derniere_rep, compteur.repetitions, false];
+  }
+  const faute = mettre_a_jour_erreur(exercice, corps, etat, messages.texte);
 
   const stage_avant = compteur.stage;
   const repetitions_avant = compteur.repetitions;
@@ -473,8 +595,19 @@ export function gerer_mode_chrono({ bloc, seance, etat, coach }) {
 export function gerer_mode_amrap({
   corps, bloc, compteur, seance, etat, coach, derniere_rep, messages,
 }) {
-  const faute = mettre_a_jour_erreur(bloc.exercice, corps, etat, messages.texte);
   const maintenant = seance.maintenant();
+  const stage_detecte = bloc.exercice.detection(corps);
+  // Le chrono part avec la serie, a « c'est parti » : un AMRAP qui courait
+  // pendant qu'on se met en place volerait ces secondes a la serie.
+  if (!attendre_mise_en_place({
+    bloc, corps, jeton: stage_detecte, maintenant,
+    depart: bloc.exercice.depart ?? null, coach,
+  })) {
+    montrer_attente(etat, stage_detecte, compteur, messages);
+    etat.temps_amrap_restant = bloc.duree;
+    return [derniere_rep, compteur.repetitions, false];
+  }
+  const faute = mettre_a_jour_erreur(bloc.exercice, corps, etat, messages.texte);
   annoncer_faute(coach, bloc, faute, maintenant);
 
   if (!("debut_amrap" in bloc)) bloc.debut_amrap = maintenant;
@@ -482,7 +615,6 @@ export function gerer_mode_amrap({
   bloc.temps_amrap = maintenant - bloc.debut_amrap;
   annoncer_temps_restant(coach, bloc, bloc.duree - bloc.temps_amrap);
 
-  const stage_detecte = bloc.exercice.detection(corps);
   const repetitions_avant = compteur.repetitions;
   const [stage, repetitions] = compteur.mettre_a_jour(
     stage_detecte, maintenant, bloc.exercice.depart ?? null
@@ -566,9 +698,28 @@ export function gerer_mode_echauffement({ corps, bloc, seance, etat, coach, mess
   return [0, 0, false];
 }
 
-export function executer_mode({ seance, corps, compteur, etat, coach, derniere_rep, messages }) {
+/**
+ * Fait avancer la serie courante d'une image, selon son mode.
+ *
+ * `mise_en_place` : une serie comptee attend-elle qu'on soit en place
+ * (`attendre_mise_en_place`) ? Vrai dans l'application. **Faux dans le rejeu
+ * des scenarios figes** (`comparer_seances.mjs`) : leurs poses sont tirees au
+ * hasard et ne restent jamais immobiles, si bien que plus rien n'y
+ * compterait — et `--mettre-a-jour` remplacerait des comptes verifies par
+ * zero. La regle se verifie a part (`verifier_mise_en_place.mjs`). Faux, la
+ * serie s'ouvre a sa premiere image, comme celles qui ne comptent pas.
+ */
+export function executer_mode({
+  seance, corps, compteur, etat, coach, derniere_rep, messages, mise_en_place = true,
+}) {
   const bloc = seance.bloc_actuel;
   etat.mode = bloc.mode;
+  // Un maintien, un chrono, un echauffement s'ouvrent a leur premiere image :
+  // ils ne comptent rien qu'une mise en place pourrait fausser, et le
+  // maintien attend deja la position pour faire avancer son temps.
+  if (!bloc.serie_ouverte && (!mise_en_place || !MODES_A_COMPTE.includes(bloc.mode))) {
+    ouvrir_serie(bloc, coach);
+  }
 
   if (bloc.mode === MODE_REPETITIONS) {
     return gerer_mode_repetitions({

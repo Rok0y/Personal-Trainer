@@ -48,7 +48,11 @@ export const MESSAGES = {
   corps_absent: "Place-toi devant la caméra, bien en pied.",
   // « la seance » et non « la serie » : cette phase n'existe qu'une fois.
   preparation_bras_en_x: "Croise les bras devant toi pour lancer la séance.",
-  preparation_decompte: "C'est parti ! Redescends les bras et mets-toi en place.",
+  // « C'est parti » n'y est plus : il se dit a l'ouverture de la serie, une
+  // fois en place (`attendre_mise_en_place`).
+  preparation_decompte: "Redescends les bras et mets-toi en place.",
+  // Une serie comptee attend qu'on soit immobile en position pour s'ouvrir.
+  mise_en_place: "Mets-toi en position et ne bouge plus.",
   pause: "Séance en pause. Reprends quand tu veux depuis le site.",
 };
 

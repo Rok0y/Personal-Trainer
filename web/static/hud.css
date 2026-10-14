@@ -542,26 +542,65 @@ body {
 
 /* ---------- REST OVERLAY (phase de récupération) ---------- */
 
+/* Le voile ne couvre plus l'image : pendant une pause on se regarde, comme
+   dans un miroir. Il ne garde qu'un panneau a gauche ; le reste laisse passer
+   le doigt jusqu'a la barre de progression du bas. */
 .rest-overlay {
     position: absolute;
     inset: 0;
     z-index: 6;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 24px;
-    background: rgba(9, 12, 18, 0.74);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.4s ease;
 }
 
-.rest-overlay.visible {
-    opacity: 1;
-    pointer-events: auto;
+.rest-overlay.visible { opacity: 1; }
+
+/* Sous la barre du haut (71 px, davantage quand ses pastilles passent sur
+   deux lignes en portrait), a la taille de son contenu, borne au-dessus des
+   commandes de serie (bas a 50 px, 41 px de haut). La colonne droite
+   (`min(380px, 40vw)`) reste a droite, le centre — la personne — reste net. */
+.rest-panneau {
+    position: absolute;
+    left: 28px;
+    top: 96px;
+    max-height: calc(100dvh - 200px);
+    width: min(400px, calc(100vw - min(380px, 40vw) - 84px));
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 24px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: rgba(9, 12, 18, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.rest-overlay.visible .rest-panneau { pointer-events: auto; }
+
+.rest-panneau .breathe-circle,
+.rest-panneau .prep-ring-wrap,
+.rest-panneau .bouton { align-self: center; }
+
+/* Le cercle respire (`breathe`, x1,14) : un peu plus petit que hors panneau,
+   il y tient sans faire defiler. */
+.rest-panneau .breathe-circle {
+    flex-shrink: 0;
+    width: 150px;
+    height: 150px;
+    margin: 10px 0;
+}
+
+/* Une tablette en portrait : l'image de la camera est haute et la personne
+   au milieu ; le panneau se fait etroit pour lui laisser le centre. */
+@media (orientation: portrait) and (min-width: 761px) {
+    .rest-panneau { width: min(300px, 36vw); }
+    .rest-next-name { font-size: 36px; }
+    .rest-cible { font-size: 34px; }
 }
 
 .rest-title {
@@ -598,14 +637,14 @@ body {
 
 .rest-next-name {
     font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
-    font-size: 64px;
+    font-size: 46px;
     line-height: 1;
     letter-spacing: 0.03em;
     text-transform: uppercase;
-    text-align: center;
     color: #ffffff;
     text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
-    max-width: 90vw;
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 .rest-next-name.hidden-mode,
@@ -621,16 +660,33 @@ body {
     font-weight: 600;
 }
 
+/* La prescription : la serie en petit, la cible et la charge en grand —
+   ce qu'on lit de loin pour preparer son haltere. */
 .rest-next {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rest-serie {
     font-size: 14px;
     color: var(--muted);
     letter-spacing: 0.02em;
 }
 
-.rest-next strong {
-    color: var(--text);
-    font-weight: 700;
+.rest-cible {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 18px;
+    font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+    font-size: 40px;
+    line-height: 1;
+    letter-spacing: 0.03em;
+    color: #ffffff;
 }
+
+.rest-charge { color: var(--teal); }
 
 .overlay-session-info {
     color: var(--muted);
@@ -640,18 +696,6 @@ body {
 }
 
 .overlay-session-info strong { color: var(--text); }
-
-.overlay-session-progress {
-    /* Large : huit exercices et leurs noms sur deux lignes doivent y tenir. */
-    width: min(960px, calc(100vw - 56px));
-}
-
-#overlaySessionProgressSegments {
-    position: relative;
-    display: flex;
-    gap: 8px;
-    min-height: 32px;
-}
 
 .prep-ring-wrap {
     position: relative;
@@ -722,10 +766,12 @@ body {
    seul chiffre qui rend les consignes lisibles pendant les pauses,
    c'est-à-dire au moment où on a le temps de les lire. Les commandes
    de série (10, en bas à gauche) restent au-dessus de tout. */
+/* `bottom: 64px` : au-dessus de la barre de progression (12 a 52 px du bas),
+   que le compteur recouvrait par son bout droit. */
 .right-column {
     position: absolute;
     right: 28px;
-    bottom: 28px;
+    bottom: 64px;
     z-index: 7;
     display: flex;
     flex-direction: column;
@@ -735,8 +781,9 @@ body {
     /* Ancree en bas, elle grandit vers le haut : bornee sous la barre du haut
        (71 px), sans quoi une fiche longue avec sa video passait dessous et
        cachait « A preparer ». C'est la carte des consignes qui cede (elle
-       defile), jamais le compteur. */
-    max-height: calc(100dvh - 116px);
+       defile), jamais le compteur. 71 px de barre du haut, 64 px de bas,
+       et l'air entre les deux. */
+    max-height: calc(100dvh - 152px);
 }
 
 .right-column > .fiche-card {
@@ -1295,7 +1342,36 @@ body {
         font-size: 42px;
     }
     .rest-next-name {
-        font-size: 40px;
+        font-size: 36px;
+    }
+    /* En portrait la colonne droite occupe le bas : le panneau de pause
+       passe en haut, sur toute la largeur, et cede son centre a l'image. */
+    .rest-panneau {
+        left: 16px;
+        right: 16px;
+        top: 80px;
+        bottom: auto;
+        width: auto;
+        max-height: 40dvh;
+        padding: 16px;
+        gap: 10px;
+    }
+    .rest-cible {
+        font-size: 32px;
+    }
+    .rest-panneau .breathe-circle {
+        width: 104px;
+        height: 104px;
+        margin: 6px 0;
+    }
+    .rest-panneau .rest-time {
+        font-size: 34px;
+    }
+    /* Pendant une pause, la colonne (consignes et compteur, plus haut dans
+       la pile) s'arrete sous le panneau au lieu de le recouvrir : 40 dvh de
+       panneau depuis 80 px, 108 px de bas, et l'air entre les deux. */
+    .stage:has(.rest-overlay.visible) .right-column {
+        max-height: calc(60dvh - 208px);
     }
     .prep-ring-wrap {
         width: 140px;

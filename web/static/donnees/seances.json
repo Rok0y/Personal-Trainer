@@ -50,7 +50,7 @@
    "poids": 0,
    "series": 1,
    "repetitions": 10,
-   "duree": 27,
+   "duree": 30,
    "repos_entre_series": 30,
    "repos_apres": 5,
    "commentaire": ""

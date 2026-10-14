@@ -333,6 +333,8 @@ import {
   formater_valeur, formater_zone,
 } from "../js/instruments.js";
 import { texte } from "../js/messages.js";
+import { SEUIL_IMMOBILE, vitesse_du_buste } from "../js/immobilite.js";
+import { confirmer_verdict } from "../js/moteur.js";
 import { avec_fiches } from "../js/seance.js";
 import { jouer_si_visible, montrer_video } from "../js/videos.js";
 
@@ -422,6 +424,8 @@ let debutImmobile = null;
 let finDecompte = null;
 let dernierDecompteDit = null;
 let bustePrecedent = null;
+//: L'echec qui attend d'etre confirme, comme `bloc.verdict_en_attente`.
+let verdictEnAttente = null;
 let personnesVues = 0;
 let poseSuivie = null;
 
@@ -1106,6 +1110,7 @@ function demarrerSuivis() {
   }
   tempsErreurs = {};
   erreurPrecedente = null;
+  verdictEnAttente = null;
   journalAffiche = null;
   dessinerJournal();
 }
@@ -1171,8 +1176,12 @@ function mesurerInstruments(corps, jeton, instant) {
     // celui de l'instrument.
     if (comptage) {
       const entree = l.suivi.observer(rang === 0 ? jeton : l.lecture.jeton, l.lecture.valeurs, instant);
-      if (rang === 0 && entree && !entree.complet && entree.significatif && entree.raison) {
-        signalerIncomplet(entree);
+      // Le journal dit tout de suite ce que le suivi voit ; la consigne
+      // attend, comme la voix de la seance, que l'echec soit confirme.
+      if (rang === 0) {
+        let raison;
+        [verdictEnAttente, raison] = confirmer_verdict(verdictEnAttente, entree, jeton, instant, false);
+        if (raison) signalerIncomplet(raison);
       }
     }
   });
@@ -1217,13 +1226,14 @@ function majJauges(jeton) {
 
 // Le coach, par ecrit pour l'instant : la voix viendra avec les prises de son.
 // Une tentative trop courte (un tremblement autour du seuil de depart) n'arrive
-// jamais ici — le suivi la classe en hesitation.
+// jamais ici — le suivi la classe en hesitation —, ni un echec que le corps
+// n'a pas confirme (`confirmer_verdict`).
 const DUREE_SIGNALEMENT = 2.5;
 let finSignalement = 0;
 
-function signalerIncomplet(entree) {
+function signalerIncomplet(raison) {
   // Meme phrase que le bandeau de la seance (`expliquer_tentative`).
-  afficherConsigne(texte("repetition_non_comptee", { raison: texte(entree.raison) ?? "" }));
+  afficherConsigne(texte("repetition_non_comptee", { raison: texte(raison) ?? "" }));
   finSignalement = performance.now() / 1000 + DUREE_SIGNALEMENT;
 }
 
@@ -1393,10 +1403,6 @@ function traiter(corps, instant) {
   }
 }
 
-// Deplacement du buste, en unites d'image par seconde, sous lequel on
-// considere la personne installee.
-const SEUIL_IMMOBILE = 0.25;
-
 function preparer(corps, instant) {
   if (phase === "decompte") {
     const restant = Math.ceil(finDecompte - instant);
@@ -1415,7 +1421,7 @@ function preparer(corps, instant) {
   const foule = personnesVues > 1 ? ` (${personnesVues} personnes vues, je suis la plus proche)` : "";
 
   // Le cadrage passe avant l'immobilite : quelqu'un de parfaitement immobile
-  // hors champ est « pret » au sens de mesurerMouvement, et c'est exactement
+  // hors champ est « pret » au sens de vitesse_du_buste, et c'est exactement
   // le cas ou l'exercice entier se joue pour zero repetition.
   const cadrage = consigne_de_cadrage(corps, pointsRequis);
   if (cadrage) {
@@ -1424,7 +1430,8 @@ function preparer(corps, instant) {
     return;
   }
 
-  const bouge = mesurerMouvement(corps, instant);
+  let bouge;
+  [bouge, bustePrecedent] = vitesse_du_buste(bustePrecedent, corps, instant);
 
   if (bouge === null || bouge > SEUIL_IMMOBILE) {
     debutImmobile = null;
@@ -1440,30 +1447,6 @@ function preparer(corps, instant) {
   } else {
     afficherConsigne(`Ne bouge plus${foule}`);
   }
-}
-
-function mesurerMouvement(corps, instant) {
-  // Le buste seulement : poignets et chevilles bougent encore quand
-  // quelqu'un est pret, et feraient echouer la detection d'immobilite.
-  const points = [
-    corps.epaule_gauche, corps.epaule_droite,
-    corps.hanche_gauche, corps.hanche_droite,
-  ];
-  const actuel = points.map((p) => ({ x: p.x, y: p.y }));
-
-  if (!bustePrecedent || bustePrecedent.instant === instant) {
-    bustePrecedent = { points: actuel, instant };
-    return null;
-  }
-
-  const ecoule = instant - bustePrecedent.instant;
-  const total = actuel.reduce((somme, p, i) => {
-    const avant = bustePrecedent.points[i];
-    return somme + Math.hypot(p.x - avant.x, p.y - avant.y);
-  }, 0);
-  bustePrecedent = { points: actuel, instant };
-
-  return total / actuel.length / ecoule;
 }
 
 function lancerComptage() {

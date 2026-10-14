@@ -416,16 +416,8 @@
   "orientation": "profil",
   "changements": [
    [
-    0.25,
-    "sens"
-   ],
-   [
     0.5,
     "bras"
-   ],
-   [
-    0.75,
-    "sens"
    ]
   ],
   "analyse_la_pose": false,

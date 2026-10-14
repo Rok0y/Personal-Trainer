@@ -161,6 +161,13 @@ const CHAMPS_TEMPORELS = [
   "faute_dite_a",
   "suivi_tentatives",
   "non_comptee",
+  "verdict_en_attente",
+  // L'ouverture de la serie (`attendre_mise_en_place`) : une serie refaite,
+  // remise a zero ou changee de variante se rouvre, « c'est parti » compris.
+  "serie_ouverte",
+  "mise_en_place_buste",
+  "mise_en_place_jeton",
+  "mise_en_place_depuis",
 ];
 
 export class BlocExercice {

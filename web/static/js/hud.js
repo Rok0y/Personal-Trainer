@@ -375,7 +375,11 @@ function formater_temps(secondes) {
 
 let signature_progression = "";
 
-const CONTENEURS_PROGRESSION = ["sessionProgressSegments", "overlaySessionProgressSegments"];
+// Une seule barre. Le voile de repos en portait une copie, du temps ou il
+// couvrait l'ecran d'un fond opaque ; devenu un panneau a gauche, il laisse
+// voir celle du bas — et la copie, centree sur toute la largeur, passait
+// sous le compteur de la colonne droite.
+const CONTENEURS_PROGRESSION = ["sessionProgressSegments"];
 
 //: Le groupe dont la bulle de detail est ouverte (son rang dans la liste
 //: affichee), ou null. Un etat d'affichage ouvert **par l'utilisateur**, comme
@@ -383,8 +387,8 @@ const CONTENEURS_PROGRESSION = ["sessionProgressSegments", "overlaySessionProgre
 //: changement de liste (la bascule echauffement -> exercices).
 let groupe_detaille = null;
 
-//: La barre ou le toucher a eu lieu : celle du HUD reste visible sous le voile
-//: de repos, et les deux bulles ouvertes ensemble se superposaient.
+//: La barre ou le toucher a eu lieu (`CONTENEURS_PROGRESSION`) : une bulle ne
+//: s'ouvre que dans la barre touchee.
 let barre_detaillee = null;
 
 //: Ce que la barre a peint en dernier : un toucher ouvre la bulle tout de
@@ -549,7 +553,11 @@ function afficher_progression(exercices, etats, echauffement, repetitions_en_dir
 // Phase : preparation / repos / exercice
 // ---------------------------------------------------------------------------
 
-/** Ce que le voile annonce comme prochaine etape. */
+/**
+ * Ce que le voile annonce comme prochaine etape, en deux parts : `serie`
+ * (ou l'on en est, ecrit petit) et `cible` (ce qu'on fera, ecrit grand avec
+ * la charge — c'est ce qu'on lit de loin pour preparer son haltere).
+ */
 function consigne_prochaine_etape(etape) {
   const serie =
     etape.nombre_total_series !== undefined
@@ -558,15 +566,15 @@ function consigne_prochaine_etape(etape) {
 
   switch (etape.mode) {
     case "maintien":
-      return `${serie} × ${etape.duree} s de maintien`;
+      return { serie, cible: `${etape.duree} s de maintien` };
     case "chrono":
-      return `${serie} × ${etape.duree} s`;
+      return { serie, cible: `${etape.duree} s` };
     case "amrap":
-      return `${serie} × AMRAP ${etape.duree} s`;
+      return { serie, cible: `AMRAP ${etape.duree} s` };
     case "echauffement":
-      return `Échauffement · ${etape.duree} s`;
+      return { serie: "Échauffement", cible: `${etape.duree} s` };
     default:
-      return `${serie} × ${etape.repetitions} reps`;
+      return { serie, cible: `${etape.repetitions} reps` };
   }
 }
 
@@ -585,15 +593,21 @@ function afficher_phase(donnees) {
     $("restNextName").textContent = etape.exercice;
     $("restNextName").classList.remove("hidden-mode");
     $("restNextLabel").classList.remove("hidden-mode");
-    $("restNext").innerHTML = `
-      ${consigne_prochaine_etape(etape)}
-      ${etape.poids ? `<br>${etape.poids} kg` : ""}
-    `;
+    // Deux lignes : ce qu'on fera, puis l'haltere a prendre, chacune lisible
+    // de loin. Ecrit seulement quand il change : la boucle repeint a chaque
+    // image.
+    const { serie, cible } = consigne_prochaine_etape(etape);
+    const html =
+      `<span class="rest-serie">${serie}</span>` +
+      `<span class="rest-cible">${cible}` +
+      (etape.poids ? `<span class="rest-charge">${etape.poids} kg</span>` : "") +
+      `</span>`;
+    if ($("restNext").innerHTML !== html) $("restNext").innerHTML = html;
   } else {
     $("restNextName").textContent = "";
     $("restNextName").classList.add("hidden-mode");
     $("restNextLabel").classList.add("hidden-mode");
-    $("restNext").innerHTML = "Fin de séance";
+    $("restNext").textContent = "Fin de séance";
   }
 
   if (donnees.phase === "preparation") {

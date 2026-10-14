@@ -9,7 +9,7 @@
 //     node scripts/verifier_tentatives.mjs
 
 import { SuiviTentatives, jeton_des_valeurs, role_mesure } from "../web/static/js/instruments.js";
-import { expliquer_tentative } from "../web/static/js/moteur.js";
+import { PERSISTANCE_VERDICT, confirmer_verdict, expliquer_tentative } from "../web/static/js/moteur.js";
 import { Lecteur } from "../web/static/js/lecteur.js";
 import { texte } from "../web/static/js/messages.js";
 
@@ -99,21 +99,36 @@ egal("depart = fin : la mise en place coudes plies ne s'explique pas",
 egal("depart = fin : une fois bras tendus, le suivi commence",
   rejouer([img(80), img(150), img(100), img(150)], { depart: "fin" }), [["retour", false, true, "raison_descendre"]]);
 
-// --- Dans la seance : la voix une fois, le bandeau jusqu'a la repetition suivante
-{
-  const exercice = { instrument: { ...INSTRUMENT, mesures: INSTRUMENT.mesures.map((m, i) => ({ ...m, valeur: (c) => c[i] })) } };
+// --- Dans la seance : un echec se confirme, puis la voix une fois et le
+// bandeau jusqu'a la repetition suivante
+const EXERCICE = { instrument: { ...INSTRUMENT, mesures: INSTRUMENT.mesures.map((m, i) => ({ ...m, valeur: (c) => c[i] })) } };
+
+/** Une seance minimale : chaque `pas` avance l'horloge d'un dixieme, ou de `duree`. */
+function seance_minimale() {
   const bloc = {};
   const etat = { erreur: null };
   const dites = [];
-  const pas = (corps, { rep_comptee = false, faute = null } = {}) => {
+  let instant = 0;
+  const pas = (corps, { rep_comptee = false, faute = null, duree = 0.1 } = {}) => {
     etat.erreur = null;
+    instant += duree;
     return expliquer_tentative({
-      exercice, corps, bloc, etat, coach: (...a) => dites.push(a),
-      jeton: jeton_des_valeurs(exercice.instrument, corps), maintenant: dites.length, rep_comptee, faute, texte,
+      exercice: EXERCICE, corps, bloc, etat, coach: (...a) => dites.push(a),
+      jeton: jeton_des_valeurs(EXERCICE.instrument, corps), maintenant: instant, rep_comptee, faute, texte,
     });
   };
+  return { bloc, etat, dites, pas };
+}
+
+{
+  const { bloc, etat, dites, pas } = seance_minimale();
   pas(img(150)); pas(img(100));
-  egal("la raison est dite quand la tentative echoue", pas(img(150)), "raison_descendre");
+  egal("un echec n'est pas dit a l'image ou il se clot", pas(img(150)), null);
+  egal("ni la voix ni le bandeau tant qu'il n'est pas confirme", [dites, etat.erreur], [[], null]);
+  pas(img(150), { duree: PERSISTANCE_VERDICT / 2 });
+  egal("pas encore : la position n'a pas assez dure", dites, []);
+  egal("la raison est dite quand l'extremite a dure",
+    pas(img(150), { duree: PERSISTANCE_VERDICT / 2 }), "raison_descendre");
   egal("par la cle composee du lecteur", dites, [["repetition_non_comptee", "raison_descendre"]]);
   egal("le bandeau la compose", etat.erreur, "Ça ne compte pas : tu ne descends pas assez bas.");
   pas(img(150));
@@ -123,6 +138,40 @@ egal("depart = fin : une fois bras tendus, le suivi commence",
   pas(img(80)); pas(img(150), { rep_comptee: true });
   egal("une repetition comptee l'efface", [etat.erreur, "non_comptee" in bloc], [null, false]);
   egal("sans instrument, rien", expliquer_tentative({ exercice: {}, bloc: {}, etat }), null);
+}
+
+// --- Une image isolee qui retombe sur une extremite n'est pas un echec : le
+// curl vu de face, dont l'avant-bras pointe vers la camera en pleine montee
+{
+  const { bloc, dites, pas } = seance_minimale();
+  pas(img(80)); pas(img(110)); pas(img(125));
+  pas(img(80)); // une image : « retour au depart », l'aller est clos interrompu
+  pas(img(125)); pas(img(150), { rep_comptee: true });
+  egal("l'image isolee ne fait pas parler", dites, []);
+  egal("et ne laisse rien en attente", "verdict_en_attente" in bloc, false);
+}
+{
+  const { dites, pas } = seance_minimale();
+  pas(img(150)); pas(img(100));
+  pas(img(150)); // retour incomplet, clos en haut…
+  pas(img(120)); // …mais on repart avant d'y etre reste,
+  pas(img(120), { duree: 1 }); // et on reste en chemin : rien ne le confirme
+  egal("repartir avant la persistance abandonne l'echec", dites, []);
+}
+
+// --- La regle elle-meme, sur des instants exacts
+{
+  const entree = { complet: false, significatif: true, raison: "raison_monter" };
+  const [attente] = confirmer_verdict(null, entree, "debut", 10, false);
+  egal("mis en attente avec son extremite", attente, { raison: "raison_monter", jeton: "debut", depuis: 10 });
+  egal("juste avant la persistance : rien",
+    confirmer_verdict(attente, null, "debut", 10 + PERSISTANCE_VERDICT * 0.99, false), [attente, null]);
+  egal("a la persistance : dit",
+    confirmer_verdict(attente, null, "debut", 10 + PERSISTANCE_VERDICT, false), [null, "raison_monter"]);
+  egal("une repetition comptee l'abandonne",
+    confirmer_verdict(attente, null, "debut", 10 + PERSISTANCE_VERDICT, true), [null, null]);
+  egal("une hesitation n'est jamais en attente",
+    confirmer_verdict(null, { ...entree, significatif: false }, "debut", 10, false), [null, null]);
 }
 
 // --- Le lecteur compose « Ca ne compte pas » et la raison en une entree

@@ -183,6 +183,12 @@ function jouer(circuit, horloge, nom, arguments_, boucle, banque) {
         coach: boucle.coach,
         derniere_rep: boucle.derniere_rep,
         messages: { texte, libelle_etape },
+        // Les poses de la banque sont tirees au hasard : elles ne restent
+        // jamais immobiles, et une serie comptee qui attendrait qu'on soit en
+        // place ne compterait plus rien. L'attente se verifie a part
+        // (`verifier_mise_en_place.mjs`) ; ici, la serie s'ouvre a sa
+        // premiere image.
+        mise_en_place: false,
       });
     } catch (erreur) {
       return [null, erreur.constructor.name];
