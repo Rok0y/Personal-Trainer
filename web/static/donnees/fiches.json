@@ -114,7 +114,8 @@
     "mise_en_place": [
       "Allonge-toi sur le dos sur un tapis, genoux pliés et pieds à plat.",
       "Un haltère dans chaque main, bras tendus au-dessus de la poitrine.",
-      "Place la caméra sur le côté, à hauteur du sol, pour qu'elle voie ton corps de profil."
+      "Place la caméra sur le côté, à hauteur du sol, pour qu'elle voie ton corps de profil.",
+      "Évite une tenue de la couleur du tapis ou du mur derrière toi : la caméra te distinguerait mal."
     ],
     "instructions": [
       "Plie les coudes pour descendre les haltères vers la poitrine.",
@@ -158,7 +159,8 @@
     "mise_en_place": [
       "Allonge-toi sur le dos sur un tapis, genoux pliés, pieds à plat.",
       "Pose les mains sur le haut des cuisses.",
-      "Place la caméra sur le côté, à hauteur du sol, pour qu'elle te voie de profil."
+      "Place la caméra sur le côté, à hauteur du sol, pour qu'elle te voie de profil.",
+      "Évite une tenue de la couleur du tapis ou du mur derrière toi : la caméra te distinguerait mal."
     ],
     "instructions": [
       "Enroule le haut du dos pour décoller les épaules : tes mains glissent vers tes genoux.",

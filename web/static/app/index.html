@@ -3922,7 +3922,10 @@ const ETAPES_BIENVENUE = [
     pratique: true,
     ecrans: [
       { texte: "À deux ou trois mètres de toi, à hauteur de poitrine, bien droit. Posé au sol, il te coupe en deux." },
-      { texte: "Garde un pas de libre dans chaque direction. Pose-le maintenant, appuie, et recule : tu n'auras plus rien à toucher." },
+      // La tenue ici, et non dans une etape a elle : c'est la meme question,
+      // « la camera me voit-elle bien ? ». En noir sur un tapis noir, la
+      // detection du developpe couche s'est perdue en pleine seance.
+      { texte: "Porte une tenue qui tranche avec le sol et le mur derrière toi : en noir sur un tapis noir, la caméra te perd. Garde un pas de libre autour de toi, appuie, et recule : tu n'auras plus rien à toucher." },
     ],
   },
 ];
