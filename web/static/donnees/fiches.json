@@ -578,6 +578,7 @@
     ],
     "instructions": [
       "Fais rouler la tête lentement d'une épaule à l'autre, en passant par devant.",
+      "Quand le coach te le dit, change de sens.",
       "Ne pars jamais en arrière."
     ],
     "erreurs_frequentes": [],
@@ -600,18 +601,18 @@
     ]
   },
   "Rotation des coudes": {
-    "description": "Bras levés devant soi, les avant-bras font des cercles, pour réveiller les coudes.",
+    "description": "Un bras levé devant soi, l'avant-bras fait des cercles, pour réveiller le coude.",
     "mise_en_place": [
-      "Debout, lève les bras devant toi, coudes à hauteur des épaules.",
+      "Debout, lève un bras devant toi, coude à hauteur de l'épaule.",
       "Place-toi de profil : ton côté tourné vers la caméra."
     ],
     "instructions": [
-      "Garde le haut des bras immobile, seuls les avant-bras tournent.",
-      "Quand le coach te le dit, change de sens."
+      "Garde le haut du bras immobile, seul l'avant-bras tourne.",
+      "Quand le coach te le dit, change de sens, puis de bras."
     ],
     "erreurs_frequentes": [],
     "sensations": [
-      "Les coudes et les avant-bras se réchauffent."
+      "Le coude et l'avant-bras se réchauffent."
     ]
   },
   "Rotation des poignets": {

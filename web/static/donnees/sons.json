@@ -85,6 +85,9 @@
   "changement_jambe": [
    "change_de_jambe.wav"
   ],
+  "changement_bras": [
+   "change_de_bras.wav"
+  ],
   "forme_coude_qui_part_en_avant": [
    "garde_le_coude_colle_au_buste.wav"
   ],
@@ -134,6 +137,7 @@
   "bip": 2,
   "changement_sens": 7,
   "changement_jambe": 7,
+  "changement_bras": 7,
   "forme_coude_qui_part_en_avant": 4,
   "forme_coudes_trop_ecartes": 4,
   "forme_genou_avant_trop_avance": 4,
@@ -200,6 +204,7 @@
   "geste_bras_gauche_retire": "leve_le_bras_gauche_pour_en_retirer_une.wav",
   "changement_sens": "change_de_sens.wav",
   "changement_jambe": "change_de_jambe.wav",
+  "changement_bras": "change_de_bras.wav",
   "bienvenue": "bienvenue_je_suis_ton_coach.wav",
   "bienvenue_pose_et_entraine": "tu_poses_ton_appareil_et_tu_t_entraines.wav",
   "bienvenue_camera_compte": "ma_camera_compte_tes_repetitions.wav",
@@ -264,6 +269,7 @@
   "geste_bras_gauche_retire": "Lève le bras gauche pour en retirer une",
   "changement_sens": "Change de sens",
   "changement_jambe": "Change de jambe",
+  "changement_bras": "Change de bras",
   "bienvenue": "Bienvenue, je suis ton coach",
   "bienvenue_pose_et_entraine": "Tu poses ton appareil, et tu t'entraînes",
   "bienvenue_camera_compte": "Ma caméra compte tes répétitions",

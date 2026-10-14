@@ -377,7 +377,12 @@
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": null,
-  "changements": [],
+  "changements": [
+   [
+    0.5,
+    "sens"
+   ]
+  ],
   "analyse_la_pose": false,
   "detection": null,
   "erreurs": [],
@@ -410,7 +415,15 @@
   "orientation": "profil",
   "changements": [
    [
+    0.25,
+    "sens"
+   ],
+   [
     0.5,
+    "bras"
+   ],
+   [
+    0.75,
     "sens"
    ]
   ],

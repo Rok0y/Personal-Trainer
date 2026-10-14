@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**20 prises restantes.**
+**21 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -120,6 +120,7 @@ Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus l'ecran. Un ordre
 | --- | --- | --- |
 | `change_de_sens.wav` | « Change de sens » | deja fait |
 | `change_de_jambe.wav` | « Change de jambe » | deja fait |
+| `change_de_bras.wav` | « Change de bras » | **a enregistrer** |
 
 ## Corrections de forme
 
