@@ -27,10 +27,20 @@ body {
 
 /* ---------- STAGE (full-bleed camera) ---------- */
 
+/* Les bords de l'appareil. La barre d'etat est translucide
+   (`black-translucent`) : sans ces marges, la barre du haut passait sous
+   l'encoche ou la Dynamic Island d'un iPhone, la barre de progression sur la
+   barre d'accueil, et les cotes sous l'encoche en paysage. Une zone sure
+   nulle rend la marge d'origine (28 px, 12 px en bas) : l'iPad ne bouge pas.
+   Tout ce qui se pose contre un bord passe par elles, jamais par un nombre. */
 .stage {
+    --bord-haut: max(28px, calc(env(safe-area-inset-top) + 8px));
+    --bord-bas: max(12px, calc(env(safe-area-inset-bottom) + 4px));
+    --bord-gauche: max(28px, calc(env(safe-area-inset-left) + 8px));
+    --bord-droit: max(28px, calc(env(safe-area-inset-right) + 8px));
     position: relative;
     width: 100vw;
-    height: 100vh;
+    height: 100dvh;
 }
 
 .video {
@@ -72,9 +82,9 @@ body {
 
 .topbar {
     position: absolute;
-    top: 28px;
-    left: 28px;
-    right: 28px;
+    top: var(--bord-haut);
+    left: var(--bord-gauche);
+    right: var(--bord-droit);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -562,10 +572,10 @@ body {
    (`min(380px, 40vw)`) reste a droite, le centre — la personne — reste net. */
 .rest-panneau {
     position: absolute;
-    left: 28px;
-    top: 96px;
-    max-height: calc(100dvh - 200px);
-    width: min(400px, calc(100vw - min(380px, 40vw) - 84px));
+    left: var(--bord-gauche);
+    top: calc(var(--bord-haut) + 68px);
+    max-height: calc(100dvh - var(--bord-haut) - var(--bord-bas) - 160px);
+    width: min(400px, calc(100vw - min(380px, 40vw) - var(--bord-gauche) - var(--bord-droit) - 28px));
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -749,7 +759,7 @@ body {
 
 .side-panel {
     position: absolute;
-    left: 28px;
+    left: var(--bord-gauche);
     top: 50%;
     transform: translateY(-50%);
     z-index: 5;
@@ -770,8 +780,8 @@ body {
    que le compteur recouvrait par son bout droit. */
 .right-column {
     position: absolute;
-    right: 28px;
-    bottom: 64px;
+    right: var(--bord-droit);
+    bottom: calc(var(--bord-bas) + 52px);
     z-index: 7;
     display: flex;
     flex-direction: column;
@@ -783,7 +793,7 @@ body {
        cachait « A preparer ». C'est la carte des consignes qui cede (elle
        defile), jamais le compteur. 71 px de barre du haut, 64 px de bas,
        et l'air entre les deux. */
-    max-height: calc(100dvh - 152px);
+    max-height: calc(100dvh - var(--bord-haut) - var(--bord-bas) - 112px);
 }
 
 .right-column > .fiche-card {
@@ -806,13 +816,13 @@ body {
    les autres passent dans `.series-menu`. */
 .series-controls {
     position: absolute;
-    left: 28px;
-    bottom: 50px;
+    left: var(--bord-gauche);
+    bottom: calc(var(--bord-bas) + 38px);
     z-index: 10;
     display: flex;
     align-items: center;
     gap: 8px;
-    max-width: min(620px, calc(100vw - 56px));
+    max-width: min(620px, calc(100vw - var(--bord-gauche) - var(--bord-droit)));
     pointer-events: auto;
 }
 
@@ -891,9 +901,9 @@ body {
 
 .session-progress {
     position: absolute;
-    left: 28px;
-    right: 28px;
-    bottom: 12px;
+    left: var(--bord-gauche);
+    right: var(--bord-droit);
+    bottom: var(--bord-bas);
     z-index: 5;
     display: flex;
     gap: 8px;
@@ -1276,16 +1286,168 @@ body {
 
 /* ---------- Responsive ---------- */
 
+/* Un ecran etroit : un telephone debout, ou un iPad en Split View. La
+   mise en page suit **l'espace**, jamais l'appareil : Safari sur iPad se
+   declare comme un Mac, et un iPad partage est aussi etroit qu'un telephone.
+
+   Trois bandes qui ne se recouvrent pas : la barre du haut, l'image, et en
+   bas le compteur, les commandes et la progression. La camera filme en 3:4,
+   donc un telephone debout a de la place au-dessus et en dessous de l'image :
+   c'est la que vit le calque, et plus sur la personne (le compteur lui
+   couvrait les jambes, la barre du haut passait sur trois rangees). Les
+   hauteurs des bandes sont des variables : le panneau de pause, la colonne
+   et l'anneau s'en deduisent au lieu de recopier des pixels. */
 @media (max-width: 760px) {
-    /* En portrait la colonne gauche passe en bas, la ou vivent deja les
-       commandes (50px) et la barre de progression (12px) : a 28px elle les
-       recouvrait toutes les deux. On la pose au-dessus de la rangee de
-       commandes plutot que dessus. */
+    .stage {
+        --bord-haut: max(12px, calc(env(safe-area-inset-top) + 6px));
+        --bord-bas: max(10px, calc(env(safe-area-inset-bottom) + 2px));
+        --bord-gauche: max(12px, calc(env(safe-area-inset-left) + 8px));
+        --bord-droit: max(12px, calc(env(safe-area-inset-right) + 8px));
+        /* La barre du haut, sur une seule rangee. */
+        --haut-barre: 38px;
+        /* Le compteur, en ligne. */
+        --haut-compteur: 92px;
+        /* Progression (40) + commandes (43) et leurs ecarts : ce qui vit sous
+           le compteur. */
+        --pied: 101px;
+        /* Ou l'image commence, et ou le calque du bas commence. */
+        --image-haut: calc(var(--bord-haut) + var(--haut-barre) + 8px);
+        --image-bas: calc(var(--bord-bas) + var(--pied) + var(--haut-compteur) + 8px);
+    }
+
+    /* L'image entre les deux bandes, toujours en `contain`. Un canvas place
+       en absolu ne s'etire pas entre `top` et `bottom` (il garde son rapport) :
+       sa hauteur est donc ecrite. */
+    .stage > .video {
+        top: var(--image-haut);
+        bottom: auto;
+        height: calc(100% - var(--image-haut) - var(--image-bas));
+    }
+
+    /* ----- Barre du haut : une rangee, ce qu'on lit de loin ----- */
+    .topbar {
+        height: var(--haut-barre);
+        gap: 6px;
+    }
+    /* La couleur dit ce qu'est chaque pastille (orange la serie, sarcelle la
+       charge) : leurs libelles cedent la place au nom de l'exercice. */
+    .brand,
+    .duration-badge,
+    .exercise-label,
+    .series-label,
+    .weight-label,
+    #statusText {
+        display: none;
+    }
+    .status {
+        padding: 0 12px;
+        align-self: stretch;
+    }
+    .topbar-center {
+        flex: 1;
+        min-width: 0;
+        gap: 6px;
+    }
+    .exercise-badge,
+    .series-badge,
+    .weight-badge {
+        padding: 8px 12px;
+        flex-shrink: 0;
+    }
+    .exercise-badge {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .exercise-value {
+        font-size: 15px;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* ----- Bas : compteur, commandes, progression ----- */
+    .series-controls {
+        bottom: calc(var(--bord-bas) + 48px);
+    }
+    .series-menu-contenu {
+        min-width: 170px;
+    }
+    .right-column {
+        left: var(--bord-gauche);
+        right: var(--bord-droit);
+        bottom: calc(var(--bord-bas) + var(--pied));
+        align-items: stretch;
+        max-width: none;
+        max-height: calc(100dvh - var(--image-haut) - var(--bord-bas) - var(--pied) - 8px);
+        gap: 10px;
+    }
+    /* Pendant l'effort, les consignes ne se lisent pas a trois metres : elles
+       reviennent en pause et dans le guide. La place reste a l'image. */
+    .stage:not(:has(.rest-overlay.visible)) .right-column > .fiche-card {
+        display: none;
+    }
+    .hud {
+        justify-content: stretch;
+    }
+    .hud > .workout-card {
+        flex: 1;
+    }
+    .reps-card {
+        height: var(--haut-compteur);
+        padding: 8px 20px;
+    }
+    /* Le compteur en ligne : le chiffre a gauche, sur toute la hauteur, et a
+       droite ce qui l'accompagne (libelle, objectif, jauge). Le chiffre est
+       place d'abord, le reste se range dans la seconde colonne. */
+    #workoutCard[data-mode] .workout-block {
+        display: none;
+    }
+    #workoutCard[data-mode="repetitions"] .workout-block--repetitions,
+    #workoutCard[data-mode="maintien"] .workout-block--maintien,
+    #workoutCard[data-mode="chrono"] .workout-block--chrono,
+    #workoutCard[data-mode="amrap"] .workout-block--amrap,
+    #workoutCard[data-mode="echauffement"] .workout-block--echauffement {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        column-gap: 18px;
+        row-gap: 2px;
+        align-items: center;
+        align-content: center;
+        height: 100%;
+    }
+    .workout-block > * {
+        grid-column: 2;
+        margin-top: 0;
+    }
+    .workout-block > .reps-value-wrap,
+    .workout-block > .chrono-value,
+    .workout-block > .amrap-row {
+        grid-column: 1;
+        grid-row: 1 / span 4;
+    }
+    .reps-value-wrap {
+        width: auto;
+        min-width: 72px;
+        height: auto;
+    }
+    .reps-value,
+    .chrono-value {
+        font-size: 72px;
+    }
+    .reps-progress-track {
+        width: 100%;
+        margin-top: 6px;
+    }
+    .maintien-status {
+        margin-top: 4px;
+        font-size: 12px;
+    }
     .side-panel {
-        left: 16px;
-        right: 16px;
+        left: var(--bord-gauche);
+        right: var(--bord-droit);
         top: auto;
-        bottom: 100px;
+        bottom: calc(var(--image-bas) + 8px);
         transform: none;
         flex-direction: row;
         gap: 12px;
@@ -1298,33 +1460,10 @@ body {
         width: auto;
         padding: 16px 18px;
     }
-    .series-controls {
-        left: 16px;
-        max-width: calc(100vw - 32px);
-    }
-    .series-menu-contenu {
-        min-width: 170px;
-    }
-    .right-column {
-        left: 16px;
-        right: 16px;
-        bottom: 108px;
-        align-items: stretch;
-        max-width: none;
-        max-height: calc(100dvh - 196px);
-        gap: 12px;
-    }
-    .hud {
-        justify-content: center;
-    }
-    .brand-name {
-        font-size: 14px;
-    }
-    .reps-value {
-        font-size: 76px;
-    }
-    .exercise-value {
-        font-size: 14px;
+
+    /* ----- Geste : l'anneau au milieu de l'image, la ou l'on regarde ----- */
+    .hold-container {
+        top: calc((var(--image-haut) + 100dvh - var(--image-bas)) / 2);
     }
     .hold-ring-wrap {
         width: 130px;
@@ -1334,6 +1473,8 @@ body {
         width: 96px;
         height: 96px;
     }
+
+    /* ----- Pause : le panneau sous la barre, les consignes en bas ----- */
     .breathe-circle {
         width: 150px;
         height: 150px;
@@ -1342,56 +1483,136 @@ body {
         font-size: 42px;
     }
     .rest-next-name {
-        font-size: 36px;
-    }
-    /* En portrait la colonne droite occupe le bas : le panneau de pause
-       passe en haut, sur toute la largeur, et cede son centre a l'image. */
-    .rest-panneau {
-        left: 16px;
-        right: 16px;
-        top: 80px;
-        bottom: auto;
-        width: auto;
-        max-height: 40dvh;
-        padding: 16px;
-        gap: 10px;
-    }
-    .rest-cible {
-        font-size: 32px;
-    }
-    .rest-panneau .breathe-circle {
-        width: 104px;
-        height: 104px;
-        margin: 6px 0;
-    }
-    .rest-panneau .rest-time {
         font-size: 34px;
     }
-    /* Pendant une pause, la colonne (consignes et compteur, plus haut dans
-       la pile) s'arrete sous le panneau au lieu de le recouvrir : 40 dvh de
-       panneau depuis 80 px, 108 px de bas, et l'air entre les deux. */
+    .rest-panneau {
+        left: var(--bord-gauche);
+        right: var(--bord-droit);
+        top: var(--image-haut);
+        bottom: auto;
+        width: auto;
+        max-height: 44dvh;
+        padding: 16px;
+        gap: 8px;
+    }
+    .rest-cible {
+        font-size: 30px;
+    }
+    .rest-panneau .breathe-circle {
+        width: 96px;
+        height: 96px;
+        margin: 4px 0;
+    }
+    .rest-panneau .rest-time {
+        font-size: 32px;
+    }
+    /* En pause, le compteur de la serie finie n'a plus rien a dire : la
+       prescription de la suivante est dans le panneau. La colonne ne garde que
+       les consignes, sous le panneau sans le recouvrir. */
+    .stage:has(.rest-overlay.visible) .right-column > .hud {
+        display: none;
+    }
     .stage:has(.rest-overlay.visible) .right-column {
-        max-height: calc(60dvh - 208px);
+        max-height: calc(56dvh - var(--image-haut) - var(--bord-bas) - var(--pied) - 16px);
     }
     .prep-ring-wrap {
-        width: 140px;
-        height: 140px;
+        width: 120px;
+        height: 120px;
     }
     .prep-percent {
-        font-size: 36px;
+        font-size: 34px;
     }
 }
 
-@media (max-width: 480px) {
-    .topbar {
-        flex-wrap: wrap;
-        row-gap: 10px;
+/* Un ecran bas : un telephone couche. Utilisable, sans plus — on pose le
+   telephone debout. La mise en page de la tablette y cachait la personne
+   (colonne de 380 px, panneau de 400 px, anneau de 160 px sur 390 px de
+   haut) : tout se resserre, et seul ce qui se lit de loin reste. */
+@media (max-height: 500px) and (min-width: 761px) {
+    .stage {
+        --bord-haut: max(10px, calc(env(safe-area-inset-top) + 6px));
+        --bord-bas: max(8px, calc(env(safe-area-inset-bottom) + 2px));
+        --bord-gauche: max(16px, calc(env(safe-area-inset-left) + 8px));
+        --bord-droit: max(16px, calc(env(safe-area-inset-right) + 8px));
     }
-    .topbar-center {
-        order: 3;
-        width: 100%;
-        justify-content: center;
-        flex-wrap: wrap;
+    .brand,
+    .duration-badge {
+        display: none;
+    }
+    .exercise-badge,
+    .series-badge,
+    .weight-badge {
+        padding: 6px 14px;
+    }
+    .right-column {
+        max-width: min(300px, 36vw);
+        bottom: calc(var(--bord-bas) + 92px);
+        max-height: calc(100dvh - var(--bord-haut) - var(--bord-bas) - 140px);
+        gap: 10px;
+    }
+    .stage:not(:has(.rest-overlay.visible)) .right-column > .fiche-card,
+    .stage:has(.rest-overlay.visible) .right-column > .hud {
+        display: none;
+    }
+    .reps-card {
+        padding: 8px 22px;
+    }
+    .reps-value-wrap {
+        width: 110px;
+        height: 70px;
+    }
+    .reps-value,
+    .chrono-value {
+        font-size: 60px;
+    }
+    .reps-progress-track {
+        margin-top: 4px;
+    }
+    .rest-panneau {
+        top: calc(var(--bord-haut) + 50px);
+        max-height: calc(100dvh - var(--bord-haut) - var(--bord-bas) - 150px);
+        width: min(320px, 40vw);
+        padding: 14px 16px;
+        gap: 6px;
+    }
+    .rest-next-name {
+        font-size: 28px;
+    }
+    .rest-cible {
+        font-size: 26px;
+    }
+    .rest-panneau .breathe-circle {
+        width: 76px;
+        height: 76px;
+        margin: 2px 0;
+    }
+    .rest-panneau .rest-time {
+        font-size: 28px;
+    }
+    .prep-ring-wrap {
+        width: 100px;
+        height: 100px;
+    }
+    .prep-percent {
+        font-size: 28px;
+    }
+    .hold-container {
+        top: 50%;
+    }
+    .hold-ring-wrap {
+        width: 110px;
+        height: 110px;
+    }
+    .hold-bubble {
+        width: 80px;
+        height: 80px;
+    }
+    .error-alert,
+    .consigne-alert {
+        top: 42%;
+    }
+    .consigne-alert {
+        top: calc(42% + 64px);
     }
 }
 

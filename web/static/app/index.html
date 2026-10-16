@@ -70,9 +70,15 @@
 
   /* ---------- Liste des seances ---------- */
 
+  /* Les quatre bords suivent les zones sures : en paysage, l'encoche d'un
+     iPhone mange un cote, et la barre d'accueil le bas. */
   .defile {
     overflow-y: auto;
-    padding: max(1.2rem, env(safe-area-inset-top)) 1.1rem 2.5rem;
+    padding:
+      max(1.2rem, env(safe-area-inset-top))
+      max(1.1rem, env(safe-area-inset-right))
+      max(2.5rem, calc(env(safe-area-inset-bottom) + 1rem))
+      max(1.1rem, env(safe-area-inset-left));
     -webkit-overflow-scrolling: touch;
   }
 
@@ -427,6 +433,40 @@
     cursor: pointer;
   }
   .onglet.actif { background: var(--surface-haut); color: var(--texte); }
+  /* Un telephone : les quatre onglets ne tenaient pas sur 390 px, et tout
+     l'ecran defilait de cote. Ils se partagent la largeur, et le profil se
+     reduit a son initiale dans une pastille (le nom reste lu par VoiceOver :
+     il est dans le bouton, a taille nulle). */
+  @media (max-width: 600px) {
+    .onglets { gap: 0.15rem; }
+    .onglet {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 0.4rem 0.2rem;
+      font-size: 0.8rem;
+    }
+    .onglet-profil {
+      flex: 0 0 auto;
+      width: 2rem;
+      height: 2rem;
+      margin-left: 0.3rem;
+      padding: 0;
+      border: 1px solid var(--orange);
+      border-radius: 50%;
+      font-size: 0;
+    }
+    .onglet-profil::before {
+      content: attr(data-initiale);
+      font-size: 0.9rem;
+    }
+  }
+
+  /* iOS zoome sur un champ de moins de 16 px au toucher, et ne dezoome pas en
+     le quittant : sur un telephone, tout champ de saisie de l'application
+     les atteint. */
+  @media (max-width: 760px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
 
   /* ---------- Historique et records ---------- */
 
@@ -576,10 +616,16 @@
   }
   .installation-haut, .installation-bas {
     pointer-events: auto;
-    padding: 1.4rem 1.6rem;
+    padding:
+      1.4rem
+      max(1.6rem, calc(env(safe-area-inset-right) + 0.6rem))
+      1.4rem
+      max(1.6rem, calc(env(safe-area-inset-left) + 0.6rem));
     background: linear-gradient(rgba(8, 11, 17, 0.92), rgba(8, 11, 17, 0.72));
   }
+  .installation-haut { padding-top: max(1.4rem, calc(env(safe-area-inset-top) + 0.5rem)); }
   .installation-bas {
+    padding-bottom: max(1.4rem, calc(env(safe-area-inset-bottom) + 0.5rem));
     background: linear-gradient(rgba(8, 11, 17, 0.72), rgba(8, 11, 17, 0.94));
     display: flex;
     flex-direction: column;
@@ -623,21 +669,40 @@
     font-size: 1rem;
     text-align: center;
   }
+  /* Un telephone couche : la consigne en `vw` montait a 46 px, et les deux
+     bandes ne laissaient presque plus d'image — on se cadre en se voyant. */
+  @media (max-height: 500px) {
+    .installation-haut, .installation-bas { padding-top: 0.7rem; padding-bottom: 0.7rem; }
+    .installation-haut { padding-top: max(0.7rem, calc(env(safe-area-inset-top) + 0.3rem)); }
+    .installation-bas { gap: 0.4rem; padding-bottom: max(0.7rem, calc(env(safe-area-inset-bottom) + 0.3rem)); }
+    .installation-consigne { font-size: clamp(1.3rem, 6vh, 1.9rem); }
+    .installation-aide { font-size: 0.9rem; }
+  }
 
+  /* Centre par des marges automatiques et non par `align-items: center` :
+     un contenu centre plus haut que l'ecran deborde des deux cotes, et son
+     debut — le nom du mouvement — sortait par le haut, hors d'atteinte du
+     defilement. Une marge automatique ne devient jamais negative : la carte
+     est centree quand elle tient, et commence en haut quand elle deborde. */
   .guide-exercice {
     position: absolute;
     inset: 0;
     z-index: 11;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: 20px;
+    padding:
+      max(20px, calc(env(safe-area-inset-top) + 8px))
+      max(20px, calc(env(safe-area-inset-right) + 8px))
+      max(20px, calc(env(safe-area-inset-bottom) + 8px))
+      max(20px, calc(env(safe-area-inset-left) + 8px));
     background: rgba(8, 11, 17, 0.94);
     overflow-y: auto;
   }
   .guide-carte {
     max-width: 640px;
     width: 100%;
+    margin: auto 0;
   }
   /* Avec une video, la carte s'elargit pour la poser a cote du texte. */
   .guide-carte:has(.guide-video:not([hidden])) { max-width: 980px; }
@@ -4752,6 +4817,8 @@ function majOngletProfil() {
   const nom = utilisateur ? utilisateur.nom : "Profil";
   for (const bouton of document.querySelectorAll(".onglet-profil")) {
     bouton.textContent = nom;
+    // Sur un ecran etroit, la barre ne garde que l'initiale (CSS).
+    bouton.dataset.initiale = nom.trim().charAt(0).toUpperCase();
   }
 }
 
