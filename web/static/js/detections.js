@@ -405,28 +405,37 @@ export function squat_detection(corps) {
   return "milieu";
 }
 
-export function fente_droite_detection(corps) {
-  const angle_genou_droit = calculer_angle(
-    corps.hanche_droite,
-    corps.genou_droit,
-    corps.cheville_droite
-  );
+// De combien le genou du cote mesure est plus haut que l'autre, rapporte a
+// son tibia. En bas d'une fente, le genou arriere descend vers le sol et le
+// genou avant reste a hauteur de tibia : c'est ce qui dit quelle jambe est
+// devant. Lisible de face comme de profil, et rien n'est suppose du sens du
+// regard. null quand le tibia est illisible.
+function genou_au_dessus_de_l_autre(genou, cheville, autre_genou) {
+  const tibia = calculer_distance(genou, cheville);
+  if (tibia <= 0) return null;
+  return (autre_genou.y - genou.y) / tibia;
+}
 
-  if (angle_genou_droit < 100) return "debut";
-  else if (angle_genou_droit > 150) return "fin";
+// Le bas d'une fente exige que la jambe mesuree soit **devant** : le genou
+// arriere se plie aussi a 90 degres, et une fente faite de l'autre pied
+// comptait. Condition du bas seulement : debout, pieds rapproches, les deux
+// genoux sont a la meme hauteur et la position de depart doit rester lisible.
+export const FENTE_GENOU_AVANT_MIN = 0.3;
+
+function fente(hanche, genou, cheville, autre_genou) {
+  const angle_genou = calculer_angle(hanche, genou, cheville);
+  const avance = genou_au_dessus_de_l_autre(genou, cheville, autre_genou);
+  if (angle_genou < 100 && avance !== null && avance > FENTE_GENOU_AVANT_MIN) return "debut";
+  else if (angle_genou > 150) return "fin";
   return "milieu";
 }
 
-export function fente_gauche_detection(corps) {
-  const angle_genou_gauche = calculer_angle(
-    corps.hanche_gauche,
-    corps.genou_gauche,
-    corps.cheville_gauche
-  );
+export function fente_droite_detection(corps) {
+  return fente(corps.hanche_droite, corps.genou_droit, corps.cheville_droite, corps.genou_gauche);
+}
 
-  if (angle_genou_gauche < 100) return "debut";
-  else if (angle_genou_gauche > 150) return "fin";
-  return "milieu";
+export function fente_gauche_detection(corps) {
+  return fente(corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche, corps.genou_droit);
 }
 
 // De combien le genou avant passe devant la pointe du pied, rapporte au
@@ -460,19 +469,37 @@ export function fente_gauche_erreur_genou(corps) {
   );
 }
 
-export function souleve_de_terre_roumain_detection(corps) {
-  const distance_gauche = calculer_distance(
-    corps.poignet_gauche,
-    corps.cheville_gauche
-  );
-  const distance_droite = calculer_distance(
-    corps.poignet_droit,
-    corps.cheville_droite
-  );
-  const distance_moyenne = (distance_gauche + distance_droite) / 2;
+// La hauteur des poignets au-dessus des chevilles, en tibias (moyenne des deux
+// cotes). Une distance brute dans l'image dependait de la distance a la
+// camera : a trois metres, debout, on restait sous le seuil du haut et il
+// fallait plier les coudes pour que la repetition compte. Le tibia est le
+// segment qui bouge le moins : les genoux ne plient presque pas, et la hanche,
+// elle, part en arriere. Verticale, parce que les halteres glissent le long
+// des jambes. null quand aucun tibia n'est lisible.
+function hauteur_poignets(corps) {
+  const cotes = [
+    [corps.poignet_gauche, corps.genou_gauche, corps.cheville_gauche],
+    [corps.poignet_droit, corps.genou_droit, corps.cheville_droite],
+  ].map(([poignet, genou, cheville]) => {
+    const tibia = calculer_distance(genou, cheville);
+    return tibia > 0 ? (cheville.y - poignet.y) / tibia : null;
+  }).filter((hauteur) => hauteur !== null);
+  if (!cotes.length) return null;
+  return cotes.reduce((a, b) => a + b, 0) / cotes.length;
+}
 
-  if (distance_moyenne < 0.1) return "debut";
-  else if (distance_moyenne > 0.2) return "fin";
+// Debout, les poignets sont a environ 1,8 tibia au-dessus des chevilles ;
+// buste a l'horizontale, vers 0,6. Le haut compte vers 40 degres d'inclinaison :
+// « presque debout » sans exiger de verrouiller. Le bas reprend ce
+// qu'exigeait l'ancienne mesure a la distance d'une seance.
+export const SOULEVE_BAS_MAX = 0.9;
+export const SOULEVE_HAUT_MIN = 1.55;
+
+export function souleve_de_terre_roumain_detection(corps) {
+  const hauteur = hauteur_poignets(corps);
+  if (hauteur === null) return "milieu";
+  if (hauteur < SOULEVE_BAS_MAX) return "debut";
+  else if (hauteur > SOULEVE_HAUT_MIN) return "fin";
   return "milieu";
 }
 
@@ -773,6 +800,8 @@ export {
   ecart_rapporte_aux_epaules as _ecart_rapporte_aux_epaules,
   hanche_decollee as _hanche_decollee,
   poignet_devant_epaule as _poignet_devant_epaule,
+  genou_au_dessus_de_l_autre as _genou_au_dessus_de_l_autre,
+  hauteur_poignets as _hauteur_poignets,
 };
 
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par

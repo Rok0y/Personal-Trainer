@@ -23,6 +23,7 @@ export function bras_gauche_leve(corps) {
 }
 
 export function bras_en_x(corps) {
+  if (!de_face(corps)) return false;
   const x_min_epaules = Math.min(corps.epaule_gauche.x, corps.epaule_droite.x);
   const x_max_epaules = Math.max(corps.epaule_gauche.x, corps.epaule_droite.x);
 
@@ -49,8 +50,26 @@ export function _torse_vertical(corps) {
   return hanches_y - epaules_y > Math.abs(hanches_x - epaules_x);
 }
 
+// Un nez que le modele voit vraiment : de face, sa `visibility` frole 1 ; de
+// dos, le modele devine un visage qu'il ne voit pas et la baisse.
+const VISIBILITE_NEZ_DE_FACE = 0.5;
+
+// Face a la camera, debout. Un geste de controle se fait face a l'ecran : de
+// dos, deux mains ramenees entre les epaules passaient pour des bras croises,
+// et une pause sautait pendant qu'on se retournait. La video arrive brute au
+// modele, l'etiquetage est donc vrai : de face, l'epaule gauche est a droite
+// de l'image. Le nez couvre le cas ou le modele, de dos, inverserait les
+// cotes ; le buste debout ecarte tout ce qui se fait allonge.
+export function de_face(corps) {
+  return (
+    corps.epaule_gauche.x > corps.epaule_droite.x &&
+    corps.nez.visibility >= VISIBILITE_NEZ_DE_FACE &&
+    _torse_vertical(corps)
+  );
+}
+
 export function deux_bras_leves(corps) {
-  return bras_droit_leve(corps) && bras_gauche_leve(corps) && _torse_vertical(corps);
+  return bras_droit_leve(corps) && bras_gauche_leve(corps) && de_face(corps);
 }
 
 // Un seul bras leve, debout : +1 a droite, -1 a gauche. L'autre poignet doit
@@ -63,7 +82,7 @@ export function seul_bras_droit_leve(corps) {
   return (
     bras_droit_leve(corps) &&
     corps.poignet_gauche.y > corps.epaule_gauche.y &&
-    _torse_vertical(corps)
+    de_face(corps)
   );
 }
 
@@ -71,6 +90,6 @@ export function seul_bras_gauche_leve(corps) {
   return (
     bras_gauche_leve(corps) &&
     corps.poignet_droit.y > corps.epaule_droite.y &&
-    _torse_vertical(corps)
+    de_face(corps)
   );
 }

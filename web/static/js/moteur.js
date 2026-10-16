@@ -20,6 +20,7 @@ import {
   MODE_MAINTIEN,
   MODE_REPETITIONS,
 } from "./circuit.js";
+import { CompteurMouvement } from "./compteur.js";
 import { SuiviTentatives } from "./instruments.js";
 import { SEUIL_IMMOBILE, vitesse_du_buste } from "./immobilite.js";
 
@@ -425,6 +426,7 @@ export function confirmer_verdict(attente, entree, jeton, maintenant, rep_compte
  */
 export function expliquer_tentative({
   exercice, corps, bloc, etat, coach, jeton, maintenant, rep_comptee, faute, texte,
+  muet = false,
 }) {
   const instrument = exercice.instrument;
   if (!instrument) return null;
@@ -438,9 +440,12 @@ export function expliquer_tentative({
   const entree = bloc.suivi_tentatives.observer(jeton, valeurs, maintenant);
   if (rep_comptee) delete bloc.non_comptee;
 
-  const [attente, dite] = confirmer_verdict(
+  let [attente, dite] = confirmer_verdict(
     bloc.verdict_en_attente ?? null, entree, jeton, maintenant, rep_comptee
   );
+  // L'autre cote vient de bouger : cet echec-ci n'en est pas un, c'est le
+  // mauvais cote (`surveiller_autre_cote` le dit).
+  if (muet) [attente, dite] = [null, null];
   if (attente) bloc.verdict_en_attente = attente;
   else delete bloc.verdict_en_attente;
   if (dite) {
@@ -451,6 +456,93 @@ export function expliquer_tentative({
     etat.erreur = texte("repetition_non_comptee", { raison: texte(bloc.non_comptee) ?? "" });
   }
   return dite;
+}
+
+// Un mouvement de l'autre cote compte pendant qu'on attend celui-ci. Les deux
+// bras d'un curl partent souvent ensemble : on attend une demi-seconde que le
+// bon cote compte aussi avant de dire l'erreur.
+export const FENETRE_AUTRE_COTE = 0.5;
+// Pendant combien de temps l'echec d'une tentative se tait apres un mouvement
+// de l'autre cote. Dans une fente du mauvais pied, le genou mesure — l'arriere
+// — descend lui aussi, puis echoue sur la condition du pied avant : sans ce
+// silence, le coach dirait « tu ne descends pas assez bas » au lieu du pied.
+export const SILENCE_APRES_AUTRE_COTE = 1;
+// Un maintien de l'autre cote se dit apres une seconde : le temps de se mettre
+// en place sans se faire reprendre en passant.
+export const TENUE_AUTRE_COTE = 1;
+
+/**
+ * Le mauvais cote : un mouvement unilateral fait de l'autre bras, de l'autre
+ * jambe. La detection de l'autre cote (`exercice.autre_cote`) alimente un
+ * compteur fantome sur le bloc ; quand il compte et que le vrai ne compte pas
+ * dans `FENETRE_AUTRE_COTE`, c'est le mauvais cote. Pour un maintien
+ * (`maintien: true`), c'est le jeton `maintien` de l'autre cote, tenu
+ * `TENUE_AUTRE_COTE` alors que le notre ne l'est pas, une fois par episode.
+ *
+ * Rend `{ raison, muet }` : la raison (`raison_autre_bras`…) a l'image ou
+ * l'erreur se confirme, sinon null ; `muet` dit a `expliquer_tentative` de
+ * taire un echec qui n'en est pas un. Ne parle pas : l'appelant dit la raison
+ * comme une repetition qui ne compte pas. Pur ; l'etat vit sur le bloc
+ * (`CHAMPS_TEMPORELS`).
+ */
+export function surveiller_autre_cote({
+  exercice, corps, bloc, maintenant, rep_comptee = false, derniere_rep_a = null,
+  jeton = null, maintien = false,
+}) {
+  const autre = exercice.autre_cote;
+  if (!autre) return { raison: null, muet: false };
+  const raison = raison_autre_cote(exercice);
+  const jeton_autre = autre.detection(corps);
+
+  if (maintien) {
+    if (jeton_autre !== "maintien" || jeton === "maintien") {
+      delete bloc.autre_cote_depuis;
+      delete bloc.autre_cote_dit;
+      return { raison: null, muet: false };
+    }
+    if (!("autre_cote_depuis" in bloc)) bloc.autre_cote_depuis = maintenant;
+    if (bloc.autre_cote_dit || maintenant - bloc.autre_cote_depuis < TENUE_AUTRE_COTE) {
+      return { raison: null, muet: false };
+    }
+    bloc.autre_cote_dit = true;
+    return { raison, muet: false };
+  }
+
+  if (!bloc.autre_cote_compteur) bloc.autre_cote_compteur = new CompteurMouvement();
+  const fantome = bloc.autre_cote_compteur;
+  const avant = fantome.repetitions;
+  fantome.mettre_a_jour(jeton_autre, maintenant);
+  if (rep_comptee) delete bloc.autre_cote_attente;
+  if (fantome.repetitions > avant) {
+    bloc.autre_cote_depuis = maintenant;
+    const bon_cote_aussi = rep_comptee ||
+      (derniere_rep_a !== null && maintenant - derniere_rep_a < FENETRE_AUTRE_COTE);
+    if (!bon_cote_aussi) bloc.autre_cote_attente = maintenant;
+  }
+  const muet = "autre_cote_depuis" in bloc &&
+    maintenant - bloc.autre_cote_depuis < SILENCE_APRES_AUTRE_COTE;
+  if ("autre_cote_attente" in bloc &&
+      maintenant - bloc.autre_cote_attente >= FENETRE_AUTRE_COTE) {
+    delete bloc.autre_cote_attente;
+    return { raison, muet };
+  }
+  return { raison: null, muet };
+}
+
+/** La raison dite pour un mouvement fait de l'autre cote, ou null. */
+export function raison_autre_cote(exercice) {
+  return exercice.autre_cote ? `raison_autre_${exercice.autre_cote.membre}` : null;
+}
+
+/**
+ * Publie le mauvais cote comme une repetition qui ne compte pas : la meme
+ * voix composee (« Ca ne compte pas » + « c'est l'autre jambe ») et le meme
+ * bandeau, garde jusqu'a la prochaine repetition comptee.
+ */
+function dire_autre_cote(coach, bloc, raison) {
+  if (!raison) return;
+  bloc.non_comptee = raison;
+  coach("repetition_non_comptee", raison);
 }
 
 /**
@@ -492,9 +584,15 @@ export function gerer_mode_repetitions({
   const amplitude_manquee = suivre_amplitude(
     exercice, corps, bloc, etat, stage_avant, stage, repetitions > repetitions_avant, messages.texte
   );
+  const autre_cote = surveiller_autre_cote({
+    exercice, corps, bloc, maintenant: seance.maintenant(),
+    rep_comptee: repetitions > repetitions_avant, derniere_rep_a: compteur.derniere_rep_a,
+  });
+  dire_autre_cote(coach, bloc, autre_cote.raison);
   expliquer_tentative({
     exercice, corps, bloc, etat, coach, jeton: stage_detecte, maintenant: seance.maintenant(),
     rep_comptee: repetitions > repetitions_avant, faute, texte: messages.texte,
+    muet: autre_cote.muet,
   });
 
   if (repetitions > derniere_rep) {
@@ -523,10 +621,27 @@ export function gerer_mode_repetitions({
 }
 
 export function gerer_mode_maintien({ corps, bloc, seance, etat, coach, messages }) {
-  const faute = mettre_a_jour_erreur(bloc.exercice, corps, etat, messages.texte);
-  annoncer_faute(coach, bloc, faute, seance.maintenant());
   const position = bloc.exercice.detection(corps);
   if (position === "maintien") bloc.position_maintien_validee = true;
+  // Rien n'est corrige avant d'avoir tenu la position une premiere fois : se
+  // mettre en planche n'est pas une planche ratee.
+  if (bloc.position_maintien_validee === true) {
+    const faute = mettre_a_jour_erreur(bloc.exercice, corps, etat, messages.texte);
+    annoncer_faute(coach, bloc, faute, seance.maintenant());
+  } else {
+    etat.erreur = null;
+  }
+  const autre_cote = surveiller_autre_cote({
+    exercice: bloc.exercice, corps, bloc, maintenant: seance.maintenant(), jeton: position,
+    maintien: true,
+  });
+  if (autre_cote.raison) coach("repetition_non_comptee", autre_cote.raison);
+  // Le bandeau dure autant que le mauvais cote, sans attendre la seconde.
+  if ("autre_cote_depuis" in bloc && !etat.erreur) {
+    etat.erreur = messages.texte("repetition_non_comptee", {
+      raison: messages.texte(raison_autre_cote(bloc.exercice)) ?? "",
+    });
+  }
 
   if (position !== "maintien" && bloc.position_maintien_validee === true) {
     coach("correction_gainage");
@@ -619,9 +734,15 @@ export function gerer_mode_amrap({
   const [stage, repetitions] = compteur.mettre_a_jour(
     stage_detecte, maintenant, bloc.exercice.depart ?? null
   );
+  const autre_cote = surveiller_autre_cote({
+    exercice: bloc.exercice, corps, bloc, maintenant,
+    rep_comptee: repetitions > repetitions_avant, derniere_rep_a: compteur.derniere_rep_a,
+  });
+  dire_autre_cote(coach, bloc, autre_cote.raison);
   expliquer_tentative({
     exercice: bloc.exercice, corps, bloc, etat, coach, jeton: stage_detecte, maintenant,
     rep_comptee: repetitions > repetitions_avant, faute, texte: messages.texte,
+    muet: autre_cote.muet,
   });
 
   if (repetitions > derniere_rep) {

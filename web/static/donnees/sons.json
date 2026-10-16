@@ -130,6 +130,15 @@
   "raison_coudes_ecartes": [
    "tes_coudes_sont_trop_ecartes.wav"
   ],
+  "raison_autre_bras": [
+   "c_est_l_autre_bras.wav"
+  ],
+  "raison_autre_jambe": [
+   "c_est_l_autre_jambe.wav"
+  ],
+  "raison_autre_cote": [
+   "c_est_l_autre_cote.wav"
+  ],
   "amplitude_aller_incomplet": [
    "tu_ne_vas_pas_jusqu_au_bout_du_mouvement.wav"
   ],
@@ -228,6 +237,9 @@
   "geste_bravo": "bravo_tu_sais_tout_piloter_de_loin.wav",
   "geste_bras_droit_ajoute": "leve_le_bras_droit_pour_ajouter_une_repetition.wav",
   "geste_bras_gauche_retire": "leve_le_bras_gauche_pour_en_retirer_une.wav",
+  "guide_premiere_fois": "c_est_la_premiere_fois_qu_on_fait_cet_exercice.wav",
+  "guide_regarde_bien": "regarde_bien_comment_on_fait.wav",
+  "guide_croise_les_bras": "croise_les_bras_quand_tu_as_termine.wav",
   "changement_sens": "change_de_sens.wav",
   "changement_jambe": "change_de_jambe.wav",
   "changement_bras": "change_de_bras.wav",
@@ -255,6 +267,9 @@
   "raison_tendre_bras": "tes_bras_ne_sont_pas_completement_tendus.wav",
   "raison_remonter": "tu_ne_remontes_pas_completement.wav",
   "raison_coudes_ecartes": "tes_coudes_sont_trop_ecartes.wav",
+  "raison_autre_bras": "c_est_l_autre_bras.wav",
+  "raison_autre_jambe": "c_est_l_autre_jambe.wav",
+  "raison_autre_cote": "c_est_l_autre_cote.wav",
   "amplitude_aller_incomplet": "tu_ne_vas_pas_jusqu_au_bout_du_mouvement.wav",
   "amplitude_retour_incomplet": "tu_ne_reviens_pas_completement_au_depart.wav"
  },
@@ -301,6 +316,9 @@
   "geste_bravo": "Bravo, tu sais tout piloter de loin",
   "geste_bras_droit_ajoute": "Lève le bras droit pour ajouter une répétition",
   "geste_bras_gauche_retire": "Lève le bras gauche pour en retirer une",
+  "guide_premiere_fois": "C'est la première fois qu'on fait cet exercice",
+  "guide_regarde_bien": "Regarde bien comment on fait",
+  "guide_croise_les_bras": "Croise les bras quand tu as terminé",
   "changement_sens": "Change de sens",
   "changement_jambe": "Change de jambe",
   "changement_bras": "Change de bras",
@@ -324,6 +342,9 @@
   "raison_tendre_bras": "Tes bras ne sont pas complètement tendus",
   "raison_remonter": "Tu ne remontes pas complètement",
   "raison_coudes_ecartes": "Tes coudes sont trop écartés",
+  "raison_autre_bras": "C'est l'autre bras",
+  "raison_autre_jambe": "C'est l'autre jambe",
+  "raison_autre_cote": "C'est l'autre côté",
   "amplitude_aller_incomplet": "Tu ne vas pas jusqu'au bout du mouvement",
   "amplitude_retour_incomplet": "Tu ne reviens pas complètement au départ"
  },

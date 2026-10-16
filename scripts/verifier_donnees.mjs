@@ -193,6 +193,26 @@ function main() {
         signaler("mouvements.json", `« ${nom} » : ${sens} « ${mouvement[sens]} » n'est pas un mouvement`);
       }
     }
+    // L'autre cote d'un mouvement unilateral : sans detection des deux cotes,
+    // ou sans reciproque, le mauvais cote ne se dirait que dans un sens — en
+    // silence dans l'autre (`autre_cote_pour` rend null).
+    const autre = mouvement.autre_cote;
+    if (autre != null) {
+      const en_face = bruts[autre.mouvement];
+      if (!en_face) {
+        signaler("mouvements.json", `« ${nom} » : autre_cote « ${autre.mouvement} » n'est pas un mouvement`);
+      } else {
+        if (!mouvement.detection || !en_face.detection) {
+          signaler("mouvements.json", `« ${nom} » : autre_cote sans detection des deux cotes`);
+        }
+        if (en_face.autre_cote?.mouvement !== nom || en_face.autre_cote?.membre !== autre.membre) {
+          signaler("mouvements.json", `« ${nom} » : « ${autre.mouvement} » ne le designe pas en retour (meme membre)`);
+        }
+      }
+      if (!["bras", "jambe", "cote"].includes(autre.membre)) {
+        signaler("mouvements.json", `« ${nom} » : membre « ${autre.membre} » — "bras", "jambe" ou "cote"`);
+      }
+    }
   }
   for (const nom of Object.keys(fiches)) {
     if (!bruts[nom]) signaler("fiches.json", `fiche « ${nom} » pour un mouvement inconnu`);

@@ -90,6 +90,7 @@ export class Exercice {
     sensations = null,
     depart = null,
     instrument = null,
+    autre_cote = null,
   }) {
     this.nom = nom;
     this.detection = detection;
@@ -123,6 +124,10 @@ export class Exercice {
     // une repetition n'a pas compte (`expliquer_tentative`). Jamais ce qui
     // compte.
     this.instrument = instrument;
+    // `{ detection, membre }` pour un mouvement unilateral : la detection du
+    // meme mouvement de l'autre cote, et ce qui se dit (« c'est l'autre
+    // bras »). Lu par `surveiller_autre_cote`. Meme piege que l'orientation.
+    this.autre_cote = autre_cote;
   }
 
   fiche() {
@@ -162,6 +167,16 @@ const CHAMPS_TEMPORELS = [
   "suivi_tentatives",
   "non_comptee",
   "verdict_en_attente",
+  // Le maintien tenu au moins une fois dans la serie : sans lui, rien n'est
+  // corrige. Oublie, il survivait a la serie et « reprends la position »
+  // partait des la serie 2, avant meme qu'on soit en place.
+  "position_maintien_validee",
+  // L'autre cote (`surveiller_autre_cote`) : son compteur fantome et l'echec
+  // qu'il attend de confirmer.
+  "autre_cote_compteur",
+  "autre_cote_attente",
+  "autre_cote_depuis",
+  "autre_cote_dit",
   // L'ouverture de la serie (`attendre_mise_en_place`) : une serie refaite,
   // remise a zero ou changee de variante se rouvre, « c'est parti » compris.
   "serie_ouverte",

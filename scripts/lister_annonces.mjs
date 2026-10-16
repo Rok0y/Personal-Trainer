@@ -64,6 +64,15 @@ const FAMILLES = [
       "place.",
   ],
   [
+    ["guide_"],
+    "Guide d'un exercice nouveau",
+    "Dites a l'ouverture du guide, la premiere fois qu'on fait un " +
+      "mouvement, juste apres son annonce. Trois phrases qui se suivent : " +
+      "« c'est la premiere fois qu'on fait cet exercice », « regarde bien " +
+      "comment on fait », « croise les bras quand tu as termine ». Chacune " +
+      "se termine : la couture tombe entre deux phrases.",
+  ],
+  [
     ["changement_"],
     "Changements en cours d'echauffement",
     "Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus " +

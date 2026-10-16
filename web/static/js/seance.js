@@ -73,7 +73,21 @@ export function exercice_pour(mouvements, nom) {
     changements: fiche.changements ?? [],
     depart: fiche.depart ?? null,
     instrument: instrument_pour(fiche.detection),
+    autre_cote: autre_cote_pour(mouvements, fiche.autre_cote),
   });
+}
+
+/**
+ * `{ mouvement, membre }` de `mouvements.json`, vers `{ detection, membre }` :
+ * la fonction de detection du mouvement de l'autre cote. null quand le
+ * mouvement n'a pas d'autre cote, ou que celui-ci n'a pas de detection — un
+ * autre cote qui ne se detecte pas ne peut rien signaler.
+ */
+export function autre_cote_pour(mouvements, autre_cote) {
+  if (!autre_cote) return null;
+  const nom_detection = mouvements[autre_cote.mouvement]?.detection;
+  const detection = nom_detection ? DETECTIONS[nom_detection] ?? null : null;
+  return detection ? { detection, membre: autre_cote.membre } : null;
 }
 
 /**

@@ -42,6 +42,9 @@ export const MESSAGES = {
   raison_tendre_bras: "tes bras ne sont pas complètement tendus",
   raison_remonter: "tu ne remontes pas complètement",
   raison_coudes_ecartes: "tes coudes sont trop écartés",
+  raison_autre_bras: "c'est l'autre bras",
+  raison_autre_jambe: "c'est l'autre jambe",
+  raison_autre_cote: "c'est l'autre côté",
   amplitude_aller_incomplet: "tu ne vas pas jusqu'au bout du mouvement",
   amplitude_retour_incomplet: "tu ne reviens pas complètement au départ",
   // --- Consignes d'etat : ce qu'il faut faire, pas ce qui est mal fait ---

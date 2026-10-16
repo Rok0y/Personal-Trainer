@@ -2228,7 +2228,7 @@ function fermer_installation() {
   // C'est **ici** que le guide du premier mouvement s'ouvre, et plus dans
   // `demarrer()` : on explique un exercice a quelqu'un qui est deja bien
   // place, pas a quelqu'un qu'on n'a pas encore vu.
-  changer_exercice();
+  //
   // **Et c'est ici que la seance se presente**, dans cet ordre : le mouvement,
   // puis la consigne de geste. La phase `preparation` ne peut pas le faire —
   // elle vaut des la **premiere image**, donc bien avant qu'on soit cadre, et
@@ -2236,8 +2236,13 @@ function fermer_installation() {
   // Elle n'est posee qu'une fois par seance (`Circuit` la pose dans son
   // constructeur et ne la rearme jamais), donc ceci se joue une fois et une
   // seule : les series suivantes n'entendront que « c'est parti ».
+  //
+  // L'annonce passe **avant** l'ouverture du guide : le guide d'un mouvement
+  // nouveau parle a son tour, et la file joue dans l'ordre des demandes. Ce
+  // qu'il dit (« croise les bras quand tu as termine ») remplace la consigne
+  // de preparation : le meme geste ferme le guide et lance la serie.
   annoncer_prochain_exercice(seance.bloc_actuel);
-  coach("preparation");
+  if (!changer_exercice()) coach("preparation");
 }
 
 /**
@@ -2327,17 +2332,21 @@ function ecrire_installation(message, part) {
   $("cadrageProgres").style.width = `${Math.round(Math.min(1, part) * 100)}%`;
 }
 
-/** Ce qui doit etre refait a chaque fois que le bloc courant change. */
+/**
+ * Ce qui doit etre refait a chaque fois que le bloc courant change. Rend vrai
+ * si le guide d'un mouvement nouveau s'est ouvert.
+ */
 function changer_exercice() {
   const bloc = seance.bloc_actuel;
-  if (!bloc) return;
-  ouvrir_guide_exercice(bloc);
+  if (!bloc) return false;
+  const guide_ouvert = ouvrir_guide_exercice(bloc);
   points_requis = bloc.exercice.detection
     ? points_utilises(bloc.exercice.detection)
     : [];
   compteur.reset();
   derniere_rep = 0;
   etat.fiche = bloc.exercice.fiche();
+  return guide_ouvert;
 }
 
 /**
@@ -2355,7 +2364,7 @@ function changer_exercice() {
 function ouvrir_guide_exercice(bloc) {
   const nom = bloc.exercice.nom;
   const profil = base.utilisateurs.find((u) => u.id === PROFIL);
-  if (historique.tuto_deja_vu(profil, "exercices", nom)) return;
+  if (historique.tuto_deja_vu(profil, "exercices", nom)) return false;
 
   const fiche = mouvements[nom] ?? bloc.exercice.fiche();
   guide_exercice = bloc;
@@ -2378,12 +2387,19 @@ function ouvrir_guide_exercice(bloc) {
 
   $("guideExercice").hidden = false;
 
-  // **Le guide ne parle pas.** Il l'a fait, et ca doublait systematiquement :
-  // en debut de seance la presentation vient de la sortie d'installation, en
-  // cours de seance elle vient de la pause qui precede. Le guide n'ouvrait
-  // donc jamais que dans le sillage d'une annonce qu'il repetait mot pour mot.
-  // Ce qu'il apporte est ce qu'une voix ne peut pas donner : les consignes
-  // ecrites, qu'on relit a son rythme.
+  // **Le guide ne redit pas l'exercice.** Il l'a fait, et ca doublait
+  // systematiquement : en debut de seance la presentation vient de la sortie
+  // d'installation, en cours de seance de la pause qui precede. Il dit
+  // seulement ce que l'annonce ne dit pas : que c'est nouveau, qu'il faut
+  // regarder, et comment refermer — de trois metres, l'ecran ne le dit a
+  // personne. Meme priorite que l'annonce, donc joue apres elle.
+  coach_sequence(
+    ["guide_premiere_fois", "guide_regarde_bien", "guide_croise_les_bras"]
+      .map((cle) => tables_sons?.briques?.[cle])
+      .filter(Boolean),
+    5,
+  );
+  return true;
 }
 
 /** Un bloc de la fiche, ou rien du tout s'il est vide. */
@@ -2552,10 +2568,7 @@ function observer_gestes(corps) {
   // c'est la phase qui s'en charge. L'appeler ici aussi consommerait la
   // transition « termine », que `HoldPosition` ne rend qu'une seule fois — la
   // serie ne se validerait plus jamais.
-  etat.progression_maintien =
-    !geste || geste.debut === null
-      ? 0
-      : Math.min(100, ((geste.horloge() - geste.debut) / geste.duree) * 100);
+  etat.progression_maintien = geste ? geste.progression_visible() : 0;
   etat.maintien_termine = Boolean(geste && geste.termine);
 
   const [progression_reset, reset] = geste_reset.update(corps);

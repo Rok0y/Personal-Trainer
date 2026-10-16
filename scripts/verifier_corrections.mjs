@@ -13,6 +13,7 @@ import {
   DUREE_AVANT_CORRECTION,
   RAPPEL_CORRECTION,
   annoncer_faute,
+  gerer_mode_maintien,
   suivre_amplitude,
 } from "../web/static/js/moteur.js";
 
@@ -95,6 +96,40 @@ egal("un nouvel episode n'attend pas le rappel du precedent",
   Circuit.prototype.reinitialiser_etat_serie.call({}, bloc);
   egal("reinitialiser_etat_serie efface le repere de faute",
     ["faute_en_cours", "faute_depuis", "faute_dite_a"].filter((champ) => champ in bloc), []);
+}
+
+// --- Un gainage ne se corrige pas avant d'avoir ete tenu
+//
+// « Reprends la position » et toute faute de forme attendent le premier
+// maintien de la serie. Le drapeau survivait a la serie, et la correction
+// partait des la serie 2, pendant qu'on se remettait en planche.
+{
+  const horloge = { t: 0 };
+  const bloc = {
+    exercice: { erreurs: [(c) => c.faute], detection: (c) => c.jeton },
+    temps_maintien: 0, duree: 30,
+  };
+  const seance = { maintenant: () => horloge.t };
+  const dites = [];
+  const pas = (jeton, faute = null) => {
+    horloge.t += 0.25;
+    gerer_mode_maintien({
+      corps: { jeton, faute }, bloc, seance, etat: { erreur: null }, coach: (cle) => dites.push(cle),
+      messages: { texte: (cle) => cle, libelle_etape: (j) => j },
+    });
+  };
+  const paroles = () => dites.filter((cle) => cle !== "bip");
+  for (let i = 0; i < 8; i++) pas("repos", GENOU);
+  egal("on se met en place, faute visible : rien n'est dit", paroles(), []);
+  for (let i = 0; i < 4; i++) pas("maintien", GENOU);
+  egal("une fois tenu, la faute qui dure se dit", paroles(), [GENOU]);
+  pas("repos");
+  egal("et la position perdue se dit", paroles(), [GENOU, "correction_gainage"]);
+
+  Circuit.prototype.reinitialiser_etat_serie.call({}, bloc);
+  dites.length = 0;
+  for (let i = 0; i < 8; i++) pas("repos", GENOU);
+  egal("serie suivante : rien avant d'etre de nouveau en place", paroles(), []);
 }
 
 if (problemes.length) {

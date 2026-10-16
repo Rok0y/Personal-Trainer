@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**21 prises restantes.**
+**27 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -112,6 +112,16 @@ Le guidage du debut de seance, dit camera ouverte pendant qu'on se place.
 | `leve_le_bras_droit_pour_ajouter_une_repetition.wav` | « Lève le bras droit pour ajouter une répétition » | deja fait |
 | `leve_le_bras_gauche_pour_en_retirer_une.wav` | « Lève le bras gauche pour en retirer une » | deja fait |
 
+## Guide d'un exercice nouveau
+
+Dites a l'ouverture du guide, la premiere fois qu'on fait un mouvement, juste apres son annonce. Trois phrases qui se suivent : « c'est la premiere fois qu'on fait cet exercice », « regarde bien comment on fait », « croise les bras quand tu as termine ». Chacune se termine : la couture tombe entre deux phrases.
+
+| Fichier | A prononcer | Etat |
+| --- | --- | --- |
+| `c_est_la_premiere_fois_qu_on_fait_cet_exercice.wav` | « C'est la première fois qu'on fait cet exercice » | **a enregistrer** |
+| `regarde_bien_comment_on_fait.wav` | « Regarde bien comment on fait » | **a enregistrer** |
+| `croise_les_bras_quand_tu_as_termine.wav` | « Croise les bras quand tu as terminé » | **a enregistrer** |
+
 ## Changements en cours d'echauffement
 
 Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus l'ecran. Un ordre bref, qui arrive seul.
@@ -134,6 +144,9 @@ Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus l'ecran. Un ordre
 | `tes_bras_ne_sont_pas_completement_tendus.wav` | « Tes bras ne sont pas complètement tendus » | deja fait |
 | `tu_ne_remontes_pas_completement.wav` | « Tu ne remontes pas complètement » | deja fait |
 | `tes_coudes_sont_trop_ecartes.wav` | « Tes coudes sont trop écartés » | deja fait |
+| `c_est_l_autre_bras.wav` | « C'est l'autre bras » | **a enregistrer** |
+| `c_est_l_autre_jambe.wav` | « C'est l'autre jambe » | **a enregistrer** |
+| `c_est_l_autre_cote.wav` | « C'est l'autre côté » | **a enregistrer** |
 | `tu_ne_vas_pas_jusqu_au_bout_du_mouvement.wav` | « Tu ne vas pas jusqu'au bout du mouvement » | deja fait |
 | `tu_ne_reviens_pas_completement_au_depart.wav` | « Tu ne reviens pas complètement au départ » | deja fait |
 

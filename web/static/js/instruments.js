@@ -29,7 +29,8 @@ import {
   _appui_sur_le_bras, _descente_hanche, _hauteur_sous_epaule, _ecart_lateral,
   _angle_coude_proche, _bras_proche, _buste_vertical, _ecart_rapporte_aux_epaules,
   _hanche_decollee, _visibilite_bras, _genou_depasse_pied, _poignet_devant_epaule,
-  _inclinaison_buste,
+  _inclinaison_buste, _genou_au_dessus_de_l_autre, _hauteur_poignets,
+  FENTE_GENOU_AVANT_MIN, SOULEVE_BAS_MAX, SOULEVE_HAUT_MIN,
 } from "./detections.js";
 
 const ECHELLE_ANGLE = [0, 180];
@@ -47,6 +48,10 @@ export const RAISONS = {
   remonter: "raison_remonter",
   coudes: "raison_coudes_ecartes",
 };
+// Le mauvais cote d'un mouvement unilateral se dit par la meme voix, mais
+// aucune mesure ne le porte : c'est `surveiller_autre_cote` (`moteur.js`) qui
+// le voit, en lisant la detection de l'autre cote. `raison_autre_bras`,
+// `raison_autre_jambe`, `raison_autre_cote` — par le membre du mouvement.
 
 // La meme mesure, qui sait dire ce qui lui manque.
 function avec_raisons(mesure, raisons) {
@@ -199,14 +204,25 @@ function genou_avant(cote) {
 }
 
 function fente(cote) {
-  const [h, g, c] = cote === "droite"
-    ? ["hanche_droite", "genou_droit", "cheville_droite"]
-    : ["hanche_gauche", "genou_gauche", "cheville_gauche"];
+  const droite = cote === "droite";
+  const [h, g, c, autre] = droite
+    ? ["hanche_droite", "genou_droit", "cheville_droite", "genou_gauche"]
+    : ["hanche_gauche", "genou_gauche", "cheville_gauche", "genou_droit"];
   return {
     ordre: ["debut", "fin"],
     defaut: "milieu",
-    mesures: [avec_raisons(angle(`Genou ${cote === "droite" ? "droit" : "gauche"}`, h, g, c,
-      { debut: ["<", 100], fin: [">", 150] }), FLEXION)],
+    mesures: [
+      avec_raisons(angle(`Genou ${droite ? "droit" : "gauche"}`, h, g, c,
+        { debut: ["<", 100], fin: [">", 150] }), FLEXION),
+      // La jambe mesuree est devant : une condition du bas seulement, sans
+      // raison — l'autre cote (`surveiller_autre_cote`) dit l'erreur de pied.
+      {
+        libelle: `Genou ${droite ? "droit" : "gauche"} au-dessus de l'autre (÷ tibia)`,
+        unite: "", echelle: [-1.2, 1.2], sommet: g,
+        zones: { debut: [">", FENTE_GENOU_AVANT_MIN] },
+        valeur: (corps) => _genou_au_dessus_de_l_autre(corps[g], corps[c], corps[autre]),
+      },
+    ],
   };
 }
 
@@ -467,9 +483,12 @@ export const INSTRUMENTS = {
   souleve_de_terre_roumain_detection: {
     ordre: ["debut", "fin"],
     defaut: "milieu",
-    mesures: [avec_raisons(distance_moyenne("Distance poignet-cheville (moyenne)",
-      ["poignet_gauche", "cheville_gauche"], ["poignet_droit", "cheville_droite"], [0, 0.6],
-      { debut: ["<", 0.1], fin: [">", 0.2] }), FLEXION)],
+    mesures: [avec_raisons({
+      libelle: "Poignets au-dessus des chevilles (÷ tibia)",
+      unite: "", echelle: [0, 2.2], sommet: "poignet_gauche",
+      zones: { debut: ["<", SOULEVE_BAS_MAX], fin: [">", SOULEVE_HAUT_MIN] },
+      valeur: (corps) => _hauteur_poignets(corps),
+    }, FLEXION)],
   },
 
   detection_gainage_laterale_gauche: gainage_lateral("gauche"),
