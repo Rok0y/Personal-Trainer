@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**27 prises restantes.**
+**20 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -118,9 +118,9 @@ Dites a l'ouverture du guide, la premiere fois qu'on fait un mouvement, juste ap
 
 | Fichier | A prononcer | Etat |
 | --- | --- | --- |
-| `c_est_la_premiere_fois_qu_on_fait_cet_exercice.wav` | « C'est la première fois qu'on fait cet exercice » | **a enregistrer** |
-| `regarde_bien_comment_on_fait.wav` | « Regarde bien comment on fait » | **a enregistrer** |
-| `croise_les_bras_quand_tu_as_termine.wav` | « Croise les bras quand tu as terminé » | **a enregistrer** |
+| `c_est_la_premiere_fois_qu_on_fait_cet_exercice.wav` | « C'est la première fois qu'on fait cet exercice » | deja fait |
+| `regarde_bien_comment_on_fait.wav` | « Regarde bien comment on fait » | deja fait |
+| `croise_les_bras_quand_tu_as_termine.wav` | « Croise les bras quand tu as terminé » | deja fait |
 
 ## Changements en cours d'echauffement
 
@@ -130,7 +130,7 @@ Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus l'ecran. Un ordre
 | --- | --- | --- |
 | `change_de_sens.wav` | « Change de sens » | deja fait |
 | `change_de_jambe.wav` | « Change de jambe » | deja fait |
-| `change_de_bras.wav` | « Change de bras » | **a enregistrer** |
+| `change_de_bras.wav` | « Change de bras » | deja fait |
 
 ## Repetitions qui ne comptent pas
 
@@ -144,9 +144,9 @@ Dits au milieu d'une rotation, a quelqu'un qui ne regarde plus l'ecran. Un ordre
 | `tes_bras_ne_sont_pas_completement_tendus.wav` | « Tes bras ne sont pas complètement tendus » | deja fait |
 | `tu_ne_remontes_pas_completement.wav` | « Tu ne remontes pas complètement » | deja fait |
 | `tes_coudes_sont_trop_ecartes.wav` | « Tes coudes sont trop écartés » | deja fait |
-| `c_est_l_autre_bras.wav` | « C'est l'autre bras » | **a enregistrer** |
-| `c_est_l_autre_jambe.wav` | « C'est l'autre jambe » | **a enregistrer** |
-| `c_est_l_autre_cote.wav` | « C'est l'autre côté » | **a enregistrer** |
+| `c_est_l_autre_bras.wav` | « C'est l'autre bras » | deja fait |
+| `c_est_l_autre_jambe.wav` | « C'est l'autre jambe » | deja fait |
+| `c_est_l_autre_cote.wav` | « C'est l'autre côté » | deja fait |
 | `tu_ne_vas_pas_jusqu_au_bout_du_mouvement.wav` | « Tu ne vas pas jusqu'au bout du mouvement » | deja fait |
 | `tu_ne_reviens_pas_completement_au_depart.wav` | « Tu ne reviens pas complètement au départ » | deja fait |
 
