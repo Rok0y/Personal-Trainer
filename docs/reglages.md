@@ -177,3 +177,21 @@ Pour la **tête** de chaque chaîne de variantes (le mouvement complet, celui qu
   `dev/progression.html`, qui montre la courbe de départ note par note et matériel par
   matériel.
 - `verifier_donnees` exige qu'un mouvement plus dur demande une note plus haute.
+
+## Le temps d'une répétition (`tempo.secondes_par_repetition`)
+
+Le temps d'**une** répétition (descente et montée), en secondes, par mouvement :
+`{"Curl biceps droit": 3, "Pompes": 2.5, "Fente droite": 3.5, …}`. Il ne sert qu'à **la durée
+estimée** affichée sur la carte d'une séance (`duree.js`) : aucune règle de jeu ne le lit.
+- Durée estimée = effort + repos, rien d'autre (ni mise en place, ni guide, ni transitions) :
+  un forfait de transition a été écarté. Une série en répétitions dure `cible x tempo` ; une série
+  en secondes (maintien, chrono, AMRAP, échauffement) dure sa cible.
+- Les repos ne s'additionnent pas ici : le `Circuit` joue la séance en accéléré, si bien qu'un
+  superset prend les repos qu'il prend vraiment.
+- Les valeurs de départ sont un tempo contrôlé ordinaire (3 s) ; 2,5 s pour les pompes et le
+  crunch, plus courts ; 3,5 s pour une fente (on se replace) ; 4 s pour le soulevé de terre
+  roumain, d'amplitude longue. Les repos pèsent bien plus lourd que ces nombres dans le total :
+  ne les affiner que si l'estimation s'écarte nettement des séances chronométrées.
+- **Pas de valeur par défaut** : un mouvement compté sans tempo efface l'estimation de toute
+  séance qui le joue, et `verifier_donnees` l'exige pour chaque mouvement compté en répétitions
+  (un repli aurait caché l'oubli).

@@ -26,6 +26,7 @@ const TESTS = [
   "verifier_annonces",
   "verifier_instruments",
   "verifier_semaine",
+  "verifier_duree",
   "verifier_corrections",
   "verifier_compteur",
   "verifier_tentatives",

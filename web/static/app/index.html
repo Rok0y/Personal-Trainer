@@ -1627,6 +1627,7 @@ import {
 } from "../js/seance.js";
 import { brancher_commandes, peindre_hud } from "../js/hud.js";
 import { jouer_si_visible, montrer_video } from "../js/videos.js";
+import { duree_estimee, libelle_duree } from "../js/duree.js";
 import { INTERVALLE_MAX, ajuster_repetitions, executer_mode, duree_realisee, oublier_durees, mettre_a_jour_prochain_exercice, poser_etape, annoncer_temps_repos } from "../js/moteur.js";
 import { CompteurMouvement } from "../js/compteur.js";
 import { HoldPosition } from "../js/outils.js";
@@ -2090,6 +2091,33 @@ async function clore_tutoriel() {
   }
 }
 
+/**
+ * Le circuit tel qu'il sera joue : variantes du profil, puis objectifs.
+ *
+ * Construit au demarrage **et** pour la duree estimee des cartes : deux
+ * assemblages finiraient par differer d'une etape, et la carte annoncerait une
+ * autre seance que celle qui se joue. Ne regarde ni n'ecrit le profil : c'est a
+ * `demarrer` d'enregistrer le mouvement de depart.
+ */
+function circuit_a_jouer(blocs, variantes, objectifs) {
+  const circuit = circuit_pour(mouvements, blocs);
+  // **Le seul endroit ou les variantes du profil remplacent leurs originaux**,
+  // et avant le moteur pour que l'objectif soit celui de la variante. Le
+  // circuit construit ici ne repart jamais dans `seances_locales` (celui de
+  // l'estimation est jete aussitot joue).
+  moteur.variantes.appliquer_au_circuit(
+    circuit,
+    variantes,
+    catalogue_des_variantes(),
+    (mouvement) => exercice_pour(mouvements, mouvement),
+  );
+  // **Les cibles viennent de l'historique, plus du fichier.** Le JSON ne fait
+  // plus autorite que sur la structure : quel exercice, quel mode, quels
+  // repos, quel entrelacement.
+  moteur.objectifs.appliquer_a_circuit(circuit, objectifs, PROFIL);
+  return circuit;
+}
+
 async function demarrer(nom) {
   // **Avant de construire quoi que ce soit.** Une seance dont un bloc n'a pas
   // de cible dans l'unite que son mode joue s'acheve a la premiere image et
@@ -2103,7 +2131,6 @@ async function demarrer(nom) {
   }
 
   nom_seance = nom;
-  seance = circuit_pour(mouvements, seances[nom]);
   // Le mouvement de depart d'une famille jamais jouee est **ecrit** ici, au
   // demarrage : apres cette seance la famille aura ete jouee, et le choix,
   // seulement relu, se serait efface. Sauvegarde sans l'attendre — rien ne
@@ -2114,23 +2141,11 @@ async function demarrer(nom) {
     historique.definir_variantes(base, PROFIL, variantes);
     void stockage.sauver(base);
   }
-  // **Le seul endroit ou les variantes du profil remplacent leurs originaux**,
-  // et avant le moteur pour que l'objectif soit celui de la variante. Le
-  // circuit construit ici ne repart jamais dans `seances_locales`.
-  moteur.variantes.appliquer_au_circuit(
-    seance,
-    variantes,
-    catalogue_des_variantes(),
-    (mouvement) => exercice_pour(mouvements, mouvement),
-  );
-  // **Les cibles viennent de l'historique, plus du fichier.** Le JSON ne fait
-  // plus autorite que sur la structure : quel exercice, quel mode, quels
-  // repos, quel entrelacement.
   const { seances: histoire, ancrages, note } = lecture_du_profil();
-  moteur.objectifs.appliquer_a_circuit(
-    seance,
+  seance = circuit_a_jouer(
+    seances[nom],
+    variantes,
     moteur.objectifs.objectifs_par_exercice(histoire, ancrages, note),
-    PROFIL
   );
   etat = creer_etat();
   compteur = new CompteurMouvement();
@@ -6097,10 +6112,20 @@ function dessiner_liste() {
   // note d'athlete.
   const sans_donnees = moteur.objectifs.exercices_sans_donnees(histoire, ancrages);
   const dernieres = dernieres_series(histoire);
+  const variantes_profil = variantes_du_profil();
 
   for (const [nom, blocs] of Object.entries(seances)) {
     const exercices = blocs.filter((b) => b.mode !== "echauffement");
     const echauffements = blocs.length - exercices.length;
+    // **La duree de la seance qui sera jouee**, pas celle du fichier : le
+    // circuit est construit comme au demarrage, puis joue en accelere
+    // (`duree.js`). Une seance qui ne demarrerait pas n'a pas de duree.
+    const duree = problemes_des_blocs(mouvements, blocs).length
+      ? null
+      : libelle_duree(duree_estimee(
+        circuit_a_jouer(blocs, variantes_profil, objectifs),
+        tables_baremes?.tempo,
+      ));
 
     // La carte n'est **plus** un bouton : elle contient desormais le bouton de
     // lancement, le crayon et deux <details>, qu'un <button> ne peut porter.
@@ -6132,6 +6157,7 @@ function dessiner_liste() {
       `</div>` +
       `<div class="carte-detail">${exercices.length} exercice${exercices.length > 1 ? "s" : ""}` +
       (echauffements ? ` · ${echauffements} échauffement${echauffements > 1 ? "s" : ""}` : "") +
+      (duree ? ` · ${duree}` : "") +
       `</div>`;
     // **Choisir n'est pas commencer.** Le clic sur la carte ne fait plus que
     // selectionner la seance ; c'est le bouton « Demarrer » qui ouvre la

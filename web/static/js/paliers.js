@@ -66,6 +66,9 @@ export function composer_baremes(socle, reglages) {
     },
     note_athlete: { ...reglages.note_athlete, reperes: socle.note_athlete?.reperes ?? {} },
     variantes: { retour: reglages.variantes?.retour ?? {}, depart: reglages.variantes?.depart ?? {} },
+    // Le temps d'une repetition, par mouvement : la duree estimee d'une
+    // seance (`duree.js`), affichage seulement.
+    tempo: reglages.tempo?.secondes_par_repetition ?? {},
     specs,
     echelles: socle.echelles,
     materiel: socle.materiel,

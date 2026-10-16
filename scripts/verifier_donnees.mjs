@@ -8,6 +8,7 @@
 // avant le deploiement plutot qu'en seance :
 //
 //  - reglages : chaque bareme a ses champs, et le materiel de son exercice ;
+//    chaque mouvement compte en repetitions a son tempo ;
 //  - fiches : chaque mouvement a sa fiche, chaque champ a sa forme ;
 //  - mouvements : chaque fonction nommee existe dans `detections.js`, chaque
 //    variante designe un mouvement du catalogue ;
@@ -143,6 +144,22 @@ function main() {
         signaler("reglages.json", `depart de « ${tete} » : « ${ordonnes[i]} » doit demander une note plus haute que « ${ordonnes[i - 1]} »`);
       }
     }
+  }
+
+  // Le tempo (duree estimee d'une seance) : pas de valeur par defaut dans
+  // `duree.js`, qui masquerait l'oubli. Un mouvement compte en repetitions
+  // sans tempo efface donc l'estimation de toute seance qui le joue — d'ou
+  // l'exigence ici. Un tempo sur un nom inconnu est un renommage oublie.
+  const tempo = reglages.tempo?.secondes_par_repetition ?? {};
+  for (const [nom, mouvement] of Object.entries(bruts)) {
+    if (mouvement.est_echauffement || !mouvement.detection) continue;
+    if (specs[nom]?.unite === "secondes") continue;
+    if (!(typeof tempo[nom] === "number" && tempo[nom] > 0)) {
+      signaler("reglages.json", `« ${nom} » n'a pas de tempo (tempo.secondes_par_repetition, en secondes)`);
+    }
+  }
+  for (const nom of Object.keys(tempo)) {
+    if (!bruts[nom]) signaler("reglages.json", `tempo de « ${nom} », qui n'est pas dans mouvements.json`);
   }
 
   // --- fiches et mouvements ---

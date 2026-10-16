@@ -903,5 +903,31 @@
     "Gainage planche": 1
    }
   }
+ },
+ "tempo": {
+  "secondes_par_repetition": {
+   "Curl biceps droit": 3,
+   "Curl biceps gauche": 3,
+   "Elevations latérales": 3,
+   "Oiseau": 3,
+   "Développé épaule": 3,
+   "Developpé couché altères": 3,
+   "Extension Triceps": 3,
+   "Rowing unilateral droit": 3,
+   "Rowing unilateral gauche": 3,
+   "Rowing penche": 3,
+   "Pompes": 2.5,
+   "Pompes inclinées": 2.5,
+   "Pompes contre le mur": 2.5,
+   "Pompes sur les genoux": 2.5,
+   "Crunches": 2.5,
+   "Squat": 3,
+   "Squat chargé": 3,
+   "Fente droite": 3.5,
+   "Fente gauche": 3.5,
+   "Fente droite chargée": 3.5,
+   "Fente gauche chargée": 3.5,
+   "Souleve de terre roumain": 4
+  }
  }
 }
