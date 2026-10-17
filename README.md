@@ -21,10 +21,10 @@ Coach de fitness en temps réel, dans le navigateur : la caméra de l'appareil d
 - **Niveaux et ligues** : chaque exercice a un barème de paliers dont le volume ne redescend jamais, et votre niveau — le plus haut palier jamais validé — se déduit de l'historique. Il ne recule jamais. Une ligue (Bronze → Maître) traduit le volume produit, et l'XP fait monter un niveau général.
 - **Progression automatique** : chaque séance repart de l'objectif de la précédente. Réussi, il monte d'un palier (deux si « c'était facile », trois si « trop facile ») ; manqué, il revient à l'identique, ou descend si « c'était trop dur ». Une cible saisie à la main est figée (badge orange) jusqu'à ce que la séance soit menée à son terme.
 - **Variantes plus faciles** : pompes sur les genoux, inclinées, contre le mur, planche sur les genoux, squat à vide. On peut choisir sa version avant de démarrer, basculer en pleine séance, ou l'accepter après un échec. On **remonte ensuite tout seul**, un cran par séance réussie.
-- **Programmes** : un programme liste une performance à atteindre par exercice et se vit à la semaine — une case par séance, dans l'ordre que tu choisis, sur une semaine qui commence le jour que tu choisis, et une série de semaines réussies. Rien n'est stocké : tout se recalcule depuis l'historique.
-- **Profils** : chaque profil garde son historique, ses niveaux et ses recalages ; les séances et les programmes sont communs. L'écran « Qui s'entraîne ? » s'impose à chaque lancement.
+- **Programmes** : un programme liste une performance à atteindre par exercice et se vit à la semaine — une case par séance, dans l'ordre que tu choisis, sur une semaine qui commence le jour que tu choisis, et une série de semaines réussies. Rien n'est stocké : tout se recalcule depuis l'historique. Chaque programme porte ses étiquettes (haut du corps, bas du corps, corps entier, sans haltère), et la liste se filtre par zone ou par matériel.
+- **Profils** : chaque profil garde son historique, ses niveaux et ses recalages, et les séances et programmes qu'il a créés ; les autres sont communs. L'écran « Qui s'entraîne ? » s'impose à chaque lancement.
 - **Recalage du niveau** : depuis la fiche d'un exercice, on déclare une performance qu'on sait tenir, et le barème en déduit le niveau.
-- **Séances modifiables sur l'appareil** : l'éditeur de l'application garde ses modifications sur l'appareil, où elles masquent la version déployée (un badge le signale).
+- **Séances et programmes personnalisés** : dans l'application, chacun crée, duplique ou modifie ses séances, et crée ses programmes à partir d'elles (les performances à atteindre se préremplissent). Tout cela reste **dans son profil**, porte une pastille « Personnalisé » et part avec la sauvegarde. Modifier une séance commune en fait sa version à soi, qui la remplace pour ce profil seulement.
 - **Sauvegarde** : l'historique s'exporte et se réimporte en un fichier, depuis l'onglet Historique. À faire régulièrement : Safari peut purger les données d'un site.
 
 `web/static/demo/` est un second livrable, plus petit : un **banc d'essai** d'un exercice isolé, qui sert à faire tester la détection par quelqu'un d'autre et à diagnostiquer un comptage qui ne démarre pas.
@@ -33,7 +33,7 @@ Coach de fitness en temps réel, dans le navigateur : la caméra de l'appareil d
 
 Tout ce qui tourne vit dans `web/static/` :
 
-- `app/` — l'application. `demo/` — le banc d'essai. `dev/` — deux pages de réglage (`baremes.html`, `fiches.html`), voir plus bas.
+- `app/` — l'application. `demo/` — le banc d'essai. `dev/` — les pages de réglage (`baremes.html`, `fiches.html`, `progression.html`) et l'outil maître des séances et programmes communs (`createur.html`), voir plus bas.
 - `js/` — les modules : la séance (`circuit.js`, `moteur.js`, `seance.js`), la détection (`detections.js`, `positions.js`, `compteur.js`, `camera.js`, `cadrage.js`), la progression (`paliers.js`, `niveaux.js`, `objectifs.js`, `ressenti.js`, `calibration.js`, `ligues.js`, `programmes.js`, `variantes.js`), l'historique (`historique.js`, `stockage.js`), le coach (`annonces.js`, `lecteur.js`), l'affichage (`hud.js` et les `*_ui.js`).
 - `donnees/` — les **données**, éditées à la main. Chaque fait n'a qu'une source :
   - `reglages.json` — tous les nombres réglables (barèmes, ligues, XP, note d'athlète). Le **pourquoi** de chaque réglage est dans [docs/reglages.md](docs/reglages.md) ;
@@ -41,12 +41,13 @@ Tout ce qui tourne vit dans `web/static/` :
   - `fiches.json` — le texte des fiches d'exercice ;
   - `mouvements.json` — ce qui est couplé au code (détection, orientation, variantes) ;
   - `seances.json`, `programmes.json`, `sons.json` — les séances, les programmes, les tables du coach.
+  - `categories.json` — la catégorisation des mouvements (muscle, partie du corps, région, chaîne), cachée dans l'application : elle donne aux programmes leur zone.
 - `sons/` — les annonces enregistrées. Le nom d'un fichier est le texte prononcé.
 - `videos/` — la boucle de chaque mouvement, montrée sur sa fiche, dans le guide du premier passage et pendant les pauses. Le nom d'un fichier vient du nom du mouvement ; une vidéo absente n'affiche simplement rien, et `dev/fiches.html` dit lesquelles restent à tourner.
 
 En dehors : `scripts/` (vérifications et outils), `tests/fixtures/` (les réponses figées des tests), `audio/` (prise de son), `video/` (illustration des fiches : `python video/illustrer.py <vidéo> "<exercice>"` détoure, redessine en aplats et écrit la boucle dans `web/static/videos/` ; demande `onnxruntime`, `imageio-ffmpeg` et le modèle RobustVideoMatting dont le script donne l'adresse), `docs/`.
 
-**Régler sans toucher au code** : `dev/baremes.html` et `dev/fiches.html` rechargent les données déployées, les rendent éditables, recalculent tout sous les yeux, et rendent le fichier prêt à coller dans `web/static/donnees/`. On colle, on pousse, c'est déployé.
+**Régler sans toucher au code** : `dev/baremes.html`, `dev/fiches.html` et `dev/createur.html` (les séances et programmes communs, et la promotion d'une création perso lue dans une sauvegarde) rechargent les données déployées, les rendent éditables, recalculent tout sous les yeux, et rendent le fichier prêt à coller dans `web/static/donnees/`. On colle, on pousse, c'est déployé.
 
 ## Lancer en local
 
