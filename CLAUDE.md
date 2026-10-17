@@ -38,7 +38,7 @@ Les noms JS restent en **snake_case** (héritage du portage) : ne rien renommer,
 `scripts/tester.mjs` enchaîne :
 - **`verifier_methodes.mjs`** : chaque `this.methode()` appelée existe, et les `<script type="module">` inline n'ont pas de faute de syntaxe (`node --check` ne lit que les `.js`, or le module de l'application fait trois mille lignes dans `app/index.html` — une faute y donne un écran blanc).
 - **`sommaire.mjs`** (sans argument) : chaque page a un titre et une description pour le sommaire du site.
-- **`verifier_donnees.mjs`** : les JSON de `donnees/` se tiennent (voir *Données*), bornes de ligue (dix-huit, croissantes) et tables de variantes (retour, départ) comprises. C'est l'ancien rôle des validations au chargement, qui n'existent plus nulle part ailleurs.
+- **`verifier_donnees.mjs`** : les JSON de `donnees/` se tiennent (voir *Données*), bornes de ligue (dix-huit, croissantes) et tables de variantes (retour, départ) comprises, et un barème pour tout mouvement compté (sans lui, l'application le jouerait hors moteur, en silence). C'est l'ancien rôle des validations au chargement, qui n'existent plus nulle part ailleurs.
 - **`verifier_annonces.mjs`** : les tables du coach se tiennent (voir *Coach vocal*).
 - **`verifier_instruments.mjs`** : chaque instrument du banc d'essai redit exactement le jeton de sa détection, et toute détection a son instrument.
 - **`verifier_compteur.mjs`** : la position de départ déclarée d'un mouvement (`depart`), que les entrées figées, plus anciennes, ne portent pas.
@@ -82,7 +82,7 @@ Les pages `dev/` rechargent les données déployées, les rendent éditables, re
 
 **Le nom d'une séance est à la fois sa clé et son titre**, et il est référencé ailleurs : valeurs du dict `seances` de chaque programme (sans quoi le programme ne pilote plus rien), `nom_seance` des séances enregistrées (« dernière fois », semaine du programme), `seances_perso` des profils. Renommer une séance casse ces liens en silence ; `verifier_donnees` attrape seulement ceux des programmes.
 
-**Aucun mouvement de tirage ne se fait sans haltère** (les quatre mouvements de dos en exigent) : une séance sans matériel couvre poussée, jambes et gainage, et le dit dans sa description. Ajouter un exercice demande sa détection, son instrument, sa fiche, sa spec, son entrée de matériel, ses bornes de ligue — `verifier_donnees` signale ce qui manque.
+**Aucun mouvement de tirage ne se fait sans haltère** (les quatre mouvements de dos en exigent) : une séance sans matériel couvre poussée, jambes et gainage, et le dit dans sa description. Ajouter un exercice demande sa détection, son instrument, sa fiche, sa spec, son entrée de matériel, ses bornes de ligue — `verifier_donnees` signale ce qui manque. **Un ajout suit le skill `ajouter-exercice`** (`.claude/skills/ajouter-exercice/`) : questionnaire, deux poussées (banc d'essai, puis séance), médias après ; son avancement vit dans une fiche de suivi `docs/exercices/<nom>.md`, supprimée à la fusion dans `main`. Le nom d'un mouvement est une clé définitive : un échauffement appelé à devenir un exercice compté reste un mouvement, et l'exercice en sera un second.
 
 ## Architecture (`web/static/`)
 
@@ -275,4 +275,5 @@ Un exercice isolé, comptage et voix, sans séance ni historique : le livrable p
 - `docs/reglages.md` — le pourquoi de chaque réglage de `reglages.json`.
 - `IDEES_DETECTION.md` — carnet d'idées d'amélioration de la détection (rien n'y est décidé ; certains chemins de fichiers cités datent de la version Python).
 - `audio/A_ENREGISTRER.md` — généré par `lister_annonces.mjs`, ne pas éditer.
+- `docs/exercices/` — les fiches de suivi des exercices en cours d'ajout (skill `ajouter-exercice`).
 - `personaltrainer.db` (non versionné, ignoré) — archive de l'ancienne base SQLite. Ne jamais versionner une base : c'est un historique d'entraînement réel.

@@ -66,7 +66,7 @@ node scripts/tester.mjs
 ```
 
 Une quinzaine de vérifications, en quelques secondes :
-- les **données** se tiennent (`verifier_donnees.mjs`) : chaque séance est jouable, chaque mouvement a sa fiche, chaque programme vise un exercice qui a un barème ;
+- les **données** se tiennent (`verifier_donnees.mjs`) : chaque séance est jouable, chaque mouvement a sa fiche, chaque exercice compté a son barème, chaque programme vise un exercice qui a un barème ;
 - les **tables du coach** se tiennent (`verifier_annonces.mjs`) ;
 - aucune **méthode appelée n'est absente** et les modules inline n'ont pas de faute de syntaxe (`verifier_methodes.mjs`) ;
 - les **tests figés** (`comparer_*.mjs`) rejouent des milliers de questions — poses, séances entières, historiques, barèmes — et comparent aux réponses de `tests/fixtures/`. Ces réponses ont été produites par l'ancienne implémentation Python, puis figées.

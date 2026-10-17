@@ -8,7 +8,8 @@
 // avant le deploiement plutot qu'en seance :
 //
 //  - reglages : chaque bareme a ses champs, et le materiel de son exercice ;
-//    chaque mouvement compte en repetitions a son tempo ;
+//    chaque mouvement compte a son bareme, et son tempo s'il compte en
+//    repetitions ;
 //  - fiches : chaque mouvement a sa fiche, chaque champ a sa forme ;
 //  - mouvements : chaque fonction nommee existe dans `detections.js`, chaque
 //    variante designe un mouvement du catalogue ;
@@ -169,6 +170,15 @@ function main() {
   }
   for (const nom of Object.keys(tempo)) {
     if (!bruts[nom]) signaler("reglages.json", `tempo de « ${nom} », qui n'est pas dans mouvements.json`);
+  }
+
+  // Un mouvement compte sans bareme : l'application le joue quand meme, hors
+  // moteur — ni objectif, ni niveau, ni ligue —, et rien ne dirait que c'est
+  // un oubli. Le reste de la chaine (materiel, bornes) se verifie depuis la
+  // spec : sans elle, c'est ici que l'ajout d'un exercice se fait rappeler.
+  for (const [nom, mouvement] of Object.entries(bruts)) {
+    if (mouvement.est_echauffement || !mouvement.detection) continue;
+    if (!specs[nom]) signaler("reglages.json", `« ${nom} » est compte (detection) mais n'a pas de bareme (specs)`);
   }
 
   // --- fiches et mouvements ---
