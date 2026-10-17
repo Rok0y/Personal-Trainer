@@ -961,5 +961,25 @@
    ],
    "chaine": "cardio"
   }
+ },
+ "Talons-fesses": {
+  "nom": "Talons-fesses",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "profil",
+  "changements": [],
+  "analyse_la_pose": false,
+  "detection": null,
+  "erreurs": [],
+  "amplitude": null,
+  "materiel": "",
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "ischio_jambiers",
+    "mollets"
+   ],
+   "chaine": "cardio"
+  }
  }
 }

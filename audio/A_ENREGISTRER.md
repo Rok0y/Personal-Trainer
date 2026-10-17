@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**20 prises restantes.**
+**21 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -232,6 +232,7 @@ Meme regle. Ils sont annonces comme les exercices, meme s'ils ne comptent nulle 
 | `rotation_du_cou.wav` | « Rotation du cou » | deja fait |
 | `squat_de_priere.wav` | « Squat de prière » | deja fait |
 | `squat_lent.wav` | « Squat lent » | deja fait |
+| `talons_fesses.wav` | « Talons-fesses » | **a enregistrer** |
 | `elevations_laterales_a_vide.wav` | « Élévations latérales à vide » | deja fait |
 
 ## Charges — la gamme courante

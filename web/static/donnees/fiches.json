@@ -801,5 +801,22 @@
     "sensations": [
       "Le cœur accélère et les cuisses chauffent."
     ]
+  },
+  "Talons-fesses": {
+    "description": "Ramener les talons vers les fesses en courant sur place, pour faire monter le cœur.",
+    "mise_en_place": [
+      "Debout, de profil à la caméra, pieds écartés de la largeur des hanches.",
+      "Recule assez pour que tes pieds restent dans l'image quand ils montent."
+    ],
+    "instructions": [
+      "Cours sur place en ramenant un talon vers les fesses, puis l'autre.",
+      "Garde les genoux pointés vers le sol, sous les hanches.",
+      "Reste droit, sans te pencher en avant."
+    ],
+    "erreurs_frequentes": [],
+    "sensations": [
+      "L'arrière des cuisses travaille et le cœur accélère.",
+      "Pose l'avant du pied en douceur, sans taper du talon."
+    ]
   }
 }
