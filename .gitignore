@@ -39,6 +39,10 @@ Desktop.ini
 web/static/index.html
 web/static/sommaire.html
 
+# Les fiches de suivi des ajouts d'exercice, rassemblees au deploiement par
+# `node scripts/suivi.mjs _site` ; en local, `node scripts/suivi.mjs web/static`.
+web/static/dev/suivi.json
+
 # =========================
 # Historiques
 # =========================

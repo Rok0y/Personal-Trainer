@@ -23,6 +23,7 @@ const TESTS = [
   "verifier_methodes",
   "verifier_donnees",
   "sommaire",
+  "suivi",
   "verifier_annonces",
   "verifier_instruments",
   "verifier_semaine",

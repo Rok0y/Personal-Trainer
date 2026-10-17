@@ -1,7 +1,8 @@
 # <Nom de l'exercice>
 
 Fiche de suivi d'un ajout en cours (protocole : `.claude/skills/ajouter-exercice/`). Supprimée à
-la fusion dans `main`.
+la fusion dans `main`. Le titre est le nom exact du mouvement (ou « Nom droit / Nom gauche ») :
+`dev/suivi.html` le retrouve par lui.
 
 ## Questionnaire
 

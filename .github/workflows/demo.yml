@@ -62,10 +62,13 @@ jobs:
       # La racine du site est le sommaire : une carte par page (application,
       # demo, outils de reglage), generee depuis les <title> et les
       # <meta name="description">. Une page ajoutee y apparait d'elle-meme.
+      # Les fiches de suivi des ajouts d'exercice (`docs/exercices/`, hors du
+      # site) sont rassemblees dans `dev/suivi.json`, que lit `dev/suivi.html`.
       - name: Preparer le dossier a publier
         run: |
           cp -r web/static _site
           node scripts/sommaire.mjs _site "${{ github.sha }}"
+          node scripts/suivi.mjs _site "${{ github.sha }}"
 
       # Chaque ressource locale recoit l'empreinte du commit deploye. Sans ca,
       # un navigateur qui tient encore l'ancien module en cache le combine avec

@@ -33,7 +33,7 @@ Coach de fitness en temps réel, dans le navigateur : la caméra de l'appareil d
 
 Tout ce qui tourne vit dans `web/static/` :
 
-- `app/` — l'application. `demo/` — le banc d'essai. `dev/` — les pages de réglage (`baremes.html`, `fiches.html`, `progression.html`) et l'outil maître des séances et programmes communs (`createur.html`), voir plus bas.
+- `app/` — l'application. `demo/` — le banc d'essai. `dev/` — les pages de réglage (`baremes.html`, `fiches.html`, `progression.html`) et l'outil maître des séances et programmes communs (`createur.html`), voir plus bas. `suivi.html` montre où en est chaque exercice en cours d'ajout : les étapes de sa fiche de suivi (`docs/exercices/`) et ce que le site contient déjà.
 - `js/` — les modules : la séance (`circuit.js`, `moteur.js`, `seance.js`), la détection (`detections.js`, `positions.js`, `compteur.js`, `camera.js`, `cadrage.js`), la progression (`paliers.js`, `niveaux.js`, `objectifs.js`, `ressenti.js`, `calibration.js`, `ligues.js`, `programmes.js`, `variantes.js`), l'historique (`historique.js`, `stockage.js`), le coach (`annonces.js`, `lecteur.js`), l'affichage (`hud.js` et les `*_ui.js`).
 - `donnees/` — les **données**, éditées à la main. Chaque fait n'a qu'une source :
   - `reglages.json` — tous les nombres réglables (barèmes, ligues, XP, note d'athlète). Le **pourquoi** de chaque réglage est dans [docs/reglages.md](docs/reglages.md) ;

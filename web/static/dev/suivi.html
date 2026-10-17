@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Ajouts d'exercice — suivi</title>
+<meta name="description" content="Où en est chaque exercice en cours d'ajout : les étapes cochées de sa fiche de suivi, la prochaine à faire, et ce que le site contient déjà (fiche, vidéo, voix, détection, barème).">
+<!-- Detecte qu'un deploiement est arrive et va le chercher (voir baremes.html). -->
+<script type="module" src="../js/version.js"></script>
+<!--
+    Le suivi des ajouts d'exercice.
+
+    Un ajout s'etale sur plusieurs soirees (protocole `ajouter-exercice`), et son
+    avancement vit dans une fiche de suivi Markdown, `docs/exercices/<nom>.md`,
+    cochee et commitee avec le travail. Cette page la rend lisible depuis
+    l'iPad. **Elle ne stocke rien et ne coche rien** : la fiche reste la seule
+    source, et la page montre l'etat de la derniere branche poussee — la CI
+    rassemble les fiches dans `dev/suivi.json` (`scripts/suivi.mjs`), parce
+    qu'une page statique ne sait pas lister un dossier.
+
+    A cote des cases, **ce que le site contient vraiment** : le mouvement au
+    catalogue, sa fiche, sa video et sa voix (requetes HEAD, au meme nom que
+    celui que lit l'application), sa detection et son bareme pour un exercice
+    compte. Ce constat n'est pas recopie de la fiche : quand les deux ne disent
+    pas la meme chose, c'est une case a cocher, ou une etape a refaire.
+
+    En local, `suivi.json` n'existe pas tant qu'on ne l'a pas ecrit :
+    `node scripts/suivi.mjs web/static` (Git l'ignore).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../palette.css">
+<style>
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+        margin: 0; background: var(--bg); color: var(--text);
+        font: 400 14px 'Space Grotesk', system-ui, sans-serif;
+        padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left));
+    }
+    main { width: min(1320px, 100%); margin: 0 auto; }
+    a { color: var(--teal); }
+    h1 { font: 400 clamp(28px, 5vw, 44px) 'Bebas Neue', sans-serif; margin: 0 0 4px; color: var(--teal); }
+    .kicker { color: var(--muted); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; font-weight: 700; margin: 0 0 16px; }
+    .kicker a { color: var(--muted); }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 80ch; }
+    .hint code, .carte code { color: var(--teal); }
+    .etat { color: var(--muted); font-size: 12px; margin: 6px 0 18px; }
+
+    .cartes { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 16px; align-items: start; }
+    .carte { background: var(--glass); border: 1px solid var(--border-strong); border-radius: 14px; padding: 16px 18px; min-width: 0; }
+    .carte.terminee { border-color: var(--teal); }
+    .carte h2 { font: 400 30px 'Bebas Neue', sans-serif; margin: 0; overflow-wrap: anywhere; }
+    .tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+    .nature { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .nature.echauffement { color: var(--mode-echauffement); }
+    .nature.compte { color: var(--mode-repetitions); }
+
+    .jauge { height: 8px; border-radius: 999px; background: var(--border-strong); overflow: hidden; }
+    .jauge > span { display: block; height: 100%; background: var(--teal); border-radius: inherit; }
+    .avancement { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; }
+    .avancement .jauge { flex: 1; }
+    .avancement strong { font-size: 13px; white-space: nowrap; }
+
+    .prochaine { margin: 12px 0; padding: 10px 12px; border-left: 3px solid var(--orange); background: var(--glass-strong); border-radius: 0 8px 8px 0; line-height: 1.5; }
+    .prochaine small { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .carte.terminee .prochaine { border-left-color: var(--teal); }
+
+    h3 { font: 700 11px 'Space Grotesk', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+    .sections { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+    .sections li { display: grid; grid-template-columns: minmax(0, 1fr) 90px 42px; align-items: center; gap: 10px; font-size: 13px; }
+    .sections li span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sections .jauge { height: 6px; }
+    .sections li span:last-child { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+    .constats { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+    .constats .mouvement { width: 100%; font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .puce { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--muted); }
+    .puce.ok { color: var(--teal); border-color: var(--teal); }
+    .puce.manque { color: var(--orange); border-color: var(--orange); }
+
+    details { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
+    summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; }
+    .fiche { line-height: 1.55; font-size: 13px; }
+    .fiche h3 { margin-top: 18px; }
+    .fiche h4 { font: 600 13px 'Space Grotesk', sans-serif; margin: 14px 0 4px; color: var(--text); }
+    .fiche p { margin: 6px 0; color: var(--text); }
+    .fiche-liste { list-style: none; margin: 4px 0; padding: 0; }
+    .fiche-liste li { display: flex; gap: 8px; align-items: baseline; margin: 3px 0; }
+    .fiche-liste li.puce { border: 0; padding: 0; font-size: 13px; font-weight: 400; color: var(--text); }
+    .fiche-liste li.puce::before { content: "•"; color: var(--muted); width: 16px; text-align: center; flex: none; }
+    .coche { flex: none; width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border-strong); display: inline-grid; place-items: center; font-size: 11px; color: var(--bg); transform: translateY(2px); }
+    .case.faite { color: var(--muted); }
+    .case.faite .coche { background: var(--teal); border-color: var(--teal); }
+    .fiche-tableau { overflow-x: auto; margin: 6px 0; }
+    .fiche table { border-collapse: collapse; width: 100%; font-size: 12px; }
+    .fiche th, .fiche td { text-align: left; vertical-align: top; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+    .fiche th { color: var(--muted); font-weight: 600; }
+
+    .vide { background: var(--glass); border: 1px dashed var(--border-strong); border-radius: 14px; padding: 18px; color: var(--muted); line-height: 1.6; }
+</style>
+</head>
+<body>
+<main>
+    <p class="kicker"><a href="../sommaire.html">Sommaire</a> · Outil de suivi — pas un écran d'entraînement</p>
+    <h1>Ajouts d'exercice</h1>
+    <p class="hint">
+        Chaque carte est un exercice en cours d'ajout, lue dans sa fiche de suivi
+        (<code>docs/exercices/</code>). Les cases se cochent dans la conversation,
+        avec le travail ; la page ne fait que les montrer, telles qu'elles sont sur
+        la dernière branche poussée. En dessous, ce que le site contient déjà.
+    </p>
+    <p class="etat" id="etat">Lecture des fiches…</p>
+    <div class="cartes" id="cartes"></div>
+</main>
+
+<script type="module">
+import { DETECTIONS } from "../js/detections.js";
+import { fichier } from "../js/annonces.js";
+import { echapper, en_ligne, lire_suivi, rendre_blocs } from "../js/suivi.js";
+import { adresse_video } from "../js/videos.js";
+
+const $ = (id) => document.getElementById(id);
+
+async function lire_json(adresse) {
+  try {
+    const reponse = await fetch(adresse, { cache: "no-store" });
+    return reponse.ok ? await reponse.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+// Un fichier existe-t-il sur le site ? Au meme nom que celui que l'application
+// lira : un nom calcule a part dirait « present » pendant qu'elle se tait.
+async function present(adresse) {
+  try {
+    return (await fetch(adresse, { method: "HEAD", cache: "no-store" })).ok;
+  } catch {
+    return false;
+  }
+}
+
+const pourcent = (faites, total) => (total ? Math.round((100 * faites) / total) : 0);
+const jauge = (faites, total) => `<span class="jauge"><span style="width:${pourcent(faites, total)}%"></span></span>`;
+const puce = (etat, texte) => `<span class="puce ${etat}">${etat === "ok" ? "✓ " : etat === "manque" ? "✗ " : ""}${echapper(texte)}</span>`;
+
+// Ce que les donnees deployees disent d'un mouvement, sans requete.
+function constats_donnees(nom, mouvements, fiches, specs) {
+  const mouvement = mouvements[nom];
+  if (!mouvement) return [puce("manque", "pas encore au catalogue")];
+  const sortie = [puce("ok", "au catalogue"), puce(fiches[nom] ? "ok" : "manque", "fiche")];
+  if (!mouvement.est_echauffement && mouvement.detection) {
+    sortie.push(puce(DETECTIONS[mouvement.detection] ? "ok" : "manque", "détection"));
+    sortie.push(puce(specs[nom] ? "ok" : "manque", "barème"));
+  }
+  return sortie;
+}
+
+function nature(noms, mouvements) {
+  const connus = noms.map((n) => mouvements[n]).filter(Boolean);
+  if (!connus.length) return "";
+  return connus.every((m) => m.est_echauffement)
+    ? `<span class="nature echauffement">Échauffement</span>`
+    : `<span class="nature compte">Exercice compté</span>`;
+}
+
+function carte({ fichier: nom_fichier, texte }, index, donnees) {
+  const fiche = lire_suivi(texte);
+  const terminee = fiche.total > 0 && fiche.faites === fiche.total;
+  const prochaine = fiche.prochaine
+    ? `<small>Prochaine étape${fiche.prochaine.section ? ` · ${en_ligne(fiche.prochaine.section)}` : ""}</small>${en_ligne(fiche.prochaine.texte)}`
+    : `<small>Tout est coché</small>Prêt à fusionner dans <code>main</code>, avec la suppression de la fiche.`;
+  const sections = fiche.sections
+    .map((s) => `<li><span>${en_ligne(s.titre ?? "Sans titre")}</span>${jauge(s.faites, s.total)}<span>${s.faites}/${s.total}</span></li>`)
+    .join("");
+  const constats = fiche.mouvements
+    .map((nom, i) => `${fiche.mouvements.length > 1 ? `<span class="mouvement">${echapper(nom)}</span>` : ""}` +
+      constats_donnees(nom, donnees.mouvements, donnees.fiches, donnees.specs).join("") +
+      (donnees.mouvements[nom]
+        ? `<span class="puce" data-sonde="video" data-index="${index}-${i}">vidéo…</span>` +
+          `<span class="puce" data-sonde="voix" data-index="${index}-${i}">voix…</span>`
+        : ""))
+    .join("");
+  return `
+    <article class="carte${terminee ? " terminee" : ""}">
+      <div class="tete"><h2>${echapper(fiche.titre ?? nom_fichier)}</h2>${nature(fiche.mouvements, donnees.mouvements)}</div>
+      <div class="avancement">${jauge(fiche.faites, fiche.total)}<strong>${fiche.faites} / ${fiche.total} étapes</strong></div>
+      <div class="prochaine">${prochaine}</div>
+      <h3>Étapes</h3>
+      <ul class="sections">${sections}</ul>
+      <h3>Ce que le site contient</h3>
+      <div class="constats">${constats}</div>
+      <details>
+        <summary>Lire la fiche de suivi (<code>docs/exercices/${echapper(nom_fichier)}</code>)</summary>
+        <div class="fiche">${rendre_blocs(fiche.blocs)}</div>
+      </details>
+    </article>`;
+}
+
+async function sonder(fiches_suivi) {
+  const sondes = [];
+  fiches_suivi.forEach(({ texte }, index) => {
+    lire_suivi(texte).mouvements.forEach((nom, i) => {
+      const cle = `${index}-${i}`;
+      const marquer = (type, ok, texte_ok, texte_manque) => {
+        const element = document.querySelector(`[data-sonde="${type}"][data-index="${cle}"]`);
+        if (!element) return;
+        element.className = `puce ${ok ? "ok" : "manque"}`;
+        element.textContent = ok ? `✓ ${texte_ok}` : `✗ ${texte_manque}`;
+      };
+      sondes.push(present(adresse_video(nom)).then((ok) => marquer("video", ok, "vidéo", "vidéo à tourner")));
+      sondes.push(present(`../sons/${fichier(nom)}`).then((ok) => marquer("voix", ok, "voix", "nom à enregistrer")));
+    });
+  });
+  await Promise.all(sondes);
+}
+
+async function demarrer() {
+  const [suivi, mouvements, fiches, reglages] = await Promise.all([
+    lire_json("./suivi.json"),
+    lire_json("../donnees/mouvements.json"),
+    lire_json("../donnees/fiches.json"),
+    lire_json("../donnees/reglages.json"),
+  ]);
+  if (!suivi) {
+    $("etat").innerHTML = "Aucune fiche publiée. En local, écris-les d'abord : " +
+      "<code>node scripts/suivi.mjs web/static</code>, puis recharge.";
+    return;
+  }
+  const quand = suivi.genere ? new Date(suivi.genere).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" }) : "?";
+  const version = suivi.commit ? `version ${echapper(suivi.commit.slice(0, 7))}, ` : "";
+  const n = suivi.fiches.length;
+  $("etat").innerHTML = `${n} ajout${n > 1 ? "s" : ""} en cours — ${version}publiée le ${echapper(quand)}.`;
+  if (!n) {
+    $("cartes").innerHTML = `<p class="vide">Aucun ajout en cours : chaque fiche de suivi est supprimée quand son exercice entre dans <code>main</code>. Pour en commencer un, demande « ajoute l'exercice … » dans la conversation (protocole <code>ajouter-exercice</code>).</p>`;
+    return;
+  }
+  const donnees = { mouvements: mouvements ?? {}, fiches: fiches ?? {}, specs: reglages?.specs ?? {} };
+  $("cartes").innerHTML = suivi.fiches.map((f, i) => carte(f, i, donnees)).join("");
+  await sonder(suivi.fiches);
+}
+
+demarrer();
+</script>
+</body>
+</html>

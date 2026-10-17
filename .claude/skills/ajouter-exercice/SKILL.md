@@ -56,7 +56,15 @@ Copier `modele_suivi.md` (dans ce dossier) vers `docs/exercices/<nom de fichier>
 fichier est celui que donne `fichier_video(nom)` sans `.mp4`, par exemple
 `talons_fesses.md`. Ne garder que le parcours qui s'applique.
 
-On coche au fil de l'eau, et chaque commit porte la fiche à jour. Le journal du banc d'essai y
+Le titre `# …` est le nom exact du mouvement, ou les deux noms d'un mouvement unilatéral
+séparés par ` / ` (« Fente droite / Fente gauche ») : c'est par lui que `dev/suivi.html`
+retrouve le mouvement au catalogue, sa vidéo et sa voix. `node scripts/suivi.mjs` (joué par
+`tester.mjs`) refuse une fiche sans titre ou sans case.
+
+On coche au fil de l'eau, et chaque commit porte la fiche à jour. L'utilisateur suit
+l'avancement depuis l'iPad sur **`dev/suivi.html`** (dans le sommaire) : la page montre les
+fiches de la dernière branche poussée, la prochaine case, et ce que le site contient déjà. Une
+case cochée sans poussée n'y apparaît donc pas encore. Le journal du banc d'essai y
 reçoit les résumés collés et les seuils changés : c'est ce qui permet de reprendre trois jours
 plus tard. La fiche est **supprimée** dans le commit qui fusionne l'exercice dans `main`.
 
