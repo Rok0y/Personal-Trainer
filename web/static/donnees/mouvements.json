@@ -16,7 +16,14 @@
    "membre": "bras"
   },
   "materiel": "Un haltère",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "biceps",
+    "avant_bras"
+   ],
+   "chaine": "tirer"
+  }
  },
  "Curl biceps gauche": {
   "nom": "Curl biceps gauche",
@@ -35,7 +42,14 @@
    "membre": "bras"
   },
   "materiel": "Un haltère",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "biceps",
+    "avant_bras"
+   ],
+   "chaine": "tirer"
+  }
  },
  "Elevations latérales": {
   "nom": "Elevations latérales",
@@ -48,7 +62,13 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "Deux haltères",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "deltoides"
+   ],
+   "chaine": "pousser"
+  }
  },
  "Pompes": {
   "nom": "Pompes",
@@ -64,7 +84,15 @@
    "forme_pompe_pas_assez_profonde"
   ],
   "materiel": "",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "pectoraux",
+    "triceps",
+    "deltoides"
+   ],
+   "chaine": "pousser"
+  }
  },
  "Extension Triceps": {
   "nom": "Extension Triceps",
@@ -79,7 +107,13 @@
   ],
   "amplitude": null,
   "materiel": "Un haltère",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "triceps"
+   ],
+   "chaine": "pousser"
+  }
  },
  "Developpé couché altères": {
   "nom": "Developpé couché altères",
@@ -93,7 +127,15 @@
   "amplitude": null,
   "depart": "fin",
   "materiel": "Deux haltères et un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "pectoraux",
+    "triceps",
+    "deltoides"
+   ],
+   "chaine": "pousser"
+  }
  },
  "Développé épaule": {
   "nom": "Développé épaule",
@@ -106,7 +148,14 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "Deux haltères",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "deltoides",
+    "triceps"
+   ],
+   "chaine": "pousser"
+  }
  },
  "Crunches": {
   "nom": "Crunches",
@@ -119,7 +168,13 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "Un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "abdominaux"
+   ],
+   "chaine": "gainage"
+  }
  },
  "Gainage planche": {
   "nom": "Gainage planche",
@@ -132,7 +187,14 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "Un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "abdominaux",
+    "lombaires"
+   ],
+   "chaine": "gainage"
+  }
  },
  "Squat": {
   "nom": "Squat",
@@ -145,7 +207,14 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "Un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "fessiers"
+   ],
+   "chaine": "jambes"
+  }
  },
  "Squat chargé": {
   "nom": "Squat chargé",
@@ -158,7 +227,14 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "Deux haltères et un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "fessiers"
+   ],
+   "chaine": "jambes"
+  }
  },
  "Fente droite": {
   "nom": "Fente droite",
@@ -177,7 +253,15 @@
    "membre": "jambe"
   },
   "materiel": "Un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "fessiers",
+    "ischio_jambiers"
+   ],
+   "chaine": "jambes"
+  }
  },
  "Fente droite chargée": {
   "nom": "Fente droite chargée",
@@ -196,7 +280,15 @@
    "membre": "jambe"
   },
   "materiel": "Deux haltères et un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "fessiers",
+    "ischio_jambiers"
+   ],
+   "chaine": "jambes"
+  }
  },
  "Fente gauche": {
   "nom": "Fente gauche",
@@ -215,7 +307,15 @@
    "membre": "jambe"
   },
   "materiel": "Un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "fessiers",
+    "ischio_jambiers"
+   ],
+   "chaine": "jambes"
+  }
  },
  "Fente gauche chargée": {
   "nom": "Fente gauche chargée",
@@ -234,7 +334,15 @@
    "membre": "jambe"
   },
   "materiel": "Deux haltères et un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "fessiers",
+    "ischio_jambiers"
+   ],
+   "chaine": "jambes"
+  }
  },
  "Souleve de terre roumain": {
   "nom": "Souleve de terre roumain",
@@ -247,7 +355,15 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "Deux haltères",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "ischio_jambiers",
+    "fessiers",
+    "lombaires"
+   ],
+   "chaine": "jambes"
+  }
  },
  "Gainage planche laterale droite": {
   "nom": "Gainage planche laterale droite",
@@ -264,7 +380,14 @@
    "membre": "cote"
   },
   "materiel": "Un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "obliques",
+    "abdominaux"
+   ],
+   "chaine": "gainage"
+  }
  },
  "Gainage planche laterale gauche": {
   "nom": "Gainage planche laterale gauche",
@@ -281,7 +404,14 @@
    "membre": "cote"
   },
   "materiel": "Un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "obliques",
+    "abdominaux"
+   ],
+   "chaine": "gainage"
+  }
  },
  "Rowing unilateral droit": {
   "nom": "Rowing unilateral droit",
@@ -300,7 +430,15 @@
    "membre": "bras"
   },
   "materiel": "Un haltère et une chaise",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "dorsaux",
+    "haut_du_dos",
+    "biceps"
+   ],
+   "chaine": "tirer"
+  }
  },
  "Rowing unilateral gauche": {
   "nom": "Rowing unilateral gauche",
@@ -319,7 +457,15 @@
    "membre": "bras"
   },
   "materiel": "Un haltère et une chaise",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "dorsaux",
+    "haut_du_dos",
+    "biceps"
+   ],
+   "chaine": "tirer"
+  }
  },
  "Rowing penche": {
   "nom": "Rowing penche",
@@ -335,7 +481,15 @@
   ],
   "amplitude": null,
   "materiel": "Deux haltères",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "dorsaux",
+    "haut_du_dos",
+    "biceps"
+   ],
+   "chaine": "tirer"
+  }
  },
  "Oiseau": {
   "nom": "Oiseau",
@@ -350,7 +504,14 @@
   ],
   "amplitude": null,
   "materiel": "Deux haltères",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "deltoides",
+    "haut_du_dos"
+   ],
+   "chaine": "tirer"
+  }
  },
  "Pompes inclinées": {
   "nom": "Pompes inclinées",
@@ -366,7 +527,15 @@
    "forme_pompe_pas_assez_profonde"
   ],
   "materiel": "Une chaise",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "pectoraux",
+    "triceps",
+    "deltoides"
+   ],
+   "chaine": "pousser"
+  }
  },
  "Pompes contre le mur": {
   "nom": "Pompes contre le mur",
@@ -382,7 +551,15 @@
    "forme_pompe_pas_assez_profonde"
   ],
   "materiel": "",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "pectoraux",
+    "triceps",
+    "deltoides"
+   ],
+   "chaine": "pousser"
+  }
  },
  "Pompes sur les genoux": {
   "nom": "Pompes sur les genoux",
@@ -398,7 +575,15 @@
    "forme_pompe_pas_assez_profonde"
   ],
   "materiel": "Un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "pectoraux",
+    "triceps",
+    "deltoides"
+   ],
+   "chaine": "pousser"
+  }
  },
  "Gainage sur les genoux": {
   "nom": "Gainage sur les genoux",
@@ -411,7 +596,14 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "Un tapis",
-  "est_echauffement": false
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "abdominaux",
+    "lombaires"
+   ],
+   "chaine": "gainage"
+  }
  },
  "Rotation du cou": {
   "nom": "Rotation du cou",
@@ -429,7 +621,13 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "cou"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Rotation des épaules": {
   "nom": "Rotation des épaules",
@@ -447,7 +645,13 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "deltoides"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Rotation des coudes": {
   "nom": "Rotation des coudes",
@@ -465,7 +669,14 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "biceps",
+    "triceps"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Rotation des poignets": {
   "nom": "Rotation des poignets",
@@ -483,7 +694,13 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "avant_bras"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Élévations latérales à vide": {
   "nom": "Élévations latérales à vide",
@@ -496,7 +713,13 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "deltoides"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Pompes lentes": {
   "nom": "Pompes lentes",
@@ -509,7 +732,15 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "pectoraux",
+    "triceps",
+    "deltoides"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Jumping jacks": {
   "nom": "Jumping jacks",
@@ -522,7 +753,14 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "mollets",
+    "deltoides"
+   ],
+   "chaine": "cardio"
+  }
  },
  "Squat de prière": {
   "nom": "Squat de prière",
@@ -535,7 +773,14 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "adducteurs",
+    "fessiers"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Squat lent": {
   "nom": "Squat lent",
@@ -548,7 +793,14 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "fessiers"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Rotation des genoux": {
   "nom": "Rotation des genoux",
@@ -566,7 +818,14 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "ischio_jambiers"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Rotation des chevilles": {
   "nom": "Rotation des chevilles",
@@ -592,7 +851,13 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "mollets"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Hanches en avant en arrière": {
   "nom": "Hanches en avant en arrière",
@@ -605,7 +870,14 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "fessiers",
+    "lombaires"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Abducteurs": {
   "nom": "Abducteurs",
@@ -623,7 +895,13 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "abducteurs"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Hip thrust": {
   "nom": "Hip thrust",
@@ -636,7 +914,14 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "fessiers",
+    "ischio_jambiers"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Extensions de mollets": {
   "nom": "Extensions de mollets",
@@ -649,7 +934,13 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "mollets"
+   ],
+   "chaine": "mobilite"
+  }
  },
  "Montées de genou": {
   "nom": "Montées de genou",
@@ -662,6 +953,13 @@
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "abdominaux"
+   ],
+   "chaine": "cardio"
+  }
  }
 }

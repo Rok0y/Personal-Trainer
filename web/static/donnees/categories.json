@@ -1,0 +1,45 @@
+{
+ "regions": {
+  "haut": { "nom": "Haut du corps" },
+  "bas": { "nom": "Bas du corps" },
+  "tronc": { "nom": "Gainage", "accompagne": true }
+ },
+ "plusieurs_regions": "Corps entier",
+ "parties": {
+  "bras": { "nom": "Bras", "region": "haut" },
+  "epaules": { "nom": "Épaules", "region": "haut" },
+  "buste": { "nom": "Buste", "region": "haut" },
+  "dos": { "nom": "Dos", "region": "haut" },
+  "cou": { "nom": "Cou", "region": "haut" },
+  "tronc": { "nom": "Tronc", "region": "tronc" },
+  "hanches": { "nom": "Hanches", "region": "bas" },
+  "jambes": { "nom": "Jambes", "region": "bas" }
+ },
+ "muscles": {
+  "biceps": { "nom": "Biceps", "partie": "bras" },
+  "triceps": { "nom": "Triceps", "partie": "bras" },
+  "avant_bras": { "nom": "Avant-bras", "partie": "bras" },
+  "deltoides": { "nom": "Deltoïdes", "partie": "epaules" },
+  "pectoraux": { "nom": "Pectoraux", "partie": "buste" },
+  "dorsaux": { "nom": "Grands dorsaux", "partie": "dos" },
+  "haut_du_dos": { "nom": "Trapèzes et rhomboïdes", "partie": "dos" },
+  "cou": { "nom": "Muscles du cou", "partie": "cou" },
+  "abdominaux": { "nom": "Abdominaux", "partie": "tronc" },
+  "obliques": { "nom": "Obliques", "partie": "tronc" },
+  "lombaires": { "nom": "Lombaires", "partie": "tronc" },
+  "fessiers": { "nom": "Fessiers", "partie": "hanches" },
+  "adducteurs": { "nom": "Adducteurs", "partie": "hanches" },
+  "abducteurs": { "nom": "Abducteurs", "partie": "hanches" },
+  "quadriceps": { "nom": "Quadriceps", "partie": "jambes" },
+  "ischio_jambiers": { "nom": "Ischio-jambiers", "partie": "jambes" },
+  "mollets": { "nom": "Mollets", "partie": "jambes" }
+ },
+ "chaines": {
+  "pousser": { "nom": "Poussée" },
+  "tirer": { "nom": "Tirage" },
+  "jambes": { "nom": "Jambes" },
+  "gainage": { "nom": "Gainage" },
+  "mobilite": { "nom": "Mobilité" },
+  "cardio": { "nom": "Cardio" }
+ }
+}

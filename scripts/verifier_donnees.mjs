@@ -16,6 +16,8 @@
 //    l'editeur de l'application a l'enregistrement ;
 //  - programmes : chaque exigence vise un exercice qui a un bareme, et chaque
 //    libelle est lie a une seance qui existe ;
+//  - categories : les tables muscle → partie → region se tiennent, et chaque
+//    mouvement porte des muscles et une chaine connus ;
 //  - videos : chaque `.mp4` de `videos/` porte le nom (`fichier_video`) d'un
 //    mouvement. Un mouvement renomme rend sa video orpheline, et une video que
 //    rien ne lit est aussi invisible qu'une video absente. Une video
@@ -57,6 +59,7 @@ function main() {
   const bruts = lire("mouvements.json");
   const seances = lire("seances.json");
   const programmes = lire("programmes.json");
+  const categories = lire("categories.json");
 
   // --- reglages ---
   for (const section of ["specs", "ligues", "xp", "note_athlete"]) {
@@ -216,6 +219,32 @@ function main() {
   }
   for (const nom of Object.keys(fiches)) {
     if (!bruts[nom]) signaler("fiches.json", `fiche « ${nom} » pour un mouvement inconnu`);
+  }
+
+  // --- categories ---
+  // Les tables se tiennent (tout muscle a une partie, toute partie une
+  // region), et chaque mouvement porte des muscles et une chaine connus :
+  // sans eux, il disparait des etiquettes de zone sans que rien ne le dise.
+  for (const [cle, muscle] of Object.entries(categories.muscles ?? {})) {
+    if (!categories.parties?.[muscle.partie]) signaler("categories.json", `muscle « ${cle} » : partie « ${muscle.partie} » inconnue`);
+  }
+  for (const [cle, partie] of Object.entries(categories.parties ?? {})) {
+    if (!categories.regions?.[partie.region]) signaler("categories.json", `partie « ${cle} » : region « ${partie.region} » inconnue`);
+  }
+  for (const [cle, region] of Object.entries(categories.regions ?? {})) {
+    if (!region.nom) signaler("categories.json", `region « ${cle} » sans nom`);
+  }
+  if (!categories.plusieurs_regions) signaler("categories.json", "« plusieurs_regions » manque (le nom d'une zone a plusieurs regions)");
+  for (const [nom, mouvement] of Object.entries(bruts)) {
+    const c = mouvement.categories;
+    if (!c || !Array.isArray(c.muscles) || !c.muscles.length) {
+      signaler("mouvements.json", `« ${nom} » : categories.muscles manquant`);
+      continue;
+    }
+    for (const muscle of c.muscles) {
+      if (!categories.muscles?.[muscle]) signaler("mouvements.json", `« ${nom} » : muscle « ${muscle} » absent de categories.json`);
+    }
+    if (!categories.chaines?.[c.chaine]) signaler("mouvements.json", `« ${nom} » : chaine « ${c.chaine} » absente de categories.json`);
   }
 
   // --- seances ---

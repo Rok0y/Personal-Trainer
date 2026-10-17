@@ -120,6 +120,17 @@ export class Variantes {
     return joue;
   }
 
+  /**
+   * Ce mouvement se joue-t-il avec le materiel de ce bareme, lui ou une
+   * variante plus facile ? Le filtre des programmes le demande : « jouable
+   * avec mon materiel » sur le moteur du profil, « sans haltere » sur un
+   * moteur construit avec un inventaire declare vide — la meme regle que
+   * `substitution`, posee a deux materiels.
+   */
+  jouable_avec_le_materiel(nom, catalogue) {
+    return this._jouable_avec_le_materiel(nom, nom, catalogue) !== null;
+  }
+
   /** Une variante doit se mesurer dans la meme unite que l'original. */
   _compatibles(original, joue) {
     if (
