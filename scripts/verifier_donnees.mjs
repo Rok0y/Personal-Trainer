@@ -31,6 +31,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DETECTIONS } from "../web/static/js/detections.js";
+import { PREFIXE_PROGRAMME_PERSO, est_programme_perso } from "../web/static/js/historique.js";
 import { composer_baremes } from "../web/static/js/paliers.js";
 import { avec_fiches, problemes_des_blocs } from "../web/static/js/seance.js";
 import { fichier_video } from "../web/static/js/videos.js";
@@ -255,6 +256,7 @@ function main() {
 
   // --- programmes ---
   for (const [cle, programme] of Object.entries(programmes)) {
+    if (est_programme_perso(cle)) signaler("programmes.json", `« ${cle} » : le prefixe « ${PREFIXE_PROGRAMME_PERSO} » est reserve aux programmes perso`);
     if (!programme.nom?.trim()) signaler("programmes.json", `« ${cle} » : nom manquant`);
     if (!programme.exigences?.length) signaler("programmes.json", `« ${cle} » : aucune exigence`);
     for (const e of programme.exigences ?? []) {

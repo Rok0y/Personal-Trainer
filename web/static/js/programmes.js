@@ -5,12 +5,14 @@
 // le niveau acquis vient de l'historique, et l'ecart se recalcule a chaque
 // affichage. Rien a migrer, rien a tenir a jour.
 //
-// **Il n'y a pas d'editeur de programme, et c'est une decision.**
-// `donnees/programmes.json` fait autorite : il s'edite a la main et un
-// deploiement le propage (`verifier_donnees.mjs` le valide). Un editeur dans
-// l'application creerait une seconde source de verite que rien ne
-// reconcilierait, sur des donnees qu'un appareil hors ligne ne peut pas
-// renvoyer. Chaque fonction recoit donc le programme en argument.
+// **Deux sources, qui ne se reconcilient pas.** `donnees/programmes.json`
+// porte les programmes **communs**, ecrits depuis l'outil maitre
+// (`dev/createur.html`) et propages par un deploiement (`verifier_donnees.mjs`
+// les valide). Un profil peut aussi creer les siens dans l'application
+// (`programmes_perso`, sur le profil) : ils ne remontent jamais au fichier —
+// un site statique n'a personne a qui ecrire —, et une cle prefixee les tient
+// a part (`PREFIXE_PROGRAMME_PERSO`). Chaque fonction recoit donc le
+// programme en argument, d'ou qu'il vienne.
 
 import { UNITE_SECONDES } from "./paliers.js";
 import { arrondi_python } from "./calibration.js";
@@ -432,6 +434,15 @@ export function semaine_du_programme(
       reussi: semaine.complet,
     })),
   };
+}
+
+/**
+ * Les programmes qu'un profil voit : les communs, puis les siens. Les cles
+ * ne se rencontrent pas (prefixe des cles perso), l'ordre est celui de
+ * l'affichage.
+ */
+export function programmes_effectifs(declares, perso) {
+  return { ...(declares ?? {}), ...(perso ?? {}) };
 }
 
 /** Tous les programmes, a partir d'une seule lecture des niveaux. */

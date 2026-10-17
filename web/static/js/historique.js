@@ -21,7 +21,7 @@ import { note_valide } from "./calibration.js";
 import { normaliser as normaliser_variantes } from "./variantes.js";
 
 /** La version du format, ecrite dans chaque export. */
-export const VERSION_BASE = 2;
+export const VERSION_BASE = 3;
 
 //: Les mouvements qui se sont separes en deux a la version 2 : le nom ancien
 //: designe desormais la forme **a vide**, la forme chargee a pris le nom de
@@ -63,12 +63,9 @@ export function base_vide() {
     exercices: [],
     series_realisees: [],
     corrections_niveaux: [],
-    // Les seances editees sur cet appareil. Un site statique n'a pas de
-    // disque a modifier : l'appareil les garde avec le reste de sa base.
-    //
-    // Un objet et non un tableau, parce que c'est la forme de `seances.json`
-    // qu'elles masquent : un nom de seance vers sa liste de blocs.
-    seances_locales: {},
+    // Les seances editees sur l'appareil vivaient ici (`seances_locales`),
+    // communes a tous les profils, jusqu'a la version 3 : elles vivent
+    // desormais sur chaque profil (`seances_perso`).
   };
 }
 
@@ -263,8 +260,8 @@ export function oublier_tuto(base, utilisateur_id, famille = null, nom = null) {
  *
  * **Le dernier profil n'est pas supprimable** : une base sans profil rend
  * l'application inutilisable, et le refus vit ici plutot que dans chaque
- * ecran. `seances_locales` n'est pas touchee : les seances sont communes aux
- * profils.
+ * ecran. Ses seances et programmes perso partent avec lui : ils vivent sur
+ * le profil.
  *
  * Rend le nom du profil supprime. Rien ne rattrape ce geste : c'est a
  * l'appelant de proposer un export avant.
@@ -596,46 +593,165 @@ export function supprimer_ancrages(base, nom_exercice, utilisateur_id) {
 }
 
 // ==========================================
+// SEANCES ET PROGRAMMES PERSONNALISES
+// ==========================================
+//
+// Ce qu'un profil cree ou modifie depuis l'application. **Sur le profil**, et
+// non sur l'appareil : deux personnes partagent la tablette, et une seance
+// faite pour l'une ne doit pas apparaitre chez l'autre. Les collections etant
+// recopiees entieres a l'import, ces champs voyagent dans l'export sans une
+// ligne de code, et partent avec le profil qu'on supprime.
+//
+// Meme forme que les fichiers : `seances_perso` est `{nom: blocs}` comme
+// `seances.json`, `programmes_perso` `{cle: programme}` comme
+// `programmes.json`. Une seance perso **du meme nom** qu'une seance commune
+// la remplace pour ce profil (`catalogue_effectif`) : c'est ce qui laisse un
+// programme commun cocher sa copie modifiee, puisqu'il relit l'historique
+// par nom. On ne peut pas renvoyer une modification au fichier : un site
+// statique n'a pas de serveur a qui ecrire, et l'ecran doit le dire.
+//
+// Aucune migration n'ajoute ces champs a un profil neuf : toute lecture
+// passe par `seances_perso(profil)` / `programmes_perso(profil)`, et « pas
+// de champ » veut dire « rien cree » — meme rattrapage que `tutos_vus`.
+
+//: Le prefixe des cles de programme perso. Une cle commune ne le porte
+//: jamais (`verifier_donnees` le refuse) : les deux ne se rencontrent pas, et
+//: `programme_choisi` designe toujours le bon.
+export const PREFIXE_PROGRAMME_PERSO = "perso-";
+
+function _profil(base, utilisateur_id) {
+  const profil = base.utilisateurs.find((u) => u.id === utilisateur_id);
+  if (!profil) throw new Error(`Profil ${utilisateur_id} introuvable`);
+  return profil;
+}
+
+const _dictionnaire = (brut) =>
+  brut && typeof brut === "object" && !Array.isArray(brut) ? brut : {};
+
+/** Les seances perso d'un profil, `{nom: blocs}`, toujours exploitable. */
+export function seances_perso(profil) {
+  const propres = {};
+  for (const [nom, blocs] of Object.entries(_dictionnaire(profil?.seances_perso))) {
+    if (nom && Array.isArray(blocs)) propres[nom] = blocs;
+  }
+  return propres;
+}
+
+/** Les programmes perso d'un profil, `{cle: programme}`, toujours exploitable. */
+export function programmes_perso(profil) {
+  const propres = {};
+  for (const [cle, programme] of Object.entries(_dictionnaire(profil?.programmes_perso))) {
+    if (est_programme_perso(cle) && programme && typeof programme === "object") propres[cle] = programme;
+  }
+  return propres;
+}
+
+export function est_programme_perso(cle) {
+  return typeof cle === "string" && cle.startsWith(PREFIXE_PROGRAMME_PERSO);
+}
+
+/** Les cles des programmes perso du profil qui font jouer cette seance. */
+export function programmes_qui_citent(profil, nom) {
+  return Object.entries(programmes_perso(profil))
+    .filter(([, programme]) => Object.values(programme.seances ?? {}).includes(nom))
+    .map(([cle]) => cle);
+}
+
+/** Enregistre (cree ou remplace) une seance perso, et rend son nom. */
+export function enregistrer_seance_perso(base, utilisateur_id, nom, blocs) {
+  const propre = (nom ?? "").trim();
+  if (!propre) throw new Error("Une séance a besoin d'un nom.");
+  const profil = _profil(base, utilisateur_id);
+  profil.seances_perso = { ...seances_perso(profil), [propre]: blocs };
+  return propre;
+}
+
+/**
+ * Renomme une seance perso, et les programmes perso du profil qui la citent
+ * la suivent. L'historique, lui, **n'est pas reecrit** : une seance faite
+ * sous l'ancien nom reste ce qu'elle etait, et l'ecran le dit.
+ */
+export function renommer_seance_perso(base, utilisateur_id, ancien, nouveau) {
+  const propre = (nouveau ?? "").trim();
+  if (!propre) throw new Error("Une séance a besoin d'un nom.");
+  const profil = _profil(base, utilisateur_id);
+  const seances = seances_perso(profil);
+  if (!(ancien in seances)) throw new Error(`« ${ancien} » n'est pas une séance personnalisée.`);
+  if (propre === ancien) return propre;
+  if (propre in seances) throw new Error(`Tu as déjà une séance « ${propre} ».`);
+  const renommees = {};
+  // L'ordre des cles est celui de l'affichage : le renommage garde la place.
+  for (const [nom, blocs] of Object.entries(seances)) renommees[nom === ancien ? propre : nom] = blocs;
+  profil.seances_perso = renommees;
+  const programmes = programmes_perso(profil);
+  for (const programme of Object.values(programmes)) {
+    for (const [libelle, seance] of Object.entries(programme.seances ?? {})) {
+      if (seance === ancien) programme.seances[libelle] = propre;
+    }
+  }
+  profil.programmes_perso = programmes;
+  return propre;
+}
+
+/**
+ * Retire une seance perso. **Refuse** si un programme perso du profil la
+ * cite et qu'aucune seance commune du meme nom ne prend le relais
+ * (`reste_commune`) : le programme ne ferait plus rien jouer, en silence.
+ */
+export function oublier_seance_perso(base, utilisateur_id, nom, { reste_commune = false } = {}) {
+  const profil = _profil(base, utilisateur_id);
+  const seances = seances_perso(profil);
+  if (!(nom in seances)) return false;
+  if (!reste_commune) {
+    const citants = programmes_qui_citent(profil, nom);
+    if (citants.length) {
+      const programmes = programmes_perso(profil);
+      const noms = citants.map((cle) => `« ${programmes[cle].nom} »`).join(", ");
+      throw new Error(`Cette séance fait partie de ${noms} : retire-la d'abord du programme.`);
+    }
+  }
+  delete seances[nom];
+  profil.seances_perso = seances;
+  return true;
+}
+
+/**
+ * Enregistre un programme perso et rend sa cle. Sans cle, en cree une
+ * nouvelle, **jamais reprise** d'un programme supprime : le compteur vit sur
+ * le profil, comme les identifiants de la base.
+ */
+export function enregistrer_programme_perso(base, utilisateur_id, cle, programme) {
+  const profil = _profil(base, utilisateur_id);
+  const programmes = programmes_perso(profil);
+  let retenue = cle;
+  if (!retenue) {
+    const suivant = Math.max(
+      Number(profil.prochain_programme_perso) || 1,
+      ...Object.keys(programmes).map((c) => (Number(c.slice(PREFIXE_PROGRAMME_PERSO.length)) || 0) + 1),
+    );
+    retenue = `${PREFIXE_PROGRAMME_PERSO}${suivant}`;
+    profil.prochain_programme_perso = suivant + 1;
+  }
+  if (!est_programme_perso(retenue)) throw new Error(`« ${retenue} » n'est pas une clé de programme personnalisé.`);
+  profil.programmes_perso = { ...programmes, [retenue]: programme };
+  return retenue;
+}
+
+/** Supprime un programme perso ; le profil qui le suivait est libere. */
+export function supprimer_programme_perso(base, utilisateur_id, cle) {
+  const profil = _profil(base, utilisateur_id);
+  const programmes = programmes_perso(profil);
+  if (!(cle in programmes)) return false;
+  delete programmes[cle];
+  profil.programmes_perso = programmes;
+  if (profil.programme_choisi === cle) profil.programme_choisi = null;
+  if (profil.programmes_ordre && cle in profil.programmes_ordre) delete profil.programmes_ordre[cle];
+  return true;
+}
+
+// ==========================================
 // EXPORT / IMPORT
 // ==========================================
-
-/**
- * La base, prete a etre ecrite dans un fichier.
- *
- * Ce n'est pas un raffinement : le stockage d'un navigateur iOS n'est pas un
- * disque dur, et un historique d'entrainement ne se parie pas sur la
- * bienveillance de Safari. C'est aussi le transfert d'un appareil a l'autre
- * tant qu'aucun serveur n'existe.
- */
-// ==========================================
-// SEANCES EDITEES SUR L'APPAREIL
-// ==========================================
-
-/**
- * Enregistre une seance editee ici.
- *
- * Elle **masque** desormais celle de `seances.json`. On ne peut pas renvoyer
- * le resultat au fichier : un site statique n'a pas de serveur a qui ecrire. C'est le prix assume de pouvoir modifier une
- * seance depuis l'appareil, et l'ecran doit le rendre visible plutot que de
- * laisser croire que la modification remontera.
- */
-export function enregistrer_seance_locale(base, nom, blocs) {
-  base.seances_locales = { ...(base.seances_locales ?? {}), [nom]: blocs };
-  return nom;
-}
-
-/** Rend une seance au fichier : la version deployee redevient la bonne. */
-export function oublier_seance_locale(base, nom) {
-  if (!base.seances_locales) return false;
-  const existait = nom in base.seances_locales;
-  delete base.seances_locales[nom];
-  return existait;
-}
-
-/** Cette seance a-t-elle ete modifiee sur cet appareil ? */
-export function est_seance_locale(base, nom) {
-  return Boolean(base.seances_locales && nom in base.seances_locales);
-}
 
 /**
  * Amene une base a la version courante, sur place, et la rend.
@@ -653,6 +769,12 @@ export function est_seance_locale(base, nom) {
  *   ecrite nomme la forme la plus dure, et le materiel ou la note font jouer
  *   la forme a vide a qui en a besoin.
  * - La **cible figee** d'un profil et ses **variantes** suivent le nouveau nom.
+ *
+ * **Version 2 → 3** : les seances editees sur l'appareil (`seances_locales`,
+ * communes a tous ses profils) deviennent les seances perso **de chaque
+ * profil**, sous le meme nom — personne ne voit sa seance changer le jour de
+ * la mise a jour, et chacun peut ensuite revenir a la version commune. Une
+ * seance perso deja la du meme nom l'emporte. `seances_locales` disparait.
  *
  * Une seule fois : le numero de version empeche de renommer deux fois, ce qui
  * changerait une forme a vide choisie apres coup en forme chargee. Une base
@@ -698,9 +820,37 @@ export function migrer(base) {
     }
     base.version = 2;
   }
+  if (base?.version === 2) {
+    const locales = base.seances_locales && typeof base.seances_locales === "object"
+      ? base.seances_locales
+      : {};
+    for (const utilisateur of base.utilisateurs ?? []) {
+      const perso = seances_perso(utilisateur);
+      let ajoutees = 0;
+      for (const [nom, blocs] of Object.entries(locales)) {
+        if (nom in perso || !Array.isArray(blocs)) continue;
+        // Une copie par profil : les modifier ensuite ne doit pas toucher
+        // celle d'un autre. `cible_manuelle` (des identifiants de profil)
+        // voyage tel quel, chaque profil n'y lit que le sien.
+        perso[nom] = structuredClone(blocs);
+        ajoutees += 1;
+      }
+      if (ajoutees) utilisateur.seances_perso = perso;
+    }
+    delete base.seances_locales;
+    base.version = 3;
+  }
   return base;
 }
 
+/**
+ * La base, prete a etre ecrite dans un fichier.
+ *
+ * Ce n'est pas un raffinement : le stockage d'un navigateur iOS n'est pas un
+ * disque dur, et un historique d'entrainement ne se parie pas sur la
+ * bienveillance de Safari. C'est aussi le transfert d'un appareil a l'autre
+ * tant qu'aucun serveur n'existe.
+ */
 export function exporter(base) {
   return JSON.stringify({ ...base, exporte_le: horodatage() }, null, 1);
 }
@@ -720,7 +870,7 @@ export function importer(texte) {
     throw new Error("Ce fichier n'est pas une sauvegarde valide.");
   }
   // Une sauvegarde plus ancienne se relit : `migrer` sait l'amener a jour.
-  if (contenu.version !== VERSION_BASE && contenu.version !== 1) {
+  if (![1, 2, VERSION_BASE].includes(contenu.version)) {
     throw new Error(
       `Sauvegarde en version ${contenu.version ?? "inconnue"}, ` +
         `cette application lit la version ${VERSION_BASE}.`
@@ -742,7 +892,10 @@ export function importer(texte) {
   // sauvegardes deja faites, c'est-a-dire precisement celles qu'on voudra
   // relire le jour ou l'appareil aura ete efface. Le refus bruyant vaut pour
   // ce qu'on ne sait pas lire, pas pour ce qui n'existait pas encore.
-  if (contenu.seances_locales && typeof contenu.seances_locales === "object") {
+  //
+  // `seances_locales` n'existe qu'avant la version 3 : relue, `migrer` la
+  // range sur les profils.
+  if (contenu.version < 3 && contenu.seances_locales && typeof contenu.seances_locales === "object") {
     base.seances_locales = contenu.seances_locales;
   }
   // Les compteurs sont recalcules plutot que relus : un export bricole a la

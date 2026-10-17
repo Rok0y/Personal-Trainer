@@ -6,13 +6,24 @@
 //
 // - les categories d'un mouvement et les etiquettes d'un programme (zone,
 //   « sans haltere », « jouable avec mon materiel ») ;
+// - les seances et programmes perso, rattaches au profil : un autre profil
+//   n'en voit rien, un renommage emporte les programmes qui citent la
+//   seance, une seance citee ne se supprime pas en laissant un programme
+//   sans rien a jouer ;
 //
 //     node scripts/verifier_createurs.mjs
 
 import {
   categories_du_mouvement, etiquettes, exercices_du_programme, nom_zone, zone_des_exercices,
 } from "../web/static/js/categories.js";
+import {
+  base_vide, creer_utilisateur, enregistrer_programme_perso, enregistrer_seance_perso,
+  est_programme_perso, oublier_seance_perso, programmes_perso, renommer_seance_perso,
+  seances_perso, supprimer_programme_perso,
+} from "../web/static/js/historique.js";
 import { Baremes, composer_baremes } from "../web/static/js/paliers.js";
+import { programmes_effectifs } from "../web/static/js/programmes.js";
+import { catalogue_effectif } from "../web/static/js/seance.js";
 import { Variantes } from "../web/static/js/variantes.js";
 
 const problemes = [];
@@ -105,6 +116,61 @@ egal("materiel : l'echauffement ne demande rien",
   etiq(["Rotation", "Squat"], { sans_haltere }).sans_haltere, true);
 egal("materiel : sans question, on ne sait pas (null, jamais « oui »)",
   etiq(["Curl"], {}), { zone: "haut", sans_haltere: null, jouable: null });
+
+// ---------------------------------------------------------------- perso
+/** Le message d'erreur que leve `f`, ou null. */
+function refus(f) {
+  try {
+    f();
+    return null;
+  } catch (erreur) {
+    return erreur.message;
+  }
+}
+{
+  const base = base_vide();
+  const a = creer_utilisateur(base, "A").id;
+  const b = creer_utilisateur(base, "B").id;
+  const profil = (id) => base.utilisateurs.find((u) => u.id === id);
+  const BLOCS = [{ exercice: "Curl", mode: "repetitions", series: 3, repetitions: 10 }];
+
+  egal("perso : un profil sans champ n'a rien", [seances_perso(profil(a)), programmes_perso(profil(a))], [{}, {}]);
+  egal("perso : le nom est nettoye", enregistrer_seance_perso(base, a, "  Bras  ", BLOCS), "Bras");
+  enregistrer_seance_perso(base, a, "Push", BLOCS);
+  egal("perso : un autre profil n'en voit rien", Object.keys(seances_perso(profil(b))), []);
+  egal("perso : un nom vide est refuse", refus(() => enregistrer_seance_perso(base, a, " ", BLOCS)) !== null, true);
+  egal("perso : la copie du meme nom remplace la commune, pour ce profil seulement",
+    [catalogue_effectif({ Push: [], Pull: [] }, seances_perso(profil(a))).Push, catalogue_effectif({ Push: [] }, seances_perso(profil(b))).Push],
+    [BLOCS, []]);
+
+  const cle = enregistrer_programme_perso(base, a, null, { nom: "Mon prog", seances: { Haut: "Bras", Bas: "Push" }, exigences: [] });
+  egal("programme perso : cle prefixee", [cle, est_programme_perso(cle), est_programme_perso("road_to_tkt")], ["perso-1", true, false]);
+  egal("programme perso : la cle suivante est neuve", enregistrer_programme_perso(base, a, null, { nom: "Autre", seances: {} }), "perso-2");
+  egal("programme perso : une cle commune est refusee", refus(() => enregistrer_programme_perso(base, a, "road_to_tkt", {})) !== null, true);
+  egal("programme perso : a cote des communs", Object.keys(programmes_effectifs({ commun: {} }, programmes_perso(profil(a)))), ["commun", "perso-1", "perso-2"]);
+
+  // Renommer : le programme suit, l'ordre de la liste aussi
+  renommer_seance_perso(base, a, "Bras", "Bras et epaules");
+  egal("renommer : le programme perso suit", programmes_perso(profil(a))[cle].seances, { Haut: "Bras et epaules", Bas: "Push" });
+  egal("renommer : la place dans la liste est gardee", Object.keys(seances_perso(profil(a))), ["Bras et epaules", "Push"]);
+  egal("renommer : vers un nom deja pris, refuse", refus(() => renommer_seance_perso(base, a, "Push", "Bras et epaules")) !== null, true);
+
+  // Oublier : refuse si un programme perso la cite et qu'aucune commune ne prend le relais
+  const message = refus(() => oublier_seance_perso(base, a, "Push"));
+  egal("oublier : refuse, et nomme le programme qui la cite", message?.includes("« Mon prog »"), true);
+  egal("oublier : la seance est toujours la", "Push" in seances_perso(profil(a)), true);
+  egal("oublier : permis quand la commune du meme nom prend le relais",
+    oublier_seance_perso(base, a, "Push", { reste_commune: true }), true);
+
+  // Supprimer le programme suivi le libere
+  profil(a).programme_choisi = cle;
+  profil(a).programmes_ordre = { [cle]: ["Bas", "Haut"] };
+  supprimer_programme_perso(base, a, cle);
+  egal("supprimer le programme suivi : le profil est libere, son ordre oublie",
+    [profil(a).programme_choisi, profil(a).programmes_ordre], [null, {}]);
+  egal("supprimer : la cle n'est jamais reprise", enregistrer_programme_perso(base, a, null, { nom: "Neuf", seances: {} }), "perso-3");
+  egal("oublier : sans programme qui la cite, permis", oublier_seance_perso(base, a, "Bras et epaules"), true);
+}
 
 if (problemes.length) {
   console.log(`${problemes.length} ecarts sur ${controles} controles :\n`);

@@ -295,20 +295,22 @@ export function payload_etat(seance, etat, statut = "running", utilisateur_id = 
 
 
 /**
- * Le catalogue reellement joue : le fichier, puis ce que l'appareil a modifie.
+ * Le catalogue reellement joue par un profil : le fichier, puis ses seances
+ * perso (`historique.seances_perso`).
  *
- * **L'appareil gagne**, et c'est un arbitrage. Le fichier deploye reste la
- * source de depart, mais une seance modifiee ici ne doit pas etre reecrite au
- * prochain deploiement : l'edition a ete faite en connaissance de cause,
- * souvent loin de l'ordinateur, et la perdre sans prevenir serait le pire des
- * deux mondes.
+ * **La seance perso gagne** a nom egal, et c'est un arbitrage : modifier une
+ * seance commune en garde le nom par defaut, et le programme qui la cite
+ * continue de la cocher (il relit l'historique par nom). Le fichier deploye
+ * reste la source de depart, mais une seance modifiee ici ne doit pas etre
+ * reecrite au prochain deploiement : l'edition a ete faite en connaissance de
+ * cause, souvent loin de l'ordinateur.
  *
  * Corollaire a rendre visible a l'ecran : une correction faite sur
- * l'ordinateur n'atteindra plus cette seance tant qu'elle est locale. D'ou
- * `oublier_seance_locale`, qui la rend au fichier.
+ * l'ordinateur n'atteint plus la copie perso tant qu'elle existe. D'ou
+ * « revenir a la version commune » (`oublier_seance_perso`).
  */
-export function catalogue_effectif(du_fichier, locales) {
-  return { ...du_fichier, ...(locales ?? {}) };
+export function catalogue_effectif(du_fichier, perso) {
+  return { ...du_fichier, ...(perso ?? {}) };
 }
 
 /**

@@ -1875,8 +1875,8 @@ let tables_baremes = null;
 //: besoin bien apres le chargement.
 let tables_sons = null;
 let programmes_declares = {};
-//: Le catalogue tel qu'il est deploye, avant les modifications locales.
-//: Le garder a part est ce qui permet de rendre une seance au fichier.
+//: Le catalogue tel qu'il est deploye, avant les seances perso du profil.
+//: Le garder a part est ce qui permet de revenir a la version commune.
 let seances_du_fichier = {};
 let moteur = null;
 
@@ -1913,8 +1913,6 @@ async function charger_donnees() {
     const connu = base.utilisateurs.some((u) => u.id === retenu);
     retenir_profil(connu ? retenu : base.utilisateurs[0].id);
   }
-  // Le fichier d'abord, puis ce que l'appareil a modifie par-dessus.
-  seances = catalogue_effectif(seances_du_fichier, base.seances_locales);
   // Sans profil, `construire_moteur` lit `profil?.materiel` et retombe sur
   // l'inventaire par defaut : le moteur existe, il ne sert simplement a rien
   // tant que personne n'est cree. Le construire quand meme evite un `null` a
@@ -1935,6 +1933,23 @@ function construire_moteur() {
   moteur = construire_progression(
     tables_baremes, profil?.materiel ?? null, catalogue_depuis(mouvements),
   );
+  rafraichir_catalogue();
+}
+
+/**
+ * Le catalogue du profil courant : le fichier, puis ses seances perso.
+ *
+ * Recalcule avec le moteur, donc a chaque changement de profil : les seances
+ * perso vivent sur le profil, et garder le catalogue d'un autre ferait jouer
+ * a l'un la seance modifiee par l'autre.
+ */
+function rafraichir_catalogue() {
+  seances = catalogue_effectif(seances_du_fichier, historique.seances_perso(profil_courant()));
+}
+
+/** Cette seance est-elle une seance perso du profil courant ? */
+function est_seance_perso(nom) {
+  return nom in historique.seances_perso(profil_courant());
 }
 
 /**
@@ -2168,7 +2183,7 @@ function circuit_a_jouer(blocs, variantes, objectifs) {
   const circuit = circuit_pour(mouvements, blocs);
   // **Le seul endroit ou les variantes du profil remplacent leurs originaux**,
   // et avant le moteur pour que l'objectif soit celui de la variante. Le
-  // circuit construit ici ne repart jamais dans `seances_locales` (celui de
+  // circuit construit ici ne repart jamais dans `seances_perso` (celui de
   // l'estimation est jete aussitot joue).
   moteur.variantes.appliquer_au_circuit(
     circuit,
@@ -3153,17 +3168,17 @@ function dessiner_resume_de_fin(seance_id, montees_faites = []) {
  * porte la performance realisee, et c'est d'elle que le moteur repartira. On
  * leve donc la marque plutot que de la laisser figer la valeur pour toujours.
  *
- * **Seulement sur une seance editee ici.** Quand elle vient du fichier
- * deploye, lever la marque imposerait d'en ecrire une copie locale, qui
- * masquerait desormais le fichier : on echangerait un badge contre un autre.
- * Le cas ne se pose pas en pratique — une cible figee sur cet appareil vient
- * forcement de l'editeur de cet appareil.
+ * **Seulement sur une seance perso.** Quand elle vient du fichier deploye,
+ * lever la marque imposerait d'en ecrire une copie perso, qui masquerait
+ * desormais le fichier : on echangerait un badge contre un autre. Le cas ne
+ * se pose pas en pratique — une cible figee vient forcement de l'editeur, qui
+ * ecrit une seance perso.
  */
 async function enteriner_cibles_figees() {
   const blocs = seances[nom_seance];
-  if (!blocs || !historique.est_seance_locale(base, nom_seance)) return;
+  if (!blocs || !est_seance_perso(nom_seance)) return;
   if (!enteriner_cibles_manuelles(blocs, PROFIL)) return;
-  historique.enregistrer_seance_locale(base, nom_seance, blocs);
+  historique.enregistrer_seance_perso(base, PROFIL, nom_seance, blocs);
   await stockage.sauver(base);
 }
 
@@ -3612,7 +3627,7 @@ function blocs_a_editer(nom) {
 }
 
 function dessiner_editeur(message = null) {
-  const locale = historique.est_seance_locale(base, seance_editee);
+  const locale = est_seance_perso(seance_editee);
   $("sousTitreEditeur").innerHTML = locale
     ? "Cette séance est <b>modifiée sur cet appareil</b> : les mises à jour " +
       "faites sur l'ordinateur ne l'atteignent plus tant qu'elle l'est."
@@ -3822,9 +3837,9 @@ async function enregistrer_seance_editee() {
     PROFIL
   );
 
-  historique.enregistrer_seance_locale(base, seance_editee, blocs_edites);
+  historique.enregistrer_seance_perso(base, PROFIL, seance_editee, blocs_edites);
   const ecrit = await stockage.sauver(base);
-  seances = catalogue_effectif(seances_du_fichier, base.seances_locales);
+  rafraichir_catalogue();
 
   dessiner_editeur();
   retour.className = "retour-ancrage" + (ecrit ? "" : " erreur");
@@ -6227,7 +6242,7 @@ function dessiner_liste() {
     // fichier. Le point dit qu'il y a quelque chose ; l'explication vient a
     // la selection, sous le bouton de demarrage — un `title` ne s'affiche pas
     // au doigt.
-    const locale = historique.est_seance_locale(base, nom);
+    const locale = est_seance_perso(nom);
     lancer.innerHTML =
       `<div class="carte-titre">${echapper(nom)}` +
       (locale
@@ -6544,9 +6559,11 @@ $("ajouterBloc").addEventListener("click", () => {
 });
 $("enregistrerSeance").addEventListener("click", enregistrer_seance_editee);
 $("rendreAuFichier").addEventListener("click", async () => {
-  historique.oublier_seance_locale(base, seance_editee);
+  historique.oublier_seance_perso(base, PROFIL, seance_editee, {
+    reste_commune: seance_editee in seances_du_fichier,
+  });
   await stockage.sauver(base);
-  seances = catalogue_effectif(seances_du_fichier, base.seances_locales);
+  rafraichir_catalogue();
   blocs_edites = blocs_a_editer(seance_editee);
   dessiner_editeur("Rendue au fichier : elle suivra de nouveau l'ordinateur.");
 });
@@ -6630,6 +6647,9 @@ $("fichierImport").addEventListener("change", async (evenement) => {
   try {
     base = await stockage.lire_fichier(fichier);
     await stockage.sauver(base);
+    // Le catalogue et le moteur suivent la base importee : ses profils
+    // portent leurs seances perso et leur materiel.
+    construire_moteur();
     dessiner_liste();
     $("etatBase").textContent = "Sauvegarde importée.";
   } catch (erreur) {
