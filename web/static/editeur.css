@@ -14,7 +14,7 @@ label {
     letter-spacing: .08em;
 }
 
-#nom {
+#nom, .nom-seance {
     display: block;
     margin-top: 10px;
     width: 100%;
@@ -26,7 +26,7 @@ label {
     color: var(--text);
     font: 15px 'Space Grotesk', sans-serif;
 }
-#nom:focus { outline: none; border-color: var(--teal); }
+#nom:focus, .nom-seance:focus { outline: none; border-color: var(--teal); }
 
 /* ---------- Bloc exercice ---------- */
 
@@ -191,4 +191,60 @@ label {
     .editeur-blocs .bloc .champ:nth-of-type(1),
     .editeur-blocs .bloc .champ:nth-of-type(2) { flex: none; }
     .editeur-blocs .champ label span { display: block; margin-left: 0; }
+}
+
+/* ---------- Éditeur de programme (`editeur_programme.js`) ----------
+   Les libellés de la semaine, puis les performances à atteindre, groupées
+   par libellé. Même habillage de champ que les blocs. */
+.editeur-programme h3 {
+    margin: 22px 0 8px;
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+.editeur-programme h4 { margin: 14px 0 4px; color: var(--teal); font-size: 13px; }
+.prog-champ { margin-bottom: 12px; max-width: 520px; }
+.editeur-programme input, .editeur-programme select, .editeur-programme textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: rgba(255, 255, 255, .04);
+    color: var(--text);
+    font: 13px 'Space Grotesk', sans-serif;
+}
+.editeur-programme select option { background: #0f1420; color: var(--text); }
+.editeur-programme textarea { resize: vertical; }
+.prog-lien, .prog-exigence {
+    display: grid;
+    gap: 8px;
+    align-items: end;
+    padding: 10px 12px;
+    margin: 6px 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--glass);
+}
+.prog-lien { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 34px 34px 34px; }
+.prog-exigence { grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)) 34px; }
+.prog-exercice { align-self: center; color: var(--text); font-weight: 600; font-size: 13px; }
+.prog-lien button, .prog-exigence button {
+    padding: 8px;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--orange);
+    border: 1px solid var(--border-strong);
+}
+.prog-problemes { margin: 14px 0 0; padding-left: 1.2rem; color: var(--orange); font-size: 13px; }
+@media (max-width: 600px) {
+    /* Six colonnes : les deux champs en prennent trois chacun, les trois
+       boutons deux chacun, sur la rangee du dessous. */
+    .prog-lien { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .prog-lien .champ { grid-column: span 3; }
+    .prog-lien button { grid-column: span 2; }
+    .prog-exigence { grid-template-columns: 1fr 1fr 1fr; }
+    .prog-exercice { grid-column: 1 / -1; }
 }

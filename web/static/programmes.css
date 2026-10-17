@@ -69,3 +69,10 @@
     text-transform:none; letter-spacing:normal;
 }
 .ma-semaine-ordre button:disabled { opacity:.3; cursor:default; }
+
+/* Le filtre de l'écran Programmes : un choix à la fois, la pastille active
+   pleine. Il ne s'affiche que quand il y a à choisir (deux programmes). */
+.filtre-programmes { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px; }
+.filtre-programmes button { padding:6px 12px; border-radius:999px; border:1px solid var(--border-strong); background:transparent; color:var(--muted); font-size:13px; }
+.filtre-programmes button.actif { background:var(--teal); border-color:var(--teal); color:#0b0f17; font-weight:600; }
+.programme-puces { margin:8px 0 0; }

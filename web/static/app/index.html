@@ -203,12 +203,8 @@
   }
 
   .carte-titre { font-size: 1.06rem; font-weight: 600; }
-  /* Une seance modifiee sur cet appareil : un point discret a cote du nom,
-     explique sous le bouton une fois la carte selectionnee. */
-  .marque-locale {
-    display: inline-block; width: .5rem; height: .5rem; margin-left: .3rem;
-    border-radius: 50%; background: var(--texte-doux); vertical-align: middle;
-  }
+  /* Une seance perso : la pastille dit qu'elle est a soi, la note sous le
+     bouton de demarrage (carte selectionnee) dit ce que ca implique. */
   .note-locale { margin: .5rem 0 0; font-size: .8rem; color: var(--texte-doux); }
   .carte-detail { color: var(--texte-doux); font-size: 0.85rem; }
 
@@ -237,6 +233,10 @@
   /* Une variante plus facile jouee a la place : un ecart au fichier, comme
      une cible figee, mais choisi pour soi — d'ou le pointille. */
   .puce-variante { color: var(--orange); border: 1px dashed var(--orange); }
+  /* Une seance ou un programme crees ou modifies par ce profil : a lui seul,
+     et hors de portee des mises a jour du fichier. */
+  .puce-perso { color: var(--accent); border: 1px solid var(--accent); }
+  .entete .puce-perso { font-size: 0.72rem; font-weight: 600; }
 
   /* Le profil actif est un onglet a part, pousse a droite : c'est une
      identite, pas une section de l'application. */
@@ -970,6 +970,9 @@
   <p class="sous-titre" id="sousTitre">Choisis ce que tu fais aujourd'hui.</p>
   <h2 class="titre-section">Séances disponibles</h2>
   <div id="listeSeances"></div>
+  <div class="actions" style="justify-content:flex-start;margin-top:.8rem">
+    <button class="bouton secondaire" id="creerSeance">+ Créer une séance</button>
+  </div>
 
   <p class="muet" style="margin-top:1.4rem">
     <button class="onglet" id="boutonMateriel" style="padding:0">Mon matériel</button>
@@ -1114,15 +1117,17 @@
 </section>
 
 <!-- ====================== EDITEUR ====================== -->
-<!-- L'editeur de seances. Il n'ecrit pas dans `seances_personnalisees.json` —
-     un site statique n'a pas de serveur a qui ecrire —, mais dans la base de
-     l'appareil, qui **masque** alors le fichier deploye. L'ecran le dit
+<!-- L'editeur de seances. Il n'ecrit pas dans `seances.json` — un site
+     statique n'a pas de serveur a qui ecrire —, mais une **seance perso** du
+     profil, qui **masque** la commune du meme nom. L'ecran le dit
      explicitement : c'est la seule facon que la precedence ne soit pas une
      surprise au prochain deploiement. -->
 <section class="ecran defile" id="ecranEditeur">
   <button class="bouton secondaire" id="retourEditeur">← Retour aux séances</button>
   <h1 id="titreEditeur">Modifier</h1>
   <p class="sous-titre" id="sousTitreEditeur"></p>
+  <label class="nom-editeur">Nom de la séance
+    <input id="nomEditeur" class="nom-seance" maxlength="60" autocomplete="off"></label>
   <div id="blocsEditeur" class="editeur-blocs"></div>
   <div class="actions" style="justify-content:flex-start;margin-top:1rem">
     <button class="bouton secondaire" id="ajouterBloc">+ Ajouter un exercice</button>
@@ -1130,7 +1135,9 @@
   <p class="retour-ancrage" id="retourEditeurMessage"></p>
   <div class="actions" style="justify-content:flex-start;margin-top:1rem">
     <button class="bouton" id="enregistrerSeance">Enregistrer</button>
-    <button class="bouton secondaire" id="rendreAuFichier" hidden>Revenir à la version du fichier</button>
+    <button class="bouton secondaire" id="dupliquerSeance">Dupliquer</button>
+    <button class="bouton secondaire" id="rendreAuFichier" hidden>Revenir à la version commune</button>
+    <button class="bouton secondaire" id="supprimerSeance" hidden>Supprimer</button>
   </div>
 </section>
 
@@ -1264,8 +1271,8 @@
 <section class="ecran defile" id="ecranProfils">
   <h1 id="profilsTitre">Qui s'entraîne ?</h1>
   <p class="sous-titre" id="profilsIntro">
-    Chaque profil garde son historique, ses records et ses niveaux. Les séances
-    et les programmes, eux, sont communs.
+    Chaque profil garde son historique, ses records et ses niveaux, et les
+    séances et programmes qu'il a créés. Les autres sont communs.
   </p>
   <div id="listeProfils"></div>
   <h2 style="font-size:1rem;margin-top:1.6rem" id="profilsNouveauTitre">Nouveau profil</h2>
@@ -1307,9 +1314,33 @@
   <p class="sous-titre">
     Un programme ne stocke aucune progression : il déclare une performance à
     atteindre par exercice, et l'écart avec ton niveau se recalcule à chaque
-    ouverture. Les programmes s'écrivent sur l'ordinateur, comme les séances.
+    ouverture. Tu peux aussi créer les tiens : ils ne sont visibles que dans
+    ton profil.
   </p>
+  <div id="filtreProgrammes" class="filtre-programmes" role="group" aria-label="Filtrer les programmes"></div>
   <div id="listeProgrammes"></div>
+  <div class="actions" style="justify-content:flex-start">
+    <button class="bouton secondaire" id="creerProgramme">+ Créer un programme</button>
+  </div>
+</section>
+
+<!-- ====================== CREATEUR DE PROGRAMME ====================== -->
+<!-- Un programme perso du profil (`editeur_programme.js`). Il ne remonte
+     jamais au fichier : les programmes communs s'ecrivent dans l'outil
+     maitre (`dev/createur.html`). -->
+<section class="ecran defile" id="ecranCreateurProgramme">
+  <button class="bouton secondaire" id="retourCreateurProgramme">← Retour aux programmes</button>
+  <h1 id="titreCreateurProgramme">Créer un programme</h1>
+  <p class="sous-titre">
+    Un programme personnalisé n'est visible que dans ton profil, et voyage
+    avec ta sauvegarde.
+  </p>
+  <div id="editeurProgramme" class="editeur-programme"></div>
+  <p class="retour-ancrage" id="retourCreateurProgrammeMessage"></p>
+  <div class="actions" style="justify-content:flex-start;margin-top:1rem">
+    <button class="bouton" id="enregistrerProgramme">Enregistrer</button>
+    <button class="bouton secondaire" id="supprimerProgramme" hidden>Supprimer</button>
+  </div>
 </section>
 
 <!-- ====================== EXERCICES ====================== -->
@@ -1659,6 +1690,8 @@ import { brancher_commandes, peindre_hud } from "../js/hud.js";
 import { jouer_si_visible, montrer_video } from "../js/videos.js";
 import { duree_estimee, libelle_duree } from "../js/duree.js";
 import { creer_editeur_seance } from "../js/editeur_seance.js";
+import { creer_editeur_programme, programme_vide } from "../js/editeur_programme.js";
+import { etiquettes, exercices_du_programme, nom_zone } from "../js/categories.js";
 import { INTERVALLE_MAX, ajuster_repetitions, executer_mode, duree_realisee, oublier_durees, mettre_a_jour_prochain_exercice, poser_etape, annoncer_temps_repos } from "../js/moteur.js";
 import { CompteurMouvement } from "../js/compteur.js";
 import { HoldPosition } from "../js/outils.js";
@@ -1703,6 +1736,8 @@ import {
   etat_programme,
   etats_programmes,
   ordre_des_seances,
+  problemes_du_programme,
+  programmes_effectifs,
   resume_palier,
   semaine_du_programme,
 } from "../js/programmes.js";
@@ -1841,13 +1876,16 @@ let tables_baremes = null;
 //: besoin bien apres le chargement.
 let tables_sons = null;
 let programmes_declares = {};
+//: La categorisation des mouvements (`categories.json`) : elle ne s'affiche
+//: pas, elle donne aux programmes leurs etiquettes (zone) et leur filtre.
+let tables_categories = {};
 //: Le catalogue tel qu'il est deploye, avant les seances perso du profil.
 //: Le garder a part est ce qui permet de revenir a la version commune.
 let seances_du_fichier = {};
 let moteur = null;
 
 async function charger_donnees() {
-  const [m, fiches, s, sons, socle, reglages, progs] = await Promise.all([
+  const [m, fiches, s, sons, socle, reglages, progs, categories] = await Promise.all([
     fetch("../donnees/mouvements.json").then((r) => r.json()),
     fetch("../donnees/fiches.json").then((r) => r.json()),
     fetch("../donnees/seances.json").then((r) => r.json()),
@@ -1855,6 +1893,7 @@ async function charger_donnees() {
     fetch("../donnees/baremes.json").then((r) => r.json()),
     fetch("../donnees/reglages.json").then((r) => r.json()),
     fetch("../donnees/programmes.json").then((r) => r.json()),
+    fetch("../donnees/categories.json").then((r) => r.json()),
   ]);
   // Chaque fait n'a qu'une source : le texte des fiches et les nombres
   // reglables vivent dans leurs propres fichiers, edites sur les pages
@@ -1863,6 +1902,7 @@ async function charger_donnees() {
   seances_du_fichier = s;
   tables_baremes = composer_baremes(socle, reglages);
   programmes_declares = progs;
+  tables_categories = categories;
   tables_sons = sons;
   lecteur = new Lecteur("../sons", sons);
   base = await stockage.charger();
@@ -1916,6 +1956,35 @@ function rafraichir_catalogue() {
 /** Cette seance est-elle une seance perso du profil courant ? */
 function est_seance_perso(nom) {
   return nom in historique.seances_perso(profil_courant());
+}
+
+/**
+ * Les programmes que voit le profil courant : les communs, puis les siens.
+ * Relu a chaque appel plutot que garde a cote : un programme perso enregistre
+ * ou supprime n'a ainsi rien a rafraichir.
+ */
+function programmes_du_profil() {
+  return programmes_effectifs(programmes_declares, historique.programmes_perso(profil_courant()));
+}
+
+//: Le moteur d'un profil **sans aucun haltere**, pour l'etiquette « sans
+//: haltere » d'un programme : la regle du materiel (`Variantes`) posee a un
+//: inventaire declare vide. Construit une fois, il ne depend d'aucun profil.
+let moteur_sans_haltere = null;
+
+/**
+ * Les etiquettes d'un programme (`categories.js`) : sa zone, s'il se joue
+ * sans haltere, et avec le materiel du profil.
+ */
+function etiquettes_du_programme(programme) {
+  moteur_sans_haltere ??= construire_progression(
+    tables_baremes, { halteres: {}, accessoires: [] }, catalogue_des_variantes(),
+  );
+  const catalogue = catalogue_des_variantes();
+  return etiquettes(tables_categories, mouvements, exercices_du_programme(programme, seances), {
+    sans_haltere: (nom) => moteur_sans_haltere.variantes.jouable_avec_le_materiel(nom, catalogue),
+    jouable: (nom) => moteur.variantes.jouable_avec_le_materiel(nom, catalogue),
+  });
 }
 
 /**
@@ -3549,19 +3618,30 @@ function dessiner_historique() {
 //: Les modes proposes, avec leur libelle. `MODES_CONNUS` vit dans
 //: `circuit.js` ; ici on n'en donne que la traduction, et l'ordre dans lequel
 //: on veut les voir.
-//: La seance en cours d'edition, et son editeur (`editeur_seance.js`). Il
-//: travaille sur une **copie** : tant qu'on n'a pas enregistre, rien ne doit
-//: bouger dans le catalogue affiche.
+//: La seance en cours d'edition — son nom, ou `null` pour une seance neuve —,
+//: et son editeur (`editeur_seance.js`). Il travaille sur une **copie** :
+//: tant qu'on n'a pas enregistre, rien ne doit bouger dans le catalogue
+//: affiche.
 let seance_editee = null;
 let editeur_seance = null;
 
 function ouvrir_editeur(nom) {
+  preparer_editeur(nom, nom, blocs_a_editer(nom));
+}
+
+/**
+ * Une seance neuve, vide ou copiee d'une autre (« Dupliquer ») : elle
+ * n'existe qu'a l'enregistrement, sous le nom choisi.
+ */
+function ouvrir_createur_seance(blocs = [], nom_propose = "") {
+  preparer_editeur(null, nom_propose, blocs);
+}
+
+function preparer_editeur(nom, nom_affiche, blocs) {
   seance_editee = nom;
-  $("titreEditeur").textContent = nom;
-  editeur_seance = creer_editeur_seance($("blocsEditeur"), {
-    mouvements,
-    blocs: blocs_a_editer(nom),
-  });
+  $("titreEditeur").textContent = nom ?? "Nouvelle séance";
+  $("nomEditeur").value = nom_affiche;
+  editeur_seance = creer_editeur_seance($("blocsEditeur"), { mouvements, blocs });
   dessiner_editeur("");
   montrer("ecranEditeur");
 }
@@ -3587,15 +3667,29 @@ function blocs_a_editer(nom) {
   );
 }
 
+/**
+ * Le sous-titre et les boutons selon ce qu'on edite. Quatre cas : une seance
+ * neuve, une perso, une perso qui remplace la commune du meme nom, une
+ * commune (qu'enregistrer changera en copie perso).
+ */
 function dessiner_editeur(message = null) {
-  const locale = est_seance_perso(seance_editee);
-  $("sousTitreEditeur").innerHTML = locale
-    ? "Cette séance est <b>personnalisée</b> : les mises à jour faites sur " +
-      "l'ordinateur ne l'atteignent plus tant qu'elle l'est."
-    : "Enregistrer ici en fait une <b>séance personnalisée</b>, à toi seul. Le " +
-      "fichier de l'ordinateur ne sera pas mis à jour, et cette séance cessera " +
-      "de suivre ses futures versions.";
-  $("rendreAuFichier").hidden = !locale;
+  const perso = seance_editee !== null && est_seance_perso(seance_editee);
+  const commune = seance_editee !== null && seance_editee in seances_du_fichier;
+  $("sousTitreEditeur").innerHTML =
+    seance_editee === null
+      ? "Une <b>séance personnalisée</b> : elle n'est visible que dans ton " +
+        "profil, et voyage avec ta sauvegarde."
+      : perso && commune
+        ? "C'est <b>ta version</b> de cette séance : les mises à jour faites " +
+          "sur l'ordinateur ne l'atteignent plus tant que tu la gardes."
+        : perso
+          ? "Une <b>séance personnalisée</b>, visible seulement dans ton profil."
+          : "Enregistrer en fait <b>ta version</b>, à toi seul. Garde le nom pour " +
+            "qu'elle remplace celle-ci (les programmes la compteront), ou " +
+            "change-le pour en faire une séance à côté.";
+  $("rendreAuFichier").hidden = !(perso && commune);
+  $("supprimerSeance").hidden = !(perso && !commune);
+  $("dupliquerSeance").hidden = seance_editee === null;
   // `null` veut dire « laisse ce qui est affiche » : redessiner apres un
   // enregistrement effacerait sinon la confirmation au moment ou elle apparait.
   if (message !== null) $("retourEditeurMessage").textContent = message;
@@ -3603,23 +3697,36 @@ function dessiner_editeur(message = null) {
 }
 
 /**
- * Enregistre la seance editee sur l'appareil.
+ * Enregistre la seance editee : une seance perso du profil.
  *
- * Deux choses se font ici et nulle part ailleurs. La **validation**
- * (`problemes_des_blocs`) : un refus a l'enregistrement vaut mieux qu'une
- * erreur en pleine seance. Et le **marquage des cibles manuelles** : une cible
- * qui s'ecarte de ce que le moteur propose est figee, sans que l'utilisateur
- * ait rien a declarer — c'est l'ecart qui est detecte.
+ * Trois choses se font ici et nulle part ailleurs. La **validation**
+ * (`problemes_des_blocs`, et le nom) : un refus a l'enregistrement vaut
+ * mieux qu'une erreur en pleine seance. Le **marquage des cibles manuelles** :
+ * une cible qui s'ecarte de ce que le moteur propose est figee, sans que
+ * l'utilisateur ait rien a declarer — c'est l'ecart qui est detecte. Et le
+ * **nom** : une perso renommee emporte ses programmes perso
+ * (`renommer_seance_perso`) ; une commune enregistree sous son nom est
+ * remplacee pour ce profil, sous un autre nom elle reste a cote.
  */
 async function enregistrer_seance_editee() {
   const retour = $("retourEditeurMessage");
+  const erreur = (texte) => {
+    retour.className = "retour-ancrage erreur";
+    retour.textContent = texte;
+  };
+  const nom = $("nomEditeur").value.trim();
+  const perso = historique.seances_perso(profil_courant());
   const blocs_edites = editeur_seance.blocs();
   const problemes = problemes_des_blocs(mouvements, blocs_edites);
-  if (problemes.length) {
-    retour.className = "retour-ancrage erreur";
-    retour.textContent = problemes[0];
-    return;
+  if (!nom) return erreur("Donne un nom à la séance.");
+  if (nom !== seance_editee && nom in perso) return erreur(`Tu as déjà une séance « ${nom} ».`);
+  // Remplacer une commune ne se fait qu'en la modifiant elle-meme : une
+  // seance neuve, ou renommee, qui prendrait son nom la ferait disparaitre de
+  // la liste sans que rien ne l'annonce.
+  if (nom !== seance_editee && nom in seances_du_fichier) {
+    return erreur(`« ${nom} » est le nom d'une séance commune : choisis-en un autre.`);
   }
+  if (problemes.length) return erreur(problemes[0]);
 
   const { seances: histoire, ancrages, note } = lecture_du_profil();
   moteur.objectifs.marquer_cibles_manuelles(
@@ -3628,17 +3735,30 @@ async function enregistrer_seance_editee() {
     PROFIL
   );
 
-  // Une copie : l'editeur garde sa liste de travail, et une saisie faite
-  // apres l'enregistrement ne doit pas modifier la seance enregistree.
-  historique.enregistrer_seance_perso(base, PROFIL, seance_editee, structuredClone(blocs_edites));
+  let renommee = false;
+  try {
+    if (seance_editee !== null && seance_editee in perso && nom !== seance_editee) {
+      historique.renommer_seance_perso(base, PROFIL, seance_editee, nom);
+      renommee = true;
+    }
+    // Une copie : l'editeur garde sa liste de travail, et une saisie faite
+    // apres l'enregistrement ne doit pas modifier la seance enregistree.
+    historique.enregistrer_seance_perso(base, PROFIL, nom, structuredClone(blocs_edites));
+  } catch (refus) {
+    return erreur(refus.message);
+  }
   const ecrit = await stockage.sauver(base);
   rafraichir_catalogue();
+  seance_editee = nom;
+  $("titreEditeur").textContent = nom;
 
   dessiner_editeur();
   retour.className = "retour-ancrage" + (ecrit ? "" : " erreur");
-  retour.textContent = ecrit
-    ? "Enregistrée sur cet appareil."
-    : "Le stockage a refusé l'écriture : la modification n'est pas conservée.";
+  retour.textContent = !ecrit
+    ? "Le stockage a refusé l'écriture : la modification n'est pas conservée."
+    : renommee
+      ? "Enregistrée. Les séances déjà faites gardent l'ancien nom dans l'historique."
+      : "Enregistrée dans ton profil.";
 }
 
 // ---------------------------------------------------------------- profils
@@ -3665,7 +3785,7 @@ function dessiner_profils() {
     : "Qui s'entraîne ?";
   $("profilsIntro").textContent = premier
     ? "Ton prénom sert à retrouver ton historique. Le reste est facultatif : rien dans le barème n'en dépend, et tout se modifie plus tard depuis ta page de profil."
-    : "Chaque profil garde son historique, ses records et ses niveaux. Les séances et les programmes, eux, sont communs.";
+    : "Chaque profil garde son historique, ses records et ses niveaux, et les séances et programmes qu'il a créés. Les autres sont communs.";
   $("listeProfils").hidden = premier;
   $("profilsNouveauTitre").hidden = premier;
   $("profilsNouveauIntro").hidden = premier;
@@ -5093,32 +5213,39 @@ function bloc_niveau(etat, nom, objectif = null) {
 function dessiner_programmes() {
   const { seances: histoire, ancrages } = lecture_du_profil();
   const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
+  const programmes = programmes_du_profil();
   const etats = etats_programmes(
-    moteur.baremes, programmes_declares, niveaux, variantes_du_profil(),
+    moteur.baremes, programmes, niveaux, variantes_du_profil(),
   );
 
   const cles = Object.keys(etats);
+  const choisi = programme_suivi();
+  dessiner_filtre_programmes(choisi ? [] : cles.map((cle) => programmes[cle]));
   if (!cles.length) {
     $("listeProgrammes").innerHTML =
-      `<p class="vide">Aucun programme défini. Ils s'écrivent depuis l'ordinateur.</p>`;
+      `<p class="vide">Aucun programme pour l'instant. Crée le tien depuis ses séances.</p>`;
     return;
   }
 
   // **On n'en suit qu'un a la fois.** Tant qu'aucun n'est choisi, la page les
   // montre tous, replies, pour qu'on puisse comparer ; des qu'un choix est
   // fait, elle ne montre que celui-la — c'est tout l'objet du choix, et voir
-  // les autres en dessous inviterait a papillonner.
-  const choisi = programme_suivi();
-  const montres = choisi ? [choisi] : cles;
+  // les autres en dessous inviterait a papillonner. Le filtre ne s'applique
+  // qu'au choix : il ne cache jamais le programme suivi.
+  const filtre = filtre_programmes();
+  const montres = choisi
+    ? [choisi]
+    : cles.filter((cle) => programme_passe_le_filtre(programmes[cle], filtre));
 
   $("listeProgrammes").innerHTML =
     (choisi
       ? ""
       : `<p class="sous-titre">Choisis-en un : la page ne montrera plus que ` +
         `celui-là, et l'accueil proposera ses séances dans l'ordre.</p>`) +
+    (montres.length ? "" : `<p class="vide">Aucun programme ne correspond à ce filtre.</p>`) +
     montres
       .map((cle) =>
-        dessiner_programme(etats[cle], programmes_declares[cle], histoire, {
+        dessiner_programme(etats[cle], programmes[cle], histoire, {
           cle,
           replie: !choisi,
           actif: cle === choisi,
@@ -5133,6 +5260,15 @@ function dessiner_programmes() {
 
   for (const bouton of $("listeProgrammes").querySelectorAll("[data-suivre]")) {
     bouton.addEventListener("click", () => definir_programme_suivi(bouton.dataset.suivre));
+  }
+  for (const bouton of $("listeProgrammes").querySelectorAll("[data-modifier-programme]")) {
+    const cle = bouton.dataset.modifierProgramme;
+    bouton.addEventListener("click", () => ouvrir_createur_programme(cle, programmes[cle]));
+  }
+  for (const bouton of $("listeProgrammes").querySelectorAll("[data-dupliquer-programme]")) {
+    const source = programmes[bouton.dataset.dupliquerProgramme];
+    bouton.addEventListener("click", () =>
+      ouvrir_createur_programme(null, { ...structuredClone(source), nom: `${source.nom} (perso)` }));
   }
 
   // Le rythme, le jour de debut et l'ordre **persistent** sur le profil : ce
@@ -5151,7 +5287,7 @@ function dessiner_programmes() {
     bouton.addEventListener("click", () => {
       regler_semaine((utilisateur) => {
         const ordres = { ...(utilisateur.programmes_ordre ?? {}) };
-        const actuel = ordre_des_seances(programmes_declares[choisi], ordres[choisi]);
+        const actuel = ordre_des_seances(programmes[choisi], ordres[choisi]);
         ordres[choisi] = deplacer_seance(actuel, bouton.dataset.libelle, Number(bouton.dataset.deplacer));
         utilisateur.programmes_ordre = ordres;
       });
@@ -5179,7 +5315,110 @@ function dessiner_programmes() {
 function programme_suivi() {
   const profil = base.utilisateurs.find((u) => u.id === PROFIL);
   const choisi = profil?.programme_choisi;
-  return choisi && programmes_declares[choisi] ? choisi : null;
+  return choisi && programmes_du_profil()[choisi] ? choisi : null;
+}
+
+//: Ou le filtre de l'ecran Programmes est retenu : une commodite de
+//: l'appareil, comme le dernier profil, pas une donnee d'entrainement.
+const CLE_FILTRE_PROGRAMMES = "coach.filtre_programmes";
+
+function filtre_programmes() {
+  try {
+    return localStorage.getItem(CLE_FILTRE_PROGRAMMES) || "tous";
+  } catch {
+    return "tous";
+  }
+}
+
+/** Un programme passe-t-il le filtre (une zone, ou une question de materiel) ? */
+function programme_passe_le_filtre(programme, filtre) {
+  if (filtre === "tous") return true;
+  const e = etiquettes_du_programme(programme);
+  if (filtre === "sans_haltere") return e.sans_haltere === true;
+  if (filtre === "jouable") return e.jouable === true;
+  return e.zone === filtre;
+}
+
+/**
+ * Les pastilles du filtre : les zones que portent les programmes, puis le
+ * materiel. Une zone qu'aucun programme n'a ne se propose pas — un filtre qui
+ * ne rend rien n'apprend rien. Rien a filtrer quand un programme est suivi.
+ */
+function dessiner_filtre_programmes(programmes) {
+  const zone = $("filtreProgrammes");
+  const zones = [];
+  for (const programme of programmes) {
+    const z = etiquettes_du_programme(programme).zone;
+    if (z && !zones.includes(z)) zones.push(z);
+  }
+  if (programmes.length < 2) {
+    zone.replaceChildren();
+    return;
+  }
+  const choix = [
+    ["tous", "Tous"],
+    ...zones.map((z) => [z, nom_zone(tables_categories, z)]),
+    ["sans_haltere", "Sans haltère"],
+    ["jouable", "Avec mon matériel"],
+  ];
+  const actif = choix.some(([cle]) => cle === filtre_programmes()) ? filtre_programmes() : "tous";
+  zone.innerHTML = choix
+    .map(([cle, libelle]) =>
+      `<button type="button" data-filtre="${echapper(cle)}" aria-pressed="${cle === actif}"` +
+      `${cle === actif ? ' class="actif"' : ""}>${echapper(libelle)}</button>`)
+    .join("");
+  for (const bouton of zone.querySelectorAll("[data-filtre]")) {
+    bouton.addEventListener("click", () => {
+      try {
+        localStorage.setItem(CLE_FILTRE_PROGRAMMES, bouton.dataset.filtre);
+      } catch {
+        /* le filtre ne sera pas retenu : sans gravite */
+      }
+      dessiner_programmes();
+    });
+  }
+}
+
+// ---------------------------------------------------------------- createur de programme
+
+//: Le programme perso en cours d'edition — sa cle, ou `null` pour un neuf —,
+//: et son editeur (`editeur_programme.js`).
+let programme_edite = null;
+let editeur_programme = null;
+
+/** Ouvre le createur sur un programme perso, ou sur un neuf (`cle` nulle). */
+function ouvrir_createur_programme(cle, programme = programme_vide()) {
+  programme_edite = cle;
+  $("titreCreateurProgramme").textContent = cle ? "Modifier mon programme" : "Créer un programme";
+  $("supprimerProgramme").hidden = !cle;
+  $("retourCreateurProgrammeMessage").textContent = "";
+  // Les seances du profil, perso comprises : un programme perso fait jouer
+  // ce que le profil voit.
+  editeur_programme = creer_editeur_programme($("editeurProgramme"), {
+    programme, catalogue: seances, baremes: moteur.baremes,
+  });
+  montrer("ecranCreateurProgramme");
+}
+
+async function enregistrer_programme_edite() {
+  const retour = $("retourCreateurProgrammeMessage");
+  const programme = editeur_programme.programme();
+  const problemes = problemes_du_programme(moteur.baremes, programme, seances);
+  if (problemes.length) {
+    retour.className = "retour-ancrage erreur";
+    retour.textContent = problemes[0];
+    return;
+  }
+  programme_edite = historique.enregistrer_programme_perso(base, PROFIL, programme_edite, programme);
+  const ecrit = await stockage.sauver(base);
+  if (!ecrit) {
+    retour.className = "retour-ancrage erreur";
+    retour.textContent = "Le stockage a refusé l'écriture : le programme n'est pas conservé.";
+    return;
+  }
+  dessiner_programmes();
+  dessiner_resume_programme();
+  montrer("ecranProgrammes");
 }
 
 /** Ecrit le choix sur le profil, puis redessine les deux ecrans concernes. */
@@ -5307,11 +5546,28 @@ function dessiner_programme(etat, declare, histoire, options = {}) {
     ? dessiner_reglages_semaine(semaine, Boolean(profil?.programmes_ordre?.[options.cle]))
     : "";
 
-  const action = options.actif
-    ? ""
-    : `<div class="actions" style="justify-content:flex-start">` +
-      `<button type="button" class="bouton" data-suivre="${echapper(options.cle ?? "")}">` +
-      `Suivre ce programme</button></div>`;
+  // Un programme perso se modifie ; un commun se duplique en perso, seule
+  // facon de l'adapter sans toucher a celui des autres.
+  const cle = echapper(options.cle ?? "");
+  const perso = historique.est_programme_perso(options.cle);
+  const edition = perso
+    ? `<button type="button" class="bouton secondaire" data-modifier-programme="${cle}">Modifier</button>`
+    : `<button type="button" class="bouton secondaire" data-dupliquer-programme="${cle}">Dupliquer en programme perso</button>`;
+  const action =
+    `<div class="actions" style="justify-content:flex-start">` +
+    (options.actif ? "" : `<button type="button" class="bouton" data-suivre="${cle}">Suivre ce programme</button>`) +
+    edition +
+    `</div>`;
+
+  // Les etiquettes deduites des exercices : la zone, et « sans haltere »
+  // quand le programme se joue sans materiel. Les categories fines
+  // (muscles, chaines) restent invisibles.
+  const e = etiquettes_du_programme(declare);
+  const puces = [
+    perso ? `<span class="puce puce-perso">Personnalisé</span>` : "",
+    e.zone ? `<span class="puce">${echapper(nom_zone(tables_categories, e.zone) ?? "")}</span>` : "",
+    e.sans_haltere ? `<span class="puce">Sans haltère</span>` : "",
+  ].join("");
 
   return (
     `<section class="programme${etat.battu ? " battu" : ""}">` +
@@ -5319,6 +5575,7 @@ function dessiner_programme(etat, declare, histoire, options = {}) {
     `<span class="compte">${
       etat.battu ? "Programme battu !" : `${etat.pourcentage} % de progression`
     }</span></div>` +
+    (puces ? `<div class="puces programme-puces">${puces}</div>` : "") +
     (etat.description ? `<p class="description">${echapper(etat.description)}</p>` : "") +
     `<div class="jauge"><span style="width:${etat.pourcentage}%"></span></div>` +
     `<p class="description">Moyenne de l'avancement sur les ${etat.total} exigences · ` +
@@ -5679,7 +5936,7 @@ function dessiner_resume_programme() {
   const conteneur = $("resumeProgramme");
   conteneur.replaceChildren();
 
-  const cles = Object.keys(programmes_declares);
+  const cles = Object.keys(programmes_du_profil());
   if (!cles.length) return;
 
   const cle = programme_suivi();
@@ -5701,7 +5958,7 @@ function dessiner_resume_programme() {
     });
     return;
   }
-  const declare = programmes_declares[cle];
+  const declare = programmes_du_profil()[cle];
 
   const { seances: histoire, ancrages } = lecture_du_profil();
   const niveaux = moteur.niveaux.etats_niveaux(histoire, ancrages);
@@ -6028,21 +6285,12 @@ function dessiner_liste() {
     // ailleurs sans deplier.
     const lancer = document.createElement("button");
     lancer.className = "carte-lancer";
-    // **Une seance modifiee ici se signale par un point, pas par un badge.**
-    // Le badge orange « modifiee sur cet appareil » s'affichait a chaque
-    // retouche et prenait la place d'un avertissement, pour une information
-    // qui ne sert qu'au moment de choisir entre cette version et celle du
-    // fichier. Le point dit qu'il y a quelque chose ; l'explication vient a
-    // la selection, sous le bouton de demarrage — un `title` ne s'affiche pas
-    // au doigt.
+    // Une seance perso porte sa pastille dans la barre (plus bas) ;
+    // l'explication vient a la selection, sous le bouton de demarrage — un
+    // `title` ne s'affiche pas au doigt.
     const locale = est_seance_perso(nom);
     lancer.innerHTML =
-      `<div class="carte-titre">${echapper(nom)}` +
-      (locale
-        ? ` <span class="marque-locale" role="img" aria-label="modifiée sur cet appareil" ` +
-          `title="Modifiée sur cet appareil"></span>`
-        : "") +
-      `</div>` +
+      `<div class="carte-titre">${echapper(nom)}</div>` +
       `<div class="carte-detail">${exercices.length} exercice${exercices.length > 1 ? "s" : ""}` +
       (echauffements ? ` · ${echauffements} échauffement${echauffements > 1 ? "s" : ""}` : "") +
       (duree ? ` · ${duree}` : "") +
@@ -6074,9 +6322,10 @@ function dessiner_liste() {
     if (locale) {
       const note = document.createElement("p");
       note.className = "note-locale";
-      note.textContent =
-        "Modifiée sur cet appareil : les changements faits sur l'ordinateur ne " +
-        "l'atteignent plus. Le crayon permet de revenir à leur version.";
+      note.textContent = nom in seances_du_fichier
+        ? "Ta version de cette séance : les changements faits sur l'ordinateur " +
+          "ne l'atteignent plus. Le crayon permet de revenir à la version commune."
+        : "Séance personnalisée : visible seulement dans ton profil.";
       demarrage.appendChild(note);
     }
     carte.appendChild(demarrage);
@@ -6099,6 +6348,12 @@ function dessiner_liste() {
     // precisement ce qu'on ne doit pas avoir a deplier pour voir.
     const barre = document.createElement("div");
     barre.className = "barre-carte";
+    if (locale) {
+      const marque = document.createElement("span");
+      marque.className = "puce puce-perso";
+      marque.textContent = "Personnalisée";
+      barre.appendChild(marque);
+    }
     // Une variante jouee a la place est un ecart au fichier, comme une cible
     // figee : il se voit sans deplier.
     const variantes = variantes_du_profil();
@@ -6336,14 +6591,50 @@ $("retourEditeur").addEventListener("click", () => {
 });
 $("ajouterBloc").addEventListener("click", () => editeur_seance.ajouter_bloc());
 $("enregistrerSeance").addEventListener("click", enregistrer_seance_editee);
+$("creerSeance").addEventListener("click", () => ouvrir_createur_seance());
+$("creerProgramme").addEventListener("click", () => ouvrir_createur_programme(null));
+$("retourCreateurProgramme").addEventListener("click", () => {
+  dessiner_programmes();
+  montrer("ecranProgrammes");
+});
+$("enregistrerProgramme").addEventListener("click", enregistrer_programme_edite);
+$("supprimerProgramme").addEventListener("click", async () => {
+  const nom = historique.programmes_perso(profil_courant())[programme_edite]?.nom ?? "ce programme";
+  if (!confirm(`Supprimer « ${nom} » ? Les séances déjà faites restent dans l'historique.`)) return;
+  historique.supprimer_programme_perso(base, PROFIL, programme_edite);
+  await stockage.sauver(base);
+  dessiner_programmes();
+  dessiner_resume_programme();
+  montrer("ecranProgrammes");
+});
+$("dupliquerSeance").addEventListener("click", () => {
+  const nom = $("nomEditeur").value.trim() || seance_editee || "Séance";
+  const pris = new Set(Object.keys(seances));
+  let copie = `${nom} (copie)`;
+  for (let n = 2; pris.has(copie); n += 1) copie = `${nom} (copie ${n})`;
+  // La saisie en cours voyage avec la copie : on duplique ce qu'on voit.
+  ouvrir_createur_seance(structuredClone(editeur_seance.blocs()), copie);
+});
 $("rendreAuFichier").addEventListener("click", async () => {
-  historique.oublier_seance_perso(base, PROFIL, seance_editee, {
-    reste_commune: seance_editee in seances_du_fichier,
-  });
+  historique.oublier_seance_perso(base, PROFIL, seance_editee, { reste_commune: true });
   await stockage.sauver(base);
   rafraichir_catalogue();
   editeur_seance.remplacer(blocs_a_editer(seance_editee));
-  dessiner_editeur("Rendue au fichier : elle suivra de nouveau l'ordinateur.");
+  dessiner_editeur("Revenue à la version commune : elle suivra de nouveau l'ordinateur.");
+});
+$("supprimerSeance").addEventListener("click", async () => {
+  if (!confirm(`Supprimer la séance « ${seance_editee} » ? L'historique de celles déjà faites reste.`)) return;
+  try {
+    historique.oublier_seance_perso(base, PROFIL, seance_editee);
+  } catch (refus) {
+    $("retourEditeurMessage").className = "retour-ancrage erreur";
+    $("retourEditeurMessage").textContent = refus.message;
+    return;
+  }
+  await stockage.sauver(base);
+  rafraichir_catalogue();
+  dessiner_liste();
+  montrer("ecranSeances");
 });
 // Delegue sur le document : les boutons de profil sont rendus par
 // `remplir_barres_onglets`, et un ecran ajoute plus tard aura le sien sans
