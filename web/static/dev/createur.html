@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Créateur de séances et de programmes — maître</title>
+<meta name="description" content="Créer, modifier, renommer et supprimer les séances et programmes communs, promouvoir une création perso lue dans une sauvegarde, puis copier seances.json et programmes.json.">
+<!-- Detecte qu'un deploiement est arrive et va le chercher (voir `version.js`).
+     Ne touche aucun stockage de l'application. -->
+<script type="module" src="../js/version.js"></script>
+<!--
+    L'outil maitre des seances et des programmes **communs**.
+
+    Ce qu'il produit est accessible a tout le monde : `seances.json` et
+    `programmes.json`, a coller dans `web/static/donnees/` puis a pousser. Le
+    site n'a pas de serveur : la page ne peut rien ecrire elle-meme, elle rend
+    les deux fichiers, exactement comme `baremes.html` rend `reglages.json`.
+
+    **Aucune regle n'est ecrite ici.** Les editeurs (`editeur_seance.js`,
+    `editeur_programme.js`), les refus (`problemes_des_blocs`,
+    `problemes_du_programme`), la duree estimee, les etiquettes et la
+    promotion sont les modules de l'application : ce que la page accepte,
+    `verifier_donnees` et l'application l'acceptent aussi.
+
+    Les creations **perso** se font dans l'application, sur le profil ; ici on
+    peut les **promouvoir** depuis une sauvegarde exportee (`promotion.js`).
+
+    **Elle est publique, simplement absente de l'application** : le sommaire
+    du site la liste. Elle ne lit ni n'ecrit la base d'entrainement — une
+    sauvegarde importee pour promotion est relue en memoire, jamais enregistree.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../palette.css">
+<link rel="stylesheet" href="../editeur.css">
+<style>
+    [hidden] { display: none !important; }
+    body {
+        margin: 0; padding: 20px; background: var(--bg); color: var(--text);
+        font: 400 14px/1.5 'Space Grotesk', sans-serif;
+    }
+    main { max-width: 1180px; margin: 0 auto; }
+    h1 { font: 400 clamp(28px, 5vw, 44px) 'Bebas Neue', sans-serif; margin: 0 0 4px; color: var(--teal); }
+    h2 { font: 400 26px 'Bebas Neue', sans-serif; letter-spacing: .03em; margin: 28px 0 8px; }
+    .kicker { color: var(--muted); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; font-weight: 700; margin: 0 0 16px; }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 80ch; }
+    .barre { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
+    .bouton {
+        background: var(--teal); color: var(--bg); border: 0; border-radius: 999px;
+        padding: 9px 18px; font: 700 12px 'Space Grotesk', sans-serif;
+        letter-spacing: .06em; text-transform: uppercase; cursor: pointer; width: auto;
+    }
+    .bouton.secondaire { background: none; color: var(--text); border: 1px solid var(--border-strong); }
+    .bouton:disabled { opacity: .4; cursor: default; }
+    select.choix, input.choix {
+        background: var(--glass-strong); color: var(--text); font: inherit;
+        border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 10px; max-width: 100%;
+    }
+    .onglets-maitre { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 6px; border-bottom: 1px solid var(--border-strong); }
+    .onglets-maitre button {
+        background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted);
+        padding: 8px 14px; font: 600 14px 'Space Grotesk', sans-serif; cursor: pointer;
+    }
+    .onglets-maitre button.actif { color: var(--teal); border-bottom-color: var(--teal); }
+    .panneau { padding: 4px 0 10px; }
+    .apercu { margin: 14px 0; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--glass); }
+    .apercu h3 { margin: 0 0 6px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .puce { display: inline-block; font-size: 12px; padding: 2px 9px; margin: 0 4px 4px 0; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--muted); }
+    .puce.ok { color: var(--teal); border-color: var(--teal); }
+    .erreurs { margin: 8px 0 0; padding-left: 1.2rem; color: var(--orange); font-size: 13px; }
+    .retour { font-size: 13px; color: var(--muted); }
+    .retour.erreur { color: var(--orange); }
+    .retour.ok { color: var(--teal); }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { text-align: left; padding: 5px 9px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+    .tableau { overflow-x: auto; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--glass); }
+    .profil-promu { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--glass); }
+    .profil-promu h3 { margin: 0 0 8px; }
+    .ligne-promue { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--border); }
+    .ligne-promue span.nom { flex: 1 1 14rem; font-weight: 600; }
+    textarea.json { width: 100%; box-sizing: border-box; min-height: 200px; font: 400 12px ui-monospace, monospace; white-space: pre;
+        background: var(--glass-strong); color: var(--text); border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px; }
+    .etat { font-size: 12px; color: var(--muted); }
+    .etat.brouillon { color: var(--orange); font-weight: 700; }
+    label.case { display: inline-flex; gap: 6px; align-items: center; margin: 0; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--text); }
+    label.case input { width: auto; }
+</style>
+</head>
+<body>
+<main>
+    <p class="kicker">Outil maître — les séances et programmes de tout le monde</p>
+    <h1>Créateur de séances et de programmes</h1>
+    <p class="hint">
+        Ce que tu crées ici est <b>commun</b> : tout utilisateur le reçoit avec
+        l'application. Applique tes changements au brouillon, puis copie les
+        deux fichiers du bas de page dans <code>web/static/donnees/</code>, commit,
+        push. Les créations personnelles se font dans l'application ; l'onglet
+        « Promouvoir » les rend communes depuis une sauvegarde.
+    </p>
+    <div class="barre">
+        <span class="etat" id="etat"></span>
+        <button class="bouton secondaire" id="reinitialiser">Revenir aux fichiers déployés</button>
+    </div>
+
+    <nav class="onglets-maitre" role="tablist">
+        <button type="button" data-panneau="panneauSeances" class="actif">Séances</button>
+        <button type="button" data-panneau="panneauProgrammes">Programmes</button>
+        <button type="button" data-panneau="panneauPromouvoir">Promouvoir</button>
+        <button type="button" data-panneau="panneauCategories">Catégories</button>
+    </nav>
+
+    <!-- ------------------------------------------------------------ seances -->
+    <section class="panneau" id="panneauSeances">
+        <div class="barre">
+            <select class="choix" id="choixSeance" aria-label="Séance à modifier"></select>
+            <button class="bouton secondaire" id="nouvelleSeance">+ Nouvelle séance</button>
+            <button class="bouton secondaire" id="dupliquerSeance">Dupliquer</button>
+        </div>
+        <label>Nom de la séance
+            <input id="nomSeance" class="nom-seance" maxlength="60" autocomplete="off"></label>
+        <p class="hint" id="avertNom" hidden></p>
+        <div class="barre">
+            <span class="etat">Proposer les exercices :</span>
+            <select class="choix" id="filtreCategorie" aria-label="Filtrer les exercices par catégorie"></select>
+        </div>
+        <div id="blocsSeance" class="editeur-blocs"></div>
+        <div class="barre">
+            <button class="bouton secondaire" id="ajouterBloc">+ Ajouter un exercice</button>
+        </div>
+        <div class="apercu" id="apercuSeance"></div>
+        <div class="barre">
+            <button class="bouton" id="appliquerSeance">Appliquer au brouillon</button>
+            <button class="bouton secondaire" id="supprimerSeance">Supprimer la séance</button>
+            <span class="retour" id="retourSeance"></span>
+        </div>
+    </section>
+
+    <!-- ------------------------------------------------------------ programmes -->
+    <section class="panneau" id="panneauProgrammes" hidden>
+        <div class="barre">
+            <select class="choix" id="choixProgramme" aria-label="Programme à modifier"></select>
+            <button class="bouton secondaire" id="nouveauProgramme">+ Nouveau programme</button>
+        </div>
+        <label>Clé du programme
+            <input id="cleProgramme" class="choix" maxlength="60" autocomplete="off"></label>
+        <p class="hint">La clé ne change plus une fois le programme publié : c'est elle que retient le profil qui le suit.</p>
+        <div id="editeurProgramme" class="editeur-programme"></div>
+        <div class="apercu" id="apercuProgramme"></div>
+        <div class="barre">
+            <button class="bouton" id="appliquerProgramme">Appliquer au brouillon</button>
+            <button class="bouton secondaire" id="supprimerProgramme">Supprimer le programme</button>
+            <span class="retour" id="retourProgramme"></span>
+        </div>
+    </section>
+
+    <!-- ------------------------------------------------------------ promouvoir -->
+    <section class="panneau" id="panneauPromouvoir" hidden>
+        <p class="hint">
+            Lis une sauvegarde exportée de l'application (Historique → Exporter).
+            Elle reste en mémoire : rien n'est enregistré, et la page ne garde
+            que ce que tu rends commun. Une séance ou un programme qui porte déjà
+            un nom commun n'est remplacé que si tu coches « remplacer ».
+        </p>
+        <div class="barre">
+            <input type="file" id="fichierSauvegarde" accept="application/json,.json">
+            <label class="case"><input type="checkbox" id="remplacer"> remplacer ce qui porte le même nom</label>
+        </div>
+        <p class="retour" id="retourPromotion"></p>
+        <div id="listePromotion"></div>
+    </section>
+
+    <!-- ------------------------------------------------------------ categories -->
+    <section class="panneau" id="panneauCategories" hidden>
+        <p class="hint">
+            La catégorisation de chaque mouvement (<code>mouvements.json</code>,
+            champ <code>categories</code>) et ce qu'on en déduit par
+            <code>categories.json</code>. Elle ne s'affiche pas dans
+            l'application : elle donne aux programmes leur zone. Pour corriger,
+            édite les deux fichiers à la main — <code>verifier_donnees</code>
+            contrôle qu'ils se tiennent.
+        </p>
+        <div class="tableau"><table id="tableCategories"></table></div>
+    </section>
+
+    <h2>Les fichiers à coller</h2>
+    <p class="hint">Contenu exact de <code>web/static/donnees/seances.json</code> puis de <code>programmes.json</code>.</p>
+    <div class="barre">
+        <button class="bouton" data-copier="jsonSeances">Copier seances.json</button>
+        <span class="etat" data-copie="jsonSeances"></span>
+    </div>
+    <textarea class="json" id="jsonSeances" spellcheck="false" readonly></textarea>
+    <div class="barre">
+        <button class="bouton" data-copier="jsonProgrammes">Copier programmes.json</button>
+        <span class="etat" data-copie="jsonProgrammes"></span>
+    </div>
+    <textarea class="json" id="jsonProgrammes" spellcheck="false" readonly></textarea>
+</main>
+
+<script type="module">
+import { avec_fiches, circuit_pour, problemes_des_blocs } from "../js/seance.js";
+import { Baremes, composer_baremes } from "../js/paliers.js";
+import { construire_progression } from "../js/progression.js";
+import { catalogue_depuis } from "../js/variantes.js";
+import { duree_estimee, libelle_duree } from "../js/duree.js";
+import { creer_editeur_seance } from "../js/editeur_seance.js";
+import { creer_editeur_programme, programme_vide } from "../js/editeur_programme.js";
+import { problemes_du_programme } from "../js/programmes.js";
+import {
+  categories_du_mouvement, etiquettes, exercices_du_programme, nom_zone,
+} from "../js/categories.js";
+import { importer, programmes_perso, seances_perso, est_programme_perso } from "../js/historique.js";
+import { cle_depuis_nom, promouvoir_programme, promouvoir_seance } from "../js/promotion.js";
+
+const $ = (id) => document.getElementById(id);
+const echapper = (texte) =>
+  String(texte).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const CLE_BROUILLON = "dev.createur";
+
+// Les `fetch` sont ecrits en entier : l'empreinte de deploiement ne marque
+// que les adresses litterales.
+const [bruts, fiches, seances_deployees, programmes_deployes, socle, reglages, tables_categories] = await Promise.all([
+  fetch("../donnees/mouvements.json").then((r) => r.json()),
+  fetch("../donnees/fiches.json").then((r) => r.json()),
+  fetch("../donnees/seances.json").then((r) => r.json()),
+  fetch("../donnees/programmes.json").then((r) => r.json()),
+  fetch("../donnees/baremes.json").then((r) => r.json()),
+  fetch("../donnees/reglages.json").then((r) => r.json()),
+  fetch("../donnees/categories.json").then((r) => r.json()),
+]);
+const mouvements = avec_fiches(bruts, fiches);
+const tables = composer_baremes(socle, reglages);
+// Le bareme du **materiel suppose** (profil muet) : celui d'un utilisateur
+// qui n'a rien declare. Les exigences se traduisent dessus.
+const baremes = new Baremes(tables, null);
+const catalogue_variantes = catalogue_depuis(mouvements);
+// La regle du materiel posee a un inventaire declare vide : « sans haltere ».
+const sans_haltere = construire_progression(tables, { halteres: {}, accessoires: [] }, catalogue_variantes);
+
+const deploye = { seances: seances_deployees, programmes: programmes_deployes };
+let brouillon_perime = false;
+let brouillon = lire_brouillon() ?? structuredClone(deploye);
+
+/**
+ * Le brouillon, **s'il porte encore sur les fichiers deployes** — meme regle
+ * que `baremes.html` : fait sur une version depuis remplacee, il masquerait
+ * le deploiement sans rien dire. Il est alors jete, et la page le dit.
+ */
+function lire_brouillon() {
+  try {
+    const brut = localStorage.getItem(CLE_BROUILLON);
+    if (!brut) return null;
+    const enregistre = JSON.parse(brut);
+    if (enregistre.base !== JSON.stringify(deploye)) {
+      localStorage.removeItem(CLE_BROUILLON);
+      brouillon_perime = true;
+      return null;
+    }
+    return { seances: enregistre.seances, programmes: enregistre.programmes };
+  } catch { return null; }
+}
+
+function ecrire_brouillon() {
+  try {
+    localStorage.setItem(CLE_BROUILLON, JSON.stringify({ base: JSON.stringify(deploye), ...brouillon }));
+  } catch { /* tant pis : le brouillon ne survivra pas a la page */ }
+}
+
+function dessiner_json() {
+  // La forme exacte des deux fichiers (indentation d'un espace, pas de saut
+  // de ligne final) : coller sans rien changer ne doit produire aucun diff.
+  $("jsonSeances").value = JSON.stringify(brouillon.seances, null, 1);
+  $("jsonProgrammes").value = JSON.stringify(brouillon.programmes, null, 1);
+  const change = JSON.stringify(brouillon) !== JSON.stringify(deploye);
+  $("etat").textContent = change
+    ? "Brouillon local non déployé — copie les deux fichiers et pousse-les pour l'appliquer."
+    : brouillon_perime
+      ? "Un brouillon antérieur a été écarté : il portait sur une version déployée depuis."
+      : "Identique à ce qui est déployé.";
+  $("etat").className = "etat" + (change ? " brouillon" : "");
+}
+
+function enregistrer() {
+  ecrire_brouillon();
+  dessiner_json();
+}
+
+function retour(id, texte, classe = "") {
+  $(id).textContent = texte;
+  $(id).className = "retour" + (classe ? ` ${classe}` : "");
+}
+
+/** Les programmes du brouillon qui font jouer cette seance. */
+function programmes_qui_citent(nom) {
+  return Object.entries(brouillon.programmes)
+    .filter(([, p]) => Object.values(p.seances ?? {}).includes(nom))
+    .map(([cle, p]) => p.nom || cle);
+}
+
+/** Les etiquettes d'une liste d'exercices, en pastilles. */
+function pastilles(noms) {
+  const e = etiquettes(tables_categories, mouvements, noms, {
+    sans_haltere: (nom) => sans_haltere.variantes.jouable_avec_le_materiel(nom, catalogue_variantes),
+  });
+  return (
+    (e.zone ? `<span class="puce ok">${echapper(nom_zone(tables_categories, e.zone))}</span>` : `<span class="puce">zone inconnue</span>`) +
+    (e.sans_haltere ? `<span class="puce ok">Sans haltère</span>` : `<span class="puce">Demande des haltères</span>`)
+  );
+}
+
+// ================================================================ seances
+
+//: La seance editee : son nom dans le brouillon, ou `null` pour une neuve.
+let seance_editee = null;
+let editeur_seance = null;
+
+function filtre_courant() {
+  const valeur = $("filtreCategorie").value;
+  if (!valeur) return null;
+  const [genre, cle] = valeur.split(":");
+  return (nom) => {
+    const c = categories_du_mouvement(tables_categories, mouvements[nom]);
+    if (!c) return false;
+    if (genre === "region") return c.regions.includes(cle);
+    if (genre === "chaine") return c.chaine === cle;
+    return c.muscles.includes(cle);
+  };
+}
+
+function remplir_filtre() {
+  const groupe = (titre, genre, table) =>
+    `<optgroup label="${titre}">` +
+    Object.entries(table).map(([cle, v]) => `<option value="${genre}:${cle}">${echapper(v.nom ?? cle)}</option>`).join("") +
+    `</optgroup>`;
+  $("filtreCategorie").innerHTML =
+    `<option value="">tous les mouvements</option>` +
+    groupe("Région", "region", tables_categories.regions) +
+    groupe("Chaîne", "chaine", tables_categories.chaines) +
+    groupe("Muscle", "muscle", tables_categories.muscles);
+}
+
+function remplir_choix_seances() {
+  const noms = Object.keys(brouillon.seances);
+  $("choixSeance").innerHTML =
+    (seance_editee === null ? `<option value="" selected>— nouvelle séance —</option>` : "") +
+    noms.map((n) => `<option value="${echapper(n)}"${n === seance_editee ? " selected" : ""}>${echapper(n)}</option>`).join("");
+}
+
+function ouvrir_seance(nom, blocs = brouillon.seances[nom] ?? [], nom_affiche = nom ?? "") {
+  seance_editee = nom;
+  $("nomSeance").value = nom_affiche;
+  editeur_seance = creer_editeur_seance($("blocsSeance"), {
+    mouvements, blocs, filtre: filtre_courant(), au_changement: dessiner_apercu_seance,
+  });
+  $("supprimerSeance").disabled = nom === null;
+  $("dupliquerSeance").disabled = nom === null;
+  retour("retourSeance", "");
+  remplir_choix_seances();
+  dessiner_apercu_seance();
+}
+
+function dessiner_apercu_seance() {
+  const blocs = editeur_seance.blocs();
+  const nom = $("nomSeance").value.trim();
+  const problemes = problemes_des_blocs(mouvements, blocs);
+  const duree = problemes.length ? null : libelle_duree(duree_estimee(circuit_pour(mouvements, structuredClone(blocs)), tables.tempo));
+  // Un renommage casse les liens que l'historique tient par nom.
+  const renomme = seance_editee !== null && nom && nom !== seance_editee;
+  $("avertNom").hidden = !renomme;
+  $("avertNom").textContent = renomme
+    ? `Renommer « ${seance_editee} » met à jour les programmes qui la citent, mais pas l'historique : ` +
+      "les séances déjà faites sous l'ancien nom ne compteront plus dans la semaine d'un programme, " +
+      "et une copie perso de l'ancien nom (dans l'application) restera à côté."
+    : "";
+  $("apercuSeance").innerHTML =
+    `<h3>Comme dans l'application</h3>` +
+    pastilles(blocs.map((b) => b.exercice)) +
+    `<span class="puce">${duree ? `Durée estimée ${echapper(duree)}` : "Durée inconnue"}</span>` +
+    (problemes.length ? `<ul class="erreurs">${problemes.map((p) => `<li>${echapper(p)}</li>`).join("")}</ul>` : "");
+}
+
+function appliquer_seance() {
+  const nom = $("nomSeance").value.trim();
+  const blocs = structuredClone(editeur_seance.blocs());
+  const problemes = problemes_des_blocs(mouvements, blocs);
+  if (!nom) return retour("retourSeance", "Donne un nom à la séance.", "erreur");
+  if (nom !== seance_editee && nom in brouillon.seances) {
+    return retour("retourSeance", `Une séance « ${nom} » existe déjà.`, "erreur");
+  }
+  if (problemes.length) return retour("retourSeance", problemes[0], "erreur");
+
+  const seances = {};
+  if (seance_editee !== null && seance_editee !== nom) {
+    // Renommer garde la place dans le fichier, et les programmes suivent.
+    for (const [n, b] of Object.entries(brouillon.seances)) seances[n === seance_editee ? nom : n] = b;
+    for (const programme of Object.values(brouillon.programmes)) {
+      for (const [libelle, s] of Object.entries(programme.seances ?? {})) {
+        if (s === seance_editee) programme.seances[libelle] = nom;
+      }
+    }
+  } else {
+    Object.assign(seances, brouillon.seances);
+  }
+  seances[nom] = blocs;
+  brouillon.seances = seances;
+  enregistrer();
+  ouvrir_seance(nom);
+  retour("retourSeance", "Appliquée au brouillon.", "ok");
+}
+
+function supprimer_seance() {
+  const citants = programmes_qui_citent(seance_editee);
+  if (citants.length) {
+    return retour("retourSeance", `Elle fait partie de ${citants.map((n) => `« ${n} »`).join(", ")} : retire-la d'abord du programme.`, "erreur");
+  }
+  if (!confirm(`Supprimer « ${seance_editee} » des séances communes ?`)) return;
+  delete brouillon.seances[seance_editee];
+  enregistrer();
+  const premier = Object.keys(brouillon.seances)[0] ?? null;
+  ouvrir_seance(premier);
+  retour("retourSeance", "Supprimée du brouillon.", "ok");
+}
+
+// ================================================================ programmes
+
+//: Le programme edite : sa cle dans le brouillon, ou `null` pour un neuf.
+let programme_edite = null;
+let editeur_programme = null;
+
+function remplir_choix_programmes() {
+  $("choixProgramme").innerHTML =
+    (programme_edite === null ? `<option value="" selected>— nouveau programme —</option>` : "") +
+    Object.entries(brouillon.programmes)
+      .map(([cle, p]) => `<option value="${echapper(cle)}"${cle === programme_edite ? " selected" : ""}>${echapper(p.nom || cle)}</option>`)
+      .join("");
+}
+
+function ouvrir_programme(cle) {
+  programme_edite = cle;
+  $("cleProgramme").value = cle ?? "";
+  $("cleProgramme").disabled = cle !== null;
+  editeur_programme = creer_editeur_programme($("editeurProgramme"), {
+    programme: cle === null ? programme_vide() : brouillon.programmes[cle],
+    catalogue: brouillon.seances,
+    baremes,
+    au_changement: dessiner_apercu_programme,
+  });
+  $("supprimerProgramme").disabled = cle === null;
+  retour("retourProgramme", "");
+  remplir_choix_programmes();
+  dessiner_apercu_programme();
+}
+
+function dessiner_apercu_programme() {
+  const programme = editeur_programme.programme();
+  if (programme_edite === null && !$("cleProgramme").dataset.touchee) {
+    $("cleProgramme").value = programme.nom ? cle_depuis_nom(programme.nom) : "";
+  }
+  $("apercuProgramme").innerHTML =
+    `<h3>Comme dans l'application</h3>` +
+    pastilles(exercices_du_programme(programme, brouillon.seances)) +
+    `<span class="puce">${Object.keys(programme.seances).length} séance(s) par tour</span>`;
+}
+
+function appliquer_programme() {
+  const programme = editeur_programme.programme();
+  const cle = programme_edite ?? $("cleProgramme").value.trim();
+  const problemes = problemes_du_programme(baremes, programme, brouillon.seances);
+  if (!cle) return retour("retourProgramme", "Donne une clé au programme.", "erreur");
+  if (est_programme_perso(cle)) return retour("retourProgramme", "Ce préfixe est réservé aux programmes perso.", "erreur");
+  if (programme_edite === null && cle in brouillon.programmes) {
+    return retour("retourProgramme", `La clé « ${cle} » est déjà prise.`, "erreur");
+  }
+  if (problemes.length) return retour("retourProgramme", problemes[0], "erreur");
+  brouillon.programmes = { ...brouillon.programmes, [cle]: programme };
+  enregistrer();
+  delete $("cleProgramme").dataset.touchee;
+  ouvrir_programme(cle);
+  retour("retourProgramme", "Appliqué au brouillon.", "ok");
+}
+
+function supprimer_programme() {
+  if (!confirm(`Supprimer « ${brouillon.programmes[programme_edite]?.nom ?? programme_edite} » ? Un profil qui le suivait n'aura plus de programme.`)) return;
+  delete brouillon.programmes[programme_edite];
+  enregistrer();
+  ouvrir_programme(Object.keys(brouillon.programmes)[0] ?? null);
+  retour("retourProgramme", "Supprimé du brouillon.", "ok");
+}
+
+// ================================================================ promotion
+
+//: La sauvegarde lue, en memoire seulement.
+let sauvegarde = null;
+
+function dessiner_promotion() {
+  const zone = $("listePromotion");
+  if (!sauvegarde) {
+    zone.replaceChildren();
+    return;
+  }
+  const profils = sauvegarde.utilisateurs.filter(
+    (u) => Object.keys(seances_perso(u)).length || Object.keys(programmes_perso(u)).length,
+  );
+  if (!profils.length) {
+    zone.innerHTML = `<p class="hint">Aucun profil de cette sauvegarde n'a de séance ni de programme personnalisé.</p>`;
+    return;
+  }
+  zone.innerHTML = profils
+    .map((u) => {
+      const seances = Object.keys(seances_perso(u))
+        .map((nom) =>
+          `<div class="ligne-promue"><span class="nom">${echapper(nom)}</span>` +
+          (nom in brouillon.seances ? `<span class="puce">même nom qu'une commune</span>` : "") +
+          `<button class="bouton secondaire" data-profil="${u.id}" data-seance="${echapper(nom)}">Rendre commune</button></div>`)
+        .join("");
+      const programmes = Object.entries(programmes_perso(u))
+        .map(([cle, p]) =>
+          `<div class="ligne-promue"><span class="nom">${echapper(p.nom || cle)}</span>` +
+          `<span class="puce">${Object.keys(p.seances ?? {}).length} séance(s)</span>` +
+          `<button class="bouton secondaire" data-profil="${u.id}" data-programme="${echapper(cle)}">Rendre commun</button></div>`)
+        .join("");
+      return (
+        `<div class="profil-promu"><h3>${echapper(u.nom)}</h3>` +
+        (seances ? `<p class="etat">Séances</p>${seances}` : "") +
+        (programmes ? `<p class="etat">Programmes</p>${programmes}` : "") +
+        `</div>`
+      );
+    })
+    .join("");
+
+  const profil_de = (bouton) => sauvegarde.utilisateurs.find((u) => u.id === Number(bouton.dataset.profil));
+  for (const bouton of zone.querySelectorAll("[data-seance]")) {
+    bouton.addEventListener("click", () => {
+      try {
+        const r = promouvoir_seance(brouillon, profil_de(bouton), bouton.dataset.seance, { remplacer: $("remplacer").checked });
+        brouillon = r.brouillon;
+        enregistrer();
+        retour("retourPromotion", `« ${r.nom} » est maintenant une séance commune du brouillon.`, "ok");
+        ouvrir_seance(seance_editee !== null && seance_editee in brouillon.seances ? seance_editee : r.nom);
+        dessiner_promotion();
+      } catch (refus) {
+        retour("retourPromotion", refus.message, "erreur");
+      }
+    });
+  }
+  for (const bouton of zone.querySelectorAll("[data-programme]")) {
+    bouton.addEventListener("click", () => {
+      try {
+        const r = promouvoir_programme(brouillon, profil_de(bouton), bouton.dataset.programme, { remplacer: $("remplacer").checked });
+        // Le brouillon ne recoit pas un programme injouable : une seance
+        // commune qu'il cite a pu etre renommee ou supprimee depuis la
+        // sauvegarde. Les memes refus qu'a l'enregistrement.
+        const problemes = problemes_du_programme(baremes, r.brouillon.programmes[r.cle], r.brouillon.seances);
+        if (problemes.length) throw new Error(`Pas rendu commun : ${problemes[0]}`);
+        brouillon = r.brouillon;
+        enregistrer();
+        retour("retourPromotion",
+          `Programme commun « ${r.cle} » ajouté au brouillon` +
+          (r.seances.length ? `, avec ${r.seances.map((n) => `« ${n} »`).join(", ")}.` : "."), "ok");
+        ouvrir_programme(r.cle);
+        dessiner_promotion();
+      } catch (refus) {
+        retour("retourPromotion", refus.message, "erreur");
+      }
+    });
+  }
+}
+
+// ================================================================ categories
+
+function dessiner_categories() {
+  const nom_de = (table, cle) => echapper(table?.[cle]?.nom ?? cle);
+  const lignes = Object.keys(mouvements)
+    .sort((a, b) => a.localeCompare(b, "fr"))
+    .map((nom) => {
+      const c = categories_du_mouvement(tables_categories, mouvements[nom]);
+      if (!c) return `<tr><td>${echapper(nom)}</td><td colspan="4">sans catégorie</td></tr>`;
+      return (
+        `<tr><td>${echapper(nom)}${mouvements[nom].est_echauffement ? " <span class=\"puce\">échauffement</span>" : ""}</td>` +
+        `<td>${c.muscles.map((m) => nom_de(tables_categories.muscles, m)).join(", ")}</td>` +
+        `<td>${c.parties.map((p) => nom_de(tables_categories.parties, p)).join(", ")}</td>` +
+        `<td>${c.regions.map((r) => nom_de(tables_categories.regions, r)).join(", ")}</td>` +
+        `<td>${nom_de(tables_categories.chaines, c.chaine)}</td></tr>`
+      );
+    });
+  $("tableCategories").innerHTML =
+    `<thead><tr><th>Mouvement</th><th>Muscles</th><th>Parties</th><th>Régions</th><th>Chaîne</th></tr></thead>` +
+    `<tbody>${lignes.join("")}</tbody>`;
+}
+
+// ================================================================ montage
+
+for (const bouton of document.querySelectorAll(".onglets-maitre button")) {
+  bouton.addEventListener("click", () => {
+    for (const autre of document.querySelectorAll(".onglets-maitre button")) {
+      autre.classList.toggle("actif", autre === bouton);
+      $(autre.dataset.panneau).hidden = autre !== bouton;
+    }
+  });
+}
+
+remplir_filtre();
+dessiner_categories();
+ouvrir_seance(Object.keys(brouillon.seances)[0] ?? null);
+ouvrir_programme(Object.keys(brouillon.programmes)[0] ?? null);
+dessiner_json();
+
+$("choixSeance").addEventListener("change", (e) => ouvrir_seance(e.target.value || null));
+$("nouvelleSeance").addEventListener("click", () => ouvrir_seance(null, []));
+$("dupliquerSeance").addEventListener("click", () => {
+  const base = $("nomSeance").value.trim() || seance_editee;
+  let copie = `${base} (copie)`;
+  for (let n = 2; copie in brouillon.seances; n += 1) copie = `${base} (copie ${n})`;
+  ouvrir_seance(null, structuredClone(editeur_seance.blocs()), copie);
+});
+$("nomSeance").addEventListener("input", dessiner_apercu_seance);
+$("filtreCategorie").addEventListener("change", () => editeur_seance.definir_filtre(filtre_courant()));
+$("ajouterBloc").addEventListener("click", () => editeur_seance.ajouter_bloc());
+$("appliquerSeance").addEventListener("click", appliquer_seance);
+$("supprimerSeance").addEventListener("click", supprimer_seance);
+
+$("choixProgramme").addEventListener("change", (e) => ouvrir_programme(e.target.value || null));
+$("nouveauProgramme").addEventListener("click", () => {
+  delete $("cleProgramme").dataset.touchee;
+  // Le catalogue a pu changer depuis l'onglet Seances.
+  ouvrir_programme(null);
+});
+$("cleProgramme").addEventListener("input", () => { $("cleProgramme").dataset.touchee = "1"; });
+$("appliquerProgramme").addEventListener("click", appliquer_programme);
+$("supprimerProgramme").addEventListener("click", supprimer_programme);
+// Une seance appliquee dans l'autre onglet doit se proposer ici.
+document.querySelector('[data-panneau="panneauProgrammes"]').addEventListener("click", () => {
+  editeur_programme.definir_catalogue(brouillon.seances);
+  dessiner_apercu_programme();
+});
+
+$("fichierSauvegarde").addEventListener("change", async (evenement) => {
+  const fichier = evenement.target.files?.[0];
+  if (!fichier) return;
+  try {
+    sauvegarde = importer(await fichier.text());
+    retour("retourPromotion", `Sauvegarde lue : ${sauvegarde.utilisateurs.length} profil(s).`, "ok");
+  } catch (erreur) {
+    sauvegarde = null;
+    retour("retourPromotion", erreur.message, "erreur");
+  }
+  dessiner_promotion();
+});
+
+$("reinitialiser").addEventListener("click", () => {
+  if (!confirm("Jeter le brouillon et revenir aux fichiers déployés ?")) return;
+  brouillon = structuredClone(deploye);
+  try { localStorage.removeItem(CLE_BROUILLON); } catch { /* rien a faire */ }
+  ouvrir_seance(Object.keys(brouillon.seances)[0] ?? null);
+  ouvrir_programme(Object.keys(brouillon.programmes)[0] ?? null);
+  dessiner_promotion();
+  dessiner_json();
+});
+
+for (const bouton of document.querySelectorAll("[data-copier]")) {
+  bouton.addEventListener("click", async () => {
+    const zone = $(bouton.dataset.copier);
+    const etat = document.querySelector(`[data-copie="${bouton.dataset.copier}"]`);
+    try {
+      await navigator.clipboard.writeText(zone.value);
+      etat.textContent = "Copié.";
+    } catch {
+      // Presse-papier refuse : on selectionne, la copie manuelle est d'un geste.
+      zone.removeAttribute("readonly");
+      zone.select();
+      etat.textContent = "Sélectionné — copie à la main.";
+    }
+    setTimeout(() => { etat.textContent = ""; }, 4000);
+  });
+}
+</script>
+</body>
+</html>
