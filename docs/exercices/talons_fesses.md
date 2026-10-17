@@ -23,7 +23,7 @@ la fusion dans `main`.
 - [x] `fiches.json`, premier jet
 - [x] Fiche relue dans `dev/fiches.html` par l'utilisateur
 - [x] `tester.mjs` vert, `A_ENREGISTRER.md` régénéré
-- [ ] Poussée sur `travail` (accord donné)
+- [x] Poussée sur `travail` (accord donné, 2026-10-17)
 - [ ] Essai en séance perso sur l'iPad
 
 ## Médias
