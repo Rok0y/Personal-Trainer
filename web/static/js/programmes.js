@@ -16,6 +16,8 @@
 
 import { UNITE_SECONDES } from "./paliers.js";
 import { arrondi_python } from "./calibration.js";
+import { MODE_REPETITIONS, cible_du_bloc, est_echauffement } from "./circuit.js";
+import { pilote_par_le_moteur } from "./objectifs.js";
 import { via_variante } from "./variantes.js";
 
 // Deux arrondis vivent dans ce module — l'avancement d'une exigence et la
@@ -434,6 +436,98 @@ export function semaine_du_programme(
       reussi: semaine.complet,
     })),
   };
+}
+
+// ==========================================
+// CREER UN PROGRAMME
+// ==========================================
+//
+// Les deux createurs (l'outil maitre et celui de l'application) ne decident
+// rien : ils appellent ces fonctions, qui sont aussi celles que
+// `verifier_donnees` pose aux programmes deployes.
+
+/**
+ * Les exigences que proposent les seances liees : ce que chaque seance
+ * **prescrit**, exercice par exercice (series, cible dans l'unite jouee,
+ * poids).
+ *
+ * Seuls les blocs que le moteur pilote deviennent une exigence
+ * (`pilote_par_le_moteur`) : l'echauffement ne compte nulle part, et un mode
+ * qui ne mesure pas ce que mesure le bareme ne se traduit en aucun palier.
+ * Une seule exigence par libelle et par exercice — la premiere : un exercice
+ * joue deux fois dans une seance n'a qu'une performance a atteindre.
+ */
+export function exigences_depuis_seances(baremes, liens, catalogue_seances) {
+  const exigences = [];
+  for (const [libelle, nom] of Object.entries(liens ?? {})) {
+    for (const bloc of catalogue_seances[nom] ?? []) {
+      const mode = bloc.mode ?? MODE_REPETITIONS;
+      if (est_echauffement({ mode }) || !pilote_par_le_moteur(baremes, bloc.exercice, mode)) continue;
+      if (exigences.some((e) => e.seance === libelle && e.exercice === bloc.exercice)) continue;
+      exigences.push({
+        seance: libelle,
+        exercice: bloc.exercice,
+        series: Math.max(1, Number(bloc.series) || 1),
+        cible: cible_du_bloc({ ...bloc, mode }),
+        poids: Number(bloc.poids) || 0,
+      });
+    }
+  }
+  return exigences;
+}
+
+/**
+ * Recale des exigences deja ecrites sur celles que proposent les seances.
+ *
+ * **Ce qui a ete ecrit a la main gagne** : une exigence (libelle, exercice)
+ * encore proposee garde ses valeurs. Une proposee nouvelle s'ajoute ; une
+ * ecrite que les seances ne proposent plus (exercice retire, libelle
+ * supprime) disparait — elle viserait un exercice que le programme ne fait
+ * plus jouer. L'ordre est celui des seances.
+ */
+export function completer_exigences(ecrites, proposees) {
+  const meme = (a, b) => a.seance === b.seance && a.exercice === b.exercice;
+  return proposees.map((proposee) => {
+    const ecrite = (ecrites ?? []).find((e) => meme(e, proposee));
+    return ecrite ? { ...ecrite } : { ...proposee };
+  });
+}
+
+/**
+ * Ce qui empeche un programme d'etre joue, en phrases.
+ *
+ * Rend la liste plutot que de lever : un formulaire doit tout signaler d'un
+ * coup. Les refus : un nom vide, aucune exigence, une exigence sur un
+ * exercice sans bareme ou de series/cible nulles, un libelle sans seance
+ * liee, une seance liee absente du catalogue — et un libelle lie **sans
+ * exigence**, que `libelles_seances` ferait disparaitre de la semaine sans
+ * rien dire.
+ */
+export function problemes_du_programme(baremes, programme, catalogue_seances) {
+  const problemes = [];
+  if (!programme?.nom?.trim()) problemes.push("Le programme a besoin d'un nom.");
+  const exigences = programme?.exigences ?? [];
+  if (!exigences.length) problemes.push("Au moins une performance à atteindre est requise.");
+  const liens = programme?.seances ?? {};
+  for (const e of exigences) {
+    if (!baremes.est_suivi_par_le_moteur(e.exercice)) {
+      problemes.push(`${e.exercice} n'a pas de barème : il ne peut pas être une performance à atteindre.`);
+    }
+    if (!(e.series >= 1) || !(e.cible > 0)) {
+      problemes.push(`${e.exercice} : séries et cible doivent être supérieures à zéro.`);
+    }
+    if (!(Number(e.poids) >= 0)) problemes.push(`${e.exercice} : le poids ne peut pas être négatif.`);
+    if (!liens[e.seance]) problemes.push(`Le libellé « ${e.seance} » n'est lié à aucune séance.`);
+  }
+  for (const [libelle, seance] of Object.entries(liens)) {
+    if (!(seance in (catalogue_seances ?? {}))) {
+      problemes.push(`« ${libelle} » est lié à « ${seance} », qui n'existe pas.`);
+    }
+    if (!exigences.some((e) => e.seance === libelle)) {
+      problemes.push(`« ${libelle} » n'a aucune performance à atteindre : elle n'apparaîtrait pas dans la semaine.`);
+    }
+  }
+  return problemes;
 }
 
 /**

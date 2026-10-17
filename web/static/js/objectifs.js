@@ -22,6 +22,18 @@ export {
   enteriner_cibles_manuelles,
 } from "./cible_manuelle.js";
 
+/**
+ * Ce couple exercice/mode releve-t-il du moteur ? Un bareme, et un mode qui
+ * mesure ce que mesure le bareme (un gainage au bareme en secondes, joue en
+ * repetitions, ne se compare a rien). **Point d'entree unique** : le moteur
+ * s'en sert pour piloter un bloc, le createur de programme pour savoir quel
+ * bloc d'une seance peut devenir une exigence.
+ */
+export function pilote_par_le_moteur(baremes, nom, mode) {
+  if (!baremes.est_suivi_par_le_moteur(nom)) return false;
+  return UNITE_PAR_MODE[mode] === baremes.unite(nom);
+}
+
 /** Les blocs JSON nomment l'exercice `exercice`, les blocs exportes `nom`. */
 function _nom_exercice(bloc) {
   return bloc.exercice ?? bloc.nom;
@@ -138,8 +150,7 @@ export class Objectifs {
    * pas garde la cible de son fichier.
    */
   _pilote_par_le_moteur(nom, mode) {
-    if (!this.baremes.est_suivi_par_le_moteur(nom)) return false;
-    return UNITE_PAR_MODE[mode] === this.baremes.unite(nom);
+    return pilote_par_le_moteur(this.baremes, nom, mode);
   }
 
   /** Palier a viser pour un bloc, ou null si le moteur ne le pilote pas. */

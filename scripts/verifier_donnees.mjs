@@ -32,7 +32,8 @@ import { fileURLToPath } from "node:url";
 
 import { DETECTIONS } from "../web/static/js/detections.js";
 import { PREFIXE_PROGRAMME_PERSO, est_programme_perso } from "../web/static/js/historique.js";
-import { composer_baremes } from "../web/static/js/paliers.js";
+import { Baremes, composer_baremes } from "../web/static/js/paliers.js";
+import { problemes_du_programme } from "../web/static/js/programmes.js";
 import { avec_fiches, problemes_des_blocs } from "../web/static/js/seance.js";
 import { fichier_video } from "../web/static/js/videos.js";
 
@@ -75,8 +76,12 @@ function main() {
     if (!socle.materiel?.[nom]) signaler("baremes.json", `« ${nom} » a un bareme mais pas d'entree dans materiel`);
     if (!bruts[nom]) signaler("reglages.json", `« ${nom} » a un bareme mais n'est pas dans mouvements.json`);
   }
+  // Les programmes se valident sur le bareme lui-meme ; une composition
+  // impossible le remplace par la seule liste des specs, pour dire quand
+  // meme ce qui cloche ailleurs.
+  let baremes = { est_suivi_par_le_moteur: (nom) => nom in specs };
   try {
-    composer_baremes(socle, reglages);
+    baremes = new Baremes(composer_baremes(socle, reglages), null);
   } catch (erreur) {
     signaler("reglages.json", `composition impossible : ${erreur.message}`);
   }
@@ -257,19 +262,10 @@ function main() {
   // --- programmes ---
   for (const [cle, programme] of Object.entries(programmes)) {
     if (est_programme_perso(cle)) signaler("programmes.json", `« ${cle} » : le prefixe « ${PREFIXE_PROGRAMME_PERSO} » est reserve aux programmes perso`);
-    if (!programme.nom?.trim()) signaler("programmes.json", `« ${cle} » : nom manquant`);
-    if (!programme.exigences?.length) signaler("programmes.json", `« ${cle} » : aucune exigence`);
-    for (const e of programme.exigences ?? []) {
-      if (!specs[e.exercice]) signaler("programmes.json", `« ${cle} » : ${e.exercice} n'a pas de bareme`);
-      if (!(e.series >= 1) || !(e.cible > 0)) {
-        signaler("programmes.json", `« ${cle} » : series et cible doivent etre positives (${e.exercice})`);
-      }
-      if (!programme.seances?.[e.seance]) {
-        signaler("programmes.json", `« ${cle} » : le libelle « ${e.seance} » n'est lie a aucune seance`);
-      }
-    }
-    for (const [libelle, seance] of Object.entries(programme.seances ?? {})) {
-      if (!seances[seance]) signaler("programmes.json", `« ${cle} » : « ${libelle} » est lie a « ${seance} », absente de seances.json`);
+    // Les memes refus que les createurs posent a l'enregistrement : une seule
+    // regle, qu'un programme vienne de l'outil maitre ou d'un profil.
+    for (const probleme of problemes_du_programme(baremes, programme, seances)) {
+      signaler("programmes.json", `« ${cle} » : ${probleme}`);
     }
   }
 

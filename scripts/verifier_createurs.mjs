@@ -10,6 +10,10 @@
 //   n'en voit rien, un renommage emporte les programmes qui citent la
 //   seance, une seance citee ne se supprime pas en laissant un programme
 //   sans rien a jouer ;
+// - l'entrelacement « avec le bloc suivant », recalcule ;
+// - les exigences preremplies depuis les seances, et les refus d'un
+//   programme (les memes que `verifier_donnees` pose aux programmes deployes) ;
+// - la promotion d'une creation perso en version commune (outil maitre).
 //
 //     node scripts/verifier_createurs.mjs
 
@@ -22,8 +26,11 @@ import {
   seances_perso, supprimer_programme_perso,
 } from "../web/static/js/historique.js";
 import { Baremes, composer_baremes } from "../web/static/js/paliers.js";
-import { programmes_effectifs } from "../web/static/js/programmes.js";
-import { catalogue_effectif } from "../web/static/js/seance.js";
+import {
+  completer_exigences, exigences_depuis_seances, problemes_du_programme, programmes_effectifs,
+} from "../web/static/js/programmes.js";
+import { cle_depuis_nom, promouvoir_programme, promouvoir_seance } from "../web/static/js/promotion.js";
+import { catalogue_effectif, normaliser_entrelacement } from "../web/static/js/seance.js";
 import { Variantes } from "../web/static/js/variantes.js";
 
 const problemes = [];
@@ -88,7 +95,7 @@ const TABLES = composer_baremes(
     materiel_par_defaut: { halteres: { 2: 2, 5: 2, 10: 2 }, accessoires: [] },
   },
   {
-    specs: { Curl: spec({}), Squat: spec({}), "Squat charge": spec({ poids_min: 5, charge_corps: 15 }), Planche: spec({}) },
+    specs: { Curl: spec({}), Squat: spec({}), "Squat charge": spec({ poids_min: 5, charge_corps: 15 }), Planche: spec({ unite: "secondes" }) },
     ligues: { ligues: [], divisions: [], seuils_volume: [], seuils_par_exercice: {} },
     xp: { paliers_xp: [], base_niveau_general: 1, increment_niveau_general: 1 },
     note_athlete: { rangs: [] },
@@ -170,6 +177,100 @@ function refus(f) {
     [profil(a).programme_choisi, profil(a).programmes_ordre], [null, {}]);
   egal("supprimer : la cle n'est jamais reprise", enregistrer_programme_perso(base, a, null, { nom: "Neuf", seances: {} }), "perso-3");
   egal("oublier : sans programme qui la cite, permis", oublier_seance_perso(base, a, "Bras et epaules"), true);
+}
+
+// ---------------------------------------------------------------- entrelacement
+egal("entrelacement : le partenaire se recalcule, le dernier bloc n'en a pas",
+  normaliser_entrelacement([
+    { exercice: "A", entrelace_avec: "?" },
+    { exercice: "B", entrelace_avec: "vieux nom" },
+    { exercice: "C", entrelace_avec: "A" },
+  ]).map((b) => b.entrelace_avec),
+  ["B", "C", null]);
+egal("entrelacement : un bloc sans drapeau reste seul",
+  normaliser_entrelacement([{ exercice: "A", entrelace_avec: null }, { exercice: "B" }]).map((b) => b.entrelace_avec),
+  [null, null]);
+
+// ---------------------------------------------------------------- exigences
+const BAREMES = new Baremes(TABLES, null);
+const SEANCES = {
+  Haut: [
+    { exercice: "Rotation", mode: "echauffement", series: 1, repetitions: 10, duree: 30, poids: 0 },
+    { exercice: "Curl", mode: "repetitions", series: 3, repetitions: 12, duree: 0, poids: 5 },
+    { exercice: "Curl", mode: "repetitions", series: 5, repetitions: 5, duree: 0, poids: 10 },
+    { exercice: "Planche", mode: "repetitions", series: 3, repetitions: 10, duree: 30, poids: 0 },
+  ],
+  Bas: [
+    { exercice: "Planche", mode: "maintien", series: 2, repetitions: 0, duree: 45, poids: 0 },
+    { exercice: "Squat", series: 4, repetitions: 15, duree: 0 },
+  ],
+};
+const proposees = exigences_depuis_seances(BAREMES, { "Jour 1": "Haut", "Jour 2": "Bas" }, SEANCES);
+egal("exigences : l'echauffement, le doublon et le mode hors bareme sont ecartes ; la cible suit le mode",
+  proposees,
+  [
+    { seance: "Jour 1", exercice: "Curl", series: 3, cible: 12, poids: 5 },
+    { seance: "Jour 2", exercice: "Planche", series: 2, cible: 45, poids: 0 },
+    { seance: "Jour 2", exercice: "Squat", series: 4, cible: 15, poids: 0 },
+  ]);
+egal("exigences : une seance absente ne propose rien", exigences_depuis_seances(BAREMES, { X: "Inconnue" }, SEANCES), []);
+egal("completer : ce qui est ecrit gagne, le nouveau s'ajoute, le disparu s'en va",
+  completer_exigences(
+    [
+      { seance: "Jour 1", exercice: "Curl", series: 6, cible: 20, poids: 10 },
+      { seance: "Jour 3", exercice: "Squat", series: 1, cible: 1, poids: 0 },
+    ],
+    proposees,
+  ).map((e) => [e.seance, e.exercice, e.series, e.cible]),
+  [["Jour 1", "Curl", 6, 20], ["Jour 2", "Planche", 2, 45], ["Jour 2", "Squat", 4, 15]]);
+
+// ---------------------------------------------------------------- problemes d'un programme
+const bon = { nom: "P", seances: { "Jour 1": "Haut", "Jour 2": "Bas" }, exigences: proposees };
+egal("programme : un programme complet passe", problemes_du_programme(BAREMES, bon, SEANCES), []);
+for (const [cas, programme, attendu] of [
+  ["nom vide", { ...bon, nom: "  " }, "nom"],
+  ["aucune exigence", { ...bon, exigences: [] }, "Au moins une"],
+  ["exercice sans bareme", { ...bon, exigences: [...proposees, { seance: "Jour 1", exercice: "Rotation", series: 1, cible: 1, poids: 0 }] }, "barème"],
+  ["cible nulle", { ...bon, exigences: [{ ...proposees[0], cible: 0 }, ...proposees.slice(1)] }, "supérieures à zéro"],
+  ["libelle sans seance", { ...bon, exigences: [...proposees, { ...proposees[0], seance: "Jour 9" }] }, "« Jour 9 » n'est lié"],
+  ["seance liee absente", { ...bon, seances: { ...bon.seances, "Jour 1": "Disparue" } }, "« Disparue », qui n'existe pas"],
+  ["libelle lie sans exigence", { ...bon, seances: { ...bon.seances, "Jour 3": "Haut" } }, "« Jour 3 » n'a aucune performance"],
+]) {
+  const trouves = problemes_du_programme(BAREMES, programme, SEANCES);
+  egal(`programme : refuse (${cas})`, trouves.some((p) => p.includes(attendu)), true);
+}
+
+// ---------------------------------------------------------------- promotion
+{
+  const profil = {
+    seances_perso: {
+      Haut: [{ exercice: "Curl", mode: "repetitions", series: 3, repetitions: 12, cible_manuelle: [1] }],
+      "Ma seance": [{ exercice: "Squat", series: 4, repetitions: 15 }],
+    },
+    programmes_perso: { "perso-1": { nom: "Mon été léger", seances: { A: "Haut", B: "Commune" }, exigences: [] } },
+  };
+  const brouillon = { seances: { Haut: [{ exercice: "Curl" }], Commune: [] }, programmes: { "mon-ete-leger": {} } };
+
+  const seance = promouvoir_seance(brouillon, profil, "Ma seance");
+  egal("promotion : la seance devient commune", seance.brouillon.seances["Ma seance"], [{ exercice: "Squat", series: 4, repetitions: 15 }]);
+  egal("promotion : le brouillon d'origine n'est pas touche", "Ma seance" in brouillon.seances, false);
+  egal("promotion : une collision est refusee et nommee",
+    refus(() => promouvoir_seance(brouillon, profil, "Haut"))?.includes("« Haut » existe déjà"), true);
+  const remplacee = promouvoir_seance(brouillon, profil, "Haut", { remplacer: true });
+  egal("promotion : remplacer sur demande, sans la cible figee (donnee de profil)",
+    remplacee.brouillon.seances.Haut, [{ exercice: "Curl", mode: "repetitions", series: 3, repetitions: 12 }]);
+  egal("promotion : la seance perso garde sa cible figee", profil.seances_perso.Haut[0].cible_manuelle, [1]);
+  egal("promotion : sous un autre nom", Object.keys(promouvoir_seance(brouillon, profil, "Haut", { nom: "Haut v2" }).brouillon.seances), ["Haut", "Commune", "Haut v2"]);
+
+  egal("cle : tiree du nom, sans accent", [cle_depuis_nom("Mon été léger !"), cle_depuis_nom("Perso 2"), cle_depuis_nom("")],
+    ["mon-ete-leger", "programme-perso-2", "programme"]);
+  egal("promotion programme : la cle commune deja prise est refusee",
+    refus(() => promouvoir_programme(brouillon, profil, "perso-1"))?.includes("« mon-ete-leger » existe déjà"), true);
+  egal("promotion programme : une seance perso du meme nom qu'une commune est refusee sans « remplacer »",
+    refus(() => promouvoir_programme(brouillon, profil, "perso-1", { cle: "neuf" }))?.includes("« Haut »"), true);
+  const programme = promouvoir_programme(brouillon, profil, "perso-1", { cle: "neuf", remplacer: true });
+  egal("promotion programme : il emporte ses seances perso, pas les communes",
+    [programme.cle, programme.seances, programme.brouillon.programmes.neuf.seances], ["neuf", ["Haut"], { A: "Haut", B: "Commune" }]);
 }
 
 if (problemes.length) {

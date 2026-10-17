@@ -314,6 +314,25 @@ export function catalogue_effectif(du_fichier, perso) {
 }
 
 /**
+ * **L'entrelacement est un drapeau « avec le bloc suivant »**, pas un nom :
+ * le partenaire se recalcule ici, si bien qu'il survit a un reordonnancement
+ * — deplacer un bloc ne laisse pas un entrelacement pointer vers un exercice
+ * qui n'est plus a cote. Le dernier bloc ne peut pas etre entrelace : il n'a
+ * pas de suivant. Modifie les blocs sur place et les rend.
+ *
+ * Les editeurs (application et outil maitre) l'appliquent a chaque redessin,
+ * donc avant tout enregistrement.
+ */
+export function normaliser_entrelacement(blocs) {
+  blocs.forEach((bloc, index) => {
+    const suivant = blocs[index + 1];
+    if (!suivant) bloc.entrelace_avec = null;
+    else if (bloc.entrelace_avec) bloc.entrelace_avec = suivant.exercice;
+  });
+  return blocs;
+}
+
+/**
  * Refuse une liste de blocs que la seance ne saurait pas jouer.
  *
  * Mieux vaut un refus a l'enregistrement qu'une erreur en pleine seance,
