@@ -289,41 +289,6 @@
   }
   .barre-carte .bouton { padding: 0.35rem 0.8rem; font-size: 0.8rem; }
 
-  /* L'editeur reprend `editeur.css` : classes, pastille de mode, liseret
-     d'entrelacement. Ne reste ici que la mise en page etroite.
-
-     La grille d'`editeur.css` aligne onze colonnes sur une ligne — elle
-     suppose un ecran large, et un iPad ne l'a qu'en paysage. En portrait on empile : les
-     commandes en haut, l'exercice en pleine largeur, puis les nombres a deux
-     par ligne. C'est la meme information, dans le meme ordre. */
-  #ecranEditeur .bloc {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 0.55rem;
-  }
-  #ecranEditeur .bloc > button { order: -1; }
-  /* L'exercice et le mode passent la ligne : ce sont eux qu'on lit d'abord. */
-  #ecranEditeur .bloc .champ:nth-of-type(1),
-  #ecranEditeur .bloc .champ:nth-of-type(2) { flex: 1 1 100%; }
-  #ecranEditeur .bloc .champ { flex: 1 1 5.5rem; }
-  #ecranEditeur .bloc .sup-btn { order: 99; margin-left: auto; }
-  /* Sur une ligne, l'unite gaspille une ligne de hauteur par champ. */
-  #ecranEditeur .champ label span { display: inline; margin-left: 0.25rem; }
-
-  @media (min-width: 900px) {
-    #ecranEditeur .bloc {
-      display: grid;
-      grid-template-columns: 34px 34px 40px 2fr repeat(6, 1fr) 40px;
-      align-items: end;
-    }
-    #ecranEditeur .bloc > button,
-    #ecranEditeur .bloc .sup-btn { order: 0; margin-left: 0; }
-    #ecranEditeur .bloc .champ:nth-of-type(1),
-    #ecranEditeur .bloc .champ:nth-of-type(2) { flex: none; }
-    #ecranEditeur .champ label span { display: block; margin-left: 0; }
-  }
-
   .detail-seance {
     margin: 0;
     padding: 0;
@@ -1158,7 +1123,7 @@
   <button class="bouton secondaire" id="retourEditeur">← Retour aux séances</button>
   <h1 id="titreEditeur">Modifier</h1>
   <p class="sous-titre" id="sousTitreEditeur"></p>
-  <div id="blocsEditeur"></div>
+  <div id="blocsEditeur" class="editeur-blocs"></div>
   <div class="actions" style="justify-content:flex-start;margin-top:1rem">
     <button class="bouton secondaire" id="ajouterBloc">+ Ajouter un exercice</button>
   </div>
@@ -1693,6 +1658,7 @@ import {
 import { brancher_commandes, peindre_hud } from "../js/hud.js";
 import { jouer_si_visible, montrer_video } from "../js/videos.js";
 import { duree_estimee, libelle_duree } from "../js/duree.js";
+import { creer_editeur_seance } from "../js/editeur_seance.js";
 import { INTERVALLE_MAX, ajuster_repetitions, executer_mode, duree_realisee, oublier_durees, mettre_a_jour_prochain_exercice, poser_etape, annoncer_temps_repos } from "../js/moteur.js";
 import { CompteurMouvement } from "../js/compteur.js";
 import { HoldPosition } from "../js/outils.js";
@@ -3583,24 +3549,19 @@ function dessiner_historique() {
 //: Les modes proposes, avec leur libelle. `MODES_CONNUS` vit dans
 //: `circuit.js` ; ici on n'en donne que la traduction, et l'ordre dans lequel
 //: on veut les voir.
-const LIBELLES_MODE = {
-  repetitions: "Répétitions",
-  maintien: "Maintien (secondes)",
-  chrono: "Chrono (secondes)",
-  amrap: "AMRAP",
-  echauffement: "Échauffement",
-};
-
-
-//: La seance en cours d'edition, et ses blocs de travail. Une **copie** : tant
-//: qu'on n'a pas enregistre, rien ne doit bouger dans le catalogue affiche.
+//: La seance en cours d'edition, et son editeur (`editeur_seance.js`). Il
+//: travaille sur une **copie** : tant qu'on n'a pas enregistre, rien ne doit
+//: bouger dans le catalogue affiche.
 let seance_editee = null;
-let blocs_edites = [];
+let editeur_seance = null;
 
 function ouvrir_editeur(nom) {
   seance_editee = nom;
-  blocs_edites = blocs_a_editer(nom);
   $("titreEditeur").textContent = nom;
+  editeur_seance = creer_editeur_seance($("blocsEditeur"), {
+    mouvements,
+    blocs: blocs_a_editer(nom),
+  });
   dessiner_editeur("");
   montrer("ecranEditeur");
 }
@@ -3629,187 +3590,16 @@ function blocs_a_editer(nom) {
 function dessiner_editeur(message = null) {
   const locale = est_seance_perso(seance_editee);
   $("sousTitreEditeur").innerHTML = locale
-    ? "Cette séance est <b>modifiée sur cet appareil</b> : les mises à jour " +
-      "faites sur l'ordinateur ne l'atteignent plus tant qu'elle l'est."
-    : "Enregistrer ici garde la modification <b>sur cet appareil</b>. Le " +
+    ? "Cette séance est <b>personnalisée</b> : les mises à jour faites sur " +
+      "l'ordinateur ne l'atteignent plus tant qu'elle l'est."
+    : "Enregistrer ici en fait une <b>séance personnalisée</b>, à toi seul. Le " +
       "fichier de l'ordinateur ne sera pas mis à jour, et cette séance cessera " +
       "de suivre ses futures versions.";
   $("rendreAuFichier").hidden = !locale;
   // `null` veut dire « laisse ce qui est affiche » : redessiner apres un
   // enregistrement effacerait sinon la confirmation au moment ou elle apparait.
   if (message !== null) $("retourEditeurMessage").textContent = message;
-
-  const conteneur = $("blocsEditeur");
-  conteneur.replaceChildren();
-
-  blocs_edites.forEach((bloc, index) => {
-    const suivant = blocs_edites[index + 1];
-    // **Le dernier bloc ne peut pas etre entrelace** : il n'a pas de suivant.
-    // La regle se reapplique a chaque redessin, donc deplacer un bloc en
-    // derniere position defait son entrelacement de lui-meme.
-    if (!suivant) bloc.entrelace_avec = null;
-    else if (bloc.entrelace_avec) bloc.entrelace_avec = suivant.exercice;
-
-    const ligne = ligne_editeur(bloc, index);
-    ligne.classList.toggle("entrelace", Boolean(bloc.entrelace_avec));
-    ligne.querySelector('.move-btn[data-sens="-1"]').disabled = index === 0;
-    ligne.querySelector('.move-btn[data-sens="1"]').disabled =
-      index === blocs_edites.length - 1;
-    ligne.querySelector(".entrelace-btn").title = bloc.entrelace_avec
-      ? `Entrelacé avec : ${bloc.entrelace_avec}`
-      : "Entrelacer avec l'exercice suivant";
-    conteneur.appendChild(ligne);
-
-    // La paire se lit sous la ligne : « ⟷ » seul ne
-    // dit pas avec quoi.
-    if (bloc.entrelace_avec) {
-      const paire = document.createElement("p");
-      paire.className = "paire";
-      paire.textContent = `⟷ séries alternées avec ${bloc.entrelace_avec}`;
-      conteneur.appendChild(paire);
-    }
-  });
-}
-
-/** Les mouvements proposes, exercices et echauffements separes comme ailleurs. */
-function options_mouvements(courant) {
-  const noms = Object.keys(mouvements).sort((a, b) => a.localeCompare(b, "fr"));
-  const groupe = (titre, liste) =>
-    `<optgroup label="${titre}">` +
-    liste
-      .map(
-        (n) =>
-          `<option value="${echapper(n)}"${n === courant ? " selected" : ""}>${echapper(n)}</option>`
-      )
-      .join("") +
-    `</optgroup>`;
-
-  // Un nom orphelin — venu d'un fichier plus recent, ou renomme — doit rester
-  // selectionne : sans cette option, le navigateur choisirait la premiere et
-  // remplacerait silencieusement l'exercice a l'enregistrement.
-  const inconnu = courant && !(courant in mouvements)
-    ? groupe("Inconnu", [courant])
-    : "";
-
-  return (
-    inconnu +
-    groupe("Exercices", noms.filter((n) => !mouvements[n].est_echauffement)) +
-    groupe("Échauffements", noms.filter((n) => mouvements[n].est_echauffement))
-  );
-}
-
-/**
- * Une ligne d'edition.
- *
- * `editeur.css` l'habille, y compris la **pastille de couleur du mode** et le
- * liseret d'entrelacement : ce sont des reperes qu'on lit d'un coup d'oeil.
- */
-function ligne_editeur(bloc, index) {
-  const ligne = document.createElement("div");
-  ligne.className = "bloc";
-  ligne.dataset.mode = bloc.mode ?? "repetitions";
-
-  const champ = (classe, libelle, unite, valeur, attributs = 'type="number" min="0"') =>
-    `<div class="champ"><label>${libelle}` +
-    (unite ? `<span>${unite}</span>` : "") +
-    `</label><input class="${classe}" ${attributs} value="${valeur}"></div>`;
-
-  ligne.innerHTML =
-    `<button type="button" class="move-btn" data-sens="-1" title="Monter">▲</button>` +
-    `<button type="button" class="move-btn" data-sens="1" title="Descendre">▼</button>` +
-    `<button type="button" class="entrelace-btn" title="Entrelacer avec l'exercice suivant">⟷</button>` +
-    `<div class="champ"><label>Exercice</label>` +
-    `<select class="exercice">${options_mouvements(bloc.exercice)}</select></div>` +
-    `<div class="champ"><label><span class="mode-pastille"></span> Mode</label>` +
-    `<select class="mode">` +
-    Object.entries(LIBELLES_MODE)
-      .map(
-        ([valeur, libelle]) =>
-          `<option value="${valeur}"${valeur === bloc.mode ? " selected" : ""}>${libelle}</option>`
-      )
-      .join("") +
-    `</select></div>` +
-    champ("poids", "Poids", "en kg", bloc.poids ?? 0, 'type="number" min="0" step="0.5"') +
-    champ("series", "Séries", "", bloc.series ?? 1, 'type="number" min="1"') +
-    champ("repetitions", "Répétitions", "", bloc.repetitions ?? 0) +
-    champ("duree", "Durée", "secondes", bloc.duree ?? 0) +
-    champ("reposEntre", "Repos série", "secondes", bloc.repos_entre_series ?? 0) +
-    champ("reposApres", "Repos exercice", "secondes", bloc.repos_apres ?? 0) +
-    `<button type="button" class="sup-btn" aria-label="Supprimer cet exercice">X</button>`;
-
-  // Le commentaire se modifie depuis la liste des seances : on le transporte
-  // tel quel pour ne pas l'effacer en enregistrant depuis ici.
-  ligne.dataset.commentaire = bloc.commentaire ?? "";
-
-  // **L'entrelacement est un drapeau « avec le bloc suivant »**, pas un nom.
-  // Le partenaire est recalcule a l'enregistrement, ce qui lui permet de
-  // survivre a un reordonnancement — deplacer un bloc ne doit pas laisser un
-  // entrelacement pointant vers un exercice qui n'est plus a cote.
-  const entrelace = ligne.querySelector(".entrelace-btn");
-  if (bloc.entrelace_avec) entrelace.classList.add("active");
-  entrelace.addEventListener("click", () => {
-    if (!entrelace.classList.contains("active") && index >= blocs_edites.length - 1) {
-      alert("Aucun exercice suivant à entrelacer.");
-      return;
-    }
-    lire_ligne(ligne, bloc);
-    bloc.entrelace_avec = entrelace.classList.contains("active") ? null : "?";
-    dessiner_editeur();
-  });
-
-  for (const bouton of ligne.querySelectorAll(".move-btn")) {
-    bouton.addEventListener("click", () => {
-      const sens = Number(bouton.dataset.sens);
-      const vers = index + sens;
-      if (vers < 0 || vers >= blocs_edites.length) return;
-      lire_ligne(ligne, bloc);
-      [blocs_edites[index], blocs_edites[vers]] = [blocs_edites[vers], blocs_edites[index]];
-      dessiner_editeur();
-    });
-  }
-  ligne.querySelector(".sup-btn").addEventListener("click", () => {
-    blocs_edites.splice(index, 1);
-    dessiner_editeur();
-  });
-
-  for (const element of ligne.querySelectorAll("input, select")) {
-    element.addEventListener("change", () => {
-      const ancien_mode = bloc.mode;
-      lire_ligne(ligne, bloc);
-      // La pastille et la couleur du mode suivent le <select> sans redessiner.
-      ligne.dataset.mode = bloc.mode;
-      // Changer d'exercice change le libelle affiche sur le bloc precedent
-      // s'il est entrelace avec celui-ci.
-      if (bloc.mode !== ancien_mode || element.classList.contains("exercice")) {
-        dessiner_editeur();
-      }
-    });
-  }
-
-  return ligne;
-}
-
-/**
- * Recopie la saisie dans le bloc.
- *
- * Appelee avant **tout** redessin, sans quoi ce qui vient d'etre tape est
- * perdu : la ligne est reconstruite a chaque reordonnancement.
- *
- * `repetitions` et `duree` sont deux champs distincts, comme sur le poste
- * fixe, et tous deux conserves : c'est ce qui permet de passer d'un mode a
- * l'autre sans perdre la valeur de l'autre unite. Le mode decide seulement
- * lequel sera *joue*.
- */
-function lire_ligne(ligne, bloc) {
-  bloc.exercice = ligne.querySelector(".exercice").value;
-  bloc.mode = ligne.querySelector(".mode").value;
-  bloc.poids = Number(ligne.querySelector(".poids").value) || 0;
-  bloc.series = Math.max(1, Number(ligne.querySelector(".series").value) || 1);
-  bloc.repetitions = Number(ligne.querySelector(".repetitions").value) || 0;
-  bloc.duree = Number(ligne.querySelector(".duree").value) || 0;
-  bloc.repos_entre_series = Number(ligne.querySelector(".reposEntre").value) || 0;
-  bloc.repos_apres = Number(ligne.querySelector(".reposApres").value) || 0;
-  bloc.commentaire = ligne.dataset.commentaire ?? "";
+  editeur_seance.redessiner();
 }
 
 /**
@@ -3823,6 +3613,7 @@ function lire_ligne(ligne, bloc) {
  */
 async function enregistrer_seance_editee() {
   const retour = $("retourEditeurMessage");
+  const blocs_edites = editeur_seance.blocs();
   const problemes = problemes_des_blocs(mouvements, blocs_edites);
   if (problemes.length) {
     retour.className = "retour-ancrage erreur";
@@ -3837,7 +3628,9 @@ async function enregistrer_seance_editee() {
     PROFIL
   );
 
-  historique.enregistrer_seance_perso(base, PROFIL, seance_editee, blocs_edites);
+  // Une copie : l'editeur garde sa liste de travail, et une saisie faite
+  // apres l'enregistrement ne doit pas modifier la seance enregistree.
+  historique.enregistrer_seance_perso(base, PROFIL, seance_editee, structuredClone(blocs_edites));
   const ecrit = await stockage.sauver(base);
   rafraichir_catalogue();
 
@@ -6541,22 +6334,7 @@ $("retourEditeur").addEventListener("click", () => {
   dessiner_liste();
   montrer("ecranSeances");
 });
-$("ajouterBloc").addEventListener("click", () => {
-  const premier = Object.keys(mouvements).sort((a, b) => a.localeCompare(b, "fr"))[0];
-  blocs_edites.push({
-    exercice: premier,
-    mode: "repetitions",
-    series: 3,
-    repetitions: 10,
-    duree: 0,
-    poids: 0,
-    repos_entre_series: 30,
-    repos_apres: 30,
-    commentaire: "",
-    entrelace_avec: null,
-  });
-  dessiner_editeur();
-});
+$("ajouterBloc").addEventListener("click", () => editeur_seance.ajouter_bloc());
 $("enregistrerSeance").addEventListener("click", enregistrer_seance_editee);
 $("rendreAuFichier").addEventListener("click", async () => {
   historique.oublier_seance_perso(base, PROFIL, seance_editee, {
@@ -6564,7 +6342,7 @@ $("rendreAuFichier").addEventListener("click", async () => {
   });
   await stockage.sauver(base);
   rafraichir_catalogue();
-  blocs_edites = blocs_a_editer(seance_editee);
+  editeur_seance.remplacer(blocs_a_editer(seance_editee));
   dessiner_editeur("Rendue au fichier : elle suivra de nouveau l'ordinateur.");
 });
 // Delegue sur le document : les boutons de profil sont rendus par

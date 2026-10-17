@@ -1,10 +1,8 @@
 /* ==========================================================================
-   Éditeur de séance — partagé par creer_seance.html et editer_seance.html.
-
-   Les deux pages avaient 78 lignes de CSS identiques. Ce qui les distingue
-   encore (largeur de `main`, nombre de colonnes de la grille `.bloc`) reste
-   dans le <style> de chaque page, parce que ça dépend du nombre de boutons
-   que chacune affiche.
+   Éditeur de séance (`editeur_seance.js`) — partagé par l'application et
+   l'outil maître (`dev/createur.html`). Un seul éditeur, un seul habillage :
+   la mise en page des blocs vit ici, sous `.editeur-blocs`, et non dans
+   chaque page.
    ========================================================================== */
 
 label {
@@ -158,4 +156,39 @@ label {
 
 @media (max-width: 700px) {
     .bloc { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+/* ---------- Mise en page des blocs ----------
+   La grille aligne onze colonnes sur une ligne — elle suppose un écran
+   large, et un iPad ne l'a qu'en paysage. Plus étroit, on empile : les
+   commandes en haut, l'exercice en pleine largeur, puis les nombres à deux
+   par ligne. C'est la même information, dans le même ordre. */
+.editeur-blocs .bloc {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.55rem;
+}
+.editeur-blocs .bloc > button { order: -1; }
+/* L'exercice et le mode passent la ligne : ce sont eux qu'on lit d'abord. */
+.editeur-blocs .bloc .champ:nth-of-type(1),
+.editeur-blocs .bloc .champ:nth-of-type(2) { flex: 1 1 100%; }
+.editeur-blocs .bloc .champ { flex: 1 1 5.5rem; }
+.editeur-blocs .bloc .sup-btn { order: 99; margin-left: auto; }
+/* Sur une ligne, l'unité gaspille une ligne de hauteur par champ. */
+.editeur-blocs .champ label span { display: inline; margin-left: 0.25rem; }
+
+@media (min-width: 900px) {
+    /* Trois boutons, l'exercice, le mode et six nombres, puis la suppression :
+       douze colonnes. Une de moins renvoyait la suppression a la ligne. */
+    .editeur-blocs .bloc {
+        display: grid;
+        grid-template-columns: 34px 34px 40px 2fr repeat(7, 1fr) 40px;
+        align-items: end;
+    }
+    .editeur-blocs .bloc > button,
+    .editeur-blocs .bloc .sup-btn { order: 0; margin-left: 0; }
+    .editeur-blocs .bloc .champ:nth-of-type(1),
+    .editeur-blocs .bloc .champ:nth-of-type(2) { flex: none; }
+    .editeur-blocs .champ label span { display: block; margin-left: 0; }
 }
