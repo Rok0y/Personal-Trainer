@@ -63,6 +63,18 @@ egal("superset",
   ),
   30 + 20 + 10 + 30 + 30 + 20 + 10 + 90 + 40);
 
+// --- Circuit de trois AMRAP en deux tours : la transition de chaque membre,
+// le repos entre tours de la tete, puis son repos apres (ceux des membres
+// ne sont jamais joues).
+egal("circuit en tours",
+  duree(
+    bloc("X", { mode: "amrap", series: 2, cible: 30, entre: 60, apres: 90, avec: "Y" }),
+    bloc("Y", { mode: "amrap", series: 2, cible: 30, entre: 10, apres: 45, avec: "Z" }),
+    bloc("Z", { mode: "amrap", series: 2, cible: 30, entre: 10, apres: 45 }),
+    bloc("C", { mode: "maintien", cible: 40 }),
+  ),
+  (30 + 10 + 30 + 10 + 30) + 60 + (30 + 10 + 30 + 10 + 30) + 90 + 40);
+
 // --- Cibles en secondes : leur duree, sans tempo
 egal("maintien : 3 x 30 s, 15 s entre les series",
   duree(bloc("G", { mode: "maintien", series: 3, cible: 30, entre: 15 })),

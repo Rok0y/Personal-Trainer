@@ -226,6 +226,7 @@
 <script type="module">
 import { INSTRUMENTS, formater_zone } from "../js/instruments.js";
 import { MESSAGES } from "../js/messages.js";
+import { est_compte, est_exercice } from "../js/nature.js";
 import { adresse_video, fichier_video, jouer_si_visible, montrer_video } from "../js/videos.js";
 
 const $ = (id) => document.getElementById(id);
@@ -395,7 +396,7 @@ function alertes(nom) {
   if (o && !mise.includes(o === "face" ? "face" : o.startsWith("profil") ? "profil" : "côté")) {
     sortie.push("Mise en place — aucune ligne ne dit comment se placer par rapport à la caméra.");
   }
-  if (!mouvement.est_echauffement && !(fiche.sensations ?? []).length) {
+  if (est_exercice(mouvement) && !(fiche.sensations ?? []).length) {
     sortie.push("Ce que tu dois sentir — vide : c'est la seule façon de savoir qu'on s'y prend bien.");
   }
   return sortie;
@@ -426,8 +427,11 @@ function dessiner_liste() {
   }
 }
 
-/** Les echauffements a part, comme dans tout le reste de l'application. */
-const est_echauffement = (nom) => Boolean(mouvements[nom]?.est_echauffement);
+/**
+ * Les echauffements a part, comme dans tout le reste de l'application. Un
+ * echauffement qui est aussi un exercice se range avec les exercices.
+ */
+const est_echauffement = (nom) => !est_exercice(mouvements[nom]);
 
 function dessiner_editeur() {
   const fiche = fiches[courant];
@@ -556,7 +560,7 @@ function dessiner_video() {
  */
 function extremites(nom) {
   const m = mouvements[nom] ?? {};
-  const instrument = m.detection && !m.est_echauffement ? INSTRUMENTS[m.detection] : null;
+  const instrument = est_compte(m) ? INSTRUMENTS[m.detection] : null;
   if (!instrument?.ordre.includes("debut") || !instrument.ordre.includes("fin")) return null;
   const vers_le_bas = (zone) => zone[0].startsWith("<");
   const chemin = instrument.mesures.filter(({ zones }) =>

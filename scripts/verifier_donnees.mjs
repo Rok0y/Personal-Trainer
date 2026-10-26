@@ -11,7 +11,8 @@
 //    chaque mouvement compte en repetitions a son tempo ;
 //  - fiches : chaque mouvement a sa fiche, chaque champ a sa forme ;
 //  - mouvements : chaque fonction nommee existe dans `detections.js`, chaque
-//    variante designe un mouvement du catalogue ;
+//    variante designe un mouvement du catalogue ; `aussi_exercice` et
+//    `delai_min_reps` sont bien formes ;
 //  - seances : chaque seance passe `problemes_des_blocs`, le controle que fait
 //    l'editeur de l'application a l'enregistrement ;
 //  - programmes : chaque exigence vise un exercice qui a un bareme, et chaque
@@ -29,6 +30,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DETECTIONS } from "../web/static/js/detections.js";
+import { DELAI_MIN_ENTRE_REPS } from "../web/static/js/compteur.js";
+import { est_compte } from "../web/static/js/nature.js";
 import { composer_baremes } from "../web/static/js/paliers.js";
 import { avec_fiches, problemes_des_blocs } from "../web/static/js/seance.js";
 import { fichier_video } from "../web/static/js/videos.js";
@@ -152,7 +155,7 @@ function main() {
   // l'exigence ici. Un tempo sur un nom inconnu est un renommage oublie.
   const tempo = reglages.tempo?.secondes_par_repetition ?? {};
   for (const [nom, mouvement] of Object.entries(bruts)) {
-    if (mouvement.est_echauffement || !mouvement.detection) continue;
+    if (!est_compte(mouvement)) continue;
     if (specs[nom]?.unite === "secondes") continue;
     if (!(typeof tempo[nom] === "number" && tempo[nom] > 0)) {
       signaler("reglages.json", `« ${nom} » n'a pas de tempo (tempo.secondes_par_repetition, en secondes)`);
@@ -187,6 +190,21 @@ function main() {
     // plus une seule repetition comptee, en silence.
     if (mouvement.depart != null && !(["debut", "fin"].includes(mouvement.depart) && mouvement.detection)) {
       signaler("mouvements.json", `« ${nom} » : depart « ${mouvement.depart} » — "debut" ou "fin", et seulement avec une detection`);
+    }
+    // Un echauffement aussi exercice doit pouvoir etre compte : sans
+    // detection, il serait un exercice au chrono, ce qu'un mouvement qui n'est
+    // pas un echauffement dit deja.
+    if (mouvement.aussi_exercice !== undefined
+      && !(mouvement.aussi_exercice === true && mouvement.est_echauffement && mouvement.detection)) {
+      signaler("mouvements.json", `« ${nom} » : aussi_exercice vaut true, et seulement sur un echauffement qui a une detection`);
+    }
+    // Un delai trop court laisse passer l'echo d'une detection (une ou deux
+    // images, ~0,06 s) ; au-dela du delai par defaut, il ne sert a rien.
+    if (mouvement.delai_min_reps != null) {
+      const delai = mouvement.delai_min_reps;
+      if (!(typeof delai === "number" && delai >= 0.1 && delai <= DELAI_MIN_ENTRE_REPS && mouvement.detection)) {
+        signaler("mouvements.json", `« ${nom} » : delai_min_reps « ${delai} » — un nombre de 0,1 a ${DELAI_MIN_ENTRE_REPS} s, et seulement avec une detection`);
+      }
     }
     for (const sens of ["variante_facile", "variante_difficile"]) {
       if (mouvement[sens] && !bruts[mouvement[sens]]) {

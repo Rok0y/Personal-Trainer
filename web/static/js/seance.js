@@ -15,9 +15,12 @@ import {
   MODES_AVEC_DETECTION_OBLIGATOIRE,
   MODES_CIBLE_TEMPORELLE,
   MODES_CONNUS,
+  MODE_ECHAUFFEMENT,
   MODE_REPETITIONS,
+  chaines_entrelacees,
   cible_du_bloc,
   est_echauffement,
+  paires_entrelacees,
 } from "./circuit.js";
 import { DETECTIONS } from "./detections.js";
 import { INSTRUMENTS } from "./instruments.js";
@@ -72,6 +75,7 @@ export function exercice_pour(mouvements, nom) {
     amplitude: amplitude_pour(fiche.amplitude),
     changements: fiche.changements ?? [],
     depart: fiche.depart ?? null,
+    delai_min_reps: fiche.delai_min_reps ?? null,
     instrument: instrument_pour(fiche.detection),
     autre_cote: autre_cote_pour(mouvements, fiche.autre_cote),
   });
@@ -317,7 +321,8 @@ export function catalogue_effectif(du_fichier, locales) {
  * Mieux vaut un refus a l'enregistrement qu'une erreur en pleine seance,
  * quand on est a deux metres de l'ecran et deja echauffe. Les refus : un
  * exercice inconnu, un mode inconnu, un mode qui exige une detection sur un
- * mouvement qui n'en a pas, et une cible nulle dans l'unite jouee.
+ * mouvement qui n'en a pas, une cible nulle dans l'unite jouee, et un circuit
+ * qu'on ne saurait pas jouer en tours (`problemes_des_circuits`).
  *
  * Rend la liste des problemes plutot que de lever au premier : un formulaire
  * doit pouvoir tout signaler d'un coup.
@@ -354,6 +359,38 @@ export function problemes_des_blocs(mouvements, blocs) {
           ? `${nom} : le mode « ${mode} » se joue au temps. Mets une duree ` +
             "superieure a zero (les repetitions ne sont pas jouees)."
           : `${nom} : mets un nombre de repetitions superieur a zero.`
+      );
+    }
+  }
+  problemes.push(...problemes_des_circuits(blocs));
+  return problemes;
+}
+
+/**
+ * Un circuit (ou un superset, circuit de deux) se joue en tours : la tete
+ * ouvre chaque tour, et **son** nombre de series fait le nombre de tours. Un
+ * membre qui en annoncerait un autre serait joue a chaque tour quand meme,
+ * au-dela de ce qu'il affiche. Un echauffement n'y a pas sa place : son
+ * compte de series ignore l'entrelacement.
+ */
+function problemes_des_circuits(blocs) {
+  const problemes = [];
+  const chaines = chaines_entrelacees(
+    paires_entrelacees(
+      blocs.map((bloc) => bloc.exercice),
+      blocs.map((bloc) => bloc.entrelace_avec ?? null)
+    )
+  );
+  for (const chaine of new Set(chaines.values())) {
+    const membres = chaine.map((index) => blocs[index]);
+    const noms = membres.map((bloc) => bloc.exercice).join(", ");
+    if (membres.some((bloc) => (bloc.mode ?? MODE_REPETITIONS) === MODE_ECHAUFFEMENT)) {
+      problemes.push(`Circuit ${noms} : un echauffement ne peut pas en faire partie.`);
+    }
+    if (new Set(membres.map((bloc) => bloc.series ?? 1)).size > 1) {
+      problemes.push(
+        `Circuit ${noms} : tous les blocs doivent avoir le meme nombre de series ` +
+          "(c'est le nombre de tours)."
       );
     }
   }

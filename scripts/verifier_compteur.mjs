@@ -1,4 +1,5 @@
-// Le compteur attend-il la position de depart d'un mouvement ?
+// Le compteur attend-il la position de depart d'un mouvement, et suit-il son
+// rythme (`delai_min_reps`) ?
 //
 // Les entrees figees de `comparer_seances` ne portent aucun `depart` (elles
 // datent d'avant lui) : la regle n'y est jamais visitee. Ces cas sont donc
@@ -45,10 +46,26 @@ egal("douze repetitions apres le depart", compter(["fin", ...Array(12).fill(["de
   egal("apres reset, la mise en place ne compte pas", compteur.repetitions, 0);
 }
 
+// --- Le delai minimal entre deux repetitions : par defaut, et propre au
+// mouvement (`delai_min_reps`, une montee de genoux ou chaque pas compte).
+/** Repetitions comptees pour des aller-retours espaces de `pas` secondes. */
+function compter_au_rythme(pas, delai = null) {
+  const compteur = new CompteurMouvement();
+  for (let i = 0; i < 10; i++) {
+    compteur.mettre_a_jour("debut", i * pas, "debut", delai);
+    compteur.mettre_a_jour("fin", i * pas + pas / 2, "debut", delai);
+  }
+  return compteur.repetitions;
+}
+egal("delai par defaut : une repetition toutes les 0,2 s n'en compte qu'une sur deux", compter_au_rythme(0.2), 5);
+egal("delai par defaut : toutes les 0,35 s, tout compte", compter_au_rythme(0.35), 10);
+egal("delai propre de 0,15 s : toutes les 0,2 s, tout compte", compter_au_rythme(0.2, 0.15), 10);
+egal("delai propre de 0,15 s : un echo a 0,1 s reste refuse", compter_au_rythme(0.1, 0.15), 5);
+
 if (problemes.length) {
   console.log(`${problemes.length} ecarts sur ${controles} controles :\n`);
   for (const p of problemes) console.log(`  - ${p}`);
   process.exitCode = 1;
 } else {
-  console.log(`${controles} controles : le compteur attend la position de depart du mouvement.`);
+  console.log(`${controles} controles : le compteur attend la position de depart du mouvement et suit son rythme.`);
 }

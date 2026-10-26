@@ -336,12 +336,17 @@ import { texte } from "../js/messages.js";
 import { SEUIL_IMMOBILE, vitesse_du_buste } from "../js/immobilite.js";
 import { confirmer_verdict } from "../js/moteur.js";
 import { avec_fiches } from "../js/seance.js";
+import { est_compte } from "../js/nature.js";
 import { jouer_si_visible, montrer_video } from "../js/videos.js";
 
 const VERSION_WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const MODELE = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
 
-const CIBLE_REPETITIONS = 10;
+// `?cible=40` l'allonge : dix pas de montees de genoux tiennent en trois
+// secondes, trop peu pour juger un comptage rapide.
+const CIBLE_REPETITIONS = Math.max(
+  1, Math.trunc(Number(new URLSearchParams(location.search).get("cible"))) || 10
+);
 const CIBLE_SECONDES = 30;
 // Meme garde-fou que INTERVALLE_MAX de moteur.js : un onglet
 // suspendu par iOS ne doit pas crediter d'un coup tout le temps ecoule.
@@ -684,7 +689,7 @@ async function chargerCatalogue() {
     fetch("../donnees/fiches.json").then((r) => r.json()),
   ]);
   catalogue = Object.values(avec_fiches(mouvements, fiches))
-    .filter((m) => !m.est_echauffement && m.detection)
+    .filter((m) => est_compte(m))
     .sort((a, b) => (a.nom < b.nom ? -1 : a.nom > b.nom ? 1 : 0));
   dessinerListe();
 }
@@ -1398,7 +1403,9 @@ function traiter(corps, instant) {
     majAffichage(Math.floor(secondesTenues), CIBLE_SECONDES);
   } else {
     dernierInstant = null;
-    const [, repetitions] = compteur.mettre_a_jour(jeton, instant, exercice.depart ?? null);
+    const [, repetitions] = compteur.mettre_a_jour(
+      jeton, instant, exercice.depart ?? null, exercice.delai_min_reps ?? null
+    );
     majAffichage(repetitions, CIBLE_REPETITIONS);
   }
 }
