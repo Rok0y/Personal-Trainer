@@ -23,6 +23,7 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 import { NOMBRE_MAXIMAL_DIT } from "../web/static/js/annonces.js";
+import { est_exercice } from "../web/static/js/nature.js";
 import { RACINE, SONS, charger, fichier, texte_charge } from "./vocabulaire.mjs";
 
 const SORTIE = join(RACINE, "audio", "A_ENREGISTRER.md");
@@ -203,9 +204,10 @@ function main() {
     ajouter(titre, note, lignes_de(paires));
   }
 
+  // Un echauffement qui est aussi un exercice se range avec les exercices.
   const noms = (echauffement) =>
     Object.values(mouvements)
-      .filter((m) => Boolean(m.est_echauffement) === echauffement)
+      .filter((m) => !est_exercice(m) === echauffement)
       .map((m) => m.nom)
       .sort()
       .map((nom) => [fichier(nom), nom]);

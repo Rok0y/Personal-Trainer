@@ -6,7 +6,10 @@
 
 // Delai minimal, en secondes, entre deux repetitions comptees : un saut d'une
 // ou deux images juste apres une vraie repetition la faisait compter deux
-// fois. Aucune repetition reelle ne tient en 0,3 s.
+// fois. Aucune repetition d'un exercice de force ne tient en 0,3 s ; un
+// mouvement plus rapide, ou chaque pas compte, declare le sien
+// (`delai_min_reps` dans `mouvements.json`). L'hysteresis de sa detection
+// empeche deja l'echo d'un aller-retour `fin → debut → fin` d'une image.
 export const DELAI_MIN_ENTRE_REPS = 0.3;
 
 export class CompteurMouvement {
@@ -23,7 +26,10 @@ export class CompteurMouvement {
   // premier jeton vu fixait la position de depart : en s'allongeant coudes
   // plies pour un developpe couche, on etait vu en `debut`, et pousser les
   // halteres en place comptait une repetition a chaque serie.
-  mettre_a_jour(nouveau_stage, instant = null, depart = null) {
+  //
+  // `delai` est l'ecart minimal entre deux repetitions comptees
+  // (`Exercice.delai_min_reps`), ou null pour le delai par defaut.
+  mettre_a_jour(nouveau_stage, instant = null, depart = null, delai = null) {
     if (nouveau_stage !== "debut" && nouveau_stage !== "fin") {
       return [this.stage, this.repetitions];
     }
@@ -37,7 +43,7 @@ export class CompteurMouvement {
       if (
         instant === null ||
         this.derniere_rep_a === null ||
-        instant - this.derniere_rep_a >= DELAI_MIN_ENTRE_REPS
+        instant - this.derniere_rep_a >= (delai ?? DELAI_MIN_ENTRE_REPS)
       ) {
         this.repetitions += 1;
         this.derniere_rep_a = instant;

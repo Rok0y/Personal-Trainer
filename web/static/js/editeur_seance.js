@@ -12,6 +12,8 @@
 // `editeur.css` l'habille : pastille et liseret de couleur du mode, liseret
 // d'entrelacement — des reperes qu'on lit d'un coup d'oeil.
 
+import { chaines_entrelacees, paires_entrelacees } from "./circuit.js";
+import { est_exercice, propose_en_echauffement } from "./nature.js";
 import { normaliser_entrelacement } from "./seance.js";
 
 export const LIBELLES_MODE = {
@@ -54,11 +56,13 @@ function options_mouvements(mouvements, courant, filtre) {
   const noms = Object.keys(mouvements)
     .filter((n) => n === courant || !filtre || filtre(n))
     .sort((a, b) => a.localeCompare(b, "fr"));
-  const groupe = (titre, liste) =>
+  // Un mouvement a la fois exercice et echauffement figure dans les deux
+  // groupes ; seul le premier porte la selection.
+  const groupe = (titre, liste, selection = true) =>
     liste.length
       ? `<optgroup label="${titre}">` +
         liste
-          .map((n) => `<option value="${echapper(n)}"${n === courant ? " selected" : ""}>${echapper(n)}</option>`)
+          .map((n) => `<option value="${echapper(n)}"${selection && n === courant ? " selected" : ""}>${echapper(n)}</option>`)
           .join("") +
         `</optgroup>`
       : "";
@@ -70,8 +74,12 @@ function options_mouvements(mouvements, courant, filtre) {
 
   return (
     inconnu +
-    groupe("Exercices", noms.filter((n) => !mouvements[n].est_echauffement)) +
-    groupe("Échauffements", noms.filter((n) => mouvements[n].est_echauffement))
+    groupe("Exercices", noms.filter((n) => est_exercice(mouvements[n]))) +
+    groupe(
+      "Échauffements",
+      noms.filter((n) => propose_en_echauffement(mouvements[n])),
+      !est_exercice(mouvements[courant])
+    )
   );
 }
 
@@ -111,7 +119,23 @@ export function creer_editeur_seance(conteneur, { mouvements, blocs = [], filtre
   let travail = structuredClone(blocs);
   let restriction = filtre;
 
-  function ligne_editeur(bloc, index) {
+  /**
+   * La place de chaque bloc dans un circuit (une paire en est un de deux) :
+   * `tete`, `membre`, ou absent. Lue comme le `Circuit` la lira en seance.
+   */
+  function roles_dans_les_circuits() {
+    const chaines = chaines_entrelacees(paires_entrelacees(
+      travail.map((bloc) => bloc.exercice),
+      travail.map((bloc) => bloc.entrelace_avec ?? null)
+    ));
+    const roles = new Map();
+    for (const [index, chaine] of chaines) {
+      roles.set(index, index === chaine[0] ? { tete: true, taille: chaine.length } : { tete: false });
+    }
+    return roles;
+  }
+
+  function ligne_editeur(bloc, index, role = null) {
     const ligne = document.createElement("div");
     ligne.className = "bloc";
     ligne.dataset.mode = bloc.mode ?? "repetitions";
@@ -137,8 +161,15 @@ export function creer_editeur_seance(conteneur, { mouvements, blocs = [], filtre
       champ("series", "Séries", "", bloc.series ?? 1, 'type="number" min="1"') +
       champ("repetitions", "Répétitions", "", bloc.repetitions ?? 0) +
       champ("duree", "Durée", "secondes", bloc.duree ?? 0) +
-      champ("reposEntre", "Repos série", "secondes", bloc.repos_entre_series ?? 0) +
-      champ("reposApres", "Repos exercice", "secondes", bloc.repos_apres ?? 0) +
+      // Dans un circuit, le repos avant une serie est celui du bloc qu'on va
+      // jouer : sur la tete, le repos entre deux tours ; sur un membre, la
+      // transition depuis le bloc precedent. Le repos apres le circuit est
+      // celui de la tete, et celui d'un membre n'est jamais joue.
+      champ("reposEntre", role ? (role.tete ? "Repos entre tours" : "Transition") : "Repos série", "secondes", bloc.repos_entre_series ?? 0) +
+      champ("reposApres", "Repos exercice", "secondes", bloc.repos_apres ?? 0,
+        role && !role.tete
+          ? 'type="number" min="0" disabled title="Le repos après le circuit est celui de son premier bloc"'
+          : undefined) +
       `<button type="button" class="sup-btn" aria-label="Supprimer cet exercice">X</button>`;
 
     // Le commentaire ne se modifie pas ici : on le transporte tel quel pour
@@ -195,8 +226,19 @@ export function creer_editeur_seance(conteneur, { mouvements, blocs = [], filtre
   function redessiner() {
     normaliser_entrelacement(travail);
     conteneur.replaceChildren();
+    const roles = roles_dans_les_circuits();
     travail.forEach((bloc, index) => {
-      const ligne = ligne_editeur(bloc, index);
+      const role = roles.get(index) ?? null;
+      // Le nombre de tours est celui des series de la tete : il se lit en
+      // tete du circuit, avant sa premiere ligne.
+      if (role?.tete) {
+        const titre = document.createElement("p");
+        titre.className = "circuit-titre";
+        const tours = bloc.series ?? 1;
+        titre.textContent = `${role.taille > 2 ? "Circuit" : "Superset"} · ${tours} ${tours > 1 ? "tours" : "tour"}`;
+        conteneur.appendChild(titre);
+      }
+      const ligne = ligne_editeur(bloc, index, role);
       ligne.classList.toggle("entrelace", Boolean(bloc.entrelace_avec));
       ligne.querySelector('.move-btn[data-sens="-1"]').disabled = index === 0;
       ligne.querySelector('.move-btn[data-sens="1"]').disabled = index === travail.length - 1;

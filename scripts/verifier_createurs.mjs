@@ -57,6 +57,8 @@ const MOUVEMENTS = {
   Planche: m(["abdos"], "gainage"),
   Fente: m(["quadri", "abdos"], "jambes"),
   Rotation: m(["biceps", "quadri"], "mobilite", { est_echauffement: true }),
+  // Un echauffement aussi exercice : il compte comme un exercice.
+  Jacks: m(["quadri"], "cardio", { est_echauffement: true, aussi_exercice: true, detection: "jacks" }),
   Muet: {},
 };
 
@@ -73,6 +75,7 @@ egal("zone : des abdos avec les jambes restent « bas »", zone("Squat", "Planch
 egal("zone : le tronc seul est une zone", zone("Planche"), "tronc");
 egal("zone : haut et bas font plusieurs regions", zone("Curl", "Fente"), "plusieurs");
 egal("zone : l'echauffement n'entre pas", zone("Curl", "Rotation"), "haut");
+egal("zone : un echauffement aussi exercice entre", zone("Curl", "Jacks"), "plusieurs");
 egal("zone : rien de categorise rend null", zone("Muet", "Inconnu"), null);
 egal("zone : les noms", [nom_zone(CATEGORIES, "bas"), nom_zone(CATEGORIES, "plusieurs"), nom_zone(CATEGORIES, null)],
   ["Bas", "Partout", null]);

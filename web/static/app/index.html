@@ -1594,7 +1594,7 @@
           <div class="amrap-row">
             <span class="reps-value" id="amrapReps">0</span>
           </div>
-          <span class="reps-target"><strong id="amrapTempsRestant">60</strong> secondes restantes</span>
+          <span class="reps-target"><strong id="amrapTempsRestant">60</strong> secondes restantes<span id="amrapObjectif"></span></span>
         </div>
 
         <!-- MODE_ECHAUFFEMENT : "18 / 30 secondes" -->
@@ -1748,6 +1748,8 @@ import {
   original_de,
 } from "../js/variantes.js";
 import { UNITE_SECONDES } from "../js/paliers.js";
+import { est_exercice, propose_en_echauffement } from "../js/nature.js";
+import { MODES_CIBLE_TEMPORELLE, MODE_AMRAP, cible_du_bloc } from "../js/circuit.js";
 
 //: Ou le dernier profil choisi est retenu. `localStorage` et non la base :
 //: c'est une **commodite de cet appareil**, pas une donnee d'entrainement —
@@ -1812,10 +1814,6 @@ const DECOMPTE = 3;
 //: pixels, deux appuis se separent davantage.
 const DELAI_DOUBLE_CLIC = 500;
 
-//: Les modes dont la cible se compte en secondes. Une seule liste : la regle
-//: etait ecrite en clair a chaque endroit qui en avait besoin, et un mode
-//: absent d'une des copies voyait sa duree remise a zero.
-const MODES_DUREE = ["maintien", "chrono", "echauffement"];
 
 const $ = (id) => document.getElementById(id);
 const montrer = (id) => {
@@ -2880,7 +2878,20 @@ function annoncer_changement(avant) {
     // pendant l'ecran d'installation. C'est `fermer_installation` qui parle,
     // une fois la personne cadree — et elle dit les deux choses dans l'ordre.
   } else if (phase === "recuperation_serie") {
-    coach("repos");
+    if (seance.change_de_bloc()) {
+      // Dans un circuit (ou un superset), la pause entre deux series mene a
+      // un autre exercice : on l'annonce, avec la meme regle que le repos
+      // entre deux exercices — sur une transition courte, l'annonce part
+      // seule, sans « repos » devant.
+      const court = seance.temps_restant < (lecteur?.repos_minimal ?? 0);
+      if (!court) coach("repos");
+      annoncer_prochain_exercice(
+        seance.bloc_actuel,
+        court ? 0 : lecteur?.silence_presentation ?? 0
+      );
+    } else {
+      coach("repos");
+    }
     // Armer le repere du decompte : `annoncer_temps_repos` ne dit rien tant
     // qu'il vaut null, et sa premiere lecture ne fait que le poser.
     seance.repos_restant_precedent = null;
@@ -4916,8 +4927,10 @@ function dessiner_exercices() {
   const objectifs = moteur.objectifs.objectifs_par_exercice(histoire, ancrages, note);
 
   const noms = Object.keys(mouvements).sort((a, b) => a.localeCompare(b, "fr"));
-  const exercices = noms.filter((n) => !mouvements[n].est_echauffement);
-  const echauffements = noms.filter((n) => mouvements[n].est_echauffement);
+  // Un mouvement qui est aussi un exercice a sa carte d'exercice (niveau,
+  // ligue) : les echauffements listes ici ne comptent nulle part.
+  const exercices = noms.filter((n) => est_exercice(mouvements[n]));
+  const echauffements = noms.filter((n) => !est_exercice(mouvements[n]));
 
   $("listeExercices").innerHTML =
     `<h2>Exercices</h2><div class="grid">` +
@@ -5053,7 +5066,7 @@ function dessiner_fiche(nom) {
       (dur ? choix_variante(remplace, dur === remplace ? null : dur, `Passer à ${dur}`) : "") +
       (fiche.variante_facile ? choix_variante(remplace, fiche.variante_facile, `Passer à ${fiche.variante_facile}`) : "") +
       `</div>`;
-  } else if (fiche.variante_facile && !fiche.est_echauffement) {
+  } else if (fiche.variante_facile && est_exercice(fiche)) {
     filet =
       `<div class="variantes">` +
       choix_variante(nom, fiche.variante_facile, `Jouer ${fiche.variante_facile} à la place dans mes séances`) +
@@ -5061,7 +5074,7 @@ function dessiner_fiche(nom) {
   }
 
   $("contenuFiche").innerHTML =
-    `<p class="kicker">${fiche.est_echauffement ? "Échauffement" : "Exercice"}</p>` +
+    `<p class="kicker">${est_exercice(fiche) ? "Exercice" : "Échauffement"}</p>` +
     `<h1>${echapper(nom)}</h1>` +
     `<p class="resume">${echapper(fiche.description ?? "")}</p>` +
     // Cache tant que la video n'a pas charge : un mouvement sans video
@@ -6102,26 +6115,25 @@ function jour_court(texte) {
 }
 
 /**
- * La cible **du fichier**, dans l'unite que son mode joue reellement.
+ * La cible d'un bloc telle qu'elle sera jouee, objectif du moteur compris.
  *
- * Un bloc porte les deux champs a la fois — c'est voulu, ca permet de passer
- * d'un mode a l'autre sans perdre l'autre valeur —, donc le mode seul decide
- * lequel est la cible. Un `repetitions || duree` prenait le premier non nul et
- * collait l'unite de l'autre : un echauffement de 30 s saisi avec 10
- * repetitions s'affichait « 1×10 s ».
+ * La cible **du fichier** se lit par `cible_du_bloc` (`circuit.js`) : le mode
+ * seul dit quel champ est joue. Une copie locale de la liste des modes au
+ * temps oubliait l'AMRAP, et une carte d'AMRAP affichait ses repetitions.
+ * Un AMRAP se dit par sa duree, et l'objectif du moteur s'y ajoute : c'est le
+ * nombre de repetitions a battre dans ce temps.
  */
-function cible_du_bloc(bloc) {
-  return MODES_DUREE.includes(bloc.mode) ? bloc.duree : bloc.repetitions;
-}
-
-/** La cible d'un bloc telle qu'elle sera jouee, objectif du moteur compris. */
 function cible_affichee(bloc, objectifs, sans_donnees) {
-  const unite_bloc = MODES_DUREE.includes(bloc.mode) ? " s" : "";
+  const unite_bloc = MODES_CIBLE_TEMPORELLE.includes(bloc.mode) ? " s" : "";
   if (est_cible_manuelle(bloc, PROFIL)) {
     return `${bloc.series}×${cible_du_bloc(bloc)}${unite_bloc}` +
       (bloc.poids ? ` · ${bloc.poids} kg` : "") + " · figée";
   }
   const palier = moteur.objectifs.objectif_pour(bloc.exercice, bloc.mode, objectifs);
+  if (palier && bloc.mode === MODE_AMRAP) {
+    return `${palier.series}×${cible_du_bloc(bloc)} s · ${palier.cible} reps` +
+      (sans_donnees.has(bloc.exercice) ? " · 1re fois" : "");
+  }
   if (palier) {
     return `${palier.series}×${palier.cible}${palier.unite === "secondes" ? " s" : ""}` +
       (palier.poids ? ` · ${palier.poids} kg` : "") +

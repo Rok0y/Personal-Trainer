@@ -56,6 +56,7 @@
     .nature { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
     .nature.echauffement { color: var(--mode-echauffement); }
     .nature.compte { color: var(--mode-repetitions); }
+    .nature.chrono { color: var(--mode-chrono); }
 
     .jauge { height: 8px; border-radius: 999px; background: var(--border-strong); overflow: hidden; }
     .jauge > span { display: block; height: 100%; background: var(--teal); border-radius: inherit; }
@@ -117,6 +118,7 @@
 
 <script type="module">
 import { DETECTIONS } from "../js/detections.js";
+import { est_compte, est_exercice } from "../js/nature.js";
 import { fichier } from "../js/annonces.js";
 import { echapper, en_ligne, lire_suivi, rendre_blocs } from "../js/suivi.js";
 import { adresse_video } from "../js/videos.js";
@@ -151,7 +153,7 @@ function constats_donnees(nom, mouvements, fiches, specs) {
   const mouvement = mouvements[nom];
   if (!mouvement) return [puce("manque", "pas encore au catalogue")];
   const sortie = [puce("ok", "au catalogue"), puce(fiches[nom] ? "ok" : "manque", "fiche")];
-  if (!mouvement.est_echauffement && mouvement.detection) {
+  if (est_compte(mouvement)) {
     sortie.push(puce(DETECTIONS[mouvement.detection] ? "ok" : "manque", "détection"));
     sortie.push(puce(specs[nom] ? "ok" : "manque", "barème"));
   }
@@ -161,9 +163,10 @@ function constats_donnees(nom, mouvements, fiches, specs) {
 function nature(noms, mouvements) {
   const connus = noms.map((n) => mouvements[n]).filter(Boolean);
   if (!connus.length) return "";
-  return connus.every((m) => m.est_echauffement)
-    ? `<span class="nature echauffement">Échauffement</span>`
-    : `<span class="nature compte">Exercice compté</span>`;
+  if (connus.every((m) => !est_exercice(m))) return `<span class="nature echauffement">Échauffement</span>`;
+  return connus.some((m) => est_compte(m))
+    ? `<span class="nature compte">Exercice compté</span>`
+    : `<span class="nature chrono">Exercice au chrono</span>`;
 }
 
 function carte({ fichier: nom_fichier, texte }, index, donnees) {

@@ -195,9 +195,15 @@ function afficher_mode_chrono(donnees) {
   $("chronoTemps").textContent = Math.max(0, Math.round(Number(donnees.temps_chrono) || 0));
 }
 
-/** MODE_AMRAP : « 12 repetitions en 60 secondes ». */
+/**
+ * MODE_AMRAP : « 12 repetitions en 60 secondes », et l'objectif du moteur
+ * quand il y en a un — le bareme d'un AMRAP compte des repetitions, et c'est
+ * le nombre a battre.
+ */
 function afficher_mode_amrap(donnees) {
   $("amrapReps").textContent = Number(donnees.repetitions) || 0;
+  const objectif = Number(donnees.repetitions_cibles) || 0;
+  $("amrapObjectif").textContent = objectif > 0 ? ` · objectif ${objectif}` : "";
   $("amrapTempsRestant").textContent = Math.max(
     0,
     Math.round(Number(donnees.temps_amrap_restant) || 0)
@@ -570,7 +576,10 @@ function consigne_prochaine_etape(etape) {
     case "chrono":
       return { serie, cible: `${etape.duree} s` };
     case "amrap":
-      return { serie, cible: `AMRAP ${etape.duree} s` };
+      return {
+        serie,
+        cible: `AMRAP ${etape.duree} s` + (etape.repetitions > 0 ? ` · ${etape.repetitions} reps` : ""),
+      };
     case "echauffement":
       return { serie: "Échauffement", cible: `${etape.duree} s` };
     default:

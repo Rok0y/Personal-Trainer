@@ -10,6 +10,12 @@
 // l'application : elles servent a tirer les etiquettes d'un programme (sa
 // zone, son materiel), qui elles se montrent et filtrent. L'outil maitre les
 // montre toutes.
+//
+// Un mouvement a la fois echauffement et exercice (`aussi_exercice`) compte
+// ici comme un exercice : ces fonctions ne voient que des noms, pas le mode
+// des blocs.
+
+import { est_exercice } from "./nature.js";
 
 /** Les categories d'un mouvement, ou null s'il n'en porte pas. */
 export function categories_du_mouvement(tables, mouvement) {
@@ -40,7 +46,7 @@ export function zone_des_exercices(tables, mouvements, noms) {
   const vues = new Set();
   for (const nom of noms) {
     const mouvement = mouvements[nom];
-    if (!mouvement || mouvement.est_echauffement) continue;
+    if (!est_exercice(mouvement)) continue;
     for (const region of categories_du_mouvement(tables, mouvement)?.regions ?? []) {
       vues.add(region);
     }
@@ -86,7 +92,7 @@ export function exercices_du_programme(programme, catalogue_seances) {
  * pas », jamais « oui ». L'echauffement n'y entre pas : il ne se charge pas.
  */
 export function etiquettes(tables, mouvements, noms, questions = {}) {
-  const exercices = noms.filter((nom) => mouvements[nom] && !mouvements[nom].est_echauffement);
+  const exercices = noms.filter((nom) => est_exercice(mouvements[nom]));
   const tous = (question) =>
     typeof question === "function" ? exercices.every((nom) => question(nom)) : null;
   return {

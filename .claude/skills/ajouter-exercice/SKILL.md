@@ -39,7 +39,7 @@ quand il n'est pas évident.
 
 | # | Question | Ce qu'elle décide |
 |---|---|---|
-| 1 | **Nature** : échauffement sans détection, échauffement détecté (pour l'affichage seulement), exercice compté (répétitions ou AMRAP), maintien (secondes) | Le parcours (A ou B), `est_echauffement`, l'unité du barème |
+| 1 | **Nature** : échauffement sans détection, échauffement détecté (pour l'affichage seulement), exercice compté (répétitions ou AMRAP), exercice au chrono (sans détection, sans barème), maintien (secondes) | Le parcours (A ou B), `est_echauffement`, l'unité du barème. Un mouvement **alterné où chaque côté compte** déclare son `delai_min_reps` (CLAUDE.md, *Détection*) |
 | 2 | **Nom**, et s'il existera un jour **une autre forme** (comptée à côté d'un échauffement, chargée à côté d'une forme à vide) | Le nom est une **clé définitive** (séances perso, historique, `.wav`, `.mp4`). S'il y aura deux formes, décider tout de suite laquelle prend le nom simple. Vérifier qu'aucun mouvement ne porte déjà ce nom et que la longueur ne dépasse pas `longueur_maximale_nom` (`sons.json`) |
 | 3 | **Exécution**, décrite librement par l'utilisateur | La fiche, la détection, l'exercice voisin qui pourrait être compté à sa place |
 | 4 | **Côté** : bilatéral, alterné, unilatéral | Un mouvement unilatéral en fait **deux** (droite, gauche), reliés par `autre_cote` et filmés une seule fois (`--miroir`) |
@@ -176,10 +176,11 @@ analogie, que la seconde règle pour de bon.
 
 ### Plus tard : d'un échauffement à un exercice compté
 
-C'est un **nouveau mouvement**, sous un autre nom, par le parcours B. L'échauffement garde son
-nom, puisque les séances perso et l'historique le nomment. Il peut emprunter la nouvelle
-détection pour l'affichage. Un mouvement n'est jamais les deux à la fois : `est_echauffement`
-retire tout ce qui le concerne des statistiques.
+**Le même mouvement, sous son nom** : on lui ajoute sa détection et `aussi_exercice: true`, par
+le parcours B. C'est le **mode du bloc** qui décide : en échauffement, il reste invisible dans les
+statistiques (`est_echauffement(bloc)`) ; compté (répétitions, AMRAP), il a niveau et ligue.
+Les séances perso et l'historique qui le nomment restent valables. Toute lecture de la nature d'un
+mouvement passe par `nature.js` (`est_exercice`, `est_compte`).
 
 ## 5. Les médias
 

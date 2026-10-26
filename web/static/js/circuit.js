@@ -89,6 +89,7 @@ export class Exercice {
     changements = null,
     sensations = null,
     depart = null,
+    delai_min_reps = null,
     instrument = null,
     autre_cote = null,
   }) {
@@ -120,6 +121,11 @@ export class Exercice {
     // premiere vue ». Lue par `CompteurMouvement.mettre_a_jour`. Meme piege
     // que les deux champs ci-dessus.
     this.depart = depart;
+    // L'ecart minimal, en secondes, entre deux repetitions comptees, quand le
+    // mouvement va plus vite que le compteur ne l'admet d'ordinaire (une
+    // montee de genoux ou chaque pas compte). null : le delai par defaut de
+    // `compteur.js`. Meme piege que l'orientation.
+    this.delai_min_reps = delai_min_reps;
     // L'instrument de sa detection (`instruments.js`) : ce qui dit **pourquoi**
     // une repetition n'a pas compte (`expliquer_tentative`). Jamais ce qui
     // compte.
@@ -235,6 +241,57 @@ export class BlocExercice {
 //: y est deja fini.
 export const PHASES_VARIANTE = ["preparation", "exercice", "recuperation_serie"];
 
+/**
+ * Les liens d'entrelacement d'une seance : index d'un bloc → index de son
+ * partenaire.
+ *
+ * Le partenaire est le premier bloc qui porte le nom vise **apres** celui qui
+ * le vise — jamais avant, sans quoi deux blocs se renverraient l'un a l'autre
+ * sans fin. Prend les noms et les liens plutot que des blocs, pour servir aux
+ * deux formes : les `BlocExercice` du `Circuit` et le JSON qu'on valide
+ * (`problemes_des_blocs`).
+ */
+export function paires_entrelacees(noms, liens) {
+  const paires = new Map();
+  liens.forEach((lien, index) => {
+    if (!lien) return;
+    for (let autre = index + 1; autre < noms.length; autre++) {
+      if (noms[autre] === lien) {
+        paires.set(index, autre);
+        return;
+      }
+    }
+  });
+  return paires;
+}
+
+/**
+ * Les circuits que forment ces liens : index de chaque bloc → la chaine
+ * entiere, dans l'ordre de jeu (la tete d'abord).
+ *
+ * **Une paire est une chaine de deux** : un superset et un circuit en tours ne
+ * font qu'une regle. La tete est le bloc que personne ne vise ; on suit les
+ * liens a partir d'elle. Un bloc deja range ne l'est pas deux fois (deux blocs
+ * qui visent le meme partenaire : le premier le garde).
+ */
+export function chaines_entrelacees(paires) {
+  const visees = new Set(paires.values());
+  const chaines = new Map();
+  for (const tete of [...paires.keys()].sort((a, b) => a - b)) {
+    if (visees.has(tete) || chaines.has(tete)) continue;
+    const chaine = [tete];
+    let courant = tete;
+    while (paires.has(courant) && !chaines.has(paires.get(courant))) {
+      courant = paires.get(courant);
+      if (chaine.includes(courant)) break;
+      chaine.push(courant);
+    }
+    if (chaine.length < 2) continue;
+    for (const index of chaine) chaines.set(index, chaine);
+  }
+  return chaines;
+}
+
 //: Comment annoncer un bloc selon sa place dans la seance. Ce sont des cles
 //: du vocabulaire ferme d'`annonces.js`.
 export const AMORCES_PAR_POSITION = {
@@ -267,6 +324,9 @@ export class Circuit {
 
     this.resultats_series = [];
     this.paires_entrelacees = this._detecter_paires_entrelacees();
+    // Le circuit de chaque bloc entrelace (une paire en est un de deux) : ce
+    // qui dit ou aller apres chaque serie d'un tour.
+    this._chaine_de = chaines_entrelacees(this.paires_entrelacees);
     this.serie_actuelle_locale = 1;
     this._exercice_precedent_entrelace = null;
 
@@ -279,27 +339,24 @@ export class Circuit {
   }
 
   _detecter_paires_entrelacees() {
-    const paires = new Map();
-    this.exercices.forEach((bloc, index) => {
-      if (bloc.entrelace_avec) {
-        const partenaire = this._trouver_exercice_par_nom(bloc.entrelace_avec, index);
-        if (partenaire !== null) paires.set(index, partenaire);
-      }
-    });
-    return paires;
+    return paires_entrelacees(
+      this.exercices.map((bloc) => bloc.exercice.nom),
+      this.exercices.map((bloc) => bloc.entrelace_avec)
+    );
+  }
+
+  /** Le circuit dont ce bloc fait partie, la tete d'abord, ou null. */
+  _chaine(index) {
+    return this._chaine_de.get(index) ?? null;
   }
 
   /**
-   * Indice du premier exercice portant ce nom apres `depuis`.
-   *
-   * La recherche est strictement vers l'avant : un partenaire situe plus haut
-   * dans la seance (ou l'exercice lui-meme) creerait une boucle infinie.
+   * Le tour en cours d'un circuit : celui que la tete a ouvert, ou la serie
+   * courante quand aucun tour n'est ouvert (on est sur la tete, avant sa
+   * serie).
    */
-  _trouver_exercice_par_nom(nom_exercice, depuis = -1) {
-    for (let index = depuis + 1; index < this.exercices.length; index++) {
-      if (this.exercices[index].exercice.nom === nom_exercice) return index;
-    }
-    return null;
+  get _tour() {
+    return this._exercice_precedent_entrelace?.serie ?? this.serie_actuelle;
   }
 
   _est_entrelace(index) {
@@ -312,12 +369,15 @@ export class Circuit {
       : null;
   }
 
-  /** Indice du vrai prochain exercice, en sautant le partenaire entrelace. */
+  /**
+   * Indice du vrai prochain exercice, en sautant tout le circuit du bloc
+   * courant : ses membres se jouent dans ses tours, pas apres lui.
+   */
   _obtenir_vrai_prochain_exercice_index() {
     let prochain_index = this.index_exercice + 1;
-    const partenaire_direct = this._obtenir_partenaire_entrelace(this.index_exercice);
-    if (partenaire_direct !== null) {
-      prochain_index = Math.max(prochain_index, partenaire_direct + 1);
+    const chaine = this._chaine(this.index_exercice);
+    if (chaine !== null) {
+      prochain_index = Math.max(prochain_index, Math.max(...chaine) + 1);
     }
     return prochain_index;
   }
@@ -336,14 +396,38 @@ export class Circuit {
    * « pour finir » sur le dernier bloc, « prochain exercice » ailleurs. La
    * comparaison est d'**identite** et non d'index, deux blocs pouvant porter
    * le meme exercice.
+   *
+   * Un circuit revient sur ses blocs : le premier n'est « premier » que tant
+   * que rien n'a ete fait, et le dernier n'est « pour finir » qu'au dernier
+   * tour.
    */
   amorce_annonce(bloc) {
     if (!bloc || !this.exercices.length) return AMORCES_PAR_POSITION.milieu;
-    if (bloc === this.exercices[0]) return AMORCES_PAR_POSITION.premier;
+    if (bloc === this.exercices[0] && this.resultats_series.length === 0) {
+      return AMORCES_PAR_POSITION.premier;
+    }
     if (bloc === this.exercices[this.exercices.length - 1]) {
+      const chaine = this._chaine(this.exercices.length - 1);
+      if (chaine !== null && this._tour < this.exercices[chaine[0]].nombre_series) {
+        return AMORCES_PAR_POSITION.milieu;
+      }
       return AMORCES_PAR_POSITION.dernier;
     }
     return AMORCES_PAR_POSITION.milieu;
+  }
+
+  /**
+   * La pause en cours mene-t-elle a un autre bloc que celui qu'on vient de
+   * finir ? C'est le cas dans un circuit (et un superset) : la recuperation
+   * entre deux series y est aussi un changement d'exercice, qu'il faut
+   * annoncer.
+   */
+  change_de_bloc() {
+    return (
+      this.phase === "recuperation_serie" &&
+      this._derniere_serie_terminee !== null &&
+      this._derniere_serie_terminee.index_exercice !== this.index_exercice
+    );
   }
 
   prochain_bloc() {
@@ -837,40 +921,51 @@ export class Circuit {
           : null,
     };
 
-    // Cas 1 : l'exercice courant a un partenaire entrelace.
-    if (this._est_entrelace(this.index_exercice)) {
-      const partenaire_index = this._obtenir_partenaire_entrelace(this.index_exercice);
+    // Cas 1 : le bloc courant est dans un circuit (une paire en est un de
+    // deux), et le tour n'est pas fini : on passe au membre suivant.
+    const chaine = this._chaine(this.index_exercice);
+    if (chaine !== null) {
+      const position = chaine.indexOf(this.index_exercice);
+      const dernier = position === chaine.length - 1;
 
-      if (this._exercice_precedent_entrelace === null) {
-        // Le partenaire n'a pas encore ete visite pour cette serie : on y va
-        // en gardant le meme `serie_actuelle`, pour que l'affichage reste
-        // coherent pendant l'aller-retour.
-        this._exercice_precedent_entrelace = {
-          index: this.index_exercice,
-          serie: this.serie_actuelle,
-        };
-        this.index_exercice = partenaire_index;
+      if (!dernier && (position > 0 || this._exercice_precedent_entrelace === null)) {
+        // Le tour s'ouvre sur la tete, ou se poursuit. On garde le meme
+        // `serie_actuelle` d'un membre a l'autre : c'est le numero du tour, et
+        // la serie que chaque membre enregistre. Le repere nomme toujours la
+        // tete, ou l'on revient a la fin du tour.
+        if (this._exercice_precedent_entrelace === null) {
+          this._exercice_precedent_entrelace = {
+            index: chaine[0],
+            serie: this.serie_actuelle,
+          };
+        }
+        this.index_exercice = chaine[position + 1];
         this.phase = "recuperation_serie";
         this.debut_repos = this.maintenant();
         return;
       }
 
-      // On revient du partenaire : retour a l'exercice d'origine, serie
-      // suivante.
-      this.index_exercice = this._exercice_precedent_entrelace.index;
-      this.serie_actuelle = this._exercice_precedent_entrelace.serie + 1;
-      this._exercice_precedent_entrelace = null;
+      // Le tour est fini (dernier membre, ou tete qui porte deja un tour
+      // ouvert) : retour a la tete, tour suivant. Sans tour ouvert, le dernier
+      // membre se joue comme un bloc seul — c'est le cas ordinaire plus bas.
+      if (this._exercice_precedent_entrelace !== null) {
+        this.index_exercice = this._exercice_precedent_entrelace.index;
+        this.serie_actuelle = this._exercice_precedent_entrelace.serie + 1;
+        this._exercice_precedent_entrelace = null;
 
-      if (this.serie_actuelle > this.nombre_series) {
-        this._finir_bloc();
-      } else {
-        this.phase = "recuperation_serie";
-        this.debut_repos = this.maintenant();
+        if (this.serie_actuelle > this.nombre_series) {
+          this._finir_bloc();
+        } else {
+          this.phase = "recuperation_serie";
+          this.debut_repos = this.maintenant();
+        }
+        return;
       }
-      return;
     }
 
-    // Cas 2 : on revient du partenaire alors que c'est lui l'exercice courant.
+    // Cas 2 : un tour ouvert alors que le bloc courant n'est dans aucun
+    // circuit. Ne se produit pas en jeu ; garde pour qu'aucun etat ne reste
+    // sans issue.
     if (this._exercice_precedent_entrelace !== null) {
       this.index_exercice = this._exercice_precedent_entrelace.index;
       this.serie_actuelle = this._exercice_precedent_entrelace.serie + 1;

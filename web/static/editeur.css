@@ -124,6 +124,7 @@ label {
 }
 
 .paire { margin: -4px 0 10px 34px; color: var(--teal); font-size: 12px; }
+.circuit-titre { margin: 14px 0 4px; color: var(--teal); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 
 /* ---------- Glisser-déposer ----------
    Le déplacement passe par une poignée dédiée plutôt que par le bloc entier :
