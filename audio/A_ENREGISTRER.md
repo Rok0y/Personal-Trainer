@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**30 prises restantes.**
+**36 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -184,7 +184,9 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 
 | Fichier | A prononcer | Etat |
 | --- | --- | --- |
+| `burpees.wav` | « Burpees » | **a enregistrer** |
 | `course_sur_place.wav` | « Course sur place » | **a enregistrer** |
+| `crochets.wav` | « Crochets » | **a enregistrer** |
 | `crunches.wav` | « Crunches » | deja fait |
 | `curl_biceps_droit.wav` | « Curl biceps droit » | deja fait |
 | `curl_biceps_gauche.wav` | « Curl biceps gauche » | deja fait |
@@ -211,15 +213,19 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 | `pompes_inclinees.wav` | « Pompes inclinées » | deja fait |
 | `pompes_sur_les_genoux.wav` | « Pompes sur les genoux » | deja fait |
 | `power_jacks.wav` | « Power jacks » | **a enregistrer** |
+| `power_knees_droit.wav` | « Power knees droit » | **a enregistrer** |
+| `power_knees_gauche.wav` | « Power knees gauche » | **a enregistrer** |
 | `rowing_penche.wav` | « Rowing penche » | deja fait |
 | `rowing_unilateral_droit.wav` | « Rowing unilateral droit » | deja fait |
 | `rowing_unilateral_gauche.wav` | « Rowing unilateral gauche » | deja fait |
 | `scissor_runs.wav` | « Scissor runs » | **a enregistrer** |
+| `ski.wav` | « Ski » | **a enregistrer** |
 | `souleve_de_terre_roumain.wav` | « Souleve de terre roumain » | deja fait |
 | `squat.wav` | « Squat » | deja fait |
 | `squat_charge.wav` | « Squat chargé » | deja fait |
 | `stance_jacks.wav` | « Stance jacks » | **a enregistrer** |
 | `suicide_drills.wav` | « Suicide drills » | **a enregistrer** |
+| `suicide_jumps.wav` | « Suicide jumps » | **a enregistrer** |
 | `switch_kicks.wav` | « Switch kicks » | **a enregistrer** |
 | `talons_fesses.wav` | « Talons-fesses » | **a enregistrer** |
 

@@ -762,6 +762,132 @@
       "Plie les genoux pour descendre : ton dos ne doit pas tirer."
     ]
   },
+  "Burpees": {
+    "description": "Descendre au sol, faire une pompe, revenir debout et sauter, le plus de fois possible.",
+    "mise_en_place": [
+      "Debout, de profil à la caméra, pieds écartés de la largeur des hanches.",
+      "Recule assez pour que tout ton corps reste dans l'image, au sol comme debout."
+    ],
+    "instructions": [
+      "Accroupis-toi, pose les mains au sol et lance les pieds en arrière.",
+      "Fais une pompe : descends la poitrine près du sol, puis pousse.",
+      "Ramène les pieds sous toi, redresse-toi et saute, bras en l'air.",
+      "Le burpee compte quand tu es revenu debout, si la pompe est descendue."
+    ],
+    "erreurs_frequentes": [
+      "Sauter la pompe : sans elle, le burpee ne compte pas.",
+      "Laisser le ventre tomber vers le sol en planche."
+    ],
+    "sensations": [
+      "Tout le corps travaille, le cœur monte très vite.",
+      "Ton dos ne doit pas se creuser en planche : serre le ventre."
+    ]
+  },
+  "Suicide jumps": {
+    "description": "Passer de la planche bras tendus à debout, avec un saut, le plus de fois possible.",
+    "mise_en_place": [
+      "Debout, de profil à la caméra, pieds écartés de la largeur des hanches.",
+      "Recule assez pour que tout ton corps reste dans l'image, au sol comme debout."
+    ],
+    "instructions": [
+      "Pose les mains au sol et lance les pieds en arrière, bras tendus.",
+      "Ramène les pieds sous toi d'un saut.",
+      "Redresse-toi et saute, bras en l'air.",
+      "Chaque retour debout compte, si la planche est faite bras tendus."
+    ],
+    "erreurs_frequentes": [
+      "Plier les coudes en planche : garde les bras tendus.",
+      "Rester accroupi au lieu de te redresser."
+    ],
+    "sensations": [
+      "Les cuisses, le ventre et les épaules travaillent, le cœur monte vite.",
+      "Ton dos ne doit pas se creuser en planche : serre le ventre."
+    ]
+  },
+  "Power knees droit": {
+    "description": "Monter le genou droit avec force vers les mains, puis remonter les mains au-dessus de la tête.",
+    "mise_en_place": [
+      "Face à la caméra, debout, mains jointes au-dessus de la tête.",
+      "Recule assez pour rester entier dans l'image, bras en l'air compris."
+    ],
+    "instructions": [
+      "Monte le genou droit avec force et descends les mains le toucher.",
+      "Repose le pied et remonte les mains au-dessus de la tête.",
+      "Toute la série se fait avec le genou droit.",
+      "Ne reste pas bras en l'air plus de deux secondes : c'est le geste qui remet le compte à zéro."
+    ],
+    "erreurs_frequentes": [
+      "Monter le genou sans que les mains viennent le toucher : ça ne compte pas.",
+      "Changer de jambe en cours de série."
+    ],
+    "sensations": [
+      "Le ventre se contracte à chaque coup de genou, le cœur monte.",
+      "Ton dos ne doit pas se creuser quand les bras remontent."
+    ]
+  },
+  "Power knees gauche": {
+    "description": "Monter le genou gauche avec force vers les mains, puis remonter les mains au-dessus de la tête.",
+    "mise_en_place": [
+      "Face à la caméra, debout, mains jointes au-dessus de la tête.",
+      "Recule assez pour rester entier dans l'image, bras en l'air compris."
+    ],
+    "instructions": [
+      "Monte le genou gauche avec force et descends les mains le toucher.",
+      "Repose le pied et remonte les mains au-dessus de la tête.",
+      "Toute la série se fait avec le genou gauche.",
+      "Ne reste pas bras en l'air plus de deux secondes : c'est le geste qui remet le compte à zéro."
+    ],
+    "erreurs_frequentes": [
+      "Monter le genou sans que les mains viennent le toucher : ça ne compte pas.",
+      "Changer de jambe en cours de série."
+    ],
+    "sensations": [
+      "Le ventre se contracte à chaque coup de genou, le cœur monte.",
+      "Ton dos ne doit pas se creuser quand les bras remontent."
+    ]
+  },
+  "Crochets": {
+    "description": "Enchaîner des crochets de boxe, quelques-uns d'un bras puis de l'autre, la garde haute.",
+    "mise_en_place": [
+      "Face à la caméra, debout, pieds décalés, genoux souples.",
+      "Garde haute : les poings devant le visage, chacun de son côté."
+    ],
+    "instructions": [
+      "Lance un crochet : le poing part en arc et passe devant toi, à hauteur d'épaule.",
+      "Reviens en garde entre deux crochets.",
+      "Fais-en quelques-uns d'un bras, puis de l'autre : chaque crochet compte.",
+      "Tourne les épaules et le bassin avec le poing."
+    ],
+    "erreurs_frequentes": [
+      "Frapper trop bas, vers le ventre : le crochet se donne à hauteur d'épaule.",
+      "Baisser la garde entre deux crochets."
+    ],
+    "sensations": [
+      "La taille et les épaules travaillent, le cœur monte.",
+      "Le coude reste plié : le bras ne doit pas se tendre d'un coup."
+    ]
+  },
+  "Ski": {
+    "description": "Sauter d'un côté à l'autre pieds joints, comme un skieur en slalom, pour faire monter le cœur.",
+    "mise_en_place": [
+      "Face à la caméra, pieds joints, bien au milieu de l'image.",
+      "Garde un grand pas de place libre de chaque côté."
+    ],
+    "instructions": [
+      "Saute sur le côté, pieds joints, et retombe genoux pliés.",
+      "Repars aussitôt de l'autre côté, en passant par le milieu.",
+      "Chaque réception compte, si tu as sauté assez loin.",
+      "Reste centré : saute autant à gauche qu'à droite."
+    ],
+    "erreurs_frequentes": [
+      "Sauter trop court : la réception ne compte pas.",
+      "Dériver d'un côté de l'image au fil des sauts."
+    ],
+    "sensations": [
+      "Les cuisses et les fesses travaillent à chaque réception.",
+      "Retombe genoux souples : la réception doit être silencieuse."
+    ]
+  },
   "Squat de prière": {
     "description": "Un squat sans poids, mains jointes devant la poitrine, pour réveiller les jambes.",
     "mise_en_place": [

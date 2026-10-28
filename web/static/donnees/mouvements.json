@@ -803,6 +803,148 @@
    "chaine": "cardio"
   }
  },
+ "Burpees": {
+  "nom": "Burpees",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "profil",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "burpee_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "fin",
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "pectoraux",
+    "abdominaux"
+   ],
+   "chaine": "cardio"
+  }
+ },
+ "Suicide jumps": {
+  "nom": "Suicide jumps",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "profil",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "suicide_jumps_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "fin",
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "abdominaux",
+    "deltoides"
+   ],
+   "chaine": "cardio"
+  }
+ },
+ "Power knees droit": {
+  "nom": "Power knees droit",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "power_knees_droit_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "autre_cote": {
+   "mouvement": "Power knees gauche",
+   "membre": "jambe"
+  },
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "abdominaux",
+    "quadriceps",
+    "deltoides"
+   ],
+   "chaine": "cardio"
+  }
+ },
+ "Power knees gauche": {
+  "nom": "Power knees gauche",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "power_knees_gauche_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "autre_cote": {
+   "mouvement": "Power knees droit",
+   "membre": "jambe"
+  },
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "abdominaux",
+    "quadriceps",
+    "deltoides"
+   ],
+   "chaine": "cardio"
+  }
+ },
+ "Crochets": {
+  "nom": "Crochets",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "crochets_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "delai_min_reps": 0.2,
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "obliques",
+    "deltoides",
+    "pectoraux"
+   ],
+   "chaine": "cardio"
+  }
+ },
+ "Ski": {
+  "nom": "Ski",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "ski_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "delai_min_reps": 0.2,
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "fessiers",
+    "mollets"
+   ],
+   "chaine": "cardio"
+  }
+ },
  "Rotation du cou": {
   "nom": "Rotation du cou",
   "variante_facile": null,

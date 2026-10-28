@@ -34,6 +34,7 @@ import {
   _toucher_hauteur, _toucher_croisement,
   _pied_le_plus_leve, _genou_le_plus_leve, _genou_le_plus_haut_sous_hanche, _appui_exterieur,
   _main_opposee_au_dessus_de_la_tete, _pied_haut_sous_hanche, _pied_haut_portee, _ecart_avant_arriere,
+  _mains_au_genou, _crochet_croisement, _crochet_hauteur, _ecart_au_centre,
   FENTE_GENOU_AVANT_MIN, SOULEVE_BAS_MAX, SOULEVE_HAUT_MIN,
   JACK_ECART_JOINT, JACK_ECART_ECARTE, JACK_BRAS_BAS, JACK_BRAS_HAUT,
   POWER_JACK_HANCHES_BAS, POWER_JACK_HANCHES_HAUT,
@@ -44,6 +45,10 @@ import {
   CLIMBER_GENOU_LEVE, CLIMBER_MAIN_HAUTE,
   KICK_PIED_HAUT, KICK_PORTEE, KICK_PIEDS_AU_SOL,
   CISEAUX_ECARTES, CISEAUX_JOINTS,
+  SEUIL_COMPTAGE_POMPE, SOL_DEBOUT_HANCHES, SUICIDE_BRAS_TENDUS,
+  POWER_KNEE_GENOU_LEVE, POWER_KNEE_MAINS,
+  CROCHET_CROISE, CROCHET_HAUTEUR, GARDE_DE_SON_COTE, GARDE_HAUTE,
+  SKI_DE_COTE, SKI_AU_CENTRE,
 } from "./detections.js";
 
 const ECHELLE_ANGLE = [0, 180];
@@ -726,6 +731,93 @@ INSTRUMENTS.scissor_runs_detection = {
     mesure("Écart avant-arrière des chevilles (÷ tibia)", "cheville_gauche", [0, 2.5],
       { fin: [">", CISEAUX_ECARTES], debut: ["<", CISEAUX_JOINTS] },
       (corps) => _ecart_avant_arriere(corps)),
+  ],
+};
+
+// ----- au sol (seance cardio) -----
+
+// Le buste : couche pour `debut`, debout pour `fin` — le chemin du sol a
+// debout.
+function buste_du_sol_a_debout() {
+  return mesure("Buste debout (< 0 = allongé)", "epaule_gauche", [-0.4, 0.4],
+    { debut: ["<", 0], fin: [">", 0] }, (corps) => _buste_vertical(corps));
+}
+
+function hanches_debout() {
+  return avec_raisons(mesure("Descente des hanches (÷ tibia, moyenne)", "hanche_gauche", [0, 1.5],
+    { fin: [">", SOL_DEBOUT_HANCHES] }, (corps) => _descente_hanches(corps)), { fin: RAISONS.remonter });
+}
+
+INSTRUMENTS.burpee_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_du_sol_a_debout(),
+    hanches_debout(),
+    avec_raisons(coude_proche({ debut: ["<", SEUIL_COMPTAGE_POMPE] }), { debut: RAISONS.descendre }),
+  ],
+};
+
+INSTRUMENTS.suicide_jumps_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_du_sol_a_debout(),
+    hanches_debout(),
+    avec_raisons(coude_proche({ debut: [">", SUICIDE_BRAS_TENDUS] }), { debut: RAISONS.tendre }),
+  ],
+};
+
+// ----- power knees (seance cardio) -----
+
+function power_knee(cote) {
+  const [g, c, autre] = cote === "droit"
+    ? ["genou_droit", "cheville_droite", "genou_gauche"]
+    : ["genou_gauche", "cheville_gauche", "genou_droit"];
+  return {
+    ordre: ["fin", "debut"],
+    defaut: "milieu",
+    mesures: [
+      buste_debout(["fin", "debut"]),
+      avec_raisons(mesure(`Genou ${cote} au-dessus de l'autre (÷ tibia)`, g, [-0.5, 1.5],
+        { fin: [">", POWER_KNEE_GENOU_LEVE], debut: ["<", GENOUX_ALIGNES] },
+        (corps) => _genou_au_dessus_de_l_autre(corps[g], corps[c], corps[autre])), { fin: RAISONS.monter }),
+      mesure("Main la plus loin du genou (÷ tibia)", "poignet_gauche", [0, 3],
+        { fin: ["<", POWER_KNEE_MAINS] }, (corps) => _mains_au_genou(corps[g], corps[c], corps)),
+      mesure("Main la plus basse, sous l'épaule (÷ buste)", "poignet_droit", [-1, 1.2],
+        { debut: ["<", JACK_BRAS_HAUT] }, (corps) => _bras_le_plus_bas(corps)),
+    ],
+  };
+}
+
+INSTRUMENTS.power_knees_droit_detection = power_knee("droit");
+INSTRUMENTS.power_knees_gauche_detection = power_knee("gauche");
+
+// ----- crochets (seance cardio) -----
+
+INSTRUMENTS.crochets_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_debout(["fin", "debut"]),
+    mesure("Poing passé de l'autre côté (÷ épaules)", "poignet_droit", [-1, 1.5],
+      { fin: [">", CROCHET_CROISE], debut: ["<", GARDE_DE_SON_COTE] }, (corps) => _crochet_croisement(corps)),
+    avec_raisons(mesure("Ce poing, loin de la hauteur d'épaule (÷ buste)", "poignet_gauche", [0, 1.5],
+      { fin: ["<", CROCHET_HAUTEUR] }, (corps) => _crochet_hauteur(corps)), { fin: RAISONS.monter }),
+    mesure("Garde : poing le plus bas, sous l'épaule (÷ buste)", "epaule_gauche", [-1, 1.2],
+      { debut: ["<", GARDE_HAUTE] }, (corps) => _bras_le_plus_bas(corps)),
+  ],
+};
+
+// ----- ski (seance cardio) -----
+
+INSTRUMENTS.ski_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_debout(["fin", "debut"]),
+    mesure("Pieds loin du centre de l'image (÷ épaules)", "cheville_gauche", [0, 2],
+      { fin: [">", SKI_DE_COTE], debut: ["<", SKI_AU_CENTRE] }, (corps) => _ecart_au_centre(corps)),
   ],
 };
 

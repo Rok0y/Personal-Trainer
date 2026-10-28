@@ -1139,6 +1139,161 @@ export function scissor_runs_detection(corps) {
   return "milieu";
 }
 
+// ---------------------------------------------------------------- au sol
+//
+// Burpee et suicide jumps, de profil : on descend au sol, on revient debout et
+// l'on saute. **Le saut n'est pas verifie** : en l'air ou debout, le corps a la
+// meme forme, et c'est le retour debout qui compte (`fin`). Depart `fin` :
+// on se met en place debout.
+
+// Debout : buste vertical et hanches hautes (`descente_hanches`, ~1,3 debout).
+export const SOL_DEBOUT_HANCHES = 0.8;
+
+// Burpee : **la pompe est verifiee**. `debut` est le bas d'une pompe — buste a
+// l'horizontale, coude plie sous le seuil qui arme une pompe
+// (`SEUIL_COMPTAGE_POMPE`, la meme regle que les pompes). Une planche bras
+// tendus ne l'arme pas : un burpee sans pompe ne compte pas.
+export function burpee_detection(corps) {
+  const buste = buste_vertical(corps);
+  const hanches = descente_hanches(corps);
+  if (buste > 0 && hanches !== null && hanches > SOL_DEBOUT_HANCHES) return "fin";
+  if (buste < 0 && angle_coude_proche(corps) < SEUIL_COMPTAGE_POMPE) return "debut";
+  return "milieu";
+}
+
+// Suicide jumps : la planche **bras tendus** arme (coude au-dela de 150
+// degres), sans pompe.
+export const SUICIDE_BRAS_TENDUS = 150;
+
+export function suicide_jumps_detection(corps) {
+  const buste = buste_vertical(corps);
+  const hanches = descente_hanches(corps);
+  if (buste > 0 && hanches !== null && hanches > SOL_DEBOUT_HANCHES) return "fin";
+  if (buste < 0 && angle_coude_proche(corps) > SUICIDE_BRAS_TENDUS) return "debut";
+  return "milieu";
+}
+
+// ----------------------------------------------------------- power knees
+//
+// Un cote par serie : « Power knees droit » et « Power knees gauche », relies
+// par `autre_cote` (le genou de l'autre jambe se dit « c'est l'autre jambe »).
+// De face. `debut` : les mains au-dessus de la tete (les deux poignets
+// au-dessus des epaules) et les genoux au meme niveau. `fin` : le genou
+// mesure leve (> 0,5 tibia au-dessus de l'autre) **et** les deux mains
+// descendues le toucher (a moins de 0,8 tibia de lui).
+export const POWER_KNEE_GENOU_LEVE = 0.5;
+export const POWER_KNEE_MAINS = 0.8;
+
+// La main la plus loin du genou, en tibias de cette jambe : les deux mains
+// le touchent quand elle est proche. null si le tibia est illisible.
+function mains_au_genou(genou, cheville, corps) {
+  const longueur = tibia(genou, cheville);
+  if (longueur === null) return null;
+  return Math.max(
+    calculer_distance(corps.poignet_gauche, genou),
+    calculer_distance(corps.poignet_droit, genou)
+  ) / longueur;
+}
+
+function power_knee(genou, cheville, autre_genou, corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const leve = genou_au_dessus_de_l_autre(genou, cheville, autre_genou);
+  const mains = mains_au_genou(genou, cheville, corps);
+  const bras = bras_le_plus_bas(corps);
+  if (leve !== null && leve > POWER_KNEE_GENOU_LEVE && mains !== null && mains < POWER_KNEE_MAINS) return "fin";
+  if (leve !== null && leve < GENOUX_ALIGNES && bras !== null && bras < JACK_BRAS_HAUT) return "debut";
+  return "milieu";
+}
+
+export function power_knees_droit_detection(corps) {
+  return power_knee(corps.genou_droit, corps.cheville_droite, corps.genou_gauche, corps);
+}
+
+export function power_knees_gauche_detection(corps) {
+  return power_knee(corps.genou_gauche, corps.cheville_gauche, corps.genou_droit, corps);
+}
+
+// -------------------------------------------------------------- crochets
+//
+// Des crochets par paquets (quelques-uns d'un cote, puis de l'autre), de face :
+// chaque crochet compte, quel que soit le bras. `debut` : la garde, les deux
+// poings hauts (au-dessus de la mi-buste) et chacun de son cote. `fin` : un
+// poing passe la ligne du milieu des epaules vers l'autre cote, **a hauteur
+// d'epaule**.
+
+// Le poing le plus avance vers l'autre cote : de combien il a passe le milieu
+// des epaules, en largeurs d'epaules (positif : de l'autre cote), et sa hauteur
+// sous son epaule, en bustes (`hauteur_sous_epaule`). L'autre cote se lit sur
+// les epaules, rien n'est suppose du sens de l'image.
+function poing_qui_croise(corps) {
+  const largeur = calculer_distance(corps.epaule_gauche, corps.epaule_droite);
+  if (largeur <= 0) return null;
+  const milieu = (corps.epaule_gauche.x + corps.epaule_droite.x) / 2;
+  const vers_la_gauche = corps.epaule_gauche.x >= corps.epaule_droite.x ? 1 : -1;
+  const droit = ((corps.poignet_droit.x - milieu) * vers_la_gauche) / largeur;
+  const gauche = ((milieu - corps.poignet_gauche.x) * vers_la_gauche) / largeur;
+  return droit >= gauche
+    ? { croisement: droit, poignet: corps.poignet_droit, epaule: corps.epaule_droite, hanche: corps.hanche_droite }
+    : { croisement: gauche, poignet: corps.poignet_gauche, epaule: corps.epaule_gauche, hanche: corps.hanche_gauche };
+}
+
+function crochet_croisement(corps) {
+  return poing_qui_croise(corps)?.croisement ?? null;
+}
+
+// L'ecart de ce poing a la hauteur de son epaule, en bustes, sans signe : 0 a
+// hauteur d'epaule exactement.
+function crochet_hauteur(corps) {
+  const poing = poing_qui_croise(corps);
+  if (poing === null) return null;
+  const hauteur = hauteur_sous_epaule(poing.poignet, poing.epaule, poing.hanche);
+  return hauteur === null ? null : Math.abs(hauteur);
+}
+
+export const CROCHET_CROISE = 0.3;
+export const CROCHET_HAUTEUR = 0.35;
+export const GARDE_DE_SON_COTE = 0.1;
+export const GARDE_HAUTE = 0.4;
+
+export function crochets_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const croisement = crochet_croisement(corps);
+  const hauteur = crochet_hauteur(corps);
+  const garde = bras_le_plus_bas(corps);
+  if (croisement !== null && croisement > CROCHET_CROISE && hauteur !== null && hauteur < CROCHET_HAUTEUR) return "fin";
+  if (croisement !== null && croisement < GARDE_DE_SON_COTE && garde !== null && garde < GARDE_HAUTE) return "debut";
+  return "milieu";
+}
+
+// ------------------------------------------------------------------- ski
+//
+// Sauts lateraux pieds joints, d'un cote a l'autre, de face : chaque reception
+// compte. **Seul mouvement qui lit un repere exterieur au corps** : le centre de
+// l'image (les coordonnees du modele vont de 0 a 1). Une detection n'a pas de
+// memoire, et rien dans une seule image ne dit de quel cote on a saute — sauf
+// la place dans l'image. L'amplitude, elle, se rapporte au corps (largeurs
+// d'epaules). La fiche demande de se placer au milieu de l'image.
+
+// De combien le milieu des chevilles s'ecarte du centre de l'image, sans signe,
+// en largeurs d'epaules. null si les epaules sont illisibles.
+function ecart_au_centre(corps) {
+  const largeur = calculer_distance(corps.epaule_gauche, corps.epaule_droite);
+  if (largeur <= 0) return null;
+  const milieu = (corps.cheville_gauche.x + corps.cheville_droite.x) / 2;
+  return Math.abs(milieu - 0.5) / largeur;
+}
+
+export const SKI_DE_COTE = 0.6;
+export const SKI_AU_CENTRE = 0.2;
+
+export function ski_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const ecart = ecart_au_centre(corps);
+  if (ecart !== null && ecart > SKI_DE_COTE) return "fin";
+  if (ecart !== null && ecart < SKI_AU_CENTRE) return "debut";
+  return "milieu";
+}
+
 // Les mesures privees sont exportees sous un nom prefixe pour que
 // instruments.js les reprenne au lieu de les recopier. Elles restent hors de
 // DETECTIONS, que les tests rejouent en entier : une mesure ne rend pas de
@@ -1173,6 +1328,10 @@ export {
   pied_haut_sous_hanche as _pied_haut_sous_hanche,
   pied_haut_portee as _pied_haut_portee,
   ecart_avant_arriere as _ecart_avant_arriere,
+  mains_au_genou as _mains_au_genou,
+  crochet_croisement as _crochet_croisement,
+  crochet_hauteur as _crochet_hauteur,
+  ecart_au_centre as _ecart_au_centre,
 };
 
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par
@@ -1221,4 +1380,10 @@ export const DETECTIONS = {
   mountain_climber_debout_detection,
   switch_kicks_detection,
   scissor_runs_detection,
+  burpee_detection,
+  suicide_jumps_detection,
+  power_knees_droit_detection,
+  power_knees_gauche_detection,
+  crochets_detection,
+  ski_detection,
 };
