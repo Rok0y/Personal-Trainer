@@ -659,6 +659,47 @@
       "La poitrine et les bras se réveillent, sans t'épuiser : ce n'est qu'un échauffement."
     ]
   },
+  "Football sprints": {
+    "description": "Piétiner le plus vite possible, jambes écartées et pliées, pour faire monter le cœur.",
+    "mise_en_place": [
+      "Face à la caméra, pieds plus écartés que les hanches.",
+      "Genoux pliés, buste un peu penché en avant, bras devant toi."
+    ],
+    "instructions": [
+      "Cours sur place le plus vite possible, en levant à peine les pieds.",
+      "Reste bas sur tes jambes du début à la fin.",
+      "Garde les bras actifs, comme au départ d'un sprint."
+    ],
+    "erreurs_frequentes": [
+      "Se redresser jambes tendues quand la fatigue arrive.",
+      "Lever les pieds trop haut, ce qui casse le rythme."
+    ],
+    "sensations": [
+      "Les cuisses et les mollets brûlent, le cœur s'emballe.",
+      "Si tu te redresses, c'est la fatigue : redescends sur tes jambes."
+    ]
+  },
+  "Suicide drills": {
+    "description": "Courir d'un côté à l'autre en touchant le sol à chaque bout, pour faire monter le cœur.",
+    "mise_en_place": [
+      "Face à la caméra, au milieu de l'image.",
+      "Garde trois grands pas de place libre de chaque côté."
+    ],
+    "instructions": [
+      "Pars en courant sur le côté, trois pas, et touche le sol de la main.",
+      "Repars aussitôt de l'autre côté, et touche le sol là aussi.",
+      "Plie les jambes pour descendre, le dos reste droit.",
+      "Reste dans l'image : la caméra doit te voir à chaque bout."
+    ],
+    "erreurs_frequentes": [
+      "Se pencher dos rond pour toucher le sol au lieu de plier les jambes.",
+      "Sortir de l'image en allant trop loin."
+    ],
+    "sensations": [
+      "Les cuisses travaillent à chaque arrêt, le cœur monte vite.",
+      "Freine avant de changer de sens : tes genoux ne doivent pas tourner."
+    ]
+  },
   "Jumping jacks": {
     "description": "Sauter en écartant bras et jambes, puis en les resserrant, pour faire monter le cœur.",
     "mise_en_place": [
