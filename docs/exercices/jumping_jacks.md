@@ -46,7 +46,7 @@ Toutes rapportées au corps, deux seuils par mesure de chemin, de face.
 - [ ] `fiches.json`, relue par l'utilisateur
 - [x] `comparer_detections --mettre-a-jour` + `verifier_ajout_detection` : rien que des ajouts
 - [x] Sabotages : un seuil d'instrument inversé, le croisement oublié, un seuil de détection déplacé — chacun rougit
-- [ ] Poussée 1 sur `travail` (accord donné)
+- [x] Poussée 1 sur `travail` (accord donné, 2026-10-28)
 - [ ] Banc d'essai sur l'iPad (`demo/?cible=40`), pour chacun des trois :
   - [ ] compte juste (40 honnêtes donnent 40)
   - [ ] pas de faux positifs (marcher, se mettre en place, lever les bras sans sauter, un squat sans saut, le pied du même côté)
