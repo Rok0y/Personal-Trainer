@@ -413,6 +413,40 @@
   "materiel": "Un tapis",
   "est_echauffement": false
  },
+ "Football sprints": {
+  "nom": "Football sprints",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": false,
+  "detection": null,
+  "erreurs": [],
+  "amplitude": null,
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": ["quadriceps","mollets"],
+   "chaine": "cardio"
+  }
+ },
+ "Suicide drills": {
+  "nom": "Suicide drills",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": false,
+  "detection": null,
+  "erreurs": [],
+  "amplitude": null,
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": ["quadriceps","fessiers"],
+   "chaine": "cardio"
+  }
+ },
  "Rotation du cou": {
   "nom": "Rotation du cou",
   "variante_facile": null,
