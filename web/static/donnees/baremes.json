@@ -164,6 +164,18 @@
   "Gainage planche laterale gauche": {
    "halteres": 0,
    "brut": "Un tapis"
+  },
+  "Jumping jacks": {
+   "halteres": 0,
+   "brut": ""
+  },
+  "Power jacks": {
+   "halteres": 0,
+   "brut": ""
+  },
+  "Stance jacks": {
+   "halteres": 0,
+   "brut": ""
   }
  },
  "accessoires": {

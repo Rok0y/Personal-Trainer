@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**22 prises restantes.**
+**24 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -200,17 +200,20 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 | `gainage_planche_laterale_droite.wav` | « Gainage planche laterale droite » | deja fait |
 | `gainage_planche_laterale_gauche.wav` | « Gainage planche laterale gauche » | deja fait |
 | `gainage_sur_les_genoux.wav` | « Gainage sur les genoux » | deja fait |
+| `jumping_jacks.wav` | « Jumping jacks » | deja fait |
 | `oiseau.wav` | « Oiseau » | deja fait |
 | `pompes.wav` | « Pompes » | deja fait |
 | `pompes_contre_le_mur.wav` | « Pompes contre le mur » | deja fait |
 | `pompes_inclinees.wav` | « Pompes inclinées » | deja fait |
 | `pompes_sur_les_genoux.wav` | « Pompes sur les genoux » | deja fait |
+| `power_jacks.wav` | « Power jacks » | **a enregistrer** |
 | `rowing_penche.wav` | « Rowing penche » | deja fait |
 | `rowing_unilateral_droit.wav` | « Rowing unilateral droit » | deja fait |
 | `rowing_unilateral_gauche.wav` | « Rowing unilateral gauche » | deja fait |
 | `souleve_de_terre_roumain.wav` | « Souleve de terre roumain » | deja fait |
 | `squat.wav` | « Squat » | deja fait |
 | `squat_charge.wav` | « Squat chargé » | deja fait |
+| `stance_jacks.wav` | « Stance jacks » | **a enregistrer** |
 | `suicide_drills.wav` | « Suicide drills » | **a enregistrer** |
 
 ## Noms des echauffements
@@ -223,7 +226,6 @@ Meme regle. Ils sont annonces comme les exercices, meme s'ils ne comptent nulle 
 | `extensions_de_mollets.wav` | « Extensions de mollets » | deja fait |
 | `hanches_en_avant_en_arriere.wav` | « Hanches en avant en arrière » | deja fait |
 | `hip_thrust.wav` | « Hip thrust » | deja fait |
-| `jumping_jacks.wav` | « Jumping jacks » | deja fait |
 | `montees_de_genou.wav` | « Montées de genou » | deja fait |
 | `pompes_lentes.wav` | « Pompes lentes » | deja fait |
 | `rotation_des_chevilles.wav` | « Rotation des chevilles » | deja fait |

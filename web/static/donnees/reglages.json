@@ -263,6 +263,36 @@
    "series_max": 6,
    "poids_min": null,
    "poids_max": null
+  },
+  "Jumping jacks": {
+   "series": 3,
+   "cible_min": 10,
+   "cible_max": 40,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 3,
+   "poids_min": null,
+   "poids_max": null
+  },
+  "Power jacks": {
+   "series": 3,
+   "cible_min": 4,
+   "cible_max": 20,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 3,
+   "poids_min": null,
+   "poids_max": null
+  },
+  "Stance jacks": {
+   "series": 3,
+   "cible_min": 6,
+   "cible_max": 30,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 3,
+   "poids_min": null,
+   "poids_max": null
   }
  },
  "ligues": {
@@ -819,6 +849,66 @@
     4800,
     5400,
     6000
+   ],
+   "Jumping jacks": [
+    30,
+    37,
+    45,
+    52,
+    60,
+    67,
+    74,
+    82,
+    89,
+    97,
+    104,
+    112,
+    119,
+    126,
+    134,
+    141,
+    149,
+    156
+   ],
+   "Power jacks": [
+    12,
+    16,
+    20,
+    24,
+    28,
+    31,
+    35,
+    39,
+    43,
+    47,
+    51,
+    55,
+    59,
+    62,
+    66,
+    70,
+    74,
+    78
+   ],
+   "Stance jacks": [
+    18,
+    24,
+    30,
+    35,
+    41,
+    47,
+    53,
+    59,
+    65,
+    70,
+    76,
+    82,
+    88,
+    94,
+    100,
+    105,
+    111,
+    117
    ]
   }
  },
@@ -927,7 +1017,10 @@
    "Fente gauche": 3.5,
    "Fente droite chargée": 3.5,
    "Fente gauche chargée": 3.5,
-   "Souleve de terre roumain": 4
+   "Souleve de terre roumain": 4,
+   "Jumping jacks": 1,
+   "Power jacks": 1.5,
+   "Stance jacks": 1.5
   }
  }
 }

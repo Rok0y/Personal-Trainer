@@ -426,7 +426,10 @@
   "materiel": "",
   "est_echauffement": false,
   "categories": {
-   "muscles": ["quadriceps","mollets"],
+   "muscles": [
+    "quadriceps",
+    "mollets"
+   ],
    "chaine": "cardio"
   }
  },
@@ -443,7 +446,54 @@
   "materiel": "",
   "est_echauffement": false,
   "categories": {
-   "muscles": ["quadriceps","fessiers"],
+   "muscles": [
+    "quadriceps",
+    "fessiers"
+   ],
+   "chaine": "cardio"
+  }
+ },
+ "Power jacks": {
+  "nom": "Power jacks",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "power_jacks_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "fin",
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "fessiers",
+    "mollets"
+   ],
+   "chaine": "cardio"
+  }
+ },
+ "Stance jacks": {
+  "nom": "Stance jacks",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "stance_jacks_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "fessiers",
+    "obliques"
+   ],
    "chaine": "cardio"
   }
  },
@@ -549,14 +599,23 @@
   "nom": "Jumping jacks",
   "variante_facile": null,
   "variante_difficile": null,
-  "orientation": null,
+  "orientation": "face",
   "changements": [],
-  "analyse_la_pose": false,
-  "detection": null,
+  "analyse_la_pose": true,
+  "detection": "jumping_jacks_detection",
   "erreurs": [],
   "amplitude": null,
+  "depart": "debut",
   "materiel": "",
-  "est_echauffement": true
+  "est_echauffement": true,
+  "aussi_exercice": true,
+  "categories": {
+   "muscles": [
+    "mollets",
+    "deltoides"
+   ],
+   "chaine": "cardio"
+  }
  },
  "Squat de prière": {
   "nom": "Squat de prière",

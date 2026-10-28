@@ -30,7 +30,12 @@ import {
   _angle_coude_proche, _bras_proche, _buste_vertical, _ecart_rapporte_aux_epaules,
   _hanche_decollee, _visibilite_bras, _genou_depasse_pied, _poignet_devant_epaule,
   _inclinaison_buste, _genou_au_dessus_de_l_autre, _hauteur_poignets,
+  _ecart_chevilles, _bras_le_plus_bas, _bras_le_plus_haut, _descente_hanches,
+  _toucher_hauteur, _toucher_croisement,
   FENTE_GENOU_AVANT_MIN, SOULEVE_BAS_MAX, SOULEVE_HAUT_MIN,
+  JACK_ECART_JOINT, JACK_ECART_ECARTE, JACK_BRAS_BAS, JACK_BRAS_HAUT,
+  POWER_JACK_HANCHES_BAS, POWER_JACK_HANCHES_HAUT,
+  STANCE_JACK_TOUCHER, STANCE_JACK_DEBOUT, STANCE_JACK_CROISEMENT,
 } from "./detections.js";
 
 const ECHELLE_ANGLE = [0, 180];
@@ -542,6 +547,84 @@ export const INSTRUMENTS = {
       },
     }],
   },
+};
+
+// ----- sauts (seance cardio) -----
+
+// Le buste debout, condition de position des sauts : allonge ou plie en deux,
+// rien n'est ni debut ni fin.
+function buste_debout(jetons) {
+  return {
+    libelle: "Buste debout (> 0)", unite: "", echelle: [-0.3, 0.3], sommet: "epaule_gauche",
+    zones: Object.fromEntries(jetons.map((jeton) => [jeton, [">", 0]])),
+    valeur: (corps) => _buste_vertical(corps),
+  };
+}
+
+function ecart_des_chevilles(zones) {
+  return {
+    libelle: "Écart des chevilles (÷ épaules)", unite: "", echelle: [0, 2.5],
+    sommet: "cheville_gauche", zones, valeur: (corps) => _ecart_chevilles(corps),
+  };
+}
+
+// Le poignet le plus bas des deux, sous son epaule : negatif, les deux mains
+// sont en haut.
+function bras_en_haut() {
+  return avec_raisons({
+    libelle: "Main la plus basse, sous l'épaule (÷ buste)", unite: "", echelle: [-1, 1.2],
+    sommet: "poignet_gauche", zones: { fin: ["<", JACK_BRAS_HAUT] },
+    valeur: (corps) => _bras_le_plus_bas(corps),
+  }, { fin: RAISONS.monter });
+}
+
+INSTRUMENTS.jumping_jacks_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_debout(["fin", "debut"]),
+    ecart_des_chevilles({ fin: [">", JACK_ECART_ECARTE], debut: ["<", JACK_ECART_JOINT] }),
+    bras_en_haut(),
+    {
+      libelle: "Main la plus haute, sous l'épaule (÷ buste)", unite: "", echelle: [-1, 1.2],
+      sommet: "poignet_droit", zones: { debut: [">", JACK_BRAS_BAS] },
+      valeur: (corps) => _bras_le_plus_haut(corps),
+    },
+  ],
+};
+
+INSTRUMENTS.power_jacks_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_debout(["fin", "debut"]),
+    avec_raisons({
+      libelle: "Descente des hanches (÷ tibia, moyenne)", unite: "", echelle: [0, 1.3],
+      sommet: "hanche_gauche",
+      zones: { fin: [">", POWER_JACK_HANCHES_HAUT], debut: ["<", POWER_JACK_HANCHES_BAS] },
+      valeur: (corps) => _descente_hanches(corps),
+    }, FLEXION),
+    ecart_des_chevilles({ debut: [">", JACK_ECART_ECARTE] }),
+    bras_en_haut(),
+  ],
+};
+
+INSTRUMENTS.stance_jacks_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    avec_raisons({
+      libelle: "Main au-dessus du pied opposé (÷ tibia)", unite: "", echelle: [0, 2.2],
+      sommet: "poignet_gauche",
+      zones: { fin: ["<", STANCE_JACK_TOUCHER], debut: [">", STANCE_JACK_DEBOUT] },
+      valeur: (corps) => _toucher_hauteur(corps),
+    }, { fin: RAISONS.descendre, debut: RAISONS.remonter }),
+    {
+      libelle: "Main passée de l'autre côté (÷ épaules)", unite: "", echelle: [-0.6, 0.6],
+      sommet: "poignet_droit", zones: { fin: [">", STANCE_JACK_CROISEMENT] },
+      valeur: (corps) => _toucher_croisement(corps),
+    },
+  ],
 };
 
 // ----- derivation -----
