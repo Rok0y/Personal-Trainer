@@ -256,6 +256,13 @@
     <span>D'autres personnes passent dans le champ (salle de sport)<br>
       <span class="muet">Le suivi devient plus prudent, mais l'image est moins fluide.</span></span>
   </label>
+  <label class="muet" for="choixCible" style="display:block;margin-bottom:12px">Répétitions à faire&nbsp;:
+    <select id="choixCible">
+      <option value="10">10</option>
+      <option value="20">20</option>
+      <option value="40">40</option>
+    </select>
+  </label>
   <button id="boutonDemarrer">Démarrer</button>
   <button class="secondaire" id="boutonTestSon" style="margin-top:8px">Tester le son</button>
   <p class="muet" style="text-align:center" id="messageDemarrage">Le son s'active au premier clic&nbsp;: iOS l'exige. Monte le volume et vérifie avant de commencer.</p>
@@ -342,11 +349,32 @@ import { jouer_si_visible, montrer_video } from "../js/videos.js";
 const VERSION_WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const MODELE = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
 
-// `?cible=40` l'allonge : dix pas de montees de genoux tiennent en trois
-// secondes, trop peu pour juger un comptage rapide.
-const CIBLE_REPETITIONS = Math.max(
-  1, Math.trunc(Number(new URLSearchParams(location.search).get("cible"))) || 10
-);
+// Le nombre de repetitions a faire, choisi sur la fiche (ou `?cible=40`) :
+// dix pas de montees de genoux tiennent en trois secondes, trop peu pour
+// juger un comptage rapide. Une application installee n'a pas de barre
+// d'adresse, d'ou le choix a l'ecran, retenu par l'appareil.
+const STOCKAGE_CIBLE = "demo-coach-cible";
+function cibleInitiale() {
+  const demandee = Math.trunc(Number(new URLSearchParams(location.search).get("cible")));
+  if (demandee > 0) return demandee;
+  try {
+    const retenue = Math.trunc(Number(localStorage.getItem(STOCKAGE_CIBLE)));
+    if (retenue > 0) return retenue;
+  } catch {}
+  return 10;
+}
+let cibleRepetitions = cibleInitiale();
+{
+  const choix = document.getElementById("choixCible");
+  if (![...choix.options].some((option) => Number(option.value) === cibleRepetitions)) {
+    choix.add(new Option(String(cibleRepetitions), String(cibleRepetitions)));
+  }
+  choix.value = String(cibleRepetitions);
+  choix.addEventListener("change", () => {
+    cibleRepetitions = Number(choix.value) || 10;
+    try { localStorage.setItem(STOCKAGE_CIBLE, String(cibleRepetitions)); } catch {}
+  });
+}
 const CIBLE_SECONDES = 30;
 // Meme garde-fou que INTERVALLE_MAX de moteur.js : un onglet
 // suspendu par iOS ne doit pas crediter d'un coup tout le temps ecoule.
@@ -1371,7 +1399,7 @@ function traiter(corps, instant) {
   if (modeMaintien === null) {
     modeMaintien = jeton === "maintien" || jeton === "repos";
     document.getElementById("compteurCible").textContent =
-      modeMaintien ? `secondes / ${CIBLE_SECONDES}` : `/ ${CIBLE_REPETITIONS}`;
+      modeMaintien ? `secondes / ${CIBLE_SECONDES}` : `/ ${cibleRepetitions}`;
   }
 
   // Mesure **des la preparation** et plus seulement pendant le comptage :
@@ -1406,7 +1434,7 @@ function traiter(corps, instant) {
     const [, repetitions] = compteur.mettre_a_jour(
       jeton, instant, exercice.depart ?? null, exercice.delai_min_reps ?? null
     );
-    majAffichage(repetitions, CIBLE_REPETITIONS);
+    majAffichage(repetitions, cibleRepetitions);
   }
 }
 

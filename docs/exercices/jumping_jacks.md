@@ -48,7 +48,7 @@ Toutes rapportées au corps, deux seuils par mesure de chemin, de face.
 - [x] Sabotages : un seuil d'instrument inversé, le croisement oublié, un seuil de détection déplacé — chacun rougit
 - [x] Poussée 1 sur `travail` (accord donné, 2026-10-28)
 - [ ] Banc d'essai sur l'iPad (`demo/?cible=40`), pour chacun des trois :
-  - [ ] compte juste (40 honnêtes donnent 40)
+  - [x] compte juste : 10 honnêtes donnent 10, pour les trois (2026-10-28, sur Mac). À refaire à 40 sur l'iPad, avec le choix de la cible sur la fiche de la démo
   - [ ] pas de faux positifs (marcher, se mettre en place, lever les bras sans sauter, un squat sans saut, le pied du même côté)
   - [ ] refus bien expliqué (un saut bras à moitié levé, un power jack sans descendre)
 
@@ -66,7 +66,19 @@ par AMRAP de 30 s. Bornes de ligue réparties de 3 × `cible_min` à 3,9 × `cib
 
 ## Journal du banc d'essai
 
-(Les résumés collés et les seuils changés viennent ici.)
+**2026-10-28, Safari sur Mac (application installée), 10 répétitions, 33 img/s.** Les trois
+comptent juste. Seuils gardés tels quels, à la demande de l'utilisateur (« on verra plus tard »).
+
+- **Stance jacks** : 10 sur 10. Médianes : toucher à −0,20 tibia (seuil < 0,6), debout à 3,99
+  (> 1,4, bras levés), croisement à 0,60 épaule (> 0,05). Large marge partout.
+- **Jumping jacks** : 10 sur 10. Médianes : pieds écartés 1,65 (> 1,3), joints 0,20 (< 0,9) ;
+  main la plus basse −0,79 (< 0) ; main la plus haute 0,99 (> 0,6). Deux « pas revenu au début :
+  conditions remplies séparément, jamais ensemble » : pieds joints et bras en bas pas à la même
+  image. **À surveiller** à rythme rapide (un saut manqué) ; piste : desserrer le départ (écart
+  < 1,0, bras > 0,4), sans toucher au haut.
+- **Power jacks** : 10 sur 10. Médianes : bas du squat à 0,51 (seuil < 0,6), debout 1,26 (> 0,8).
+  Un squat à 0,61 n'a pas armé : **marge faible**. Piste : déplacer ensemble les deux seuils
+  (< 0,7 et > 0,9). Debout, la descente vaut 1,26 à 1,41, pas 1.
 
 ## Médias
 
