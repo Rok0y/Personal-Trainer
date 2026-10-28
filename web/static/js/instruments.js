@@ -32,10 +32,18 @@ import {
   _inclinaison_buste, _genou_au_dessus_de_l_autre, _hauteur_poignets,
   _ecart_chevilles, _bras_le_plus_bas, _bras_le_plus_haut, _descente_hanches,
   _toucher_hauteur, _toucher_croisement,
+  _pied_le_plus_leve, _genou_le_plus_leve, _genou_le_plus_haut_sous_hanche, _appui_exterieur,
+  _main_opposee_au_dessus_de_la_tete, _pied_haut_sous_hanche, _pied_haut_portee, _ecart_avant_arriere,
   FENTE_GENOU_AVANT_MIN, SOULEVE_BAS_MAX, SOULEVE_HAUT_MIN,
   JACK_ECART_JOINT, JACK_ECART_ECARTE, JACK_BRAS_BAS, JACK_BRAS_HAUT,
   POWER_JACK_HANCHES_BAS, POWER_JACK_HANCHES_HAUT,
   STANCE_JACK_TOUCHER, STANCE_JACK_DEBOUT, STANCE_JACK_CROISEMENT,
+  COURSE_PIED_LEVE, COURSE_PIEDS_AU_SOL, MONTEE_GENOU_HAUT, MONTEE_GENOUX_BAS,
+  TALON_HAUT, TALON_GENOUX_ALIGNES, TALON_PIEDS_AU_SOL,
+  HEISMAN_GENOU_LEVE, HEISMAN_APPUI_EXTERIEUR, GENOUX_ALIGNES,
+  CLIMBER_GENOU_LEVE, CLIMBER_MAIN_HAUTE,
+  KICK_PIED_HAUT, KICK_PORTEE, KICK_PIEDS_AU_SOL,
+  CISEAUX_ECARTES, CISEAUX_JOINTS,
 } from "./detections.js";
 
 const ECHELLE_ANGLE = [0, 180];
@@ -624,6 +632,100 @@ INSTRUMENTS.stance_jacks_detection = {
       sommet: "poignet_droit", zones: { fin: [">", STANCE_JACK_CROISEMENT] },
       valeur: (corps) => _toucher_croisement(corps),
     },
+  ],
+};
+
+// ----- jambes alternees (seance cardio) -----
+//
+// Chaque cote compte : chaque mesure garde le cote le plus avance, et
+// `debut` est la position neutre (pieds au sol, genoux au meme niveau).
+
+// Une mesure sans unite, ecrite sur un point.
+function mesure(libelle, sommet, echelle, zones, valeur) {
+  return { libelle, unite: "", echelle, sommet, zones, valeur };
+}
+
+const pied_leve = (zones) => mesure("Pied le plus levé, au-dessus de l'autre (÷ tibia)",
+  "cheville_gauche", [-0.2, 2], zones, (corps) => _pied_le_plus_leve(corps));
+const genou_leve = (zones) => mesure("Genou le plus levé, au-dessus de l'autre (÷ tibia)",
+  "genou_gauche", [-0.2, 1.5], zones, (corps) => _genou_le_plus_leve(corps));
+
+INSTRUMENTS.course_sur_place_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_debout(["fin", "debut"]),
+    pied_leve({ fin: [">", COURSE_PIED_LEVE], debut: ["<", COURSE_PIEDS_AU_SOL] }),
+  ],
+};
+
+INSTRUMENTS.montees_de_genou_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_debout(["fin", "debut"]),
+    avec_raisons(mesure("Genou le plus haut, sous sa hanche (÷ tibia)", "genou_gauche", [-0.5, 1.5],
+      { fin: ["<", MONTEE_GENOU_HAUT], debut: [">", MONTEE_GENOUX_BAS] },
+      (corps) => _genou_le_plus_haut_sous_hanche(corps)), { fin: RAISONS.monter }),
+  ],
+};
+
+INSTRUMENTS.talons_fesses_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_debout(["fin", "debut"]),
+    avec_raisons(pied_leve({ fin: [">", TALON_HAUT], debut: ["<", TALON_PIEDS_AU_SOL] }),
+      { fin: RAISONS.monter }),
+    genou_leve({ fin: ["<", TALON_GENOUX_ALIGNES] }),
+  ],
+};
+
+INSTRUMENTS.heisman_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_debout(["fin", "debut"]),
+    avec_raisons(genou_leve({ fin: [">", HEISMAN_GENOU_LEVE], debut: ["<", GENOUX_ALIGNES] }),
+      { fin: RAISONS.monter }),
+    mesure("Pied d'appui hors de la hanche (÷ épaules)", "cheville_droite", [-0.5, 1],
+      { fin: [">", HEISMAN_APPUI_EXTERIEUR] }, (corps) => _appui_exterieur(corps)),
+  ],
+};
+
+INSTRUMENTS.mountain_climber_debout_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_debout(["fin", "debut"]),
+    avec_raisons(genou_leve({ fin: [">", CLIMBER_GENOU_LEVE], debut: ["<", GENOUX_ALIGNES] }),
+      { fin: RAISONS.monter }),
+    mesure("Main opposée au-dessus de la tête (÷ buste)", "poignet_gauche", [-1.5, 1],
+      { fin: [">", CLIMBER_MAIN_HAUTE] }, (corps) => _main_opposee_au_dessus_de_la_tete(corps)),
+  ],
+};
+
+INSTRUMENTS.switch_kicks_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_debout(["fin", "debut"]),
+    avec_raisons(mesure("Pied le plus haut, sous sa hanche (÷ tibia)", "cheville_gauche", [-0.5, 2.5],
+      { fin: ["<", KICK_PIED_HAUT], debut: [">", KICK_PIEDS_AU_SOL] },
+      (corps) => _pied_haut_sous_hanche(corps)), { fin: RAISONS.monter }),
+    mesure("Portée du pied depuis la hanche (÷ tibia)", "cheville_droite", [0, 2.5],
+      { fin: [">", KICK_PORTEE] }, (corps) => _pied_haut_portee(corps)),
+  ],
+};
+
+INSTRUMENTS.scissor_runs_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_debout(["fin", "debut"]),
+    mesure("Écart avant-arrière des chevilles (÷ tibia)", "cheville_gauche", [0, 2.5],
+      { fin: [">", CISEAUX_ECARTES], debut: ["<", CISEAUX_JOINTS] },
+      (corps) => _ecart_avant_arriere(corps)),
   ],
 };
 
