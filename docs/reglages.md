@@ -92,7 +92,8 @@ Réglages par famille de mouvement, qui expliquent les écarts entre exercices :
 - **lourd et court** (extension triceps) : fourchette basse des deux côtés ;
 - **jambes** : elles encaissent plus de répétitions, et les haltères y sont vite le facteur
   limitant ;
-- **gainage** : plafonné par série, puis c'est le nombre de séries qui prend le relais.
+- **gainage** : plafonné par série, puis c'est le nombre de séries qui prend le relais ;
+- **cardio en AMRAP** (sauts, jambes alternées, burpees, crochets…) : `series = series_max = 3`, le nombre de tours du circuit — un circuit refuse des séries inégales, et le moteur réécrit les séries depuis le palier. La progression ne passe donc que par les répétitions faites en 30 s ; changer le nombre de tours demande de changer ces barèmes. La durée de l'AMRAP n'entre pas dans le barème : elle doit rester la même (30 s) partout. Barèmes **provisoires**, à régler après les bancs d'essai.
 
 ## Les ligues (`ligues`)
 

@@ -766,7 +766,7 @@
     "description": "Descendre au sol, faire une pompe, revenir debout et sauter, le plus de fois possible.",
     "mise_en_place": [
       "Debout, de profil à la caméra, pieds écartés de la largeur des hanches.",
-      "Recule assez pour rester entier dans l'image, allongé comme debout."
+      "Recule assez pour que tout ton corps reste dans l'image, au sol comme debout."
     ],
     "instructions": [
       "Accroupis-toi, pose les mains au sol et lance les pieds en arrière.",
@@ -787,7 +787,7 @@
     "description": "Passer de la planche bras tendus à debout, avec un saut, le plus de fois possible.",
     "mise_en_place": [
       "Debout, de profil à la caméra, pieds écartés de la largeur des hanches.",
-      "Recule assez pour rester entier dans l'image, allongé comme debout."
+      "Recule assez pour que tout ton corps reste dans l'image, au sol comme debout."
     ],
     "instructions": [
       "Pose les mains au sol et lance les pieds en arrière, bras tendus.",
@@ -805,7 +805,7 @@
     ]
   },
   "Power knees droit": {
-    "description": "Monter le genou droit avec force vers les mains, qui descendent le frapper, puis remonter les mains au-dessus de la tête.",
+    "description": "Monter le genou droit avec force vers les mains, puis remonter les mains au-dessus de la tête.",
     "mise_en_place": [
       "Face à la caméra, debout, mains jointes au-dessus de la tête.",
       "Recule assez pour rester entier dans l'image, bras en l'air compris."
@@ -826,7 +826,7 @@
     ]
   },
   "Power knees gauche": {
-    "description": "Monter le genou gauche avec force vers les mains, qui descendent le frapper, puis remonter les mains au-dessus de la tête.",
+    "description": "Monter le genou gauche avec force vers les mains, puis remonter les mains au-dessus de la tête.",
     "mise_en_place": [
       "Face à la caméra, debout, mains jointes au-dessus de la tête.",
       "Recule assez pour rester entier dans l'image, bras en l'air compris."
