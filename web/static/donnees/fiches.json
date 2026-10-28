@@ -762,6 +762,48 @@
       "Plie les genoux pour descendre : ton dos ne doit pas tirer."
     ]
   },
+  "Burpees": {
+    "description": "Descendre au sol, faire une pompe, revenir debout et sauter, le plus de fois possible.",
+    "mise_en_place": [
+      "Debout, de profil à la caméra, pieds écartés de la largeur des hanches.",
+      "Recule assez pour rester entier dans l'image, allongé comme debout."
+    ],
+    "instructions": [
+      "Accroupis-toi, pose les mains au sol et lance les pieds en arrière.",
+      "Fais une pompe : descends la poitrine près du sol, puis pousse.",
+      "Ramène les pieds sous toi, redresse-toi et saute, bras en l'air.",
+      "Le burpee compte quand tu es revenu debout, si la pompe est descendue."
+    ],
+    "erreurs_frequentes": [
+      "Sauter la pompe : sans elle, le burpee ne compte pas.",
+      "Laisser le ventre tomber vers le sol en planche."
+    ],
+    "sensations": [
+      "Tout le corps travaille, le cœur monte très vite.",
+      "Ton dos ne doit pas se creuser en planche : serre le ventre."
+    ]
+  },
+  "Suicide jumps": {
+    "description": "Passer de la planche bras tendus à debout, avec un saut, le plus de fois possible.",
+    "mise_en_place": [
+      "Debout, de profil à la caméra, pieds écartés de la largeur des hanches.",
+      "Recule assez pour rester entier dans l'image, allongé comme debout."
+    ],
+    "instructions": [
+      "Pose les mains au sol et lance les pieds en arrière, bras tendus.",
+      "Ramène les pieds sous toi d'un saut.",
+      "Redresse-toi et saute, bras en l'air.",
+      "Chaque retour debout compte, si la planche est faite bras tendus."
+    ],
+    "erreurs_frequentes": [
+      "Plier les coudes en planche : garde les bras tendus.",
+      "Rester accroupi au lieu de te redresser."
+    ],
+    "sensations": [
+      "Les cuisses, le ventre et les épaules travaillent, le cœur monte vite.",
+      "Ton dos ne doit pas se creuser en planche : serre le ventre."
+    ]
+  },
   "Squat de prière": {
     "description": "Un squat sans poids, mains jointes devant la poitrine, pour réveiller les jambes.",
     "mise_en_place": [

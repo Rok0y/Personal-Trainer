@@ -1139,6 +1139,40 @@ export function scissor_runs_detection(corps) {
   return "milieu";
 }
 
+// ---------------------------------------------------------------- au sol
+//
+// Burpee et suicide jumps, de profil : on descend au sol, on revient debout et
+// l'on saute. **Le saut n'est pas verifie** : en l'air ou debout, le corps a la
+// meme forme, et c'est le retour debout qui compte (`fin`). Depart `fin` :
+// on se met en place debout.
+
+// Debout : buste vertical et hanches hautes (`descente_hanches`, ~1,3 debout).
+export const SOL_DEBOUT_HANCHES = 0.8;
+
+// Burpee : **la pompe est verifiee**. `debut` est le bas d'une pompe — buste a
+// l'horizontale, coude plie sous le seuil qui arme une pompe
+// (`SEUIL_COMPTAGE_POMPE`, la meme regle que les pompes). Une planche bras
+// tendus ne l'arme pas : un burpee sans pompe ne compte pas.
+export function burpee_detection(corps) {
+  const buste = buste_vertical(corps);
+  const hanches = descente_hanches(corps);
+  if (buste > 0 && hanches !== null && hanches > SOL_DEBOUT_HANCHES) return "fin";
+  if (buste < 0 && angle_coude_proche(corps) < SEUIL_COMPTAGE_POMPE) return "debut";
+  return "milieu";
+}
+
+// Suicide jumps : la planche **bras tendus** arme (coude au-dela de 150
+// degres), sans pompe.
+export const SUICIDE_BRAS_TENDUS = 150;
+
+export function suicide_jumps_detection(corps) {
+  const buste = buste_vertical(corps);
+  const hanches = descente_hanches(corps);
+  if (buste > 0 && hanches !== null && hanches > SOL_DEBOUT_HANCHES) return "fin";
+  if (buste < 0 && angle_coude_proche(corps) > SUICIDE_BRAS_TENDUS) return "debut";
+  return "milieu";
+}
+
 // Les mesures privees sont exportees sous un nom prefixe pour que
 // instruments.js les reprenne au lieu de les recopier. Elles restent hors de
 // DETECTIONS, que les tests rejouent en entier : une mesure ne rend pas de
@@ -1221,4 +1255,6 @@ export const DETECTIONS = {
   mountain_climber_debout_detection,
   switch_kicks_detection,
   scissor_runs_detection,
+  burpee_detection,
+  suicide_jumps_detection,
 };

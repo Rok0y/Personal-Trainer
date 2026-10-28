@@ -44,6 +44,7 @@ import {
   CLIMBER_GENOU_LEVE, CLIMBER_MAIN_HAUTE,
   KICK_PIED_HAUT, KICK_PORTEE, KICK_PIEDS_AU_SOL,
   CISEAUX_ECARTES, CISEAUX_JOINTS,
+  SEUIL_COMPTAGE_POMPE, SOL_DEBOUT_HANCHES, SUICIDE_BRAS_TENDUS,
 } from "./detections.js";
 
 const ECHELLE_ANGLE = [0, 180];
@@ -726,6 +727,40 @@ INSTRUMENTS.scissor_runs_detection = {
     mesure("Écart avant-arrière des chevilles (÷ tibia)", "cheville_gauche", [0, 2.5],
       { fin: [">", CISEAUX_ECARTES], debut: ["<", CISEAUX_JOINTS] },
       (corps) => _ecart_avant_arriere(corps)),
+  ],
+};
+
+// ----- au sol (seance cardio) -----
+
+// Le buste : couche pour `debut`, debout pour `fin` — le chemin du sol a
+// debout.
+function buste_du_sol_a_debout() {
+  return mesure("Buste debout (< 0 = allongé)", "epaule_gauche", [-0.4, 0.4],
+    { debut: ["<", 0], fin: [">", 0] }, (corps) => _buste_vertical(corps));
+}
+
+function hanches_debout() {
+  return avec_raisons(mesure("Descente des hanches (÷ tibia, moyenne)", "hanche_gauche", [0, 1.5],
+    { fin: [">", SOL_DEBOUT_HANCHES] }, (corps) => _descente_hanches(corps)), { fin: RAISONS.remonter });
+}
+
+INSTRUMENTS.burpee_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_du_sol_a_debout(),
+    hanches_debout(),
+    avec_raisons(coude_proche({ debut: ["<", SEUIL_COMPTAGE_POMPE] }), { debut: RAISONS.descendre }),
+  ],
+};
+
+INSTRUMENTS.suicide_jumps_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_du_sol_a_debout(),
+    hanches_debout(),
+    avec_raisons(coude_proche({ debut: [">", SUICIDE_BRAS_TENDUS] }), { debut: RAISONS.tendre }),
   ],
 };
 
