@@ -383,6 +383,26 @@
    "series_max": 3,
    "poids_min": null,
    "poids_max": null
+  },
+  "Power knees droit": {
+   "series": 3,
+   "cible_min": 6,
+   "cible_max": 25,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 3,
+   "poids_min": null,
+   "poids_max": null
+  },
+  "Power knees gauche": {
+   "series": 3,
+   "cible_min": 6,
+   "cible_max": 25,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 3,
+   "poids_min": null,
+   "poids_max": null
   }
  },
  "ligues": {
@@ -1179,6 +1199,46 @@
     53,
     56,
     59
+   ],
+   "Power knees droit": [
+    18,
+    23,
+    27,
+    32,
+    37,
+    42,
+    46,
+    51,
+    56,
+    60,
+    65,
+    70,
+    74,
+    79,
+    84,
+    89,
+    93,
+    98
+   ],
+   "Power knees gauche": [
+    18,
+    23,
+    27,
+    32,
+    37,
+    42,
+    46,
+    51,
+    56,
+    60,
+    65,
+    70,
+    74,
+    79,
+    84,
+    89,
+    93,
+    98
    ]
   }
  },
@@ -1299,7 +1359,9 @@
    "Switch kicks": 0.7,
    "Scissor runs": 0.4,
    "Burpees": 3,
-   "Suicide jumps": 2.5
+   "Suicide jumps": 2.5,
+   "Power knees droit": 1.2,
+   "Power knees gauche": 1.2
   }
  }
 }

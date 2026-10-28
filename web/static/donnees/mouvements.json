@@ -655,6 +655,58 @@
    "chaine": "cardio"
   }
  },
+ "Power knees droit": {
+  "nom": "Power knees droit",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "power_knees_droit_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "autre_cote": {
+   "mouvement": "Power knees gauche",
+   "membre": "jambe"
+  },
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "abdominaux",
+    "quadriceps",
+    "deltoides"
+   ],
+   "chaine": "cardio"
+  }
+ },
+ "Power knees gauche": {
+  "nom": "Power knees gauche",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "power_knees_gauche_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "autre_cote": {
+   "mouvement": "Power knees droit",
+   "membre": "jambe"
+  },
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "abdominaux",
+    "quadriceps",
+    "deltoides"
+   ],
+   "chaine": "cardio"
+  }
+ },
  "Rotation du cou": {
   "nom": "Rotation du cou",
   "variante_facile": null,

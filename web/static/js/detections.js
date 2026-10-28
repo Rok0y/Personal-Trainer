@@ -1173,6 +1173,46 @@ export function suicide_jumps_detection(corps) {
   return "milieu";
 }
 
+// ----------------------------------------------------------- power knees
+//
+// Un cote par serie : « Power knees droit » et « Power knees gauche », relies
+// par `autre_cote` (le genou de l'autre jambe se dit « c'est l'autre jambe »).
+// De face. `debut` : les mains au-dessus de la tete (les deux poignets
+// au-dessus des epaules) et les genoux au meme niveau. `fin` : le genou
+// mesure leve (> 0,5 tibia au-dessus de l'autre) **et** les deux mains
+// descendues le toucher (a moins de 0,8 tibia de lui).
+export const POWER_KNEE_GENOU_LEVE = 0.5;
+export const POWER_KNEE_MAINS = 0.8;
+
+// La main la plus loin du genou, en tibias de cette jambe : les deux mains
+// le touchent quand elle est proche. null si le tibia est illisible.
+function mains_au_genou(genou, cheville, corps) {
+  const longueur = tibia(genou, cheville);
+  if (longueur === null) return null;
+  return Math.max(
+    calculer_distance(corps.poignet_gauche, genou),
+    calculer_distance(corps.poignet_droit, genou)
+  ) / longueur;
+}
+
+function power_knee(genou, cheville, autre_genou, corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const leve = genou_au_dessus_de_l_autre(genou, cheville, autre_genou);
+  const mains = mains_au_genou(genou, cheville, corps);
+  const bras = bras_le_plus_bas(corps);
+  if (leve !== null && leve > POWER_KNEE_GENOU_LEVE && mains !== null && mains < POWER_KNEE_MAINS) return "fin";
+  if (leve !== null && leve < GENOUX_ALIGNES && bras !== null && bras < JACK_BRAS_HAUT) return "debut";
+  return "milieu";
+}
+
+export function power_knees_droit_detection(corps) {
+  return power_knee(corps.genou_droit, corps.cheville_droite, corps.genou_gauche, corps);
+}
+
+export function power_knees_gauche_detection(corps) {
+  return power_knee(corps.genou_gauche, corps.cheville_gauche, corps.genou_droit, corps);
+}
+
 // Les mesures privees sont exportees sous un nom prefixe pour que
 // instruments.js les reprenne au lieu de les recopier. Elles restent hors de
 // DETECTIONS, que les tests rejouent en entier : une mesure ne rend pas de
@@ -1207,6 +1247,7 @@ export {
   pied_haut_sous_hanche as _pied_haut_sous_hanche,
   pied_haut_portee as _pied_haut_portee,
   ecart_avant_arriere as _ecart_avant_arriere,
+  mains_au_genou as _mains_au_genou,
 };
 
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par
@@ -1257,4 +1298,6 @@ export const DETECTIONS = {
   scissor_runs_detection,
   burpee_detection,
   suicide_jumps_detection,
+  power_knees_droit_detection,
+  power_knees_gauche_detection,
 };

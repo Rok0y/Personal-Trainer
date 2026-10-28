@@ -804,6 +804,48 @@
       "Ton dos ne doit pas se creuser en planche : serre le ventre."
     ]
   },
+  "Power knees droit": {
+    "description": "Monter le genou droit avec force vers les mains, qui descendent le frapper, puis remonter les mains au-dessus de la tête.",
+    "mise_en_place": [
+      "Face à la caméra, debout, mains jointes au-dessus de la tête.",
+      "Recule assez pour rester entier dans l'image, bras en l'air compris."
+    ],
+    "instructions": [
+      "Monte le genou droit avec force et descends les mains le toucher.",
+      "Repose le pied et remonte les mains au-dessus de la tête.",
+      "Toute la série se fait avec le genou droit.",
+      "Ne reste pas bras en l'air plus de deux secondes : c'est le geste qui remet le compte à zéro."
+    ],
+    "erreurs_frequentes": [
+      "Monter le genou sans que les mains viennent le toucher : ça ne compte pas.",
+      "Changer de jambe en cours de série."
+    ],
+    "sensations": [
+      "Le ventre se contracte à chaque coup de genou, le cœur monte.",
+      "Ton dos ne doit pas se creuser quand les bras remontent."
+    ]
+  },
+  "Power knees gauche": {
+    "description": "Monter le genou gauche avec force vers les mains, qui descendent le frapper, puis remonter les mains au-dessus de la tête.",
+    "mise_en_place": [
+      "Face à la caméra, debout, mains jointes au-dessus de la tête.",
+      "Recule assez pour rester entier dans l'image, bras en l'air compris."
+    ],
+    "instructions": [
+      "Monte le genou gauche avec force et descends les mains le toucher.",
+      "Repose le pied et remonte les mains au-dessus de la tête.",
+      "Toute la série se fait avec le genou gauche.",
+      "Ne reste pas bras en l'air plus de deux secondes : c'est le geste qui remet le compte à zéro."
+    ],
+    "erreurs_frequentes": [
+      "Monter le genou sans que les mains viennent le toucher : ça ne compte pas.",
+      "Changer de jambe en cours de série."
+    ],
+    "sensations": [
+      "Le ventre se contracte à chaque coup de genou, le cœur monte.",
+      "Ton dos ne doit pas se creuser quand les bras remontent."
+    ]
+  },
   "Squat de prière": {
     "description": "Un squat sans poids, mains jointes devant la poitrine, pour réveiller les jambes.",
     "mise_en_place": [

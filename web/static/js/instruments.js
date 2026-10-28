@@ -34,6 +34,7 @@ import {
   _toucher_hauteur, _toucher_croisement,
   _pied_le_plus_leve, _genou_le_plus_leve, _genou_le_plus_haut_sous_hanche, _appui_exterieur,
   _main_opposee_au_dessus_de_la_tete, _pied_haut_sous_hanche, _pied_haut_portee, _ecart_avant_arriere,
+  _mains_au_genou,
   FENTE_GENOU_AVANT_MIN, SOULEVE_BAS_MAX, SOULEVE_HAUT_MIN,
   JACK_ECART_JOINT, JACK_ECART_ECARTE, JACK_BRAS_BAS, JACK_BRAS_HAUT,
   POWER_JACK_HANCHES_BAS, POWER_JACK_HANCHES_HAUT,
@@ -45,6 +46,7 @@ import {
   KICK_PIED_HAUT, KICK_PORTEE, KICK_PIEDS_AU_SOL,
   CISEAUX_ECARTES, CISEAUX_JOINTS,
   SEUIL_COMPTAGE_POMPE, SOL_DEBOUT_HANCHES, SUICIDE_BRAS_TENDUS,
+  POWER_KNEE_GENOU_LEVE, POWER_KNEE_MAINS,
 } from "./detections.js";
 
 const ECHELLE_ANGLE = [0, 180];
@@ -763,6 +765,31 @@ INSTRUMENTS.suicide_jumps_detection = {
     avec_raisons(coude_proche({ debut: [">", SUICIDE_BRAS_TENDUS] }), { debut: RAISONS.tendre }),
   ],
 };
+
+// ----- power knees (seance cardio) -----
+
+function power_knee(cote) {
+  const [g, c, autre] = cote === "droit"
+    ? ["genou_droit", "cheville_droite", "genou_gauche"]
+    : ["genou_gauche", "cheville_gauche", "genou_droit"];
+  return {
+    ordre: ["fin", "debut"],
+    defaut: "milieu",
+    mesures: [
+      buste_debout(["fin", "debut"]),
+      avec_raisons(mesure(`Genou ${cote} au-dessus de l'autre (÷ tibia)`, g, [-0.5, 1.5],
+        { fin: [">", POWER_KNEE_GENOU_LEVE], debut: ["<", GENOUX_ALIGNES] },
+        (corps) => _genou_au_dessus_de_l_autre(corps[g], corps[c], corps[autre])), { fin: RAISONS.monter }),
+      mesure("Main la plus loin du genou (÷ tibia)", "poignet_gauche", [0, 3],
+        { fin: ["<", POWER_KNEE_MAINS] }, (corps) => _mains_au_genou(corps[g], corps[c], corps)),
+      mesure("Main la plus basse, sous l'épaule (÷ buste)", "poignet_droit", [-1, 1.2],
+        { debut: ["<", JACK_BRAS_HAUT] }, (corps) => _bras_le_plus_bas(corps)),
+    ],
+  };
+}
+
+INSTRUMENTS.power_knees_droit_detection = power_knee("droit");
+INSTRUMENTS.power_knees_gauche_detection = power_knee("gauche");
 
 // ----- derivation -----
 
