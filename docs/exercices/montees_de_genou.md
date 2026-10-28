@@ -44,7 +44,7 @@ climber, kicks).
 - [ ] `fiches.json`, relue par l'utilisateur (aucun avertissement dans `dev/fiches.html`)
 - [x] `comparer_detections --mettre-a-jour` + `verifier_ajout_detection` : rien que des ajouts
 - [x] Sabotages (seuil inversé, condition oubliée, seuil de détection déplacé) : chacun rougit
-- [ ] Poussée 1 sur `travail` (accord donné)
+- [x] Poussée 1 sur `travail` (accord donné, 2026-10-28)
 - [ ] Banc d'essai (40 répétitions, choisies sur la fiche de la démo), pour chacun des sept :
   - [ ] compte juste, **au rythme réel** (3 à 4 pas par seconde pour la course et les montées)
   - [ ] pas de faux positifs (voir le questionnaire)
