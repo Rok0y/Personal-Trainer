@@ -877,13 +877,17 @@
   "Montées de genou": {
     "description": "Monter les genoux l'un après l'autre, sur place, pour faire monter le cœur.",
     "mise_en_place": [
-      "Debout, pieds écartés de la largeur des hanches."
+      "Debout, de profil à la caméra, pieds écartés de la largeur des hanches.",
+      "Recule assez pour que tes genoux restent dans l'image quand ils montent."
     ],
     "instructions": [
       "Monte un genou à hauteur de hanche, puis l'autre, en rythme.",
+      "Chaque genou compte, à condition d'arriver à hauteur de hanche.",
       "Reste droit, sans te pencher en arrière."
     ],
-    "erreurs_frequentes": [],
+    "erreurs_frequentes": [
+      "Monter le genou à mi-cuisse seulement : ce n'est que de la course, ça ne compte pas."
+    ],
     "sensations": [
       "Le cœur accélère et les cuisses chauffent."
     ]
@@ -903,6 +907,107 @@
     "sensations": [
       "L'arrière des cuisses travaille et le cœur accélère.",
       "Pose l'avant du pied en douceur, sans taper du talon."
+    ]
+  },
+  "Course sur place": {
+    "description": "Courir sur place à petits pas rapides, pour faire monter le cœur.",
+    "mise_en_place": [
+      "Face à la caméra, debout, pieds écartés de la largeur des hanches.",
+      "Recule assez pour que tes pieds restent dans l'image."
+    ],
+    "instructions": [
+      "Cours sur place en levant un pied, puis l'autre, à petits pas.",
+      "Chaque pied qui quitte le sol compte : lève-le franchement.",
+      "Garde les bras actifs, coudes pliés."
+    ],
+    "erreurs_frequentes": [
+      "Traîner les pieds au sol : ils ne quittent pas le sol, rien ne compte."
+    ],
+    "sensations": [
+      "Le cœur accélère, les mollets chauffent.",
+      "Pose l'avant du pied en douceur."
+    ]
+  },
+  "Heisman": {
+    "description": "Bondir d'un côté à l'autre en retombant sur un pied, l'autre genou levé, pour faire monter le cœur.",
+    "mise_en_place": [
+      "Face à la caméra, au milieu de l'image, pieds écartés de la largeur des hanches.",
+      "Garde un grand pas de place libre de chaque côté."
+    ],
+    "instructions": [
+      "Bondis sur le côté et retombe sur un pied, l'autre genou levé devant toi.",
+      "Repars aussitôt de l'autre côté, et lève l'autre genou.",
+      "Chaque appui compte, si ton pied d'appui est bien parti sur le côté.",
+      "Reste dans l'image : un petit bond suffit."
+    ],
+    "erreurs_frequentes": [
+      "Lever le genou sur place, sans bondir de côté : ça ne compte pas."
+    ],
+    "sensations": [
+      "Les fesses et les cuisses travaillent à chaque réception.",
+      "Retombe genou souple : la réception doit être silencieuse."
+    ]
+  },
+  "Mountain climber debout": {
+    "description": "Monter un genou et tendre le bras opposé vers le haut, en alternant, comme pour grimper.",
+    "mise_en_place": [
+      "Debout, de profil à la caméra, bras le long du corps.",
+      "Recule assez pour rester entier dans l'image, bras levé compris."
+    ],
+    "instructions": [
+      "Monte le genou droit et tends le bras gauche au-dessus de la tête.",
+      "Change : genou gauche et bras droit.",
+      "Chaque montée compte, si la main passe au-dessus de la tête.",
+      "Garde le ventre serré, le dos droit."
+    ],
+    "erreurs_frequentes": [
+      "Lever le bras du même côté que le genou.",
+      "Garder la main à hauteur d'épaule."
+    ],
+    "sensations": [
+      "Le ventre et les cuisses travaillent, le cœur accélère.",
+      "Ton dos ne doit pas se creuser quand le bras monte."
+    ]
+  },
+  "Switch kicks": {
+    "description": "Sauter en changeant de jambe et lancer un coup de pied devant, la garde haute.",
+    "mise_en_place": [
+      "Debout, de profil à la caméra, poings serrés devant le visage.",
+      "Recule assez pour que ton pied reste dans l'image quand il monte."
+    ],
+    "instructions": [
+      "Saute et lance un pied devant toi, à hauteur de hanche.",
+      "Saute de nouveau en changeant de jambe, et lance l'autre pied.",
+      "Chaque coup de pied compte, s'il arrive à hauteur de hanche.",
+      "Garde les poings devant le visage tout du long."
+    ],
+    "erreurs_frequentes": [
+      "Lancer le pied trop bas : il doit arriver à hauteur de hanche.",
+      "Baisser la garde."
+    ],
+    "sensations": [
+      "Le ventre et le devant des cuisses travaillent, le cœur monte vite.",
+      "Lance la jambe sans à-coup : le genou ne doit pas claquer."
+    ]
+  },
+  "Scissor runs": {
+    "description": "Sauter en échangeant les pieds, l'un devant et l'autre derrière, le plus vite possible.",
+    "mise_en_place": [
+      "Debout, de profil à la caméra, pieds joints.",
+      "Garde un pas de place devant et derrière toi."
+    ],
+    "instructions": [
+      "Saute en envoyant un pied devant et l'autre derrière.",
+      "Saute de nouveau pour échanger les pieds, sans descendre.",
+      "Chaque échange compte, si les pieds s'écartent nettement.",
+      "Reste léger sur l'avant des pieds."
+    ],
+    "erreurs_frequentes": [
+      "Écarter à peine les pieds : l'échange ne compte pas."
+    ],
+    "sensations": [
+      "Les cuisses et les mollets brûlent, le cœur s'emballe.",
+      "Atterris en douceur : les genoux restent souples."
     ]
   }
 }

@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**25 prises restantes.**
+**30 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -184,6 +184,7 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 
 | Fichier | A prononcer | Etat |
 | --- | --- | --- |
+| `course_sur_place.wav` | « Course sur place » | **a enregistrer** |
 | `crunches.wav` | « Crunches » | deja fait |
 | `curl_biceps_droit.wav` | « Curl biceps droit » | deja fait |
 | `curl_biceps_gauche.wav` | « Curl biceps gauche » | deja fait |
@@ -200,7 +201,10 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 | `gainage_planche_laterale_droite.wav` | « Gainage planche laterale droite » | deja fait |
 | `gainage_planche_laterale_gauche.wav` | « Gainage planche laterale gauche » | deja fait |
 | `gainage_sur_les_genoux.wav` | « Gainage sur les genoux » | deja fait |
+| `heisman.wav` | « Heisman » | **a enregistrer** |
 | `jumping_jacks.wav` | « Jumping jacks » | deja fait |
+| `montees_de_genou.wav` | « Montées de genou » | deja fait |
+| `mountain_climber_debout.wav` | « Mountain climber debout » | **a enregistrer** |
 | `oiseau.wav` | « Oiseau » | deja fait |
 | `pompes.wav` | « Pompes » | deja fait |
 | `pompes_contre_le_mur.wav` | « Pompes contre le mur » | deja fait |
@@ -210,11 +214,14 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 | `rowing_penche.wav` | « Rowing penche » | deja fait |
 | `rowing_unilateral_droit.wav` | « Rowing unilateral droit » | deja fait |
 | `rowing_unilateral_gauche.wav` | « Rowing unilateral gauche » | deja fait |
+| `scissor_runs.wav` | « Scissor runs » | **a enregistrer** |
 | `souleve_de_terre_roumain.wav` | « Souleve de terre roumain » | deja fait |
 | `squat.wav` | « Squat » | deja fait |
 | `squat_charge.wav` | « Squat chargé » | deja fait |
 | `stance_jacks.wav` | « Stance jacks » | **a enregistrer** |
 | `suicide_drills.wav` | « Suicide drills » | **a enregistrer** |
+| `switch_kicks.wav` | « Switch kicks » | **a enregistrer** |
+| `talons_fesses.wav` | « Talons-fesses » | **a enregistrer** |
 
 ## Noms des echauffements
 
@@ -226,7 +233,6 @@ Meme regle. Ils sont annonces comme les exercices, meme s'ils ne comptent nulle 
 | `extensions_de_mollets.wav` | « Extensions de mollets » | deja fait |
 | `hanches_en_avant_en_arriere.wav` | « Hanches en avant en arrière » | deja fait |
 | `hip_thrust.wav` | « Hip thrust » | deja fait |
-| `montees_de_genou.wav` | « Montées de genou » | deja fait |
 | `pompes_lentes.wav` | « Pompes lentes » | deja fait |
 | `rotation_des_chevilles.wav` | « Rotation des chevilles » | deja fait |
 | `rotation_des_coudes.wav` | « Rotation des coudes » | deja fait |
@@ -236,7 +242,6 @@ Meme regle. Ils sont annonces comme les exercices, meme s'ils ne comptent nulle 
 | `rotation_du_cou.wav` | « Rotation du cou » | deja fait |
 | `squat_de_priere.wav` | « Squat de prière » | deja fait |
 | `squat_lent.wav` | « Squat lent » | deja fait |
-| `talons_fesses.wav` | « Talons-fesses » | **a enregistrer** |
 | `elevations_laterales_a_vide.wav` | « Élévations latérales à vide » | deja fait |
 
 ## Charges — la gamme courante

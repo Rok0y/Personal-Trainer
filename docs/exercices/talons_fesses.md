@@ -38,6 +38,6 @@ la fusion dans `main`.
 
 ## Plus tard
 
-L'exercice compté (AMRAP) : un nouveau mouvement par le parcours B, sous un autre nom. Sa
-détection lira la flexion du genou de profil ; « Talons-fesses » pourra l'emprunter pour
-l'affichage.
+L'exercice compté (AMRAP) est fait **sous le même nom** (`aussi_exercice`, décision du
+2026-10-22) : sa détection et son suivi sont dans `montees_de_genou.md`, avec la famille des
+jambes alternées. Cette fiche ne suit plus que l'échauffement.

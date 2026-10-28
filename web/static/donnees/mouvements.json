@@ -689,6 +689,120 @@
    "chaine": "cardio"
   }
  },
+ "Course sur place": {
+  "nom": "Course sur place",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "course_sur_place_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "delai_min_reps": 0.15,
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "mollets"
+   ],
+   "chaine": "cardio"
+  }
+ },
+ "Heisman": {
+  "nom": "Heisman",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "heisman_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "delai_min_reps": 0.2,
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "fessiers",
+    "quadriceps",
+    "mollets"
+   ],
+   "chaine": "cardio"
+  }
+ },
+ "Mountain climber debout": {
+  "nom": "Mountain climber debout",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "profil",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "mountain_climber_debout_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "delai_min_reps": 0.2,
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "abdominaux",
+    "quadriceps",
+    "deltoides"
+   ],
+   "chaine": "cardio"
+  }
+ },
+ "Switch kicks": {
+  "nom": "Switch kicks",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "profil",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "switch_kicks_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "delai_min_reps": 0.2,
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "abdominaux",
+    "mollets"
+   ],
+   "chaine": "cardio"
+  }
+ },
+ "Scissor runs": {
+  "nom": "Scissor runs",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "profil",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "scissor_runs_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "delai_min_reps": 0.15,
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "ischio_jambiers",
+    "mollets"
+   ],
+   "chaine": "cardio"
+  }
+ },
  "Rotation du cou": {
   "nom": "Rotation du cou",
   "variante_facile": null,
@@ -1032,10 +1146,10 @@
   "nom": "Montées de genou",
   "variante_facile": null,
   "variante_difficile": null,
-  "orientation": null,
+  "orientation": "profil",
   "changements": [],
-  "analyse_la_pose": false,
-  "detection": null,
+  "analyse_la_pose": true,
+  "detection": "montees_de_genou_detection",
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
@@ -1046,7 +1160,10 @@
     "abdominaux"
    ],
    "chaine": "cardio"
-  }
+  },
+  "depart": "debut",
+  "delai_min_reps": 0.15,
+  "aussi_exercice": true
  },
  "Talons-fesses": {
   "nom": "Talons-fesses",
@@ -1054,8 +1171,8 @@
   "variante_difficile": null,
   "orientation": "profil",
   "changements": [],
-  "analyse_la_pose": false,
-  "detection": null,
+  "analyse_la_pose": true,
+  "detection": "talons_fesses_detection",
   "erreurs": [],
   "amplitude": null,
   "materiel": "",
@@ -1066,6 +1183,9 @@
     "mollets"
    ],
    "chaine": "cardio"
-  }
+  },
+  "depart": "debut",
+  "delai_min_reps": 0.15,
+  "aussi_exercice": true
  }
 }

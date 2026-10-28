@@ -915,6 +915,230 @@ export function stance_jacks_detection(corps) {
   return "milieu";
 }
 
+// ------------------------------------------------------ jambes alternees
+//
+// Course, montees de genoux, talons-fesses, Heisman, mountain climber debout,
+// switch kicks, scissor runs : **chaque cote compte**. `debut` est la position
+// neutre (pieds au sol, genoux au meme niveau), `fin` l'un **ou** l'autre cote
+// a son extremite — une mesure qui garde le plus avance des deux cotes. Chaque
+// pas repasse par le neutre, et debout immobile on y est : la mise en place
+// marche telle quelle (`depart: "debut"`). Ces mouvements vont vite : chacun
+// declare son `delai_min_reps`.
+
+// Le tibia d'une jambe, null s'il est illisible.
+function tibia(genou, cheville) {
+  const longueur = calculer_distance(genou, cheville);
+  return longueur > 0 ? longueur : null;
+}
+
+// De combien le pied le plus leve est au-dessus de l'autre, en tibias (de sa
+// jambe) : 0 pieds au sol, au-dela de 1 le talon monte vers la fesse. Lisible
+// de face comme de profil. null si un tibia est illisible.
+function pied_le_plus_leve(corps) {
+  const t_gauche = tibia(corps.genou_gauche, corps.cheville_gauche);
+  const t_droite = tibia(corps.genou_droit, corps.cheville_droite);
+  if (t_gauche === null || t_droite === null) return null;
+  return Math.max(
+    (corps.cheville_droite.y - corps.cheville_gauche.y) / t_gauche,
+    (corps.cheville_gauche.y - corps.cheville_droite.y) / t_droite
+  );
+}
+
+// De combien le genou le plus haut depasse l'autre, en tibias
+// (`genou_au_dessus_de_l_autre`, des deux cotes). null si un cote est
+// illisible.
+function genou_le_plus_leve(corps) {
+  const gauche = genou_au_dessus_de_l_autre(corps.genou_gauche, corps.cheville_gauche, corps.genou_droit);
+  const droite = genou_au_dessus_de_l_autre(corps.genou_droit, corps.cheville_droite, corps.genou_gauche);
+  if (gauche === null || droite === null) return null;
+  return Math.max(gauche, droite);
+}
+
+// Le genou le plus haut, sous sa hanche, en tibias : vers 1 debout, 0 genou a
+// hauteur de hanche, negatif au-dessus. Verticale : lisible de profil, ou la
+// cuisse se leve devant soi. null si un tibia est illisible.
+function genou_le_plus_haut_sous_hanche(corps) {
+  const t_gauche = tibia(corps.genou_gauche, corps.cheville_gauche);
+  const t_droite = tibia(corps.genou_droit, corps.cheville_droite);
+  if (t_gauche === null || t_droite === null) return null;
+  return Math.min(
+    (corps.genou_gauche.y - corps.hanche_gauche.y) / t_gauche,
+    (corps.genou_droit.y - corps.hanche_droite.y) / t_droite
+  );
+}
+
+// La jambe levee (genou le plus haut) et la jambe d'appui, l'autre.
+function jambes_levee_et_appui(corps) {
+  const gauche_levee = corps.genou_gauche.y <= corps.genou_droit.y;
+  const gauche = { genou: corps.genou_gauche, cheville: corps.cheville_gauche, hanche: corps.hanche_gauche,
+    poignet: corps.poignet_gauche };
+  const droite = { genou: corps.genou_droit, cheville: corps.cheville_droite, hanche: corps.hanche_droite,
+    poignet: corps.poignet_droit };
+  return gauche_levee ? { levee: gauche, appui: droite } : { levee: droite, appui: gauche };
+}
+
+// Heisman : de combien le pied d'appui est sorti a l'exterieur de sa hanche,
+// en largeurs d'epaules. On retombe sur un pied, de cote : le pied d'appui est
+// alors hors de la ligne des hanches, la ou une montee de genou sur place le
+// garde dessous. L'exterieur se lit sur les hanches, rien n'est suppose du
+// sens de l'image. null si les epaules sont illisibles.
+function appui_exterieur(corps) {
+  const { levee, appui } = jambes_levee_et_appui(corps);
+  const largeur = calculer_distance(corps.epaule_gauche, corps.epaule_droite);
+  if (largeur <= 0) return null;
+  const sens = appui.hanche.x >= levee.hanche.x ? 1 : -1;
+  return ((appui.cheville.x - appui.hanche.x) * sens) / largeur;
+}
+
+// Mountain climber debout : la main opposee au genou leve, au-dessus de la
+// tete (du nez), en bustes. Positive : la main est plus haute que la tete.
+// null si le buste est illisible.
+function main_opposee_au_dessus_de_la_tete(corps) {
+  const { appui } = jambes_levee_et_appui(corps);
+  const epaules_y = (corps.epaule_gauche.y + corps.epaule_droite.y) / 2;
+  const hanches_y = (corps.hanche_gauche.y + corps.hanche_droite.y) / 2;
+  const buste = hanches_y - epaules_y;
+  if (buste <= 0) return null;
+  return (corps.nez.y - appui.poignet.y) / buste;
+}
+
+// Le pied le plus haut (switch kick) : sa hauteur sous sa hanche, en tibias
+// (vers 2 debout, 0 cheville a hauteur de hanche), et sa portee horizontale
+// depuis la hanche, en tibias. La portee distingue le coup de pied, jambe
+// lancee devant, du talon-fesse, ou la cheville monte sous la hanche.
+function pied_haut(corps) {
+  const gauche_haut = corps.cheville_gauche.y <= corps.cheville_droite.y;
+  return gauche_haut
+    ? { cheville: corps.cheville_gauche, genou: corps.genou_gauche, hanche: corps.hanche_gauche }
+    : { cheville: corps.cheville_droite, genou: corps.genou_droit, hanche: corps.hanche_droite };
+}
+
+function pied_haut_sous_hanche(corps) {
+  const { cheville, genou, hanche } = pied_haut(corps);
+  const longueur = tibia(genou, cheville);
+  if (longueur === null) return null;
+  return (cheville.y - hanche.y) / longueur;
+}
+
+function pied_haut_portee(corps) {
+  const { cheville, genou, hanche } = pied_haut(corps);
+  const longueur = tibia(genou, cheville);
+  if (longueur === null) return null;
+  return Math.abs(cheville.x - hanche.x) / longueur;
+}
+
+// Scissor runs : l'ecart avant-arriere des chevilles, de profil, en tibias
+// (moyenne des deux). null si un tibia est illisible.
+function ecart_avant_arriere(corps) {
+  const t_gauche = tibia(corps.genou_gauche, corps.cheville_gauche);
+  const t_droite = tibia(corps.genou_droit, corps.cheville_droite);
+  if (t_gauche === null || t_droite === null) return null;
+  return Math.abs(corps.cheville_gauche.x - corps.cheville_droite.x) / ((t_gauche + t_droite) / 2);
+}
+
+// Course sur place, de face : un pied quitte le sol (> 0,25 tibia), puis les
+// deux y reviennent (< 0,08).
+export const COURSE_PIED_LEVE = 0.25;
+export const COURSE_PIEDS_AU_SOL = 0.08;
+
+export function course_sur_place_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const pied = pied_le_plus_leve(corps);
+  if (pied !== null && pied > COURSE_PIED_LEVE) return "fin";
+  if (pied !== null && pied < COURSE_PIEDS_AU_SOL) return "debut";
+  return "milieu";
+}
+
+// Montees de genoux, de profil : un genou **au niveau de sa hanche**
+// (< 0,05 tibia dessous) ; en dessous, c'est de la course. Les deux genoux
+// bas (> 0,7) font le neutre.
+export const MONTEE_GENOU_HAUT = 0.05;
+export const MONTEE_GENOUX_BAS = 0.7;
+
+export function montees_de_genou_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const genou = genou_le_plus_haut_sous_hanche(corps);
+  if (genou !== null && genou < MONTEE_GENOU_HAUT) return "fin";
+  if (genou !== null && genou > MONTEE_GENOUX_BAS) return "debut";
+  return "milieu";
+}
+
+// Talons-fesses, de profil : le talon monte haut (pied > 0,8 tibia au-dessus
+// de l'autre) **et** les genoux restent au meme niveau (< 0,3) — le genou
+// pointe le sol. Sans cette seconde condition, une montee de genou comptait.
+export const TALON_HAUT = 0.8;
+export const TALON_GENOUX_ALIGNES = 0.3;
+export const TALON_PIEDS_AU_SOL = 0.15;
+
+export function talons_fesses_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const pied = pied_le_plus_leve(corps);
+  const genou = genou_le_plus_leve(corps);
+  if (pied !== null && pied > TALON_HAUT && genou !== null && genou < TALON_GENOUX_ALIGNES) return "fin";
+  if (pied !== null && pied < TALON_PIEDS_AU_SOL) return "debut";
+  return "milieu";
+}
+
+// Heisman, de face : un genou leve (> 0,5 tibia au-dessus de l'autre) **et**
+// le pied d'appui hors de la ligne des hanches (> 0,1 epaule). Genoux au meme
+// niveau (< 0,15) : le neutre, entre deux appuis.
+export const HEISMAN_GENOU_LEVE = 0.5;
+export const HEISMAN_APPUI_EXTERIEUR = 0.1;
+export const GENOUX_ALIGNES = 0.15;
+
+export function heisman_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const genou = genou_le_plus_leve(corps);
+  const appui = appui_exterieur(corps);
+  if (genou !== null && genou > HEISMAN_GENOU_LEVE && appui !== null && appui > HEISMAN_APPUI_EXTERIEUR) return "fin";
+  if (genou !== null && genou < GENOUX_ALIGNES) return "debut";
+  return "milieu";
+}
+
+// Mountain climber debout, de profil : un genou leve (> 0,5 tibia au-dessus de
+// l'autre) **et** la main opposee au-dessus de la tete. Genoux au meme niveau :
+// le neutre.
+export const CLIMBER_GENOU_LEVE = 0.5;
+export const CLIMBER_MAIN_HAUTE = 0;
+
+export function mountain_climber_debout_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const genou = genou_le_plus_leve(corps);
+  const main = main_opposee_au_dessus_de_la_tete(corps);
+  if (genou !== null && genou > CLIMBER_GENOU_LEVE && main !== null && main > CLIMBER_MAIN_HAUTE) return "fin";
+  if (genou !== null && genou < GENOUX_ALIGNES) return "debut";
+  return "milieu";
+}
+
+// Switch kicks, de profil : le pied le plus haut a hauteur de hanche (< 0,5
+// tibia dessous) **et** lance loin d'elle (portee > 1 tibia). Debout, pieds
+// au sol, il est a ~2 tibias sous la hanche (> 1,6).
+export const KICK_PIED_HAUT = 0.5;
+export const KICK_PORTEE = 1;
+export const KICK_PIEDS_AU_SOL = 1.6;
+
+export function switch_kicks_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const hauteur = pied_haut_sous_hanche(corps);
+  const portee = pied_haut_portee(corps);
+  if (hauteur !== null && hauteur < KICK_PIED_HAUT && portee !== null && portee > KICK_PORTEE) return "fin";
+  if (hauteur !== null && hauteur > KICK_PIEDS_AU_SOL) return "debut";
+  return "milieu";
+}
+
+// Scissor runs, de profil : pieds nettement ecartes d'avant en arriere
+// (> 1 tibia), puis ramenes l'un pres de l'autre (< 0,4) a chaque echange.
+export const CISEAUX_ECARTES = 1;
+export const CISEAUX_JOINTS = 0.4;
+
+export function scissor_runs_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const ecart = ecart_avant_arriere(corps);
+  if (ecart !== null && ecart > CISEAUX_ECARTES) return "fin";
+  if (ecart !== null && ecart < CISEAUX_JOINTS) return "debut";
+  return "milieu";
+}
+
 // Les mesures privees sont exportees sous un nom prefixe pour que
 // instruments.js les reprenne au lieu de les recopier. Elles restent hors de
 // DETECTIONS, que les tests rejouent en entier : une mesure ne rend pas de
@@ -941,6 +1165,14 @@ export {
   descente_hanches as _descente_hanches,
   toucher_hauteur as _toucher_hauteur,
   toucher_croisement as _toucher_croisement,
+  pied_le_plus_leve as _pied_le_plus_leve,
+  genou_le_plus_leve as _genou_le_plus_leve,
+  genou_le_plus_haut_sous_hanche as _genou_le_plus_haut_sous_hanche,
+  appui_exterieur as _appui_exterieur,
+  main_opposee_au_dessus_de_la_tete as _main_opposee_au_dessus_de_la_tete,
+  pied_haut_sous_hanche as _pied_haut_sous_hanche,
+  pied_haut_portee as _pied_haut_portee,
+  ecart_avant_arriere as _ecart_avant_arriere,
 };
 
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par
@@ -982,4 +1214,11 @@ export const DETECTIONS = {
   jumping_jacks_detection,
   power_jacks_detection,
   stance_jacks_detection,
+  course_sur_place_detection,
+  montees_de_genou_detection,
+  talons_fesses_detection,
+  heisman_detection,
+  mountain_climber_debout_detection,
+  switch_kicks_detection,
+  scissor_runs_detection,
 };
