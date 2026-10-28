@@ -703,18 +703,63 @@
   "Jumping jacks": {
     "description": "Sauter en écartant bras et jambes, puis en les resserrant, pour faire monter le cœur.",
     "mise_en_place": [
-      "Debout, pieds joints, bras le long du corps.",
+      "Face à la caméra, debout, pieds joints, bras le long du corps.",
       "Recule assez pour rester entier dans l'image, même bras en l'air."
     ],
     "instructions": [
       "Saute en écartant les jambes et en levant les bras au-dessus de la tête.",
       "Saute de nouveau pour revenir pieds joints, bras en bas.",
+      "Pour que ça compte : les deux mains au-dessus des épaules, les pieds bien écartés.",
       "Atterris en douceur, genoux souples."
     ],
-    "erreurs_frequentes": [],
+    "erreurs_frequentes": [
+      "Lever les bras à moitié : le saut ne compte pas.",
+      "Écarter à peine les pieds."
+    ],
     "sensations": [
       "Le cœur accélère et tu as chaud : c'est le but.",
       "Si sauter est trop dur, fais un pas sur le côté à la place."
+    ]
+  },
+  "Power jacks": {
+    "description": "Un jumping jack qui retombe en squat, jambes écartées, pour travailler les cuisses en plus du cœur.",
+    "mise_en_place": [
+      "Face à la caméra, debout, pieds joints, bras tendus au-dessus de la tête.",
+      "Recule assez pour rester entier dans l'image, bras en l'air compris."
+    ],
+    "instructions": [
+      "Saute en écartant les jambes et retombe en squat, hanches basses.",
+      "Remonte d'un saut en ramenant les pieds, bras au-dessus de la tête.",
+      "Atterris en douceur, genoux dans l'axe des pieds."
+    ],
+    "erreurs_frequentes": [
+      "Rester haut au lieu de descendre en squat : le saut ne compte pas.",
+      "Oublier de lever les bras en remontant."
+    ],
+    "sensations": [
+      "Les cuisses et les fesses brûlent, le cœur monte vite.",
+      "Tes genoux ne doivent pas rentrer vers l'intérieur à l'atterrissage."
+    ]
+  },
+  "Stance jacks": {
+    "description": "Un saut pieds joints, puis une main touche le pied opposé, en alternant, pour faire monter le cœur.",
+    "mise_en_place": [
+      "Face à la caméra, debout, pieds joints.",
+      "Recule assez pour que tes pieds restent dans l'image quand tu te baisses."
+    ],
+    "instructions": [
+      "Saute sur place, pieds joints.",
+      "Baisse-toi et touche le pied gauche avec la main droite.",
+      "Remonte, saute encore, puis touche le pied droit avec la main gauche.",
+      "Redresse-toi bien entre deux touchers : chaque toucher compte."
+    ],
+    "erreurs_frequentes": [
+      "Toucher le pied du même côté : la main doit croiser, sinon ça ne compte pas.",
+      "Rester penché entre deux touchers."
+    ],
+    "sensations": [
+      "Les cuisses travaillent à chaque descente, la taille tourne au toucher.",
+      "Plie les genoux pour descendre : ton dos ne doit pas tirer."
     ]
   },
   "Squat de prière": {

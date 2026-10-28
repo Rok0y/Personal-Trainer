@@ -782,6 +782,139 @@ export function squat_sur_chaise_detection(corps) {
   return "milieu";
 }
 
+// ---------------------------------------------------------------- sauts
+//
+// Les sauts de la seance cardio, comptes en AMRAP et vus de face. Toutes les
+// mesures sont rapportees au corps (largeur d'epaules, buste, tibia) : a trois
+// metres comme a deux, un saut fait les memes nombres.
+
+// L'ecart des chevilles, en largeurs d'epaules : vers 0,3 a 0,6 pieds joints,
+// au-dela de 1,5 jambes ecartees d'un saut. null si les epaules sont
+// illisibles.
+function ecart_chevilles(corps) {
+  return ecart_rapporte_aux_epaules(corps.cheville_gauche, corps.cheville_droite, corps);
+}
+
+// La hauteur sous son epaule du poignet **le plus bas** des deux, en bustes
+// (`hauteur_sous_epaule`). Negative : les deux mains sont au-dessus des
+// epaules. null si un cote est illisible — « les deux bras » ne se devine pas.
+function bras_le_plus_bas(corps) {
+  const gauche = hauteur_sous_epaule(corps.poignet_gauche, corps.epaule_gauche, corps.hanche_gauche);
+  const droite = hauteur_sous_epaule(corps.poignet_droit, corps.epaule_droite, corps.hanche_droite);
+  if (gauche === null || droite === null) return null;
+  return Math.max(gauche, droite);
+}
+
+// La meme hauteur pour le poignet **le plus haut** : au-dela de 0,6, les deux
+// bras sont le long du corps.
+function bras_le_plus_haut(corps) {
+  const gauche = hauteur_sous_epaule(corps.poignet_gauche, corps.epaule_gauche, corps.hanche_gauche);
+  const droite = hauteur_sous_epaule(corps.poignet_droit, corps.epaule_droite, corps.hanche_droite);
+  if (gauche === null || droite === null) return null;
+  return Math.min(gauche, droite);
+}
+
+// La descente des hanches, moyenne des deux jambes (`descente_hanche`) :
+// environ 1 debout, vers 0 hanches a hauteur de genoux. Verticale, donc
+// lisible de face, la ou l'angle du genou ne l'est pas.
+function descente_hanches(corps) {
+  const mesures = [
+    descente_hanche(corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche),
+    descente_hanche(corps.hanche_droite, corps.genou_droit, corps.cheville_droite),
+  ].filter((mesure) => mesure !== null);
+  if (!mesures.length) return null;
+  return mesures.reduce((a, b) => a + b, 0) / mesures.length;
+}
+
+// Le toucher croise d'un stance jack : la main qui descend (le poignet le
+// plus bas) et le pied **oppose**. Le poignet droit va au pied gauche.
+function main_qui_touche(corps) {
+  const droite = corps.poignet_droit.y >= corps.poignet_gauche.y;
+  return droite
+    ? { poignet: corps.poignet_droit, genou: corps.genou_gauche, cheville: corps.cheville_gauche,
+        hanche_opposee: corps.hanche_gauche, hanche: corps.hanche_droite }
+    : { poignet: corps.poignet_gauche, genou: corps.genou_droit, cheville: corps.cheville_droite,
+        hanche_opposee: corps.hanche_droite, hanche: corps.hanche_gauche };
+}
+
+// La hauteur de cette main au-dessus du pied oppose, en tibias : vers 1,8
+// debout bras le long du corps, sous 0,6 la main au pied. null si le tibia
+// est illisible.
+function toucher_hauteur(corps) {
+  const { poignet, genou, cheville } = main_qui_touche(corps);
+  const tibia = calculer_distance(genou, cheville);
+  if (tibia <= 0) return null;
+  return (cheville.y - poignet.y) / tibia;
+}
+
+// De combien cette main a passe l'axe du corps (le milieu des hanches) vers le
+// cote oppose, en largeurs d'epaules : positif quand elle va bien au pied
+// d'en face. Pieds joints, le pied oppose est juste de l'autre cote de l'axe,
+// et c'est ce passage qui distingue le toucher croise d'une main au pied du
+// meme cote. Rien n'est suppose du sens de l'image : le cote oppose se lit sur
+// les hanches. null si les epaules sont illisibles.
+function toucher_croisement(corps) {
+  const { poignet, hanche_opposee, hanche } = main_qui_touche(corps);
+  const largeur = calculer_distance(corps.epaule_gauche, corps.epaule_droite);
+  if (largeur <= 0) return null;
+  const milieu = (hanche_opposee.x + hanche.x) / 2;
+  const sens = hanche_opposee.x >= hanche.x ? 1 : -1;
+  return ((poignet.x - milieu) * sens) / largeur;
+}
+
+// Jumping jack : pieds rapproches et bras le long du corps, puis jambes
+// ecartees et les deux mains au-dessus des epaules. Les deux seuils de chaque
+// mesure laissent une zone morte entre eux (hysteresis), et un jumping jack a
+// moitie fait — bras a l'horizontale, pieds a peine ecartes — reste en
+// `milieu`. Le buste debout est une condition de position commune.
+export const JACK_ECART_JOINT = 0.9;
+export const JACK_ECART_ECARTE = 1.3;
+export const JACK_BRAS_BAS = 0.6;
+export const JACK_BRAS_HAUT = 0;
+
+export function jumping_jacks_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const ecart = ecart_chevilles(corps);
+  const bas = bras_le_plus_bas(corps);
+  const haut = bras_le_plus_haut(corps);
+  if (ecart !== null && ecart > JACK_ECART_ECARTE && bas !== null && bas < JACK_BRAS_HAUT) return "fin";
+  if (ecart !== null && ecart < JACK_ECART_JOINT && haut !== null && haut > JACK_BRAS_BAS) return "debut";
+  return "milieu";
+}
+
+// Power jack : on retombe jambes ecartees en squat (`debut`), on remonte en
+// sautant bras au-dessus de la tete (`fin`, la fin de la phase concentrique).
+// L'ecart des pieds n'est demande qu'en bas, les bras qu'en haut.
+export const POWER_JACK_HANCHES_BAS = 0.6;
+export const POWER_JACK_HANCHES_HAUT = 0.8;
+
+export function power_jacks_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const hanches = descente_hanches(corps);
+  const ecart = ecart_chevilles(corps);
+  const bas = bras_le_plus_bas(corps);
+  if (hanches !== null && hanches > POWER_JACK_HANCHES_HAUT && bas !== null && bas < JACK_BRAS_HAUT) return "fin";
+  if (hanches !== null && hanches < POWER_JACK_HANCHES_BAS && ecart !== null && ecart > JACK_ECART_ECARTE) return "debut";
+  return "milieu";
+}
+
+// Stance jack : debout (`debut`), puis une main touche le pied oppose
+// (`fin`) ; chaque toucher compte, et l'on remonte entre deux. Pas de
+// condition sur le buste : il se penche pour toucher.
+export const STANCE_JACK_TOUCHER = 0.6;
+export const STANCE_JACK_DEBOUT = 1.4;
+export const STANCE_JACK_CROISEMENT = 0.05;
+
+export function stance_jacks_detection(corps) {
+  const hauteur = toucher_hauteur(corps);
+  const croisement = toucher_croisement(corps);
+  if (hauteur !== null && hauteur < STANCE_JACK_TOUCHER && croisement !== null && croisement > STANCE_JACK_CROISEMENT) {
+    return "fin";
+  }
+  if (hauteur !== null && hauteur > STANCE_JACK_DEBOUT) return "debut";
+  return "milieu";
+}
+
 // Les mesures privees sont exportees sous un nom prefixe pour que
 // instruments.js les reprenne au lieu de les recopier. Elles restent hors de
 // DETECTIONS, que les tests rejouent en entier : une mesure ne rend pas de
@@ -802,6 +935,12 @@ export {
   poignet_devant_epaule as _poignet_devant_epaule,
   genou_au_dessus_de_l_autre as _genou_au_dessus_de_l_autre,
   hauteur_poignets as _hauteur_poignets,
+  ecart_chevilles as _ecart_chevilles,
+  bras_le_plus_bas as _bras_le_plus_bas,
+  bras_le_plus_haut as _bras_le_plus_haut,
+  descente_hanches as _descente_hanches,
+  toucher_hauteur as _toucher_hauteur,
+  toucher_croisement as _toucher_croisement,
 };
 
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par
@@ -840,4 +979,7 @@ export const DETECTIONS = {
   oiseau_erreur_coudes,
   squat_sur_chaise_detection,
   extension_triceps_erreur_coudes,
+  jumping_jacks_detection,
+  power_jacks_detection,
+  stance_jacks_detection,
 };
