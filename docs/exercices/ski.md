@@ -45,7 +45,7 @@ chrono.
 - [ ] `fiches.json`, relue par l'utilisateur
 - [x] `comparer_detections --mettre-a-jour` + `verifier_ajout_detection` : rien que des ajouts
 - [x] Sabotages (seuil inversé dans l'instrument, seuil déplacé) : chacun rougit
-- [ ] Poussée 1 sur `travail` (accord donné)
+- [x] Poussée 1 sur `travail` (accord donné, 2026-10-28)
 - [ ] Banc d'essai : compte juste (en partant du milieu), pas de faux positifs, refus expliqué
 
 Barème provisoire : `series = series_max = 3`, cible 10-45 par AMRAP de 30 s. Tempo 0,7 s.
