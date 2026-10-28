@@ -730,6 +730,29 @@
    "chaine": "cardio"
   }
  },
+ "Ski": {
+  "nom": "Ski",
+  "variante_facile": null,
+  "variante_difficile": null,
+  "orientation": "face",
+  "changements": [],
+  "analyse_la_pose": true,
+  "detection": "ski_detection",
+  "erreurs": [],
+  "amplitude": null,
+  "depart": "debut",
+  "delai_min_reps": 0.2,
+  "materiel": "",
+  "est_echauffement": false,
+  "categories": {
+   "muscles": [
+    "quadriceps",
+    "fessiers",
+    "mollets"
+   ],
+   "chaine": "cardio"
+  }
+ },
  "Rotation du cou": {
   "nom": "Rotation du cou",
   "variante_facile": null,

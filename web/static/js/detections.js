@@ -1265,6 +1265,35 @@ export function crochets_detection(corps) {
   return "milieu";
 }
 
+// ------------------------------------------------------------------- ski
+//
+// Sauts lateraux pieds joints, d'un cote a l'autre, de face : chaque reception
+// compte. **Seul mouvement qui lit un repere exterieur au corps** : le centre de
+// l'image (les coordonnees du modele vont de 0 a 1). Une detection n'a pas de
+// memoire, et rien dans une seule image ne dit de quel cote on a saute — sauf
+// la place dans l'image. L'amplitude, elle, se rapporte au corps (largeurs
+// d'epaules). La fiche demande de se placer au milieu de l'image.
+
+// De combien le milieu des chevilles s'ecarte du centre de l'image, sans signe,
+// en largeurs d'epaules. null si les epaules sont illisibles.
+function ecart_au_centre(corps) {
+  const largeur = calculer_distance(corps.epaule_gauche, corps.epaule_droite);
+  if (largeur <= 0) return null;
+  const milieu = (corps.cheville_gauche.x + corps.cheville_droite.x) / 2;
+  return Math.abs(milieu - 0.5) / largeur;
+}
+
+export const SKI_DE_COTE = 0.6;
+export const SKI_AU_CENTRE = 0.2;
+
+export function ski_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const ecart = ecart_au_centre(corps);
+  if (ecart !== null && ecart > SKI_DE_COTE) return "fin";
+  if (ecart !== null && ecart < SKI_AU_CENTRE) return "debut";
+  return "milieu";
+}
+
 // Les mesures privees sont exportees sous un nom prefixe pour que
 // instruments.js les reprenne au lieu de les recopier. Elles restent hors de
 // DETECTIONS, que les tests rejouent en entier : une mesure ne rend pas de
@@ -1302,6 +1331,7 @@ export {
   mains_au_genou as _mains_au_genou,
   crochet_croisement as _crochet_croisement,
   crochet_hauteur as _crochet_hauteur,
+  ecart_au_centre as _ecart_au_centre,
 };
 
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par
@@ -1355,4 +1385,5 @@ export const DETECTIONS = {
   power_knees_droit_detection,
   power_knees_gauche_detection,
   crochets_detection,
+  ski_detection,
 };

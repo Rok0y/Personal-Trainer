@@ -867,6 +867,27 @@
       "Le coude reste plié : le bras ne doit pas se tendre d'un coup."
     ]
   },
+  "Ski": {
+    "description": "Sauter d'un côté à l'autre pieds joints, comme un skieur en slalom, pour faire monter le cœur.",
+    "mise_en_place": [
+      "Face à la caméra, pieds joints, bien au milieu de l'image.",
+      "Garde un grand pas de place libre de chaque côté."
+    ],
+    "instructions": [
+      "Saute sur le côté, pieds joints, et retombe genoux pliés.",
+      "Repars aussitôt de l'autre côté, en passant par le milieu.",
+      "Chaque réception compte, si tu as sauté assez loin.",
+      "Reste centré : saute autant à gauche qu'à droite."
+    ],
+    "erreurs_frequentes": [
+      "Sauter trop court : la réception ne compte pas.",
+      "Dériver d'un côté de l'image au fil des sauts."
+    ],
+    "sensations": [
+      "Les cuisses et les fesses travaillent à chaque réception.",
+      "Retombe genoux souples : la réception doit être silencieuse."
+    ]
+  },
   "Squat de prière": {
     "description": "Un squat sans poids, mains jointes devant la poitrine, pour réveiller les jambes.",
     "mise_en_place": [

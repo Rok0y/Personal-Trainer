@@ -34,7 +34,7 @@ import {
   _toucher_hauteur, _toucher_croisement,
   _pied_le_plus_leve, _genou_le_plus_leve, _genou_le_plus_haut_sous_hanche, _appui_exterieur,
   _main_opposee_au_dessus_de_la_tete, _pied_haut_sous_hanche, _pied_haut_portee, _ecart_avant_arriere,
-  _mains_au_genou, _crochet_croisement, _crochet_hauteur,
+  _mains_au_genou, _crochet_croisement, _crochet_hauteur, _ecart_au_centre,
   FENTE_GENOU_AVANT_MIN, SOULEVE_BAS_MAX, SOULEVE_HAUT_MIN,
   JACK_ECART_JOINT, JACK_ECART_ECARTE, JACK_BRAS_BAS, JACK_BRAS_HAUT,
   POWER_JACK_HANCHES_BAS, POWER_JACK_HANCHES_HAUT,
@@ -48,6 +48,7 @@ import {
   SEUIL_COMPTAGE_POMPE, SOL_DEBOUT_HANCHES, SUICIDE_BRAS_TENDUS,
   POWER_KNEE_GENOU_LEVE, POWER_KNEE_MAINS,
   CROCHET_CROISE, CROCHET_HAUTEUR, GARDE_DE_SON_COTE, GARDE_HAUTE,
+  SKI_DE_COTE, SKI_AU_CENTRE,
 } from "./detections.js";
 
 const ECHELLE_ANGLE = [0, 180];
@@ -805,6 +806,18 @@ INSTRUMENTS.crochets_detection = {
       { fin: ["<", CROCHET_HAUTEUR] }, (corps) => _crochet_hauteur(corps)), { fin: RAISONS.monter }),
     mesure("Garde : poing le plus bas, sous l'épaule (÷ buste)", "epaule_gauche", [-1, 1.2],
       { debut: ["<", GARDE_HAUTE] }, (corps) => _bras_le_plus_bas(corps)),
+  ],
+};
+
+// ----- ski (seance cardio) -----
+
+INSTRUMENTS.ski_detection = {
+  ordre: ["fin", "debut"],
+  defaut: "milieu",
+  mesures: [
+    buste_debout(["fin", "debut"]),
+    mesure("Pieds loin du centre de l'image (÷ épaules)", "cheville_gauche", [0, 2],
+      { fin: [">", SKI_DE_COTE], debut: ["<", SKI_AU_CENTRE] }, (corps) => _ecart_au_centre(corps)),
   ],
 };
 
