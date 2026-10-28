@@ -403,6 +403,16 @@
    "series_max": 3,
    "poids_min": null,
    "poids_max": null
+  },
+  "Crochets": {
+   "series": 3,
+   "cible_min": 10,
+   "cible_max": 50,
+   "pas": 1,
+   "unite": "repetitions",
+   "series_max": 3,
+   "poids_min": null,
+   "poids_max": null
   }
  },
  "ligues": {
@@ -1239,6 +1249,26 @@
     89,
     93,
     98
+   ],
+   "Crochets": [
+    30,
+    40,
+    49,
+    59,
+    69,
+    79,
+    88,
+    98,
+    108,
+    117,
+    127,
+    137,
+    146,
+    156,
+    166,
+    176,
+    185,
+    195
    ]
   }
  },
@@ -1361,7 +1391,8 @@
    "Burpees": 3,
    "Suicide jumps": 2.5,
    "Power knees droit": 1.2,
-   "Power knees gauche": 1.2
+   "Power knees gauche": 1.2,
+   "Crochets": 0.6
   }
  }
 }

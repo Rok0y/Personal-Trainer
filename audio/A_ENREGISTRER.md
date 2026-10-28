@@ -40,7 +40,7 @@ le texte dans `web/static/donnees/sons.json` (`textes`) puis le nom dans
 `briques` — `node scripts/verifier_annonces.mjs` dit lequel il attend. Renommer
 un fichier seul ne changerait rien : l'application cherche le nom de la table.
 
-**34 prises restantes.**
+**35 prises restantes.**
 
 ## Amorces d'annonce
 
@@ -186,6 +186,7 @@ Le nom **est** le texte : aucune table a tenir a jour a cote du catalogue, et un
 | --- | --- | --- |
 | `burpees.wav` | « Burpees » | **a enregistrer** |
 | `course_sur_place.wav` | « Course sur place » | **a enregistrer** |
+| `crochets.wav` | « Crochets » | **a enregistrer** |
 | `crunches.wav` | « Crunches » | deja fait |
 | `curl_biceps_droit.wav` | « Curl biceps droit » | deja fait |
 | `curl_biceps_gauche.wav` | « Curl biceps gauche » | deja fait |

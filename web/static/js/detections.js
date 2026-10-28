@@ -1213,6 +1213,58 @@ export function power_knees_gauche_detection(corps) {
   return power_knee(corps.genou_gauche, corps.cheville_gauche, corps.genou_droit, corps);
 }
 
+// -------------------------------------------------------------- crochets
+//
+// Des crochets par paquets (quelques-uns d'un cote, puis de l'autre), de face :
+// chaque crochet compte, quel que soit le bras. `debut` : la garde, les deux
+// poings hauts (au-dessus de la mi-buste) et chacun de son cote. `fin` : un
+// poing passe la ligne du milieu des epaules vers l'autre cote, **a hauteur
+// d'epaule**.
+
+// Le poing le plus avance vers l'autre cote : de combien il a passe le milieu
+// des epaules, en largeurs d'epaules (positif : de l'autre cote), et sa hauteur
+// sous son epaule, en bustes (`hauteur_sous_epaule`). L'autre cote se lit sur
+// les epaules, rien n'est suppose du sens de l'image.
+function poing_qui_croise(corps) {
+  const largeur = calculer_distance(corps.epaule_gauche, corps.epaule_droite);
+  if (largeur <= 0) return null;
+  const milieu = (corps.epaule_gauche.x + corps.epaule_droite.x) / 2;
+  const vers_la_gauche = corps.epaule_gauche.x >= corps.epaule_droite.x ? 1 : -1;
+  const droit = ((corps.poignet_droit.x - milieu) * vers_la_gauche) / largeur;
+  const gauche = ((milieu - corps.poignet_gauche.x) * vers_la_gauche) / largeur;
+  return droit >= gauche
+    ? { croisement: droit, poignet: corps.poignet_droit, epaule: corps.epaule_droite, hanche: corps.hanche_droite }
+    : { croisement: gauche, poignet: corps.poignet_gauche, epaule: corps.epaule_gauche, hanche: corps.hanche_gauche };
+}
+
+function crochet_croisement(corps) {
+  return poing_qui_croise(corps)?.croisement ?? null;
+}
+
+// L'ecart de ce poing a la hauteur de son epaule, en bustes, sans signe : 0 a
+// hauteur d'epaule exactement.
+function crochet_hauteur(corps) {
+  const poing = poing_qui_croise(corps);
+  if (poing === null) return null;
+  const hauteur = hauteur_sous_epaule(poing.poignet, poing.epaule, poing.hanche);
+  return hauteur === null ? null : Math.abs(hauteur);
+}
+
+export const CROCHET_CROISE = 0.3;
+export const CROCHET_HAUTEUR = 0.35;
+export const GARDE_DE_SON_COTE = 0.1;
+export const GARDE_HAUTE = 0.4;
+
+export function crochets_detection(corps) {
+  if (!(buste_vertical(corps) > 0)) return "milieu";
+  const croisement = crochet_croisement(corps);
+  const hauteur = crochet_hauteur(corps);
+  const garde = bras_le_plus_bas(corps);
+  if (croisement !== null && croisement > CROCHET_CROISE && hauteur !== null && hauteur < CROCHET_HAUTEUR) return "fin";
+  if (croisement !== null && croisement < GARDE_DE_SON_COTE && garde !== null && garde < GARDE_HAUTE) return "debut";
+  return "milieu";
+}
+
 // Les mesures privees sont exportees sous un nom prefixe pour que
 // instruments.js les reprenne au lieu de les recopier. Elles restent hors de
 // DETECTIONS, que les tests rejouent en entier : une mesure ne rend pas de
@@ -1248,6 +1300,8 @@ export {
   pied_haut_portee as _pied_haut_portee,
   ecart_avant_arriere as _ecart_avant_arriere,
   mains_au_genou as _mains_au_genou,
+  crochet_croisement as _crochet_croisement,
+  crochet_hauteur as _crochet_hauteur,
 };
 
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par
@@ -1300,4 +1354,5 @@ export const DETECTIONS = {
   suicide_jumps_detection,
   power_knees_droit_detection,
   power_knees_gauche_detection,
+  crochets_detection,
 };

@@ -846,6 +846,27 @@
       "Ton dos ne doit pas se creuser quand les bras remontent."
     ]
   },
+  "Crochets": {
+    "description": "Enchaîner des crochets de boxe, quelques-uns d'un bras puis de l'autre, la garde haute.",
+    "mise_en_place": [
+      "Face à la caméra, debout, pieds décalés, genoux souples.",
+      "Garde haute : les poings devant le visage, chacun de son côté."
+    ],
+    "instructions": [
+      "Lance un crochet : le poing part en arc et passe devant toi, à hauteur d'épaule.",
+      "Reviens en garde entre deux crochets.",
+      "Fais-en quelques-uns d'un bras, puis de l'autre : chaque crochet compte.",
+      "Tourne les épaules et le bassin avec le poing."
+    ],
+    "erreurs_frequentes": [
+      "Frapper trop bas, vers le ventre : le crochet se donne à hauteur d'épaule.",
+      "Baisser la garde entre deux crochets."
+    ],
+    "sensations": [
+      "La taille et les épaules travaillent, le cœur monte.",
+      "Le coude reste plié : le bras ne doit pas se tendre d'un coup."
+    ]
+  },
   "Squat de prière": {
     "description": "Un squat sans poids, mains jointes devant la poitrine, pour réveiller les jambes.",
     "mise_en_place": [
