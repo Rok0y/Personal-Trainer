@@ -91,6 +91,13 @@ comptent juste. Seuils gardés tels quels, à la demande de l'utilisateur (« on
   neutre « main haute » était atteint au milieu du toucher. **Changé** : le `debut` exige
   aussi les pieds joints (< 0,9 épaule). Fiche mise à jour.
 
+**2026-10-29, second banc, Safari sur Mac, 20 répétitions (10 au sol), 32 img/s.**
+- **Power jacks** : **oublis**, « il me demande de descendre trop bas ». Dix squats arrêtés
+  entre 0,75 et 0,82 (seuil < 0,75). **Changé** : < 0,85 et > 1,05 (debout médian 1,36).
+- **Stance jacks** : 20 sur 20, plus de doubles. Mais un toucher **pieds joints** comptait.
+  **Changé** : la `fin` exige les pieds écartés (> 1,1 épaule, `STANCE_JACK_ECARTE`). Fiche
+  mise à jour (saut pieds écartés pour toucher).
+
 ## Médias
 
 - [x] Jumping jacks : vidéo et voix déjà présentes

@@ -58,6 +58,8 @@ sous l'épaule (seuil < 0,4) ; le poing qui revient n'est pas encore remonté qu
 suivant. **Changé** : garde < 0,75 (au-dessus de la taille). Le reste tient : croisement médian
 1,07 (> 0,3), hauteur 0,05 (< 0,35).
 
+**2026-10-29, second banc, Safari sur Mac, 20 répétitions (10 au sol), 32 img/s.** 20 sur 20, « nickel ». Seuils gardés.
+
 ## Médias
 
 - [ ] Vidéo tournée de face

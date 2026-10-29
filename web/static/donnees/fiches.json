@@ -742,20 +742,21 @@
     ]
   },
   "Stance jacks": {
-    "description": "Un saut pieds joints, puis une main touche le pied opposé, en alternant, pour faire monter le cœur.",
+    "description": "Un saut pieds joints, puis un saut pieds écartés où une main touche le pied opposé, en alternant, pour faire monter le cœur.",
     "mise_en_place": [
       "Face à la caméra, debout, pieds joints.",
       "Recule assez pour que tes pieds restent dans l'image quand tu te baisses."
     ],
     "instructions": [
       "Saute sur place, pieds joints.",
-      "Baisse-toi et touche le pied gauche avec la main droite.",
+      "Saute pieds écartés, baisse-toi et touche le pied gauche avec la main droite.",
       "Remonte, saute encore, puis touche le pied droit avec la main gauche.",
       "Reviens debout pieds joints entre deux touchers : chaque toucher compte."
     ],
     "erreurs_frequentes": [
       "Toucher le pied du même côté : la main doit croiser, sinon ça ne compte pas.",
-      "Rester pieds écartés entre deux touchers."
+      "Rester pieds écartés entre deux touchers.",
+      "Toucher pieds joints : écarte les pieds pour toucher, sinon ça ne compte pas."
     ],
     "sensations": [
       "Les cuisses travaillent à chaque descente, la taille tourne au toucher.",
