@@ -49,7 +49,7 @@ AMRAP de 30 s. Tempo 3 s et 2,5 s.
 
 ### Jalon 2 : il progresse
 
-- [ ] Barème définitif, bornes jugées dans `dev/baremes.html`
+- [x] Barème définitif (2026-10-29, chiffres validés par l’utilisateur : quatre repères en 30 s, voir `docs/reglages.md`), bornes jugées dans `dev/baremes.html`
 - [ ] Départ et parcours vus dans `dev/progression.html`
 - [ ] Poussée 2 (accord donné)
 - [ ] Essai en séance

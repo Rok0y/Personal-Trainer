@@ -45,7 +45,7 @@ Barème provisoire : `series = series_max = 3`, cible 6-25 par AMRAP de 30 s. Te
 
 ### Jalon 2 : il progresse
 
-- [ ] Barème définitif
+- [x] Barème définitif (2026-10-29, chiffres validés par l’utilisateur : quatre repères en 30 s, voir `docs/reglages.md`)
 - [ ] Poussée 2 (accord donné)
 - [ ] Essai en séance
 

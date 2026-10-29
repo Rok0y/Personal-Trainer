@@ -93,7 +93,9 @@ Réglages par famille de mouvement, qui expliquent les écarts entre exercices :
 - **jambes** : elles encaissent plus de répétitions, et les haltères y sont vite le facteur
   limitant ;
 - **gainage** : plafonné par série, puis c'est le nombre de séries qui prend le relais ;
-- **cardio en AMRAP** (sauts, jambes alternées, burpees, crochets…) : `series = series_max = 3`, le nombre de tours du circuit — un circuit refuse des séries inégales, et le moteur réécrit les séries depuis le palier. La progression ne passe donc que par les répétitions faites en 30 s ; changer le nombre de tours demande de changer ces barèmes. La durée de l'AMRAP n'entre pas dans le barème : elle doit rester la même (30 s) partout. Barèmes **provisoires**, à régler après les bancs d'essai.
+- **cardio en AMRAP** (sauts, jambes alternées, burpees, crochets…) : `series = series_max = 3`, le nombre de tours du circuit — un circuit refuse des séries inégales, et le moteur réécrit les séries depuis le palier. La progression ne passe donc que par les répétitions faites en 30 s ; changer le nombre de tours demande de changer ces barèmes. La durée de l'AMRAP n'entre pas dans le barème : elle doit rester la même (30 s) partout.
+  - **Quatre repères par mouvement**, en répétitions faites en 30 s : le débutant (rang 1, `cible_min`), la note 5 (rang 6), la note 10 (rang 13) et Maître I (rang 18, `cible_max`). Les bornes valent 3 tours × ces répétitions, interpolées entre les repères : une note choisit ainsi un départ qui veut dire la même chose d'un mouvement à l'autre.
+  - **`pas`** : un palier ajoute 2 à 4 répétitions aux mouvements où chaque pas compte (course sur place 4 ; montées de genou, talons-fesses 3 ; heisman, mountain climber, switch kicks, scissor runs, ski, crochets 2). À une répétition par palier, une course sur place de 40 à 130 pas en 30 s demandait 90 séances.
 
 ## Les ligues (`ligues`)
 
