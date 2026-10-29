@@ -80,6 +80,17 @@ comptent juste. Seuils gardés tels quels, à la demande de l'utilisateur (« on
   Un squat à 0,61 n'a pas armé : **marge faible**. Piste : déplacer ensemble les deux seuils
   (< 0,7 et > 0,9). Debout, la descente vaut 1,26 à 1,41, pas 1.
 
+**2026-10-29, Safari sur Mac, 20 répétitions (10 au sol), 32 img/s.**
+- **Jumping jacks** : 20 sur 20. L'utilisateur veut des bras plus stricts, « presque se toucher
+  en haut ». **Changé** : la `fin` exige aussi les poignets à moins de 0,8 épaule l'un de
+  l'autre (`JACK_MAINS_JOINTES`) ; des bras en V ne comptent plus. Fiche mise à jour.
+- **Power jacks** : **0 compté**. Le `debut` n'a jamais été vu : squats à 0,64-0,73, seuil < 0,6.
+  **Changé** : les deux seuils ensemble, < 0,75 et > 0,95 (debout 1,26 à 1,41).
+- **Stance jacks** : comptés **en double**, surtout main droite sur pied gauche. Le poignet qui
+  touche, caché derrière la jambe, sautait d'une image vers le haut (jusqu'à −30 tibias) : le
+  neutre « main haute » était atteint au milieu du toucher. **Changé** : le `debut` exige
+  aussi les pieds joints (< 0,9 épaule). Fiche mise à jour.
+
 ## Médias
 
 - [x] Jumping jacks : vidéo et voix déjà présentes

@@ -63,7 +63,21 @@ compté. Cibles : course 20-90, montées et talons 16-80, Heisman 10-40, climber
 
 ## Journal du banc d'essai
 
-(Les résumés collés et les seuils changés viennent ici.)
+**2026-10-29, Safari sur Mac, 20 répétitions (10 au sol), 32 img/s.**
+- **Course sur place** : 20 sur 20. La voix qui dit chaque pas est pénible. **Changé** : les
+  neuf mouvements où chaque pas compte ne disent le compte qu'aux dizaines (`voix_tous_les`).
+- **Montées de genou** : 20 sur 20, « il est bien ».
+- **Talons-fesses** : **oublis**, 17 « pas revenu au début » à 0,16-0,49 (seuil < 0,15) : en
+  courant, le pied qui redescend croise l'autre en l'air. **Changé** : neutre < 0,4, haut > 0,7
+  (était 0,8 ; médiane du haut 1,69).
+- **Heisman** : 20 sur 20. 17 « pas jusqu'à la fin », le pied d'appui sous la hanche (−0,14 à
+  0,09) : des pas sans appui écarté. Gardé ; à revoir si la séance fait parler le coach à tort.
+- **Mountain climber debout** : **en trop**, « pas mal ». Cause non trouvée dans le résumé.
+  **Changé** : délai propre retiré (0,3 s par défaut) ; à revoir au prochain banc.
+- **Switch kicks** : 20 sur 20, « un peu sévère sur la hauteur ». **Changé** : pied à moins de
+  0,75 tibia sous la hanche (était 0,5 ; échecs à 0,58 et 0,63).
+- **Scissor runs** : **oublis**, 9 échanges à 0,71-0,98 (seuil > 1). **Changé** : > 0,7 et
+  < 0,35.
 
 ## Médias
 

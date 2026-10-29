@@ -16,23 +16,16 @@ la fusion dans `main`. Compté en AMRAP de 30 s dans la séance cardio.
 | Muscles, chaîne | Quadriceps, fessiers, mollets. Chaîne `cardio` | Proposés par Claude |
 | Départ, faux positifs | Départ `debut` (au milieu de l'image, immobile). Faux positifs : marcher sur le côté, un petit saut sur place | |
 
-## Détection (conçue le 2026-10-28)
+## Détection (conçue le 2026-10-28, refaite le 2026-10-29)
 
-**Le seul mouvement qui lit un repère extérieur au corps : le centre de l'image.** Une détection
-n'a pas de mémoire, et rien dans une image seule ne dit de quel côté on a sauté, sauf la place
-dans l'image. L'amplitude se rapporte au corps : l'écart du milieu des chevilles au centre de
-l'image, en largeurs d'épaules.
-- `fin` : posé à plus de 0,6 largeur d'épaule du centre, d'un côté ou de l'autre ;
-- `debut` : à moins de 0,2, le passage par le milieu entre deux sauts.
+Chaque réception compte, **cuisses fléchies** :
+- `fin` : descente des hanches sous 1 (debout : 1,26 à 1,41) **et** milieu des chevilles à plus
+  de 0,4 largeur d'épaule du centre de l'image ;
+- `debut` : jambes tendues (> 1,15), à l'impulsion ou debout.
 
-Buste debout. Délai propre 0,2 s. Limites :
-- on doit se placer **au milieu de l'image** (la fiche le demande) ; une dérive au fil des sauts
-  fausse le compte ;
-- le passage par le milieu se fait en l'air, sur peu d'images.
-
-Repli si le banc d'essai montre que ça ne tient pas : un repère pris à la mise en place (la
-position tenue avant « c'est parti »), ce qui demande de donner une mémoire au moteur, ou le
-chrono.
+Buste debout, délai par défaut. Le centre de l'image ne sert plus qu'à refuser un squat sauté sur
+place, au milieu : il suffit d'être à peu près centré. La première version comptait au passage
+par le milieu, qui se fait en l'air (voir le journal).
 
 ## Parcours B — exercice compté
 
@@ -58,7 +51,12 @@ Barème provisoire : `series = series_max = 3`, cible 10-45 par AMRAP de 30 s. T
 
 ## Journal du banc d'essai
 
-(Les résumés collés et les seuils changés viennent ici.)
+**2026-10-29, Safari sur Mac, 20 répétitions (10 au sol), 32 img/s.** 20 comptés, mais **une réception sur deux** :
+placé d'un côté de l'image, une réception tombait au « centre » (37 % du temps en `debut`).
+Et sauter sans plier les jambes comptait. **Refait, sur décision de l'utilisateur** (flexion et
+hors du centre) : `fin` = cuisses fléchies (descente des hanches < 1) **et** pieds à plus de
+0,4 épaule du centre ; `debut` = jambes tendues (> 1,15), à l'impulsion. Plus de passage par le
+milieu. Délai par défaut. Fiche mise à jour.
 
 ## Médias
 

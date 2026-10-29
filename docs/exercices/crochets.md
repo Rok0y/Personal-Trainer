@@ -52,7 +52,11 @@ Barème provisoire : `series = series_max = 3`, cible 10-50 par AMRAP de 30 s. T
 
 ## Journal du banc d'essai
 
-(Les résumés collés et les seuils changés viennent ici.)
+**2026-10-29, Safari sur Mac, 20 répétitions (10 au sol), 32 img/s.** **Oublis**, et l'utilisateur ne comprend
+pas ce qui est lu. 15 « pas revenu au début » : la garde, poing le plus bas à 0,42-0,64 buste
+sous l'épaule (seuil < 0,4) ; le poing qui revient n'est pas encore remonté quand part le
+suivant. **Changé** : garde < 0,75 (au-dessus de la taille). Le reste tient : croisement médian
+1,07 (> 0,3), hauteur 0,05 (< 0,35).
 
 ## Médias
 

@@ -1,5 +1,6 @@
 // Le compteur attend-il la position de depart d'un mouvement, et suit-il son
-// rythme (`delai_min_reps`) ?
+// rythme (`delai_min_reps`) ? Et la voix, dit-elle le compte au pas du
+// mouvement (`voix_tous_les`, `nombre_a_dire`) ?
 //
 // Les entrees figees de `comparer_seances` ne portent aucun `depart` (elles
 // datent d'avant lui) : la regle n'y est jamais visitee. Ces cas sont donc
@@ -8,6 +9,7 @@
 //     node scripts/verifier_compteur.mjs
 
 import { CompteurMouvement } from "../web/static/js/compteur.js";
+import { nombre_a_dire } from "../web/static/js/moteur.js";
 
 const problemes = [];
 let controles = 0;
@@ -61,6 +63,13 @@ egal("delai par defaut : une repetition toutes les 0,2 s n'en compte qu'une sur 
 egal("delai par defaut : toutes les 0,35 s, tout compte", compter_au_rythme(0.35), 10);
 egal("delai propre de 0,15 s : toutes les 0,2 s, tout compte", compter_au_rythme(0.2, 0.15), 10);
 egal("delai propre de 0,15 s : un echo a 0,1 s reste refuse", compter_au_rythme(0.1, 0.15), 5);
+
+// --- La voix : chaque repetition par defaut, les dizaines quand chaque pas
+// compte. Jamais zero (un -1 qui ramene a zero ne se dit pas).
+const dites = (exercice) => [0, 1, 5, 9, 10, 11, 20].filter((n) => nombre_a_dire(exercice, n));
+egal("voix : sans pas, chaque repetition", dites({ voix_tous_les: null }), [1, 5, 9, 10, 11, 20]);
+egal("voix : un exercice sans le champ dit chaque repetition", dites({}), [1, 5, 9, 10, 11, 20]);
+egal("voix : tous les 10, seulement les dizaines", dites({ voix_tous_les: 10 }), [10, 20]);
 
 if (problemes.length) {
   console.log(`${problemes.length} ecarts sur ${controles} controles :\n`);

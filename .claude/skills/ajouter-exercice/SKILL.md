@@ -39,7 +39,7 @@ quand il n'est pas évident.
 
 | # | Question | Ce qu'elle décide |
 |---|---|---|
-| 1 | **Nature** : échauffement sans détection, échauffement détecté (pour l'affichage seulement), exercice compté (répétitions ou AMRAP), exercice au chrono (sans détection, sans barème), maintien (secondes) | Le parcours (A ou B), `est_echauffement`, l'unité du barème. Un mouvement **alterné où chaque côté compte** déclare son `delai_min_reps` (CLAUDE.md, *Détection*) |
+| 1 | **Nature** : échauffement sans détection, échauffement détecté (pour l'affichage seulement), exercice compté (répétitions ou AMRAP), exercice au chrono (sans détection, sans barème), maintien (secondes) | Le parcours (A ou B), `est_echauffement`, l'unité du barème. Un mouvement **alterné où chaque côté compte** déclare son `delai_min_reps` et `voix_tous_les` (CLAUDE.md, *Détection*) |
 | 2 | **Nom**, et s'il existera un jour **une autre forme** (comptée à côté d'un échauffement, chargée à côté d'une forme à vide) | Le nom est une **clé définitive** (séances perso, historique, `.wav`, `.mp4`). S'il y aura deux formes, décider tout de suite laquelle prend le nom simple. Vérifier qu'aucun mouvement ne porte déjà ce nom et que la longueur ne dépasse pas `longueur_maximale_nom` (`sons.json`) |
 | 3 | **Exécution**, décrite librement par l'utilisateur | La fiche, la détection, l'exercice voisin qui pourrait être compté à sa place |
 | 4 | **Côté** : bilatéral, alterné, unilatéral | Un mouvement unilatéral en fait **deux** (droite, gauche), reliés par `autre_cote` et filmés une seule fois (`--miroir`) |
@@ -129,8 +129,8 @@ analogie, que la seconde règle pour de bon.
    présent, qui ne s'accorde pas.
 4. **Données** :
    - `mouvements.json` : `en_developpement: true` (le banc d'essai le range à part),
-     `detection`, `analyse_la_pose: true`, `orientation`, `depart`, `delai_min_reps` (s'il va
-     vite), `autre_cote` (réciproque), `materiel`, `categories`, `erreurs: []`, `amplitude: null` ;
+     `detection`, `analyse_la_pose: true`, `orientation`, `depart`, `delai_min_reps` et
+     `voix_tous_les: 10` (s'il va vite, chaque pas compté), `autre_cote` (réciproque), `materiel`, `categories`, `erreurs: []`, `amplitude: null` ;
    - `baremes.json` : `materiel` (`halteres`, `brut`) ;
    - `reglages.json` : la spec, les dix-huit bornes et le `tempo`, pris sur l'exercice le plus
      proche **et marqués provisoires** dans la fiche de suivi ;

@@ -705,6 +705,7 @@
   "erreurs": [],
   "amplitude": null,
   "depart": "debut",
+  "voix_tous_les": 10,
   "delai_min_reps": 0.15,
   "materiel": "",
   "est_echauffement": false,
@@ -728,6 +729,7 @@
   "erreurs": [],
   "amplitude": null,
   "depart": "debut",
+  "voix_tous_les": 10,
   "delai_min_reps": 0.2,
   "materiel": "",
   "est_echauffement": false,
@@ -752,7 +754,7 @@
   "erreurs": [],
   "amplitude": null,
   "depart": "debut",
-  "delai_min_reps": 0.2,
+  "voix_tous_les": 10,
   "materiel": "",
   "est_echauffement": false,
   "categories": {
@@ -776,6 +778,7 @@
   "erreurs": [],
   "amplitude": null,
   "depart": "debut",
+  "voix_tous_les": 10,
   "delai_min_reps": 0.2,
   "materiel": "",
   "est_echauffement": false,
@@ -800,6 +803,7 @@
   "erreurs": [],
   "amplitude": null,
   "depart": "debut",
+  "voix_tous_les": 10,
   "delai_min_reps": 0.15,
   "materiel": "",
   "est_echauffement": false,
@@ -924,6 +928,7 @@
   "erreurs": [],
   "amplitude": null,
   "depart": "debut",
+  "voix_tous_les": 10,
   "delai_min_reps": 0.2,
   "materiel": "",
   "est_echauffement": false,
@@ -948,7 +953,7 @@
   "erreurs": [],
   "amplitude": null,
   "depart": "debut",
-  "delai_min_reps": 0.2,
+  "voix_tous_les": 10,
   "materiel": "",
   "est_echauffement": false,
   "categories": {
@@ -1322,7 +1327,8 @@
   },
   "depart": "debut",
   "delai_min_reps": 0.15,
-  "aussi_exercice": true
+  "aussi_exercice": true,
+  "voix_tous_les": 10
  },
  "Talons-fesses": {
   "nom": "Talons-fesses",
@@ -1346,6 +1352,7 @@
   },
   "depart": "debut",
   "delai_min_reps": 0.15,
-  "aussi_exercice": true
+  "aussi_exercice": true,
+  "voix_tous_les": 10
  }
 }

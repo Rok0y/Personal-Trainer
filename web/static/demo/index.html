@@ -345,7 +345,7 @@ import {
 } from "../js/instruments.js";
 import { texte } from "../js/messages.js";
 import { SEUIL_IMMOBILE, vitesse_du_buste } from "../js/immobilite.js";
-import { confirmer_verdict } from "../js/moteur.js";
+import { confirmer_verdict, nombre_a_dire } from "../js/moteur.js";
 import { avec_fiches } from "../js/seance.js";
 import { est_compte, est_en_developpement } from "../js/nature.js";
 import { jouer_si_visible, montrer_video } from "../js/videos.js";
@@ -1528,7 +1528,7 @@ function majAffichage(valeur, cible) {
   if (valeur !== derniereValeur) {
     derniereValeur = valeur;
     document.getElementById("compteur").textContent = valeur;
-    if (valeur > 0) jouer(valeur <= 20 ? valeur : "bip");
+    if (nombre_a_dire(exercice, valeur)) jouer(valeur <= 20 ? valeur : "bip");
   }
   document.getElementById("jauge").style.width =
     `${Math.min((valeur / cible) * 100, 100)}%`;

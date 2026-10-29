@@ -13,7 +13,7 @@
 //  - fiches : chaque mouvement a sa fiche, chaque champ a sa forme ;
 //  - mouvements : chaque fonction nommee existe dans `detections.js`, chaque
 //    variante designe un mouvement du catalogue ; `aussi_exercice`,
-//    `delai_min_reps` et `en_developpement` sont bien formes ;
+//    `delai_min_reps`, `voix_tous_les` et `en_developpement` sont bien formes ;
 //  - seances : chaque seance passe `problemes_des_blocs`, le controle que fait
 //    l'editeur de l'application a l'enregistrement ;
 //  - programmes : chaque exigence vise un exercice qui a un bareme, et chaque
@@ -226,6 +226,13 @@ function main() {
       const delai = mouvement.delai_min_reps;
       if (!(typeof delai === "number" && delai >= 0.1 && delai <= DELAI_MIN_ENTRE_REPS && mouvement.detection)) {
         signaler("mouvements.json", `« ${nom} » : delai_min_reps « ${delai} » — un nombre de 0,1 a ${DELAI_MIN_ENTRE_REPS} s, et seulement avec une detection`);
+      }
+    }
+    // Le pas de la voix : un entier, sur un mouvement compte (`nombre_a_dire`).
+    if (mouvement.voix_tous_les != null) {
+      const pas = mouvement.voix_tous_les;
+      if (!(Number.isInteger(pas) && pas >= 2 && mouvement.detection)) {
+        signaler("mouvements.json", `« ${nom} » : voix_tous_les « ${pas} » — un entier d'au moins 2, et seulement avec une detection`);
       }
     }
     for (const sens of ["variante_facile", "variante_difficile"]) {

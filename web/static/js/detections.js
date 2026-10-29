@@ -862,8 +862,16 @@ function toucher_croisement(corps) {
   return ((poignet.x - milieu) * sens) / largeur;
 }
 
+// L'ecart des poignets, en largeurs d'epaules : vers 0,3 mains jointes, 2 a 3
+// bras en V. null si les epaules sont illisibles.
+function ecart_poignets(corps) {
+  return ecart_rapporte_aux_epaules(corps.poignet_gauche, corps.poignet_droit, corps);
+}
+
 // Jumping jack : pieds rapproches et bras le long du corps, puis jambes
-// ecartees et les deux mains au-dessus des epaules. Les deux seuils de chaque
+// ecartees et les deux mains au-dessus des epaules, **presque jointes** (a
+// moins de 0,8 epaule l'une de l'autre) : des bras en V ne comptent pas
+// (demande du 2026-10-29). Les deux seuils de chaque
 // mesure laissent une zone morte entre eux (hysteresis), et un jumping jack a
 // moitie fait — bras a l'horizontale, pieds a peine ecartes — reste en
 // `milieu`. Le buste debout est une condition de position commune.
@@ -871,13 +879,16 @@ export const JACK_ECART_JOINT = 0.9;
 export const JACK_ECART_ECARTE = 1.3;
 export const JACK_BRAS_BAS = 0.6;
 export const JACK_BRAS_HAUT = 0;
+export const JACK_MAINS_JOINTES = 0.8;
 
 export function jumping_jacks_detection(corps) {
   if (!(buste_vertical(corps) > 0)) return "milieu";
   const ecart = ecart_chevilles(corps);
   const bas = bras_le_plus_bas(corps);
   const haut = bras_le_plus_haut(corps);
-  if (ecart !== null && ecart > JACK_ECART_ECARTE && bas !== null && bas < JACK_BRAS_HAUT) return "fin";
+  const mains = ecart_poignets(corps);
+  if (ecart !== null && ecart > JACK_ECART_ECARTE && bas !== null && bas < JACK_BRAS_HAUT
+      && mains !== null && mains < JACK_MAINS_JOINTES) return "fin";
   if (ecart !== null && ecart < JACK_ECART_JOINT && haut !== null && haut > JACK_BRAS_BAS) return "debut";
   return "milieu";
 }
@@ -885,8 +896,10 @@ export function jumping_jacks_detection(corps) {
 // Power jack : on retombe jambes ecartees en squat (`debut`), on remonte en
 // sautant bras au-dessus de la tete (`fin`, la fin de la phase concentrique).
 // L'ecart des pieds n'est demande qu'en bas, les bras qu'en haut.
-export const POWER_JACK_HANCHES_BAS = 0.6;
-export const POWER_JACK_HANCHES_HAUT = 0.8;
+// Debout, la descente vaut 1,26 a 1,41 ; un squat de power jack, 0,5 a 0,75
+// selon la fatigue (banc du 2026-10-29 : aucun ne passait sous 0,6).
+export const POWER_JACK_HANCHES_BAS = 0.75;
+export const POWER_JACK_HANCHES_HAUT = 0.95;
 
 export function power_jacks_detection(corps) {
   if (!(buste_vertical(corps) > 0)) return "milieu";
@@ -898,9 +911,12 @@ export function power_jacks_detection(corps) {
   return "milieu";
 }
 
-// Stance jack : debout (`debut`), puis une main touche le pied oppose
-// (`fin`) ; chaque toucher compte, et l'on remonte entre deux. Pas de
-// condition sur le buste : il se penche pour toucher.
+// Stance jack : debout pieds joints (`debut`), puis une main touche le pied
+// oppose (`fin`) ; chaque toucher compte, et l'on remonte pieds joints entre
+// deux. Pas de condition sur le buste : il se penche pour toucher. Les pieds
+// joints tiennent le neutre : sans eux, le poignet qui touche, cache derriere
+// la jambe, sautait d'une image vers le haut et le toucher comptait deux fois
+// (banc du 2026-10-29, main droite sur pied gauche).
 export const STANCE_JACK_TOUCHER = 0.6;
 export const STANCE_JACK_DEBOUT = 1.4;
 export const STANCE_JACK_CROISEMENT = 0.05;
@@ -911,7 +927,8 @@ export function stance_jacks_detection(corps) {
   if (hauteur !== null && hauteur < STANCE_JACK_TOUCHER && croisement !== null && croisement > STANCE_JACK_CROISEMENT) {
     return "fin";
   }
-  if (hauteur !== null && hauteur > STANCE_JACK_DEBOUT) return "debut";
+  const ecart = ecart_chevilles(corps);
+  if (hauteur !== null && hauteur > STANCE_JACK_DEBOUT && ecart !== null && ecart < JACK_ECART_JOINT) return "debut";
   return "milieu";
 }
 
@@ -1063,12 +1080,15 @@ export function montees_de_genou_detection(corps) {
   return "milieu";
 }
 
-// Talons-fesses, de profil : le talon monte haut (pied > 0,8 tibia au-dessus
+// Talons-fesses, de profil : le talon monte haut (pied > 0,7 tibia au-dessus
 // de l'autre) **et** les genoux restent au meme niveau (< 0,3) — le genou
 // pointe le sol. Sans cette seconde condition, une montee de genou comptait.
-export const TALON_HAUT = 0.8;
+// Le neutre est large (< 0,4) : en courant, le pied qui redescend croise
+// l'autre en l'air, et la difference ne repasse pas sous 0,15 entre deux
+// images (banc du 2026-10-29 : 17 pas sur 20 sans retour au neutre).
+export const TALON_HAUT = 0.7;
 export const TALON_GENOUX_ALIGNES = 0.3;
-export const TALON_PIEDS_AU_SOL = 0.15;
+export const TALON_PIEDS_AU_SOL = 0.4;
 
 export function talons_fesses_detection(corps) {
   if (!(buste_vertical(corps) > 0)) return "milieu";
@@ -1110,10 +1130,10 @@ export function mountain_climber_debout_detection(corps) {
   return "milieu";
 }
 
-// Switch kicks, de profil : le pied le plus haut a hauteur de hanche (< 0,5
+// Switch kicks, de profil : le pied le plus haut pres de la hanche (< 0,75
 // tibia dessous) **et** lance loin d'elle (portee > 1 tibia). Debout, pieds
 // au sol, il est a ~2 tibias sous la hanche (> 1,6).
-export const KICK_PIED_HAUT = 0.5;
+export const KICK_PIED_HAUT = 0.75;
 export const KICK_PORTEE = 1;
 export const KICK_PIEDS_AU_SOL = 1.6;
 
@@ -1126,10 +1146,11 @@ export function switch_kicks_detection(corps) {
   return "milieu";
 }
 
-// Scissor runs, de profil : pieds nettement ecartes d'avant en arriere
-// (> 1 tibia), puis ramenes l'un pres de l'autre (< 0,4) a chaque echange.
-export const CISEAUX_ECARTES = 1;
-export const CISEAUX_JOINTS = 0.4;
+// Scissor runs, de profil : pieds ecartes d'avant en arriere (> 0,7 tibia),
+// puis ramenes l'un pres de l'autre (< 0,35) a chaque echange. A 1 tibia, un
+// echange sur trois n'arrivait pas (banc du 2026-10-29 : 0,7 a 0,98).
+export const CISEAUX_ECARTES = 0.7;
+export const CISEAUX_JOINTS = 0.35;
 
 export function scissor_runs_detection(corps) {
   if (!(buste_vertical(corps) > 0)) return "milieu";
@@ -1145,19 +1166,47 @@ export function scissor_runs_detection(corps) {
 // l'on saute. **Le saut n'est pas verifie** : en l'air ou debout, le corps a la
 // meme forme, et c'est le retour debout qui compte (`fin`). Depart `fin` :
 // on se met en place debout.
+//
+// Debout se lit a l'angle du buste et aux hanches **rapportees a la longueur
+// du tibia**, jamais a sa hauteur (`descente_hanches`) : accroupi ou en
+// planche, le tibia se couche, sa hauteur tend vers zero et la mesure
+// explosait (30 et plus). Le burpee comptait des qu'on ramenait les pieds aux
+// mains, et le suicide jump comptait aussi en planche, ou le buste oscille
+// autour de 45 degres.
 
-// Debout : buste vertical et hanches hautes (`descente_hanches`, ~1,3 debout).
-export const SOL_DEBOUT_HANCHES = 0.8;
+// Les hanches au-dessus des genoux, en tibias (longueur, pas hauteur) :
+// vers 1 debout, vers 0 accroupi ou en planche. Moyenne des deux jambes : de
+// profil, la plus eloignee est estimee. null si aucun tibia n'est lisible.
+function hanches_au_dessus_des_genoux(corps) {
+  const mesures = [
+    [corps.hanche_gauche, corps.genou_gauche, corps.cheville_gauche],
+    [corps.hanche_droite, corps.genou_droit, corps.cheville_droite],
+  ].map(([hanche, genou, cheville]) => {
+    const longueur = calculer_distance(genou, cheville);
+    return longueur > 0 ? (genou.y - hanche.y) / longueur : null;
+  }).filter((mesure) => mesure !== null);
+  if (!mesures.length) return null;
+  return mesures.reduce((a, b) => a + b, 0) / mesures.length;
+}
 
-// Burpee : **la pompe est verifiee**. `debut` est le bas d'une pompe — buste a
-// l'horizontale, coude plie sous le seuil qui arme une pompe
+// Debout : buste redresse au-dela de 60 degres et hanches hautes. Couche :
+// buste sous 45 degres. L'ecart entre les deux est l'hysteresis du buste.
+export const SOL_BUSTE_DEBOUT = 60;
+export const SOL_BUSTE_COUCHE = 45;
+export const SOL_DEBOUT_HANCHES = 0.7;
+
+function debout_apres_le_sol(corps) {
+  const hanches = hanches_au_dessus_des_genoux(corps);
+  return inclinaison_buste(corps) > SOL_BUSTE_DEBOUT && hanches !== null && hanches > SOL_DEBOUT_HANCHES;
+}
+
+// Burpee : **la pompe est verifiee**. `debut` est le bas d'une pompe — buste
+// couche, coude plie sous le seuil qui arme une pompe
 // (`SEUIL_COMPTAGE_POMPE`, la meme regle que les pompes). Une planche bras
 // tendus ne l'arme pas : un burpee sans pompe ne compte pas.
 export function burpee_detection(corps) {
-  const buste = buste_vertical(corps);
-  const hanches = descente_hanches(corps);
-  if (buste > 0 && hanches !== null && hanches > SOL_DEBOUT_HANCHES) return "fin";
-  if (buste < 0 && angle_coude_proche(corps) < SEUIL_COMPTAGE_POMPE) return "debut";
+  if (debout_apres_le_sol(corps)) return "fin";
+  if (inclinaison_buste(corps) < SOL_BUSTE_COUCHE && angle_coude_proche(corps) < SEUIL_COMPTAGE_POMPE) return "debut";
   return "milieu";
 }
 
@@ -1166,10 +1215,8 @@ export function burpee_detection(corps) {
 export const SUICIDE_BRAS_TENDUS = 150;
 
 export function suicide_jumps_detection(corps) {
-  const buste = buste_vertical(corps);
-  const hanches = descente_hanches(corps);
-  if (buste > 0 && hanches !== null && hanches > SOL_DEBOUT_HANCHES) return "fin";
-  if (buste < 0 && angle_coude_proche(corps) > SUICIDE_BRAS_TENDUS) return "debut";
+  if (debout_apres_le_sol(corps)) return "fin";
+  if (inclinaison_buste(corps) < SOL_BUSTE_COUCHE && angle_coude_proche(corps) > SUICIDE_BRAS_TENDUS) return "debut";
   return "milieu";
 }
 
@@ -1217,7 +1264,9 @@ export function power_knees_gauche_detection(corps) {
 //
 // Des crochets par paquets (quelques-uns d'un cote, puis de l'autre), de face :
 // chaque crochet compte, quel que soit le bras. `debut` : la garde, les deux
-// poings hauts (au-dessus de la mi-buste) et chacun de son cote. `fin` : un
+// poings au-dessus de la taille (0,75 buste sous l'epaule) et chacun de son
+// cote. A mi-buste, le poing qui revient d'un crochet n'etait pas encore
+// remonte quand partait le suivant (banc du 2026-10-29). `fin` : un
 // poing passe la ligne du milieu des epaules vers l'autre cote, **a hauteur
 // d'epaule**.
 
@@ -1253,7 +1302,7 @@ function crochet_hauteur(corps) {
 export const CROCHET_CROISE = 0.3;
 export const CROCHET_HAUTEUR = 0.35;
 export const GARDE_DE_SON_COTE = 0.1;
-export const GARDE_HAUTE = 0.4;
+export const GARDE_HAUTE = 0.75;
 
 export function crochets_detection(corps) {
   if (!(buste_vertical(corps) > 0)) return "milieu";
@@ -1268,11 +1317,14 @@ export function crochets_detection(corps) {
 // ------------------------------------------------------------------- ski
 //
 // Sauts lateraux pieds joints, d'un cote a l'autre, de face : chaque reception
-// compte. **Seul mouvement qui lit un repere exterieur au corps** : le centre de
-// l'image (les coordonnees du modele vont de 0 a 1). Une detection n'a pas de
-// memoire, et rien dans une seule image ne dit de quel cote on a saute — sauf
-// la place dans l'image. L'amplitude, elle, se rapporte au corps (largeurs
-// d'epaules). La fiche demande de se placer au milieu de l'image.
+// compte, **cuisses flechies** (`fin`), et l'on se rearme jambes tendues, a
+// l'impulsion (`debut`). Le passage par le milieu n'est plus demande : il se
+// fait en l'air, sur peu d'images, et decale d'un cote on ne voyait qu'une
+// reception sur deux (banc du 2026-10-29). **Seul mouvement qui lit un repere
+// exterieur au corps** : le centre de l'image (les coordonnees du modele vont
+// de 0 a 1), pour qu'un squat saute sur place, au milieu, ne compte pas. Le
+// seuil est bas (0,4 epaule) : il suffit d'etre a peu pres centre. La fiche
+// demande de se placer au milieu de l'image.
 
 // De combien le milieu des chevilles s'ecarte du centre de l'image, sans signe,
 // en largeurs d'epaules. null si les epaules sont illisibles.
@@ -1283,14 +1335,18 @@ function ecart_au_centre(corps) {
   return Math.abs(milieu - 0.5) / largeur;
 }
 
-export const SKI_DE_COTE = 0.6;
-export const SKI_AU_CENTRE = 0.2;
+// La flexion se lit a la descente des hanches (`descente_hanches`, verticale,
+// lisible de face) : 1,26 a 1,41 debout, sous 1 cuisses flechies.
+export const SKI_DE_COTE = 0.4;
+export const SKI_FLECHI = 1;
+export const SKI_TENDU = 1.15;
 
 export function ski_detection(corps) {
   if (!(buste_vertical(corps) > 0)) return "milieu";
   const ecart = ecart_au_centre(corps);
-  if (ecart !== null && ecart > SKI_DE_COTE) return "fin";
-  if (ecart !== null && ecart < SKI_AU_CENTRE) return "debut";
+  const hanches = descente_hanches(corps);
+  if (hanches !== null && hanches < SKI_FLECHI && ecart !== null && ecart > SKI_DE_COTE) return "fin";
+  if (hanches !== null && hanches > SKI_TENDU) return "debut";
   return "milieu";
 }
 
@@ -1332,6 +1388,8 @@ export {
   crochet_croisement as _crochet_croisement,
   crochet_hauteur as _crochet_hauteur,
   ecart_au_centre as _ecart_au_centre,
+  ecart_poignets as _ecart_poignets,
+  hanches_au_dessus_des_genoux as _hanches_au_dessus_des_genoux,
 };
 
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par
