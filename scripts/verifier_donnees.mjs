@@ -11,8 +11,8 @@
 //    chaque mouvement compte en repetitions a son tempo ;
 //  - fiches : chaque mouvement a sa fiche, chaque champ a sa forme ;
 //  - mouvements : chaque fonction nommee existe dans `detections.js`, chaque
-//    variante designe un mouvement du catalogue ; `aussi_exercice` et
-//    `delai_min_reps` sont bien formes ;
+//    variante designe un mouvement du catalogue ; `aussi_exercice`,
+//    `delai_min_reps` et `en_developpement` sont bien formes ;
 //  - seances : chaque seance passe `problemes_des_blocs`, le controle que fait
 //    l'editeur de l'application a l'enregistrement ;
 //  - programmes : chaque exigence vise un exercice qui a un bareme, et chaque
@@ -197,6 +197,9 @@ function main() {
     if (mouvement.aussi_exercice !== undefined
       && !(mouvement.aussi_exercice === true && mouvement.est_echauffement && mouvement.detection)) {
       signaler("mouvements.json", `« ${nom} » : aussi_exercice vaut true, et seulement sur un echauffement qui a une detection`);
+    }
+    if (mouvement.en_developpement !== undefined && mouvement.en_developpement !== true) {
+      signaler("mouvements.json", `« ${nom} » : en_developpement vaut true, ou n'est pas ecrit`);
     }
     // Un delai trop court laisse passer l'echo d'une detection (une ou deux
     // images, ~0,06 s) ; au-dela du delai par defaut, il ne sert a rien.
