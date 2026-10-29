@@ -35,8 +35,9 @@ import {
   _pied_le_plus_leve, _genou_le_plus_leve, _genou_le_plus_haut_sous_hanche, _appui_exterieur,
   _main_opposee_au_dessus_de_la_tete, _pied_haut_sous_hanche, _pied_haut_portee, _ecart_avant_arriere,
   _mains_au_genou, _crochet_croisement, _crochet_hauteur, _ecart_au_centre,
+  _ecart_poignets, _hanches_au_dessus_des_genoux,
   FENTE_GENOU_AVANT_MIN, SOULEVE_BAS_MAX, SOULEVE_HAUT_MIN,
-  JACK_ECART_JOINT, JACK_ECART_ECARTE, JACK_BRAS_BAS, JACK_BRAS_HAUT,
+  JACK_ECART_JOINT, JACK_ECART_ECARTE, JACK_BRAS_BAS, JACK_BRAS_HAUT, JACK_MAINS_JOINTES,
   POWER_JACK_HANCHES_BAS, POWER_JACK_HANCHES_HAUT,
   STANCE_JACK_TOUCHER, STANCE_JACK_DEBOUT, STANCE_JACK_CROISEMENT,
   COURSE_PIED_LEVE, COURSE_PIEDS_AU_SOL, MONTEE_GENOU_HAUT, MONTEE_GENOUX_BAS,
@@ -45,10 +46,10 @@ import {
   CLIMBER_GENOU_LEVE, CLIMBER_MAIN_HAUTE,
   KICK_PIED_HAUT, KICK_PORTEE, KICK_PIEDS_AU_SOL,
   CISEAUX_ECARTES, CISEAUX_JOINTS,
-  SEUIL_COMPTAGE_POMPE, SOL_DEBOUT_HANCHES, SUICIDE_BRAS_TENDUS,
+  SEUIL_COMPTAGE_POMPE, SOL_DEBOUT_HANCHES, SOL_BUSTE_DEBOUT, SOL_BUSTE_COUCHE, SUICIDE_BRAS_TENDUS,
   POWER_KNEE_GENOU_LEVE, POWER_KNEE_MAINS,
   CROCHET_CROISE, CROCHET_HAUTEUR, GARDE_DE_SON_COTE, GARDE_HAUTE,
-  SKI_DE_COTE, SKI_AU_CENTRE,
+  SKI_DE_COTE, SKI_FLECHI, SKI_TENDU,
 } from "./detections.js";
 
 const ECHELLE_ANGLE = [0, 180];
@@ -599,6 +600,11 @@ INSTRUMENTS.jumping_jacks_detection = {
     ecart_des_chevilles({ fin: [">", JACK_ECART_ECARTE], debut: ["<", JACK_ECART_JOINT] }),
     bras_en_haut(),
     {
+      libelle: "Écart des poignets (÷ épaules)", unite: "", echelle: [0, 3],
+      sommet: "poignet_gauche", zones: { fin: ["<", JACK_MAINS_JOINTES] },
+      valeur: (corps) => _ecart_poignets(corps),
+    },
+    {
       libelle: "Main la plus haute, sous l'épaule (÷ buste)", unite: "", echelle: [-1, 1.2],
       sommet: "poignet_droit", zones: { debut: [">", JACK_BRAS_BAS] },
       valeur: (corps) => _bras_le_plus_haut(corps),
@@ -637,6 +643,7 @@ INSTRUMENTS.stance_jacks_detection = {
       sommet: "poignet_droit", zones: { fin: [">", STANCE_JACK_CROISEMENT] },
       valeur: (corps) => _toucher_croisement(corps),
     },
+    ecart_des_chevilles({ debut: ["<", JACK_ECART_JOINT] }),
   ],
 };
 
@@ -739,13 +746,13 @@ INSTRUMENTS.scissor_runs_detection = {
 // Le buste : couche pour `debut`, debout pour `fin` — le chemin du sol a
 // debout.
 function buste_du_sol_a_debout() {
-  return mesure("Buste debout (< 0 = allongé)", "epaule_gauche", [-0.4, 0.4],
-    { debut: ["<", 0], fin: [">", 0] }, (corps) => _buste_vertical(corps));
+  return inclinaison_buste("Inclinaison du buste",
+    { debut: ["<", SOL_BUSTE_COUCHE], fin: [">", SOL_BUSTE_DEBOUT] });
 }
 
 function hanches_debout() {
-  return avec_raisons(mesure("Descente des hanches (÷ tibia, moyenne)", "hanche_gauche", [0, 1.5],
-    { fin: [">", SOL_DEBOUT_HANCHES] }, (corps) => _descente_hanches(corps)), { fin: RAISONS.remonter });
+  return avec_raisons(mesure("Hanches au-dessus des genoux (÷ tibia, moyenne)", "hanche_gauche", [-0.5, 1.5],
+    { fin: [">", SOL_DEBOUT_HANCHES] }, (corps) => _hanches_au_dessus_des_genoux(corps)), { fin: RAISONS.remonter });
 }
 
 INSTRUMENTS.burpee_detection = {
@@ -816,8 +823,11 @@ INSTRUMENTS.ski_detection = {
   defaut: "milieu",
   mesures: [
     buste_debout(["fin", "debut"]),
+    avec_raisons(mesure("Descente des hanches (÷ tibia, moyenne)", "hanche_gauche", [0, 1.5],
+      { fin: ["<", SKI_FLECHI], debut: [">", SKI_TENDU] }, (corps) => _descente_hanches(corps)),
+      { fin: RAISONS.descendre }),
     mesure("Pieds loin du centre de l'image (÷ épaules)", "cheville_gauche", [0, 2],
-      { fin: [">", SKI_DE_COTE], debut: ["<", SKI_AU_CENTRE] }, (corps) => _ecart_au_centre(corps)),
+      { fin: [">", SKI_DE_COTE] }, (corps) => _ecart_au_centre(corps)),
   ],
 };
 

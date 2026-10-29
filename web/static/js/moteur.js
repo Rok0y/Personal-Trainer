@@ -40,6 +40,19 @@ export const COMPTEUR_DUREE_PAR_MODE = {
 };
 
 /**
+ * Le compte se dit-il a voix haute a cette repetition ? Un mouvement ou chaque
+ * pas compte, trois ou quatre par seconde, declare `voix_tous_les` : un
+ * nombre par pas couvrait la voix par elle-meme et prenait du retard sur le
+ * compte (banc du 2026-10-29, course sur place). Le compte exact reste a
+ * l'ecran. Partagee avec la demo.
+ */
+export function nombre_a_dire(exercice, repetitions) {
+  if (!(repetitions > 0)) return false;
+  const pas = exercice?.voix_tous_les ?? null;
+  return pas === null || repetitions % pas === 0;
+}
+
+/**
  * Les paliers d'encouragement d'une serie comptee.
  *
  * Vit ici et non dans la couche audio : c'est une decision de coaching, pas
@@ -596,7 +609,7 @@ export function gerer_mode_repetitions({
   });
 
   if (repetitions > derniere_rep) {
-    coach("compteur", repetitions);
+    if (nombre_a_dire(exercice, repetitions)) coach("compteur", repetitions);
     // Avant les encouragements : un evenement important (fin de serie) vide
     // la file, et une correction dite apres « fin de serie » ne sert a rien.
     if (amplitude_manquee) coach(amplitude_manquee);
@@ -746,7 +759,7 @@ export function gerer_mode_amrap({
   });
 
   if (repetitions > derniere_rep) {
-    coach("compteur", repetitions);
+    if (nombre_a_dire(bloc.exercice, repetitions)) coach("compteur", repetitions);
     derniere_rep = repetitions;
   }
 

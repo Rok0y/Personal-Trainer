@@ -56,7 +56,15 @@ AMRAP de 30 s. Tempo 3 s et 2,5 s.
 
 ## Journal du banc d'essai
 
-(Les résumés collés et les seuils changés viennent ici.)
+**2026-10-29, Safari sur Mac, 20 répétitions (10 au sol), 32 img/s.**
+- **Burpees** : 10 sur 10, mais **comptés trop tôt**, en ramenant les pieds aux mains, buste
+  encore bas. La mesure « hanches debout » divisait par la *hauteur* du tibia : accroupi, le
+  tibia se couche et elle explosait (médiane 32,8 à la `fin`).
+- **Suicide jumps** : **trois comptes par mouvement** (en planche, pieds aux mains, debout). Même
+  cause, plus un buste qui oscille autour de 45 degrés en planche.
+- **Changé pour les deux** : debout = buste au-dessus de 60 degrés **et** hanches à plus de
+  0,7 tibia au-dessus des genoux, mesurées à la **longueur** du tibia
+  (`hanches_au_dessus_des_genoux`) ; couché = buste sous 45 degrés.
 
 ## Médias
 

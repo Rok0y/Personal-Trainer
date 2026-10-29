@@ -51,7 +51,8 @@ Barème provisoire : `series = series_max = 3`, cible 6-25 par AMRAP de 30 s. Te
 
 ## Journal du banc d'essai
 
-(Les résumés collés et les seuils changés viennent ici.)
+**2026-10-29, Safari sur Mac, 20 répétitions (10 au sol), 32 img/s.** Droit et gauche : 20 sur 20, rien à
+signaler. Seuils gardés. Le mauvais côté (« c'est l'autre jambe ») reste à essayer.
 
 ## Médias
 

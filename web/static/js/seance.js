@@ -76,6 +76,7 @@ export function exercice_pour(mouvements, nom) {
     changements: fiche.changements ?? [],
     depart: fiche.depart ?? null,
     delai_min_reps: fiche.delai_min_reps ?? null,
+    voix_tous_les: fiche.voix_tous_les ?? null,
     instrument: instrument_pour(fiche.detection),
     autre_cote: autre_cote_pour(mouvements, fiche.autre_cote),
   });

@@ -90,6 +90,7 @@ export class Exercice {
     sensations = null,
     depart = null,
     delai_min_reps = null,
+    voix_tous_les = null,
     instrument = null,
     autre_cote = null,
   }) {
@@ -126,6 +127,10 @@ export class Exercice {
     // montee de genoux ou chaque pas compte). null : le delai par defaut de
     // `compteur.js`. Meme piege que l'orientation.
     this.delai_min_reps = delai_min_reps;
+    // Tous les combien la voix dit le compte (`nombre_a_dire`, moteur.js),
+    // quand chaque pas compte et qu'un nombre par pas couvrirait tout. null :
+    // chaque repetition. Meme piege que l'orientation.
+    this.voix_tous_les = voix_tous_les;
     // L'instrument de sa detection (`instruments.js`) : ce qui dit **pourquoi**
     // une repetition n'a pas compte (`expliquer_tentative`). Jamais ce qui
     // compte.
