@@ -93,6 +93,7 @@ export class Exercice {
     voix_tous_les = null,
     instrument = null,
     autre_cote = null,
+    repere = null,
   }) {
     this.nom = nom;
     this.detection = detection;
@@ -139,6 +140,11 @@ export class Exercice {
     // meme mouvement de l'autre cote, et ce qui se dit (« c'est l'autre
     // bras »). Lu par `surveiller_autre_cote`. Meme piege que l'orientation.
     this.autre_cote = autre_cote;
+    // La fonction qui prend le repere de la mise en place (`REPERES`,
+    // detections.js), pour une detection qui se lit par rapport a soi debout.
+    // Lue par `repere_du_bloc`. Meme piege que l'orientation : oubliee, la
+    // detection retomberait sur le repere moyen, sans erreur.
+    this.repere = repere;
   }
 
   fiche() {
@@ -194,6 +200,9 @@ const CHAMPS_TEMPORELS = [
   "mise_en_place_buste",
   "mise_en_place_jeton",
   "mise_en_place_depuis",
+  // Le repere fige a l'ouverture (`repere_du_bloc`) : chaque serie reprend
+  // le sien, on a pu changer de place entre deux tours.
+  "repere",
 ];
 
 export class BlocExercice {

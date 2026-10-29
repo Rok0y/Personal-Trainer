@@ -85,6 +85,10 @@ compté. Cibles : course 20-90, montées et talons 16-80, Heisman 10-40, climber
   pour un écart de 0,3 avec le haut. **Changé** : neutre < 0,3, délai 0,25 s (était 0,15).
 - **Scissor runs** : 20 sur 20, « nickel ».
 
+**2026-10-29, troisième banc, Safari sur Mac, 10 répétitions, 32 img/s.**
+- **Talons-fesses** : un compté en trop sur 10 (contre 5 sur 15 avant). Gardé ; à revoir en
+  séance si l'écart revient.
+
 ## Médias
 
 - [x] Montées de genou : vidéo et voix déjà présentes (vidéo tournée de face : à refaire de profil ?)

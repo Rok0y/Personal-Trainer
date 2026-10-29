@@ -266,6 +266,26 @@ export function attendre_mise_en_place({ bloc, corps, jeton, maintenant, depart,
 }
 
 /**
+ * Le repere d'une detection qui se lit par rapport a soi debout (`REPERES`,
+ * detections.js), ou null pour toutes les autres.
+ *
+ * **Tant que la serie attend, c'est la pose du moment** : elle se compare a
+ * elle-meme, si bien que la mise en place ne depend que du reste de la
+ * position (bras en haut, buste debout), quelle que soit la morphologie.
+ * **A l'ouverture, il se fige** : la position tenue immobile pendant
+ * `DUREE_MISE_EN_PLACE` devient la reference de toute la serie, et chaque
+ * serie reprend la sienne (`CHAMPS_TEMPORELS`). Une serie ouverte sans mise
+ * en place (geste ±1, rejeu des scenarios) prend la premiere pose vue.
+ */
+export function repere_du_bloc(bloc, exercice, corps) {
+  const prendre = exercice.repere;
+  if (!prendre) return null;
+  if (!bloc.serie_ouverte) return prendre(corps);
+  if (!("repere" in bloc)) bloc.repere = prendre(corps);
+  return bloc.repere;
+}
+
+/**
  * Ce que montre une serie comptee qui attend : l'etape, et la consigne de se
  * mettre en place. Ni faute de forme (elle n'existe que pendant l'effort), ni
  * compte.
@@ -439,7 +459,7 @@ export function confirmer_verdict(attente, entree, jeton, maintenant, rep_compte
  */
 export function expliquer_tentative({
   exercice, corps, bloc, etat, coach, jeton, maintenant, rep_comptee, faute, texte,
-  muet = false,
+  muet = false, repere = null,
 }) {
   const instrument = exercice.instrument;
   if (!instrument) return null;
@@ -449,7 +469,9 @@ export function expliquer_tentative({
       depart: exercice.depart ?? null,
     });
   }
-  const valeurs = instrument.mesures.map((mesure) => mesure.valeur(corps));
+  // Le meme repere que la detection : sans lui, l'instrument lirait le
+  // repere moyen et expliquerait un refus que la detection n'a pas fait.
+  const valeurs = instrument.mesures.map((mesure) => mesure.valeur(corps, repere));
   const entree = bloc.suivi_tentatives.observer(jeton, valeurs, maintenant);
   if (rep_comptee) delete bloc.non_comptee;
 
@@ -579,7 +601,7 @@ export function gerer_mode_repetitions({
   corps, exercice, bloc, seance, compteur, etat, coach, derniere_rep, messages,
 }) {
   let serie_terminee = false;
-  const stage_detecte = exercice.detection(corps);
+  const stage_detecte = exercice.detection(corps, repere_du_bloc(bloc, exercice, corps));
   if (!attendre_mise_en_place({
     bloc, corps, jeton: stage_detecte, maintenant: seance.maintenant(),
     depart: exercice.depart ?? null, coach,
@@ -587,6 +609,8 @@ export function gerer_mode_repetitions({
     montrer_attente(etat, stage_detecte, compteur, messages);
     return [derniere_rep, compteur.repetitions, false];
   }
+  // Fige a l'ouverture, sur cette meme image : le jeton ci-dessus l'a lu.
+  const repere = repere_du_bloc(bloc, exercice, corps);
   const faute = mettre_a_jour_erreur(exercice, corps, etat, messages.texte);
 
   const stage_avant = compteur.stage;
@@ -605,7 +629,7 @@ export function gerer_mode_repetitions({
   expliquer_tentative({
     exercice, corps, bloc, etat, coach, jeton: stage_detecte, maintenant: seance.maintenant(),
     rep_comptee: repetitions > repetitions_avant, faute, texte: messages.texte,
-    muet: autre_cote.muet,
+    muet: autre_cote.muet, repere,
   });
 
   if (repetitions > derniere_rep) {
@@ -724,7 +748,7 @@ export function gerer_mode_amrap({
   corps, bloc, compteur, seance, etat, coach, derniere_rep, messages,
 }) {
   const maintenant = seance.maintenant();
-  const stage_detecte = bloc.exercice.detection(corps);
+  const stage_detecte = bloc.exercice.detection(corps, repere_du_bloc(bloc, bloc.exercice, corps));
   // Le chrono part avec la serie, a « c'est parti » : un AMRAP qui courait
   // pendant qu'on se met en place volerait ces secondes a la serie.
   if (!attendre_mise_en_place({
@@ -735,6 +759,7 @@ export function gerer_mode_amrap({
     etat.temps_amrap_restant = bloc.duree;
     return [derniere_rep, compteur.repetitions, false];
   }
+  const repere = repere_du_bloc(bloc, bloc.exercice, corps);
   const faute = mettre_a_jour_erreur(bloc.exercice, corps, etat, messages.texte);
   annoncer_faute(coach, bloc, faute, maintenant);
 
@@ -755,7 +780,7 @@ export function gerer_mode_amrap({
   expliquer_tentative({
     exercice: bloc.exercice, corps, bloc, etat, coach, jeton: stage_detecte, maintenant,
     rep_comptee: repetitions > repetitions_avant, faute, texte: messages.texte,
-    muet: autre_cote.muet,
+    muet: autre_cote.muet, repere,
   });
 
   if (repetitions > derniere_rep) {

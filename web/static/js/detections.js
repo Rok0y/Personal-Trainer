@@ -826,6 +826,39 @@ function descente_hanches(corps) {
   return mesures.reduce((a, b) => a + b, 0) / mesures.length;
 }
 
+// ------------------------------------------ repere pris a la mise en place
+//
+// Une flexion se lit **par rapport a soi debout**, pas a une valeur fixe :
+// debout, la descente des hanches vaut 1,26 a 1,41 selon la morphologie et la
+// pose, et un seuil fixe demandait de descendre trop bas aux power jacks et au
+// ski (trois bancs le 2026-10-29), la ou il aurait compte un simple saut chez
+// un autre. Le repere est pris dans la position tenue a la mise en place
+// (`repere_du_bloc`, moteur.js ; la demo de meme) : la descente des hanches
+// debout, et la place ou l'on se tient dans l'image (le ski lit ses cotes par
+// rapport a elle). Une detection qui en lit un le recoit en second argument
+// et le declare dans `REPERES`.
+//
+// Sans repere — poses figees des tests, instrument lu seul —, le repere
+// moyen. En seance il n'en manque jamais : tant que la serie attend, le
+// repere est la pose du moment, et il se fige a l'ouverture.
+export const REPERE_MOYEN = { hanches: 1.33, centre: 0.5 };
+
+export function repere_debout(corps) {
+  return {
+    hanches: descente_hanches(corps),
+    centre: (corps.cheville_gauche.x + corps.cheville_droite.x) / 2,
+  };
+}
+
+// La descente des hanches rapportee a celle du repere : 1 debout comme a la
+// mise en place, 0,7 cuisses bien flechies. Un repere aux hanches illisibles
+// (tibia couche a l'instant ou il a ete pris) vaut le repere moyen.
+function flexion(corps, repere) {
+  const hanches = descente_hanches(corps);
+  const debout = repere?.hanches > 0 ? repere.hanches : REPERE_MOYEN.hanches;
+  return hanches === null ? null : hanches / debout;
+}
+
 // Le toucher croise d'un stance jack : la main qui descend (le poignet le
 // plus bas) et le pied **oppose**. Le poignet droit va au pied gauche.
 function main_qui_touche(corps) {
@@ -896,16 +929,16 @@ export function jumping_jacks_detection(corps) {
 // Power jack : on retombe jambes ecartees en squat (`debut`), on remonte en
 // sautant bras au-dessus de la tete (`fin`, la fin de la phase concentrique).
 // L'ecart des pieds n'est demande qu'en bas, les bras qu'en haut.
-// Debout, la descente vaut 1,26 a 1,41 ; un squat de power jack, 0,5 a 0,85
-// selon la fatigue (premier banc du 2026-10-29 : aucun ne passait sous 0,6 ;
-// second banc : dix squats arretes entre 0,75 et 0,82, « il me demande de
-// descendre trop bas »).
-export const POWER_JACK_HANCHES_BAS = 0.85;
-export const POWER_JACK_HANCHES_HAUT = 1.05;
+// La flexion se lit par rapport a soi debout (`flexion`, 1 a la mise en
+// place, bras en haut). En valeur fixe, il fallait toujours descendre trop bas
+// (troisieme banc du 2026-10-29 : squats arretes a 0,90-0,96 pour 1,31 debout,
+// soit 0,69 a 0,73 de soi debout).
+export const POWER_JACK_HANCHES_BAS = 0.75;
+export const POWER_JACK_HANCHES_HAUT = 0.85;
 
-export function power_jacks_detection(corps) {
+export function power_jacks_detection(corps, repere = null) {
   if (!(buste_vertical(corps) > 0)) return "milieu";
-  const hanches = descente_hanches(corps);
+  const hanches = flexion(corps, repere);
   const ecart = ecart_chevilles(corps);
   const bas = bras_le_plus_bas(corps);
   if (hanches !== null && hanches > POWER_JACK_HANCHES_HAUT && bas !== null && bas < JACK_BRAS_HAUT) return "fin";
@@ -1327,33 +1360,33 @@ export function crochets_detection(corps) {
 // compte, **cuisses flechies** (`fin`), et l'on se rearme jambes tendues, a
 // l'impulsion (`debut`). Le passage par le milieu n'est plus demande : il se
 // fait en l'air, sur peu d'images, et decale d'un cote on ne voyait qu'une
-// reception sur deux (banc du 2026-10-29). **Seul mouvement qui lit un repere
-// exterieur au corps** : le centre de l'image (les coordonnees du modele vont
-// de 0 a 1), pour qu'un squat saute sur place, au milieu, ne compte pas. Le
-// seuil est bas (0,15 epaule) : decale d'une demi-epaule, on retombait d'un cote
-// a 0,2-0,4 du centre et ces receptions ne comptaient pas (second banc du
-// 2026-10-29, 6 sur 20). La fiche demande de se placer au milieu de l'image.
+// reception sur deux (banc du 2026-10-29). Les cotes se lisent **par rapport
+// a sa place de depart** (le repere de la mise en place), pour qu'un squat
+// saute sur place ne compte pas. Le centre de l'image, qu'on lisait d'abord,
+// demandait de s'y placer : decale d'une demi-epaule, une reception sur deux
+// tombait trop pres (second banc, 6 sur 20).
 
-// De combien le milieu des chevilles s'ecarte du centre de l'image, sans signe,
-// en largeurs d'epaules. null si les epaules sont illisibles.
-function ecart_au_centre(corps) {
+// De combien le milieu des chevilles s'ecarte de sa place de depart, sans
+// signe, en largeurs d'epaules. null si les epaules sont illisibles.
+function ecart_a_sa_place(corps, repere) {
   const largeur = calculer_distance(corps.epaule_gauche, corps.epaule_droite);
   if (largeur <= 0) return null;
   const milieu = (corps.cheville_gauche.x + corps.cheville_droite.x) / 2;
-  return Math.abs(milieu - 0.5) / largeur;
+  return Math.abs(milieu - (repere?.centre ?? REPERE_MOYEN.centre)) / largeur;
 }
 
-// La flexion se lit a la descente des hanches (`descente_hanches`, verticale,
-// lisible de face) : 1,26 a 1,41 debout, sous 1,1 cuisses flechies (au second
-// banc, des receptions flechies s'arretaient entre 1 et 1,1).
-export const SKI_DE_COTE = 0.15;
-export const SKI_FLECHI = 1.1;
-export const SKI_TENDU = 1.25;
+// La flexion se lit par rapport a soi debout (`flexion`) : en valeur fixe, des
+// receptions flechies s'arretaient a 1,13-1,19 pour 1,35 debout (troisieme
+// banc), soit 0,84 a 0,88 de soi debout. Le saut part jambes tendues, au moins
+// aussi haut que debout.
+export const SKI_DE_COTE = 0.3;
+export const SKI_FLECHI = 0.9;
+export const SKI_TENDU = 0.95;
 
-export function ski_detection(corps) {
+export function ski_detection(corps, repere = null) {
   if (!(buste_vertical(corps) > 0)) return "milieu";
-  const ecart = ecart_au_centre(corps);
-  const hanches = descente_hanches(corps);
+  const ecart = ecart_a_sa_place(corps, repere);
+  const hanches = flexion(corps, repere);
   if (hanches !== null && hanches < SKI_FLECHI && ecart !== null && ecart > SKI_DE_COTE) return "fin";
   if (hanches !== null && hanches > SKI_TENDU) return "debut";
   return "milieu";
@@ -1396,9 +1429,17 @@ export {
   mains_au_genou as _mains_au_genou,
   crochet_croisement as _crochet_croisement,
   crochet_hauteur as _crochet_hauteur,
-  ecart_au_centre as _ecart_au_centre,
+  ecart_a_sa_place as _ecart_a_sa_place,
+  flexion as _flexion,
   ecart_poignets as _ecart_poignets,
   hanches_au_dessus_des_genoux as _hanches_au_dessus_des_genoux,
+};
+
+// Les detections qui lisent un repere pris a la mise en place, et la fonction
+// qui le prend (voir `REPERE_MOYEN`). Par nom, comme `DETECTIONS`.
+export const REPERES = {
+  power_jacks_detection: repere_debout,
+  ski_detection: repere_debout,
 };
 
 // Appariement nom -> fonction, consomme par le harnais de comparaison et par

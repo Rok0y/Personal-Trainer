@@ -22,7 +22,7 @@ import {
   est_echauffement,
   paires_entrelacees,
 } from "./circuit.js";
-import { DETECTIONS } from "./detections.js";
+import { DETECTIONS, REPERES } from "./detections.js";
 import { INSTRUMENTS } from "./instruments.js";
 
 /**
@@ -79,6 +79,7 @@ export function exercice_pour(mouvements, nom) {
     voix_tous_les: fiche.voix_tous_les ?? null,
     instrument: instrument_pour(fiche.detection),
     autre_cote: autre_cote_pour(mouvements, fiche.autre_cote),
+    repere: (fiche.detection && REPERES[fiche.detection]) || null,
   });
 }
 

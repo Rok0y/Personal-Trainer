@@ -19,13 +19,14 @@ la fusion dans `main`. Compté en AMRAP de 30 s dans la séance cardio.
 ## Détection (conçue le 2026-10-28, refaite le 2026-10-29)
 
 Chaque réception compte, **cuisses fléchies** :
-- `fin` : descente des hanches sous 1,1 (debout : 1,26 à 1,41) **et** milieu des chevilles à plus
-  de 0,15 largeur d'épaule du centre de l'image ;
-- `debut` : jambes tendues (> 1,25), à l'impulsion ou debout.
+- `fin` : hanches sous 0,9 de **soi debout** **et** milieu des chevilles à plus de 0,3 largeur
+  d'épaule de **sa place de départ** ;
+- `debut` : jambes tendues (> 0,95 de soi debout), à l'impulsion ou debout.
 
-Buste debout, délai par défaut. Le centre de l'image ne sert plus qu'à refuser un squat sauté sur
-place, au milieu : il suffit d'être à peu près centré. La première version comptait au passage
-par le milieu, qui se fait en l'air (voir le journal).
+Les deux se lisent au **repère pris à la mise en place** (`REPERES`, `repere_du_bloc`) : la
+position tenue immobile avant « c'est parti ». Buste debout, délai par défaut. La place de départ
+ne sert qu'à refuser un squat sauté sur place. La première version comptait au passage par le
+milieu, qui se fait en l'air (voir le journal).
 
 ## Parcours B — exercice compté
 
@@ -63,6 +64,12 @@ dit que les dizaines). 16 réceptions refusées : pieds à 0,19-0,37 épaule du 
 une réception sur deux tombait près du milieu), ou flexion arrêtée entre 1 et 1,1. **Changé** :
 centre > 0,15, fléchi < 1,1, tendu > 1,25. Si le décalage revient, passer au repère pris à la
 mise en place.
+
+**2026-10-29, troisième banc, Safari sur Mac, 10 répétitions, 32 img/s.** 10 comptés, 17 réceptions refusées, « trop loin sur le côté ou descendre trop
+bas » : flexion arrêtée à 1,13-1,19 (seuil < 1,1) pour 1,35 debout, et trois réceptions près du
+centre de l'image. **Changé, sur décision de l'utilisateur** : le repère pris à la mise en place.
+Fléchi < 0,9 de soi debout (ses réceptions : 0,84 à 0,88), tendu > 0,95, côtés à plus de 0,3
+épaule de sa place de départ. Fiche mise à jour (plus de « reste centré »).
 
 ## Médias
 

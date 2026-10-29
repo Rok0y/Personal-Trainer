@@ -34,7 +34,7 @@ import {
   _toucher_hauteur, _toucher_croisement,
   _pied_le_plus_leve, _genou_le_plus_leve, _genou_le_plus_haut_sous_hanche, _appui_exterieur,
   _main_opposee_au_dessus_de_la_tete, _pied_haut_sous_hanche, _pied_haut_portee, _ecart_avant_arriere,
-  _mains_au_genou, _crochet_croisement, _crochet_hauteur, _ecart_au_centre,
+  _mains_au_genou, _crochet_croisement, _crochet_hauteur, _ecart_a_sa_place, _flexion,
   _ecart_poignets, _hanches_au_dessus_des_genoux,
   FENTE_GENOU_AVANT_MIN, SOULEVE_BAS_MAX, SOULEVE_HAUT_MIN,
   JACK_ECART_JOINT, JACK_ECART_ECARTE, JACK_BRAS_BAS, JACK_BRAS_HAUT, JACK_MAINS_JOINTES,
@@ -618,10 +618,10 @@ INSTRUMENTS.power_jacks_detection = {
   mesures: [
     buste_debout(["fin", "debut"]),
     avec_raisons({
-      libelle: "Descente des hanches (÷ tibia, moyenne)", unite: "", echelle: [0, 1.3],
+      libelle: "Hanches, par rapport à debout (repère)", unite: "", echelle: [0, 1.2],
       sommet: "hanche_gauche",
       zones: { fin: [">", POWER_JACK_HANCHES_HAUT], debut: ["<", POWER_JACK_HANCHES_BAS] },
-      valeur: (corps) => _descente_hanches(corps),
+      valeur: (corps, repere) => _flexion(corps, repere),
     }, FLEXION),
     ecart_des_chevilles({ debut: [">", JACK_ECART_ECARTE] }),
     bras_en_haut(),
@@ -823,11 +823,11 @@ INSTRUMENTS.ski_detection = {
   defaut: "milieu",
   mesures: [
     buste_debout(["fin", "debut"]),
-    avec_raisons(mesure("Descente des hanches (÷ tibia, moyenne)", "hanche_gauche", [0, 1.5],
-      { fin: ["<", SKI_FLECHI], debut: [">", SKI_TENDU] }, (corps) => _descente_hanches(corps)),
+    avec_raisons(mesure("Hanches, par rapport à debout (repère)", "hanche_gauche", [0, 1.2],
+      { fin: ["<", SKI_FLECHI], debut: [">", SKI_TENDU] }, (corps, repere) => _flexion(corps, repere)),
       { fin: RAISONS.descendre }),
-    mesure("Pieds loin du centre de l'image (÷ épaules)", "cheville_gauche", [0, 2],
-      { fin: [">", SKI_DE_COTE] }, (corps) => _ecart_au_centre(corps)),
+    mesure("Pieds loin de la place de départ (÷ épaules)", "cheville_gauche", [0, 2],
+      { fin: [">", SKI_DE_COTE] }, (corps, repere) => _ecart_a_sa_place(corps, repere)),
   ],
 };
 
@@ -853,8 +853,10 @@ export function jeton_des_valeurs(instrument, valeurs) {
   return instrument.defaut;
 }
 
-export function lire_instrument(instrument, corps) {
-  const valeurs = instrument.mesures.map((mesure) => mesure.valeur(corps));
+// `repere` : celui de la mise en place, pour une detection qui en lit un
+// (`REPERES`, detections.js) ; les autres mesures l'ignorent.
+export function lire_instrument(instrument, corps, repere = null) {
+  const valeurs = instrument.mesures.map((mesure) => mesure.valeur(corps, repere));
   return { valeurs, jeton: jeton_des_valeurs(instrument, valeurs) };
 }
 

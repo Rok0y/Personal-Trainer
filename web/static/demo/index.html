@@ -337,7 +337,7 @@ import { PoseLandmarker, FilesetResolver, DrawingUtils }
 import { construire_corps } from "../js/landmarks.js";
 import { points_utilises, consigne_de_cadrage } from "../js/cadrage.js";
 import { VerrouEcran } from "../js/veille.js";
-import { DETECTIONS } from "../js/detections.js";
+import { DETECTIONS, REPERES } from "../js/detections.js";
 import { CompteurMouvement } from "../js/compteur.js";
 import {
   INSTRUMENTS, lire_instrument, dans_zone, SuiviTentatives,
@@ -461,6 +461,10 @@ let debutImmobile = null;
 let finDecompte = null;
 let dernierDecompteDit = null;
 let bustePrecedent = null;
+//: Le repere d'une detection qui se lit par rapport a soi debout (`REPERES`) :
+//: fige quand l'immobilite ouvre le decompte, comme `repere_du_bloc` a
+//: l'ouverture d'une serie ; avant, la pose du moment.
+let repereFige = null;
 //: L'echec qui attend d'etre confirme, comme `bloc.verdict_en_attente`.
 let verdictEnAttente = null;
 let personnesVues = 0;
@@ -966,6 +970,7 @@ function reinitialiser() {
   finDecompte = null;
   dernierDecompteDit = null;
   bustePrecedent = null;
+  repereFige = null;
   poseSuivie = null;
   histoExercice = histogrammeVide();
   derniereImage = null;
@@ -1207,13 +1212,14 @@ function dessinerJauges() {
   }
 }
 
-function mesurerInstruments(corps, jeton, instant) {
+function mesurerInstruments(corps, jeton, instant, repere) {
   dernierCorps = corps;
   const comptage = phase === "comptage";
   let cleErreur = null;
 
   lectures.forEach((l, rang) => {
-    l.lecture = lire_instrument(l.instrument, corps);
+    // Le repere est celui de la detection : les fautes de forme n'en lisent pas.
+    l.lecture = lire_instrument(l.instrument, corps, rang === 0 ? repere : null);
     if (rang === 0 && l.lecture.jeton !== jeton) {
       // Ne devrait jamais arriver : verifier_instruments.mjs le garantit sur
       // les poses du harnais. S'il arrive quand meme, les jauges mentent, et
@@ -1411,7 +1417,9 @@ function diagnosticInstruments() {
 }
 
 function traiter(corps, instant) {
-  const jeton = DETECTIONS[exercice.detection](corps);
+  const prendreRepere = REPERES[exercice.detection];
+  const repere = prendreRepere ? repereFige ?? prendreRepere(corps) : null;
+  const jeton = DETECTIONS[exercice.detection](corps, repere);
 
   // Le mode se deduit du jeton plutot que d'une metadonnee : une detection
   // qui parle de "maintien" mesure un temps, les autres comptent des
@@ -1430,7 +1438,7 @@ function traiter(corps, instant) {
   // qui decide s'il y a un armement a montrer.
   if (banc) {
     mesurerBanc(jeton, instant);
-    mesurerInstruments(corps, jeton, instant);
+    mesurerInstruments(corps, jeton, instant, repere);
   }
 
   if (phase !== "comptage") {
@@ -1496,6 +1504,7 @@ function preparer(corps, instant) {
 
   if (debutImmobile === null) debutImmobile = instant;
   if (instant - debutImmobile >= SECONDES_EN_POSITION) {
+    repereFige = REPERES[exercice.detection]?.(corps) ?? null;
     phase = "decompte";
     finDecompte = instant + DECOMPTE;
     dernierDecompteDit = null;
