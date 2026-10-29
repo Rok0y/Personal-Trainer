@@ -56,7 +56,7 @@ compté. Cibles : course 20-90, montées et talons 16-80, Heisman 10-40, climber
 
 ### Jalon 2 : il progresse
 
-- [ ] Barème définitif, bornes jugées dans `dev/baremes.html`
+- [x] Barème définitif (2026-10-29, chiffres validés par l’utilisateur : quatre repères en 30 s, voir `docs/reglages.md`), bornes jugées dans `dev/baremes.html`
 - [ ] Départ et parcours vus dans `dev/progression.html`
 - [ ] Poussée 2 (accord donné)
 - [ ] Essai en séance
