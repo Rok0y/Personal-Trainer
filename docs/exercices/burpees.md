@@ -66,6 +66,10 @@ AMRAP de 30 s. Tempo 3 s et 2,5 s.
   0,7 tibia au-dessus des genoux, mesurées à la **longueur** du tibia
   (`hanches_au_dessus_des_genoux`) ; couché = buste sous 45 degrés.
 
+**2026-10-29, second banc, Safari sur Mac, 20 répétitions (10 au sol), 32 img/s.** Burpees et suicide jumps : 10 sur 10,
+« nickel ». Un burpee **sans saut** à la fin compte : voulu, le saut n'est pas vérifié (quelques
+centimètres, une fraction de tibia, que le lissage du modèle écrase). Seuils gardés.
+
 ## Médias
 
 - [ ] Vidéos tournées de profil

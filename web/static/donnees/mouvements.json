@@ -1351,7 +1351,7 @@
    "chaine": "cardio"
   },
   "depart": "debut",
-  "delai_min_reps": 0.15,
+  "delai_min_reps": 0.25,
   "aussi_exercice": true,
   "voix_tous_les": 10
  }

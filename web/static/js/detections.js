@@ -896,10 +896,12 @@ export function jumping_jacks_detection(corps) {
 // Power jack : on retombe jambes ecartees en squat (`debut`), on remonte en
 // sautant bras au-dessus de la tete (`fin`, la fin de la phase concentrique).
 // L'ecart des pieds n'est demande qu'en bas, les bras qu'en haut.
-// Debout, la descente vaut 1,26 a 1,41 ; un squat de power jack, 0,5 a 0,75
-// selon la fatigue (banc du 2026-10-29 : aucun ne passait sous 0,6).
-export const POWER_JACK_HANCHES_BAS = 0.75;
-export const POWER_JACK_HANCHES_HAUT = 0.95;
+// Debout, la descente vaut 1,26 a 1,41 ; un squat de power jack, 0,5 a 0,85
+// selon la fatigue (premier banc du 2026-10-29 : aucun ne passait sous 0,6 ;
+// second banc : dix squats arretes entre 0,75 et 0,82, « il me demande de
+// descendre trop bas »).
+export const POWER_JACK_HANCHES_BAS = 0.85;
+export const POWER_JACK_HANCHES_HAUT = 1.05;
 
 export function power_jacks_detection(corps) {
   if (!(buste_vertical(corps) > 0)) return "milieu";
@@ -916,18 +918,21 @@ export function power_jacks_detection(corps) {
 // deux. Pas de condition sur le buste : il se penche pour toucher. Les pieds
 // joints tiennent le neutre : sans eux, le poignet qui touche, cache derriere
 // la jambe, sautait d'une image vers le haut et le toucher comptait deux fois
-// (banc du 2026-10-29, main droite sur pied gauche).
+// (banc du 2026-10-29, main droite sur pied gauche). Et le toucher se fait
+// pieds ecartes : pieds joints, se pencher vers ses pieds comptait (second banc).
 export const STANCE_JACK_TOUCHER = 0.6;
+export const STANCE_JACK_ECARTE = 1.1;
 export const STANCE_JACK_DEBOUT = 1.4;
 export const STANCE_JACK_CROISEMENT = 0.05;
 
 export function stance_jacks_detection(corps) {
   const hauteur = toucher_hauteur(corps);
   const croisement = toucher_croisement(corps);
-  if (hauteur !== null && hauteur < STANCE_JACK_TOUCHER && croisement !== null && croisement > STANCE_JACK_CROISEMENT) {
+  const ecart = ecart_chevilles(corps);
+  if (hauteur !== null && hauteur < STANCE_JACK_TOUCHER && croisement !== null && croisement > STANCE_JACK_CROISEMENT
+      && ecart !== null && ecart > STANCE_JACK_ECARTE) {
     return "fin";
   }
-  const ecart = ecart_chevilles(corps);
   if (hauteur !== null && hauteur > STANCE_JACK_DEBOUT && ecart !== null && ecart < JACK_ECART_JOINT) return "debut";
   return "milieu";
 }
@@ -1083,12 +1088,14 @@ export function montees_de_genou_detection(corps) {
 // Talons-fesses, de profil : le talon monte haut (pied > 0,7 tibia au-dessus
 // de l'autre) **et** les genoux restent au meme niveau (< 0,3) — le genou
 // pointe le sol. Sans cette seconde condition, une montee de genou comptait.
-// Le neutre est large (< 0,4) : en courant, le pied qui redescend croise
+// Le neutre est large (< 0,3) : en courant, le pied qui redescend croise
 // l'autre en l'air, et la difference ne repasse pas sous 0,15 entre deux
-// images (banc du 2026-10-29 : 17 pas sur 20 sans retour au neutre).
+// images (premier banc du 2026-10-29 : 17 pas sur 20 sans retour au neutre).
+// A 0,4, il comptait en trop (second banc : 20 pour 15) ; resserre a 0,3, avec
+// un delai de 0,25 s (mouvements.json).
 export const TALON_HAUT = 0.7;
 export const TALON_GENOUX_ALIGNES = 0.3;
-export const TALON_PIEDS_AU_SOL = 0.4;
+export const TALON_PIEDS_AU_SOL = 0.3;
 
 export function talons_fesses_detection(corps) {
   if (!(buste_vertical(corps) > 0)) return "milieu";
@@ -1323,8 +1330,9 @@ export function crochets_detection(corps) {
 // reception sur deux (banc du 2026-10-29). **Seul mouvement qui lit un repere
 // exterieur au corps** : le centre de l'image (les coordonnees du modele vont
 // de 0 a 1), pour qu'un squat saute sur place, au milieu, ne compte pas. Le
-// seuil est bas (0,4 epaule) : il suffit d'etre a peu pres centre. La fiche
-// demande de se placer au milieu de l'image.
+// seuil est bas (0,15 epaule) : decale d'une demi-epaule, on retombait d'un cote
+// a 0,2-0,4 du centre et ces receptions ne comptaient pas (second banc du
+// 2026-10-29, 6 sur 20). La fiche demande de se placer au milieu de l'image.
 
 // De combien le milieu des chevilles s'ecarte du centre de l'image, sans signe,
 // en largeurs d'epaules. null si les epaules sont illisibles.
@@ -1336,10 +1344,11 @@ function ecart_au_centre(corps) {
 }
 
 // La flexion se lit a la descente des hanches (`descente_hanches`, verticale,
-// lisible de face) : 1,26 a 1,41 debout, sous 1 cuisses flechies.
-export const SKI_DE_COTE = 0.4;
-export const SKI_FLECHI = 1;
-export const SKI_TENDU = 1.15;
+// lisible de face) : 1,26 a 1,41 debout, sous 1,1 cuisses flechies (au second
+// banc, des receptions flechies s'arretaient entre 1 et 1,1).
+export const SKI_DE_COTE = 0.15;
+export const SKI_FLECHI = 1.1;
+export const SKI_TENDU = 1.25;
 
 export function ski_detection(corps) {
   if (!(buste_vertical(corps) > 0)) return "milieu";
