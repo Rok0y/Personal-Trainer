@@ -871,18 +871,18 @@
   "Ski": {
     "description": "Sauter d'un côté à l'autre pieds joints, comme un skieur en slalom, pour faire monter le cœur.",
     "mise_en_place": [
-      "Face à la caméra, pieds joints, bien au milieu de l'image.",
+      "Face à la caméra, pieds joints, immobile jusqu'à « c'est parti » : c'est ta place de départ.",
       "Garde un grand pas de place libre de chaque côté."
     ],
     "instructions": [
       "Saute sur le côté, pieds joints, et retombe genoux pliés.",
       "Repars aussitôt de l'autre côté, en poussant sur les jambes.",
-      "Chaque réception compte, genoux pliés et assez loin du milieu.",
-      "Reste centré : saute autant à gauche qu'à droite."
+      "Chaque réception compte, genoux pliés et assez loin de ta place de départ.",
+      "Saute autant à gauche qu'à droite de ta place de départ."
     ],
     "erreurs_frequentes": [
       "Retomber jambes tendues : la réception ne compte pas.",
-      "Sauter trop court, ou dériver d'un côté de l'image."
+      "Sauter trop court, ou dériver loin de sa place de départ."
     ],
     "sensations": [
       "Les cuisses et les fesses travaillent à chaque réception.",

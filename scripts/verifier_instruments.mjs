@@ -16,7 +16,7 @@
 //     node scripts/verifier_instruments.mjs
 
 import { construire_corps } from "../web/static/js/landmarks.js";
-import { DETECTIONS } from "../web/static/js/detections.js";
+import { DETECTIONS, REPERES } from "../web/static/js/detections.js";
 import { INSTRUMENTS, lire_instrument } from "../web/static/js/instruments.js";
 import { lire_lignes } from "./fixtures.mjs";
 
@@ -37,21 +37,36 @@ let comparaisons = 0;
 const visites = {};
 const PEU_VISITE = 20;
 
+function comparer(nom, instrument, corps, repere, index) {
+  const attendu = DETECTIONS[nom](corps, repere);
+  const { jeton, valeurs } = lire_instrument(instrument, corps, repere);
+  comparaisons++;
+  if (jeton !== attendu) {
+    const cle = repere ? `${nom} (avec un repere)` : nom;
+    if (!ecarts.has(cle)) ecarts.set(cle, []);
+    ecarts.get(cle).push({ pose: index + 1, attendu, obtenu: jeton, valeurs });
+  }
+  return attendu;
+}
+
+let precedent = null;
 lignes.forEach(({ landmarks }, index) => {
   const corps = construire_corps(landmarks);
 
   for (const [nom, instrument] of Object.entries(INSTRUMENTS)) {
     if (!DETECTIONS[nom]) continue;
-    const attendu = DETECTIONS[nom](corps);
-    const { jeton, valeurs } = lire_instrument(instrument, corps);
-    comparaisons++;
+    const attendu = comparer(nom, instrument, corps, null, index);
     visites[nom] ??= {};
     visites[nom][String(attendu)] = (visites[nom][String(attendu)] ?? 0) + 1;
-    if (jeton !== attendu) {
-      if (!ecarts.has(nom)) ecarts.set(nom, []);
-      ecarts.get(nom).push({ pose: index + 1, attendu, obtenu: jeton, valeurs });
+    // Une detection qui lit un repere (`REPERES`) se compare aussi sous un
+    // repere qui n'est pas le moyen — celui de la pose precedente : un
+    // instrument qui l'ignorerait passerait sinon, le repere moyen etant celui
+    // que les deux lisent sans repere.
+    if (REPERES[nom] && precedent) {
+      comparer(nom, instrument, corps, REPERES[nom](precedent), index);
     }
   }
+  precedent = corps;
 });
 
 console.log(`${lignes.length} poses, ${comparaisons} comparaisons`);

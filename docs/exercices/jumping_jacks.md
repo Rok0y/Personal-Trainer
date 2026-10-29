@@ -98,6 +98,16 @@ comptent juste. Seuils gardés tels quels, à la demande de l'utilisateur (« on
   **Changé** : la `fin` exige les pieds écartés (> 1,1 épaule, `STANCE_JACK_ECARTE`). Fiche
   mise à jour (saut pieds écartés pour toucher).
 
+**2026-10-29, troisième banc, Safari sur Mac, 10 répétitions, 32 img/s.**
+- **Power jacks** : **1 compté**, « il faut trop descendre les hanches ». Squats arrêtés à
+  0,90-0,96 (seuil < 0,85), pour 1,31 debout. Trois bancs de suite à déplacer une valeur fixe :
+  **changé de principe, sur décision de l'utilisateur** — la flexion se lit **par rapport à
+  soi debout**, au repère pris à la mise en place (bras en haut, immobile). Bas < 0,75 de soi
+  debout, haut > 0,85 (ses squats : 0,69 à 0,73). L'angle des genoux, proposé, ne se lit pas de
+  face.
+- **Stance jacks** : 10 sur 10, « on va dire que ça va ». Les touchers pieds joints sont refusés
+  (écart 0,18-0,66). Seuils gardés.
+
 ## Médias
 
 - [x] Jumping jacks : vidéo et voix déjà présentes
