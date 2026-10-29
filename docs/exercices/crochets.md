@@ -39,7 +39,7 @@ hauteur d'épaule compterait aussi. À surveiller au banc.
 - [ ] `fiches.json`, relue par l'utilisateur
 - [x] `comparer_detections --mettre-a-jour` + `verifier_ajout_detection` : rien que des ajouts
 - [x] Sabotages (hauteur oubliée dans l'instrument, seuil déplacé) : chacun rougit
-- [ ] Poussée 1 sur `travail` (accord donné)
+- [x] Poussée 1 sur `travail` (accord donné, 2026-10-28)
 - [ ] Banc d'essai : compte juste, pas de faux positifs, refus expliqué
 
 Barème provisoire : `series = series_max = 3`, cible 10-50 par AMRAP de 30 s. Tempo 0,6 s.

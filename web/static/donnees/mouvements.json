@@ -607,6 +607,7 @@
  },
  "Football sprints": {
   "nom": "Football sprints",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
@@ -627,6 +628,7 @@
  },
  "Suicide drills": {
   "nom": "Suicide drills",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
@@ -647,6 +649,7 @@
  },
  "Power jacks": {
   "nom": "Power jacks",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
@@ -669,6 +672,7 @@
  },
  "Stance jacks": {
   "nom": "Stance jacks",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
@@ -691,6 +695,7 @@
  },
  "Course sur place": {
   "nom": "Course sur place",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
@@ -713,6 +718,7 @@
  },
  "Heisman": {
   "nom": "Heisman",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
@@ -736,6 +742,7 @@
  },
  "Mountain climber debout": {
   "nom": "Mountain climber debout",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "profil",
@@ -759,6 +766,7 @@
  },
  "Switch kicks": {
   "nom": "Switch kicks",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "profil",
@@ -782,6 +790,7 @@
  },
  "Scissor runs": {
   "nom": "Scissor runs",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "profil",
@@ -805,6 +814,7 @@
  },
  "Burpees": {
   "nom": "Burpees",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "profil",
@@ -827,6 +837,7 @@
  },
  "Suicide jumps": {
   "nom": "Suicide jumps",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "profil",
@@ -849,6 +860,7 @@
  },
  "Power knees droit": {
   "nom": "Power knees droit",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
@@ -875,6 +887,7 @@
  },
  "Power knees gauche": {
   "nom": "Power knees gauche",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
@@ -901,6 +914,7 @@
  },
  "Crochets": {
   "nom": "Crochets",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
@@ -924,6 +938,7 @@
  },
  "Ski": {
   "nom": "Ski",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
@@ -1084,6 +1099,7 @@
  },
  "Jumping jacks": {
   "nom": "Jumping jacks",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "face",
@@ -1286,6 +1302,7 @@
  },
  "Montées de genou": {
   "nom": "Montées de genou",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "profil",
@@ -1309,6 +1326,7 @@
  },
  "Talons-fesses": {
   "nom": "Talons-fesses",
+  "en_developpement": true,
   "variante_facile": null,
   "variante_difficile": null,
   "orientation": "profil",

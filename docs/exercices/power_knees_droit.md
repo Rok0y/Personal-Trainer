@@ -38,7 +38,7 @@ fiche demande de ne pas rester bras en l'air plus de deux secondes. À surveille
 - [ ] `fiches.json`, relue par l'utilisateur
 - [x] `comparer_detections --mettre-a-jour` + `verifier_ajout_detection` : rien que des ajouts
 - [x] Sabotages (mains oubliées dans l'instrument, seuil déplacé, autre côté non réciproque) : chacun rougit
-- [ ] Poussée 1 sur `travail` (accord donné)
+- [x] Poussée 1 sur `travail` (accord donné, 2026-10-28)
 - [ ] Banc d'essai : compte juste ; pas de faux positifs ; refus expliqué ; **mauvais côté signalé** (« c'est l'autre jambe »)
 
 Barème provisoire : `series = series_max = 3`, cible 6-25 par AMRAP de 30 s. Tempo 1,2 s.

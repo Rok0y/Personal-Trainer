@@ -41,7 +41,7 @@ deux. Le saut final n'est pas vérifié : debout ou en l'air, le corps a la mêm
 - [ ] `fiches.json`, relue par l'utilisateur
 - [x] `comparer_detections --mettre-a-jour` + `verifier_ajout_detection` : rien que des ajouts
 - [x] Sabotages (la pompe oubliée dans l'instrument, un seuil de détection déplacé) : chacun rougit
-- [ ] Poussée 1 sur `travail` (accord donné)
+- [x] Poussée 1 sur `travail` (accord donné, 2026-10-28)
 - [ ] Banc d'essai : compte juste, pas de faux positifs (burpee sans pompe), refus expliqué
 
 Barème provisoire : `series = series_max = 3`, cible 3-12 (burpees), 4-15 (suicide jumps) par

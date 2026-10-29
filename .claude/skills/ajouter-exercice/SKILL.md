@@ -77,7 +77,7 @@ Une seule poussée.
    `analyse_la_pose: true`). Elle n'est jamais une condition d'avancement.
    ```json
    "Nom": {
-    "nom": "Nom", "variante_facile": null, "variante_difficile": null,
+    "nom": "Nom", "en_developpement": true, "variante_facile": null, "variante_difficile": null,
     "orientation": null, "changements": [], "analyse_la_pose": false,
     "detection": null, "erreurs": [], "amplitude": null, "materiel": "",
     "est_echauffement": true,
@@ -128,8 +128,9 @@ analogie, que la seconde règle pour de bon.
    prise de son nouvelle : il faut alors la brique dans `sons.json`, sous forme de constat au
    présent, qui ne s'accorde pas.
 4. **Données** :
-   - `mouvements.json` : `detection`, `analyse_la_pose: true`, `orientation`, `depart`,
-     `autre_cote` (réciproque), `materiel`, `categories`, `erreurs: []`, `amplitude: null` ;
+   - `mouvements.json` : `en_developpement: true` (le banc d'essai le range à part),
+     `detection`, `analyse_la_pose: true`, `orientation`, `depart`, `delai_min_reps` (s'il va
+     vite), `autre_cote` (réciproque), `materiel`, `categories`, `erreurs: []`, `amplitude: null` ;
    - `baremes.json` : `materiel` (`halteres`, `brut`) ;
    - `reglages.json` : la spec, les dix-huit bornes et le `tempo`, pris sur l'exercice le plus
      proche **et marqués provisoires** dans la fiche de suivi ;
@@ -209,7 +210,7 @@ enregistrer.
   détection va dans *Règles apprises*), `docs/reglages.md` pour un réglage nouveau, le README
   s'il décrit ce qui a changé. On documente des règles, pas des valeurs.
 - Fusion de `travail` dans `main` **sur demande de l'utilisateur**, avec la suppression de la
-  fiche de suivi.
+  fiche de suivi et du drapeau `en_developpement` du mouvement.
 - Rappeler les suites possibles : les fautes de forme (commande de `dev/fiches.html`), et la
   forme comptée d'un échauffement.
 

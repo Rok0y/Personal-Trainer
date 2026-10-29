@@ -28,6 +28,15 @@ export function est_exercice(mouvement) {
 }
 
 /**
+ * Le mouvement est-il en cours d'ajout, pas encore valide au banc d'essai ni en
+ * seance ? Le banc d'essai le range a part. Le drapeau s'ecrit a l'ajout et se
+ * retire a la cloture (protocole `ajouter-exercice`).
+ */
+export function est_en_developpement(mouvement) {
+  return mouvement?.en_developpement === true;
+}
+
+/**
  * Un exercice compte par la camera : il lui faut un bareme, un tempo et un
  * instrument, et le banc d'essai le propose. Un exercice sans detection se
  * joue au chrono.
